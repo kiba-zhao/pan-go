@@ -1,4 +1,4 @@
-module treasure
+module pan
 
 go 1.21.3
 

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"crypto/rand"
 	"io"
+	"pan/peer"
 	"testing"
-	"treasure/peer"
 
 	"github.com/stretchr/testify/assert"
 )

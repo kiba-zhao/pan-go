@@ -2,8 +2,8 @@ package peer
 
 import (
 	"io"
+	"pan/core"
 	"strings"
-	"treasure/core"
 )
 
 type Context interface {

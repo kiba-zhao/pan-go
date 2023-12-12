@@ -1,18 +1,18 @@
 with-expecter: true
 packages:
-  treasure/core:
+  pan/core:
     interfaces:
       Context:
       Handler:
       App:
-  treasure/broadcast:
+  pan/broadcast:
     interfaces:
       Net:
       BroadcastAddrGenerator:
       Model:
       ServiceSettings:
       Context:
-  treasure/peer:
+  pan/peer:
     interfaces:
       Context:
       NodeServe:

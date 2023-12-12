@@ -7,7 +7,7 @@ import (
 	mrand "math/rand"
 	"testing"
 
-	"treasure/peer"
+	"pan/peer"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

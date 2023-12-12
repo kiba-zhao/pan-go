@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	coreMocked "treasure/mocks/treasure/core"
-	mocked "treasure/mocks/treasure/peer"
-	"treasure/peer"
+	coreMocked "pan/mocks/pan/core"
+	mocked "pan/mocks/pan/peer"
+	"pan/peer"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

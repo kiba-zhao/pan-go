@@ -3,9 +3,9 @@ package core_test
 import (
 	"crypto/rand"
 	"testing"
-	"treasure/core"
+	"pan/core"
 
-	mocked "treasure/mocks/treasure/core"
+	mocked "pan/mocks/pan/core"
 
 	"github.com/stretchr/testify/mock"
 )

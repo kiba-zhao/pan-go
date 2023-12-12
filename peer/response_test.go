@@ -5,8 +5,8 @@ import (
 	"crypto/rand"
 	"io"
 	mrand "math/rand"
+	"pan/peer"
 	"testing"
-	"treasure/peer"
 
 	"github.com/stretchr/testify/assert"
 )

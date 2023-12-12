@@ -1,7 +1,7 @@
 syntax = "proto3";
 package broadcast;
 
-option go_package = "treasure/broadcast";
+option go_package = "pan/broadcast";
 
 message ServeInfo{
   int32 Port = 1;
