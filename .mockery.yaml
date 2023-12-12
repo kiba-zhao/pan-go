@@ -1,0 +1,25 @@
+with-expecter: true
+packages:
+  treasure/core:
+    interfaces:
+      Context:
+      Handler:
+      App:
+  treasure/broadcast:
+    interfaces:
+      Net:
+      BroadcastAddrGenerator:
+      Model:
+      ServiceSettings:
+      Context:
+  treasure/peer:
+    interfaces:
+      Context:
+      NodeServe:
+      Node:
+      NodeStream:
+      NodeDialer:
+      Peer:
+      PeerRoute:
+      PeerRepository:
+      PeerRouteRepository:        

@@ -1,0 +1,20 @@
+syntax = "proto3";
+package broadcast;
+
+option go_package = "treasure/broadcast";
+
+message ServeInfo{
+  int32 Port = 1;
+  bytes Type = 2;
+}
+
+message Alive {
+  int64 seq = 1;
+  bytes token = 2;
+  repeated ServeInfo serveInfos = 3;
+}
+
+message Death {
+  int64 seq = 1;
+  bytes token = 2;
+}
