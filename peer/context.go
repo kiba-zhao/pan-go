@@ -16,11 +16,6 @@ type Context interface {
 	ThrowError(code int, message string, headers ...*HeaderSegment) error
 }
 
-type UnknownContext interface {
-	Context
-	Node() Node
-}
-
 type contextSt struct {
 	*Request
 	stream NodeStream
@@ -43,6 +38,7 @@ func (c *contextSt) ThrowError(code int, message string, headers ...*HeaderSegme
 
 	body := strings.NewReader(message)
 	err = c.respond(code, body, headers...)
+
 	return
 }
 
@@ -58,7 +54,6 @@ func (c *contextSt) respond(code int, body io.Reader, headers ...*HeaderSegment)
 	if err != nil {
 		return
 	}
-
 	err = c.stream.Close()
 	return
 }

@@ -40,7 +40,7 @@ type quicNodeSt struct {
 
 // Type ...
 func (n *quicNodeSt) Type() uint8 {
-	return QUICRouteType
+	return QUICNodeType
 }
 
 // Addr ...
@@ -58,13 +58,27 @@ func (n *quicNodeSt) Certificate() *x509.Certificate {
 
 func (n *quicNodeSt) AcceptNodeStream(ctx context.Context) (NodeStream, error) {
 	conn := n.conn
-	return conn.AcceptStream(ctx)
+	quicStream, err := conn.AcceptStream(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	stream := new(quicNodeStreamSt)
+	stream.Stream = quicStream
+	return stream, nil
 }
 
 func (n *quicNodeSt) OpenNodeStream() (NodeStream, error) {
 
 	conn := n.conn
-	return conn.OpenStream()
+	quicStream, err := conn.OpenStream()
+	if err != nil {
+		return nil, err
+	}
+
+	stream := new(quicNodeStreamSt)
+	stream.Stream = quicStream
+	return stream, nil
 }
 
 func (n *quicNodeSt) Close() error {
@@ -72,18 +86,34 @@ func (n *quicNodeSt) Close() error {
 	return conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), quic.NoError.Message())
 }
 
-type quicNodeDialer struct {
+type quicNodeStreamSt struct {
+	quic.Stream
+}
+
+// CloseWrite ...
+func (ns *quicNodeStreamSt) CloseWrite() error {
+	ns.Stream.CancelWrite(quic.StreamErrorCode(quic.NoError))
+	return nil
+}
+
+// CloseRead ...
+func (ns *quicNodeStreamSt) CloseRead() error {
+	ns.Stream.CancelRead(quic.StreamErrorCode(quic.NoError))
+	return nil
+}
+
+type quicNodeDialerSt struct {
 	tls *tls.Config
 	ctx context.Context
 }
 
 // Type ...
-func (nd *quicNodeDialer) Type() uint8 {
-	return QUICRouteType
+func (nd *quicNodeDialerSt) Type() uint8 {
+	return QUICNodeType
 }
 
 // Connect ...
-func (nd *quicNodeDialer) Connect(addr []byte) (node Node, err error) {
+func (nd *quicNodeDialerSt) Connect(addr []byte) (node Node, err error) {
 	quicAddr, err := UnmarshalQUICAddr(addr)
 	if err == nil {
 		node, err = DialQUICNode(quicAddr, nd.tls, nd.ctx)
@@ -93,7 +123,7 @@ func (nd *quicNodeDialer) Connect(addr []byte) (node Node, err error) {
 
 // NewNodeDialer ...
 func NewNodeDialer(tls *tls.Config, ctx context.Context) NodeDialer {
-	dialer := new(quicNodeDialer)
+	dialer := new(quicNodeDialerSt)
 	dialer.tls = tls
 	dialer.ctx = ctx
 	return dialer

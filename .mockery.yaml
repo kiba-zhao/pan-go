@@ -20,6 +20,4 @@ packages:
       NodeStream:
       NodeDialer:
       Peer:
-      PeerRoute:
-      PeerRepository:
-      PeerRouteRepository:        
+      PeerIdGenerator:

@@ -3,8 +3,8 @@ package peer
 import (
 	"bytes"
 	"context"
-	"crypto/x509"
 	"errors"
+
 	"io"
 	"net"
 	"pan/core"
@@ -13,13 +13,23 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	QUICNodeType = uint8(iota)
+	TCPNodeType
+)
+
+const (
+	NormalAuthenticateMode = uint8(iota)
+	TestOnlyAuthenticateMode
+	OpenAuthenticateMode
+)
+
 type PeerId uuid.UUID
 
 type Peer interface {
-	Connect(dialerType uint8, addr []byte) (Node, error)
 	Attach(dialer NodeDialer) error
 	Detach(dialer NodeDialer)
-	Authenticate(node Node) (PeerId, error)
+	Authenticate(node Node, mode uint8) (PeerId, error)
 	AcceptAuthenticate(ctx context.Context, node Node)
 	Open(id PeerId) (Node, error)
 	Request(node Node, body io.Reader, method []byte, headers ...*HeaderSegment) (*Response, error)
@@ -27,14 +37,101 @@ type Peer interface {
 	Accept(ctx context.Context, node Node, peerId PeerId)
 }
 
-type peerItem struct {
+type PeerIdGenerator interface {
+	Generate(baseId []byte, node Node) (PeerId, error)
+}
+
+type peerPassport struct {
+	id       []byte
+	isPeerId bool
+}
+
+type SimplePeerIdGenerator struct {
+	passports   []*peerPassport
+	defaultDeny bool
+	rw          *sync.RWMutex
+}
+
+// Contains ...
+func (pg *SimplePeerIdGenerator) Contains(id []byte, isPeerId bool) bool {
+	return false
+}
+
+// AddItem ...
+func (pg *SimplePeerIdGenerator) Add(id []byte, isPeerId bool) error {
+
+	if pg.Contains(id, isPeerId) {
+		return errors.New("Duplicate peer id item")
+	}
+
+	passport := new(peerPassport)
+	passport.id = id
+	passport.isPeerId = isPeerId
+
+	pg.rw.Lock()
+	pg.passports = append(pg.passports, passport)
+	pg.rw.Unlock()
+
+	return nil
+}
+
+// Generate ...
+func (pg *SimplePeerIdGenerator) Generate(baseId []byte, node Node) (peerId PeerId, err error) {
+	space, err := uuid.FromBytes(baseId)
+	if err != nil {
+		return
+	}
+
+	cert := node.Certificate()
+	pubKey, err := core.ExtractPublicKeyFromCert(cert)
+	if err != nil {
+		return
+	}
+
+	id := uuid.NewSHA1(space, pubKey)
+	idBytes := id[:]
+	pass := !pg.defaultDeny
+
+	pg.rw.RLock()
+	for _, passport := range pg.passports {
+		if passport.isPeerId == true && bytes.Equal(passport.id, idBytes) {
+			pass = pg.defaultDeny
+			break
+		}
+		if passport.isPeerId == false && bytes.Equal(passport.id, baseId) {
+			pass = pg.defaultDeny
+			break
+		}
+	}
+	pg.rw.RUnlock()
+
+	if !pass {
+		err = errors.New("Deny Peer Id")
+		return
+	}
+
+	peerId = PeerId(id)
+	return
+}
+
+// NewPeerIdGenerator ...
+func NewPeerIdGenerator(defaultDeny bool) *SimplePeerIdGenerator {
+	generator := new(SimplePeerIdGenerator)
+	generator.passports = make([]*peerPassport, 0)
+	generator.defaultDeny = defaultDeny
+	generator.rw = new(sync.RWMutex)
+
+	return generator
+}
+
+type peerNodeItem struct {
 	peerId PeerId
 	node   Node
 	idx    int
 }
 
 type peerBucket struct {
-	items []*peerItem
+	items []*peerNodeItem
 	rw    *sync.RWMutex
 }
 
@@ -54,9 +151,9 @@ func (pb *peerBucket) selectOne(peerId PeerId) (node Node) {
 	return
 }
 
-func (pb *peerBucket) add(node Node, peerId PeerId) *peerItem {
+func (pb *peerBucket) add(node Node, peerId PeerId) *peerNodeItem {
 
-	item := new(peerItem)
+	item := new(peerNodeItem)
 	item.peerId = peerId
 	item.node = node
 
@@ -71,7 +168,7 @@ func (pb *peerBucket) add(node Node, peerId PeerId) *peerItem {
 }
 
 // delete ...
-func (pb *peerBucket) del(item *peerItem) {
+func (pb *peerBucket) del(item *peerNodeItem) {
 
 	pb.rw.Lock()
 
@@ -86,13 +183,97 @@ func (pb *peerBucket) del(item *peerItem) {
 	pb.rw.Unlock()
 }
 
+type peerRoute struct {
+	PeerId    PeerId
+	NodeType  uint8
+	Addr      []byte
+	FailedNum uint8
+	idx       int
+}
+
+type peerRouter struct {
+	routes []*peerRoute
+	rw     *sync.RWMutex
+}
+
+// find ...
+func (pr *peerRouter) find(peerId PeerId) (routes []*peerRoute) {
+	if len(pr.routes) <= 0 {
+		return
+	}
+	pr.rw.RLock()
+	rs := make([]*peerRoute, 0)
+	for _, route := range pr.routes {
+		if bytes.Equal(route.PeerId[:], peerId[:]) {
+			rs = append(rs, route)
+			break
+		}
+	}
+	pr.rw.RUnlock()
+
+	if len(rs) > 0 {
+		routes = rs
+	}
+	return
+}
+
+// findOne ...
+func (pr *peerRouter) findOne(peerId PeerId, node Node) (route *peerRoute) {
+
+	pr.rw.RLock()
+	for _, r := range pr.routes {
+		if bytes.Equal(r.PeerId[:], peerId[:]) && r.NodeType == node.Type() && bytes.Equal(r.Addr, node.Addr()) {
+			route = r
+			break
+		}
+	}
+	pr.rw.RUnlock()
+	return
+}
+
+// addRoute ...
+func (pr *peerRouter) addRoute(peerId PeerId, node Node) *peerRoute {
+
+	route := pr.findOne(peerId, node)
+	if route != nil {
+		return nil
+	}
+	route = new(peerRoute)
+	route.PeerId = peerId
+	route.NodeType = node.Type()
+	route.Addr = node.Addr()
+	route.FailedNum = 0
+
+	pr.rw.Lock()
+
+	route.idx = len(pr.routes)
+	pr.routes = append(pr.routes, route)
+	pr.rw.Unlock()
+
+	return route
+}
+
+// removeRoute ...
+func (pr *peerRouter) removeRoute(route *peerRoute) {
+
+	pr.rw.Lock()
+	lastIdx := len(pr.routes) - 1
+	if lastIdx != route.idx {
+		lastRoute := pr.routes[lastIdx]
+		lastRoute.idx = route.idx
+		pr.routes[route.idx] = lastRoute
+	}
+	pr.routes = pr.routes[:lastIdx]
+	pr.rw.Unlock()
+}
+
 type peerDialer struct {
 	dialerMap map[uint8]NodeDialer
 	rw        *sync.RWMutex
 }
 
 // Connect ...
-func (pd *peerDialer) Connect(dialerType uint8, addr []byte) (node Node, err error) {
+func (pd *peerDialer) connect(dialerType uint8, addr []byte) (node Node, err error) {
 	pd.rw.RLock()
 	dialer, ok := pd.dialerMap[dialerType]
 	pd.rw.RUnlock()
@@ -137,18 +318,20 @@ func (pd *peerDialer) Detach(dialer NodeDialer) {
 
 type peerSt struct {
 	*peerDialer
-	repo      PeerRepository
-	routeRepo PeerRouteRepository
-	bucket    *peerBucket
-	baseId    uuid.UUID
-	app       core.App[Context]
+	generator    PeerIdGenerator
+	router       *peerRouter
+	bucket       *peerBucket
+	baseId       []byte
+	app          core.App[Context]
+	maxFailedNum uint8
 }
 
 // Authenticate ...
-func (p *peerSt) Authenticate(node Node) (peerId PeerId, err error) {
+func (p *peerSt) Authenticate(node Node, mode uint8) (peerId PeerId, err error) {
 
 	body := bytes.NewReader(p.baseId[:])
-	res, err := p.Request(node, body, []byte("Authenticate"))
+	header := NewHeaderSegment([]byte("Mode"), []byte{mode})
+	res, err := p.Request(node, body, []byte("Authenticate"), header)
 	if err != nil {
 		return
 	}
@@ -163,31 +346,18 @@ func (p *peerSt) Authenticate(node Node) (peerId PeerId, err error) {
 		return
 	}
 
-	baseId, err := uuid.ParseBytes(resBody)
+	peerId, err = p.generator.Generate(resBody, node)
 	if err != nil {
 		return
 	}
 
-	cert := node.Certificate()
-	pubKey, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
-	if err != nil {
-		return
+	if mode != OpenAuthenticateMode {
+		p.router.addRoute(peerId, node)
 	}
 
-	id := uuid.NewSHA1(baseId, pubKey)
-	peerId = PeerId(id)
-
-	passport, err := p.repo.FindOne(peerId)
-	if err != nil {
-		return
+	if mode == NormalAuthenticateMode || mode == OpenAuthenticateMode {
+		go p.Accept(context.Background(), node, peerId)
 	}
-
-	if passport == nil || passport.Enable == false {
-		err = errors.New("Forbidden")
-		return
-	}
-
-	go p.Accept(context.Background(), node, peerId)
 
 	return
 }
@@ -223,39 +393,26 @@ AcceptAuthenticate:
 	}
 
 	body, err := io.ReadAll(authCtx.Body())
+
 	if err != nil {
 		_ = authCtx.ThrowError(BadRequestErrorCode, "Bad Request")
 		goto NextAcceptAuthenticate
 	}
-	baseId, err := uuid.ParseBytes(body)
+
+	peerId, err := p.generator.Generate(body, node)
+
 	if err != nil {
-		_ = authCtx.ThrowError(BadRequestErrorCode, "Bad Request")
-		goto NextAcceptAuthenticate
-	}
-
-	cert := node.Certificate()
-	pubKey, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
-	if err != nil {
-		_ = authCtx.ThrowError(InternalErrorCode, "Internal Error")
-		goto NextAcceptAuthenticate
-	}
-
-	id := uuid.NewSHA1(baseId, pubKey)
-	peerId := PeerId(id)
-
-	passport, err := p.repo.FindOne(peerId)
-	if err != nil {
-		_ = authCtx.ThrowError(InternalErrorCode, "Internal Error")
-		goto NextAcceptAuthenticate
-	}
-
-	if passport == nil || passport.Enable == false {
 		_ = authCtx.ThrowError(ForbiddenErrorCode, "Forbidden")
 		goto NextAcceptAuthenticate
 	}
 
 	_ = authCtx.Respond(bytes.NewReader(p.baseId[:]))
-	p.Accept(ctx, node, peerId)
+
+	value := authCtx.Header([]byte("Mode"))
+	if value != nil && value[0] == NormalAuthenticateMode {
+		p.Accept(ctx, node, peerId)
+	}
+
 }
 
 // Open ...
@@ -266,8 +423,8 @@ func (p *peerSt) Open(peerId PeerId) (node Node, err error) {
 		return
 	}
 
-	routes, err := p.routeRepo.FindByPeerIdAndEnable(peerId, true)
-	if err != nil {
+	routes := p.router.find(peerId)
+	if routes == nil {
 		return
 	}
 	if len(routes) <= 0 {
@@ -276,17 +433,18 @@ func (p *peerSt) Open(peerId PeerId) (node Node, err error) {
 	}
 
 	for _, route := range routes {
-		node, err = p.peerDialer.Connect(route.Type, route.Addr)
-		if err != nil {
-			continue
-		}
-		peerId, err := p.Authenticate(node)
-		if err == nil && bytes.Equal(route.PeerId[:], peerId[:]) {
-			break
-		}
+		node, err = p.peerDialer.connect(route.NodeType, route.Addr)
 		if err == nil {
-			route.Enable = false
-			_ = p.routeRepo.UpdateOne(route)
+			peerId, err := p.Authenticate(node, OpenAuthenticateMode)
+			if err == nil && bytes.Equal(route.PeerId[:], peerId[:]) {
+				route.FailedNum = 0
+				break
+			}
+		}
+
+		route.FailedNum++
+		if route.FailedNum > p.maxFailedNum {
+			p.router.removeRoute(route)
 		}
 		_ = node.Close()
 	}
@@ -312,19 +470,31 @@ func (p *peerSt) Request(node Node, body io.Reader, method []byte, headers ...*H
 		return
 	}
 
-	_, err = io.Copy(stream, req)
-	if err != nil {
-		return
-	}
-	err = stream.Close()
-	if err != nil {
-		return
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	response := new(Response)
-	err = UnmarshalResponse(stream, response)
-	if err != nil {
-		res = response
+	go func() {
+		defer stream.Close()
+		defer wg.Done()
+		_, err = io.Copy(stream, req)
+	}()
+
+	var resErr error
+	go func() {
+		defer stream.Close()
+		defer wg.Done()
+		response := new(Response)
+		resErr = UnmarshalResponse(stream, response)
+		if resErr == nil {
+			res = response
+		}
+	}()
+
+	wg.Wait()
+	if res != nil {
+		err = nil
+	} else if err == nil && resErr != nil {
+		err = resErr
 	}
 
 	return
@@ -358,27 +528,30 @@ func (p *peerSt) Accept(ctx context.Context, node Node, peerId PeerId) {
 	for {
 		stream, err := node.AcceptNodeStream(ctx)
 		if err != nil {
-			if errors.Is(err, net.ErrClosed) == true {
-				break
+			break
+		}
+		go func() {
+			defer stream.Close()
+			c, err := NewContext(stream, peerId)
+			if err == nil {
+				// TODO: close with error
+				p.app.Run(c)
 			}
-			continue
-		}
-		c, err := NewContext(stream, peerId)
-		if err != nil {
-			// TODO: close with error
-			stream.Close()
-			continue
-		}
-		go p.app.Run(c)
+		}()
+
 	}
 
 }
 
 // New ...
-func New(baseId uuid.UUID, app core.App[Context], repo PeerRepository, routeRepo PeerRouteRepository) Peer {
+func New(baseId []byte, app core.App[Context], generator PeerIdGenerator, maxFailedNum uint8) Peer {
 	bucket := new(peerBucket)
-	bucket.items = make([]*peerItem, 0)
+	bucket.items = make([]*peerNodeItem, 0)
 	bucket.rw = new(sync.RWMutex)
+
+	router := new(peerRouter)
+	router.routes = make([]*peerRoute, 0)
+	router.rw = new(sync.RWMutex)
 
 	dialer := new(peerDialer)
 	dialer.dialerMap = make(map[uint8]NodeDialer)
@@ -387,10 +560,11 @@ func New(baseId uuid.UUID, app core.App[Context], repo PeerRepository, routeRepo
 	peer := new(peerSt)
 	peer.baseId = baseId
 	peer.app = app
-	peer.repo = repo
-	peer.routeRepo = routeRepo
+	peer.generator = generator
+	peer.maxFailedNum = maxFailedNum
 	peer.bucket = bucket
 	peer.peerDialer = dialer
+	peer.router = router
 
 	return peer
 }

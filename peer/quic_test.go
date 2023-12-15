@@ -1,6 +1,7 @@
 package peer_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -12,11 +13,11 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"pan/core"
+	"pan/peer"
 	"sync"
 	"testing"
 	"time"
-	"treasure/core"
-	"treasure/peer"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -94,7 +95,7 @@ func newTLSConf(isClient bool) (*tls.Config, *x509.Certificate) {
 // TestNode node test cases
 func TestNode(t *testing.T) {
 
-	t.Run("serve and dial success", func(t *testing.T) {
+	t.Run("Serve and Dial success", func(t *testing.T) {
 		// test connect
 		serveTlsConf, serveCert := newTLSConf(false)
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:9000")
@@ -258,6 +259,87 @@ func TestNode(t *testing.T) {
 
 		wg.Wait()
 		assert.NotNil(t, node, "Node should not be nil")
+
+	})
+
+	t.Run("NodeStream CloseRead", func(t *testing.T) {
+		serveTlsConf, _ := newTLSConf(false)
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:9000")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var node peer.Node
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+
+		serve, err := peer.ServeQUICNode(addr, serveTlsConf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer serve.Close()
+		go func() {
+			n, err := serve.Accept(ctx)
+			wg.Done()
+			if err != nil {
+				t.Fatal(err)
+			}
+			node = n
+		}()
+
+		clientTlsConf, _ := newTLSConf(true)
+		timeOutCtx, timeOutCancel := context.WithTimeout(context.Background(), time.Second*5)
+		dialer := peer.NewNodeDialer(clientTlsConf, timeOutCtx)
+		defer timeOutCancel()
+
+		quicAddr := peer.MarshalQUICAddr(addr)
+		dialNode, err := dialer.Connect(quicAddr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer dialNode.Close()
+
+		wg.Wait()
+
+		// test send and recv by stream
+		wg = sync.WaitGroup{}
+		wg.Add(1)
+		var stream peer.NodeStream
+
+		go func() {
+			defer wg.Done()
+			ctx := context.Background()
+			stream, err = node.AcceptNodeStream(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+		}()
+
+		dialStream, err := dialNode.OpenNodeStream()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		io.WriteString(dialStream, "reader header")
+		wg.Wait()
+
+		err = stream.CloseRead()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = io.Copy(dialStream, bytes.NewReader([]byte("reader header")))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// wg.Wait()
+
+		assert.NotNil(t, stream, "Accept Stream should not be nil")
 
 	})
 

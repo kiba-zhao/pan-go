@@ -65,6 +65,7 @@ func UnmarshalResponse(reader io.Reader, response *Response) (err error) {
 			ntype = headerType
 			break
 		}
+
 		header, err := ParseHeaderSegment(reader)
 		if err != nil {
 			break

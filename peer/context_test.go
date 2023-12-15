@@ -39,7 +39,7 @@ func TestContext(t *testing.T) {
 		responseBody := bytes.NewReader(responseBodyBytes)
 		responseReader, writer := io.Pipe()
 
-		stream := new(peer.RWCNodeStream)
+		stream := new(TestNodeStream)
 		stream.Reader = reader
 		stream.Writer = writer
 		stream.Closer = writer
@@ -103,7 +103,7 @@ func TestContext(t *testing.T) {
 		}
 
 		responseReader, writer := io.Pipe()
-		stream := new(peer.RWCNodeStream)
+		stream := new(TestNodeStream)
 		stream.Reader = reader
 		stream.Writer = writer
 		stream.Closer = writer

@@ -25,10 +25,14 @@ type NodeDialer interface {
 	Connect(addr []byte) (Node, error)
 }
 
-type NodeStream io.ReadWriteCloser
-
-type RWCNodeStream struct {
+type NodeStreamCloser interface {
 	io.Closer
+	CloseRead() error
+	CloseWrite() error
+}
+
+type NodeStream interface {
 	io.Reader
 	io.Writer
+	NodeStreamCloser
 }
