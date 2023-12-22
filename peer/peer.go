@@ -3,11 +3,13 @@ package peer
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 
 	"io"
 	"net"
 	"pan/core"
+	"pan/memory"
 	"sync"
 
 	"github.com/google/uuid"
@@ -24,9 +26,46 @@ const (
 	OpenAuthenticateMode
 )
 
+const (
+	OnlinePeerState = PeerState(iota)
+	OfflinePeerState
+	UnknownPeerState
+)
+
 type PeerId uuid.UUID
 
+type PeerState uint
+
+// compareUUIDBytes ...
+func compareUUID(prev, next uuid.UUID) int {
+	prevHigh := binary.BigEndian.Uint64(prev[:8])
+	nextHigh := binary.BigEndian.Uint64(next[:8])
+	if prevHigh > nextHigh {
+		return 1
+	}
+	if prevHigh < nextHigh {
+		return -1
+	}
+
+	prevLow := binary.BigEndian.Uint64(prev[8:])
+	nextLow := binary.BigEndian.Uint64(next[8:])
+	if prevLow > nextLow {
+		return 1
+	}
+	if prevLow < nextLow {
+		return -1
+	}
+	return 0
+}
+
+// comparePeerId ...
+func comparePeerId(prev, next PeerId) int {
+	return compareUUID(uuid.UUID(prev), uuid.UUID(next))
+}
+
 type Peer interface {
+	Stat(id PeerId) PeerState
+	Connect(dialerType uint8, addr []byte) (Node, error)
 	Attach(dialer NodeDialer) error
 	Detach(dialer NodeDialer)
 	Authenticate(node Node, mode uint8) (PeerId, error)
@@ -41,38 +80,13 @@ type PeerIdGenerator interface {
 	Generate(baseId []byte, node Node) (PeerId, error)
 }
 
-type peerPassport struct {
-	id       []byte
-	isPeerId bool
+type PeerPassport struct {
+	IsPeerId bool
 }
 
 type SimplePeerIdGenerator struct {
-	passports   []*peerPassport
+	*memory.Bucket[*PeerPassport, uuid.UUID]
 	defaultDeny bool
-	rw          *sync.RWMutex
-}
-
-// Contains ...
-func (pg *SimplePeerIdGenerator) Contains(id []byte, isPeerId bool) bool {
-	return false
-}
-
-// AddItem ...
-func (pg *SimplePeerIdGenerator) Add(id []byte, isPeerId bool) error {
-
-	if pg.Contains(id, isPeerId) {
-		return errors.New("Duplicate peer id item")
-	}
-
-	passport := new(peerPassport)
-	passport.id = id
-	passport.isPeerId = isPeerId
-
-	pg.rw.Lock()
-	pg.passports = append(pg.passports, passport)
-	pg.rw.Unlock()
-
-	return nil
 }
 
 // Generate ...
@@ -89,21 +103,36 @@ func (pg *SimplePeerIdGenerator) Generate(baseId []byte, node Node) (peerId Peer
 	}
 
 	id := uuid.NewSHA1(space, pubKey)
-	idBytes := id[:]
-	pass := !pg.defaultDeny
 
-	pg.rw.RLock()
-	for _, passport := range pg.passports {
-		if passport.isPeerId == true && bytes.Equal(passport.id, idBytes) {
-			pass = pg.defaultDeny
-			break
+	pass := !pg.defaultDeny
+	items := pg.FindBlockItems(id)
+	for _, item := range items {
+		if item.Expired() {
+			continue
 		}
-		if passport.isPeerId == false && bytes.Equal(passport.id, baseId) {
+		passport := item.Value()
+		if passport.IsPeerId {
 			pass = pg.defaultDeny
 			break
 		}
 	}
-	pg.rw.RUnlock()
+
+	if pass == pg.defaultDeny {
+		peerId = PeerId(id)
+		return
+	}
+
+	items = pg.FindBlockItems(space)
+	for _, item := range items {
+		if item.Expired() {
+			continue
+		}
+		passport := item.Value()
+		if !passport.IsPeerId {
+			pass = pg.defaultDeny
+			break
+		}
+	}
 
 	if !pass {
 		err = errors.New("Deny Peer Id")
@@ -116,155 +145,21 @@ func (pg *SimplePeerIdGenerator) Generate(baseId []byte, node Node) (peerId Peer
 
 // NewPeerIdGenerator ...
 func NewPeerIdGenerator(defaultDeny bool) *SimplePeerIdGenerator {
+
+	bucket := memory.NewBucket[*PeerPassport, uuid.UUID](compareUUID)
+
 	generator := new(SimplePeerIdGenerator)
-	generator.passports = make([]*peerPassport, 0)
+	generator.Bucket = bucket
 	generator.defaultDeny = defaultDeny
-	generator.rw = new(sync.RWMutex)
 
 	return generator
 }
 
-type peerNodeItem struct {
-	peerId PeerId
-	node   Node
-	idx    int
-}
-
-type peerBucket struct {
-	items []*peerNodeItem
-	rw    *sync.RWMutex
-}
-
-func (pb *peerBucket) selectOne(peerId PeerId) (node Node) {
-
-	pb.rw.RLock()
-
-	for idx := len(pb.items) - 1; idx >= 0; idx-- {
-		item := pb.items[idx]
-		if bytes.Equal(peerId[:], item.peerId[:]) {
-			node = item.node
-			break
-		}
-	}
-
-	pb.rw.RUnlock()
-	return
-}
-
-func (pb *peerBucket) add(node Node, peerId PeerId) *peerNodeItem {
-
-	item := new(peerNodeItem)
-	item.peerId = peerId
-	item.node = node
-
-	pb.rw.Lock()
-
-	item.idx = len(pb.items)
-	pb.items = append(pb.items, item)
-
-	pb.rw.Unlock()
-
-	return item
-}
-
-// delete ...
-func (pb *peerBucket) del(item *peerNodeItem) {
-
-	pb.rw.Lock()
-
-	lastIdx := len(pb.items) - 1
-	if lastIdx != item.idx {
-		lastItem := pb.items[lastIdx]
-		lastItem.idx = item.idx
-		pb.items[item.idx] = lastItem
-	}
-	pb.items = pb.items[:lastIdx]
-
-	pb.rw.Unlock()
-}
-
 type peerRoute struct {
-	PeerId    PeerId
+	rw        *sync.RWMutex
 	NodeType  uint8
 	Addr      []byte
 	FailedNum uint8
-	idx       int
-}
-
-type peerRouter struct {
-	routes []*peerRoute
-	rw     *sync.RWMutex
-}
-
-// find ...
-func (pr *peerRouter) find(peerId PeerId) (routes []*peerRoute) {
-	if len(pr.routes) <= 0 {
-		return
-	}
-	pr.rw.RLock()
-	rs := make([]*peerRoute, 0)
-	for _, route := range pr.routes {
-		if bytes.Equal(route.PeerId[:], peerId[:]) {
-			rs = append(rs, route)
-			break
-		}
-	}
-	pr.rw.RUnlock()
-
-	if len(rs) > 0 {
-		routes = rs
-	}
-	return
-}
-
-// findOne ...
-func (pr *peerRouter) findOne(peerId PeerId, node Node) (route *peerRoute) {
-
-	pr.rw.RLock()
-	for _, r := range pr.routes {
-		if bytes.Equal(r.PeerId[:], peerId[:]) && r.NodeType == node.Type() && bytes.Equal(r.Addr, node.Addr()) {
-			route = r
-			break
-		}
-	}
-	pr.rw.RUnlock()
-	return
-}
-
-// addRoute ...
-func (pr *peerRouter) addRoute(peerId PeerId, node Node) *peerRoute {
-
-	route := pr.findOne(peerId, node)
-	if route != nil {
-		return nil
-	}
-	route = new(peerRoute)
-	route.PeerId = peerId
-	route.NodeType = node.Type()
-	route.Addr = node.Addr()
-	route.FailedNum = 0
-
-	pr.rw.Lock()
-
-	route.idx = len(pr.routes)
-	pr.routes = append(pr.routes, route)
-	pr.rw.Unlock()
-
-	return route
-}
-
-// removeRoute ...
-func (pr *peerRouter) removeRoute(route *peerRoute) {
-
-	pr.rw.Lock()
-	lastIdx := len(pr.routes) - 1
-	if lastIdx != route.idx {
-		lastRoute := pr.routes[lastIdx]
-		lastRoute.idx = route.idx
-		pr.routes[route.idx] = lastRoute
-	}
-	pr.routes = pr.routes[:lastIdx]
-	pr.rw.Unlock()
 }
 
 type peerDialer struct {
@@ -273,7 +168,7 @@ type peerDialer struct {
 }
 
 // Connect ...
-func (pd *peerDialer) connect(dialerType uint8, addr []byte) (node Node, err error) {
+func (pd *peerDialer) Connect(dialerType uint8, addr []byte) (node Node, err error) {
 	pd.rw.RLock()
 	dialer, ok := pd.dialerMap[dialerType]
 	pd.rw.RUnlock()
@@ -319,11 +214,24 @@ func (pd *peerDialer) Detach(dialer NodeDialer) {
 type peerSt struct {
 	*peerDialer
 	generator    PeerIdGenerator
-	router       *peerRouter
-	bucket       *peerBucket
-	baseId       []byte
+	router       *memory.Bucket[*peerRoute, PeerId]
+	bucket       *memory.Bucket[Node, PeerId]
+	baseId       uuid.UUID
 	app          core.App[Context]
 	maxFailedNum uint8
+}
+
+// Stat ...
+func (p *peerSt) Stat(id PeerId) PeerState {
+	bucketItem := p.bucket.FindBlockItem(id)
+	if bucketItem != nil {
+		return OnlinePeerState
+	}
+	routeItem := p.router.FindBlockItem(id)
+	if routeItem != nil {
+		return UnknownPeerState
+	}
+	return OfflinePeerState
 }
 
 // Authenticate ...
@@ -351,12 +259,41 @@ func (p *peerSt) Authenticate(node Node, mode uint8) (peerId PeerId, err error) 
 		return
 	}
 
-	if mode != OpenAuthenticateMode {
-		p.router.addRoute(peerId, node)
+	if mode != TestOnlyAuthenticateMode {
+		go p.Accept(context.Background(), node, peerId)
 	}
 
-	if mode == NormalAuthenticateMode || mode == OpenAuthenticateMode {
-		go p.Accept(context.Background(), node, peerId)
+	if mode == OpenAuthenticateMode {
+		return
+	}
+
+	route := new(peerRoute)
+	route.Addr = node.Addr()
+	route.NodeType = node.Type()
+	route.FailedNum = 0
+	route.rw = new(sync.RWMutex)
+	items := p.router.FindBlockItems(peerId)
+
+	notFound := true
+	if items != nil && len(items) > 0 {
+
+		for _, item := range items {
+			if item.Expired() {
+				continue
+			}
+			r := item.Value()
+			if bytes.Equal(r.Addr, route.Addr) && r.NodeType == route.NodeType {
+				r.rw.Lock()
+				r.FailedNum = 0
+				r.rw.Unlock()
+				notFound = false
+			}
+		}
+	} else {
+		notFound = false
+	}
+	if notFound {
+		p.router.PutItem(peerId, route)
 	}
 
 	return
@@ -409,43 +346,55 @@ AcceptAuthenticate:
 	_ = authCtx.Respond(bytes.NewReader(p.baseId[:]))
 
 	value := authCtx.Header([]byte("Mode"))
-	if value != nil && value[0] == NormalAuthenticateMode {
+	if value != nil && value[0] != TestOnlyAuthenticateMode {
 		p.Accept(ctx, node, peerId)
 	}
+
+	// TODO: try salute
 
 }
 
 // Open ...
 func (p *peerSt) Open(peerId PeerId) (node Node, err error) {
 
-	node = p.bucket.selectOne(peerId)
-	if node == nil {
+	item := p.bucket.FindBlockItem(peerId)
+	if item != nil && !item.Expired() {
+		node = item.Value()
 		return
 	}
 
-	routes := p.router.find(peerId)
-	if routes == nil {
-		return
-	}
-	if len(routes) <= 0 {
+	ritems := p.router.FindBlockItems(peerId)
+	if ritems == nil || len(ritems) <= 0 {
 		err = errors.New("Not Found peer node")
 		return
 	}
 
-	for _, route := range routes {
-		node, err = p.peerDialer.connect(route.NodeType, route.Addr)
+	for _, ritem := range ritems {
+		if ritem.Expired() {
+			continue
+		}
+		route := ritem.Value()
+		node, err = p.peerDialer.Connect(route.NodeType, route.Addr)
 		if err == nil {
-			peerId, err := p.Authenticate(node, OpenAuthenticateMode)
-			if err == nil && bytes.Equal(route.PeerId[:], peerId[:]) {
+			authPeerId, err := p.Authenticate(node, OpenAuthenticateMode)
+			if err == nil && bytes.Equal(authPeerId[:], peerId[:]) {
+				route.rw.Lock()
 				route.FailedNum = 0
+				route.rw.Unlock()
 				break
 			}
 		}
 
+		route.rw.Lock()
 		route.FailedNum++
+		route.rw.Unlock()
+
+		route.rw.RLock()
 		if route.FailedNum > p.maxFailedNum {
-			p.router.removeRoute(route)
+			p.router.RemoveItem(ritem)
 		}
+		route.rw.RUnlock()
+
 		_ = node.Close()
 	}
 
@@ -522,36 +471,40 @@ func (p *peerSt) Accept(ctx context.Context, node Node, peerId PeerId) {
 	if len(peerId) <= 0 {
 		panic(errors.New("Missing peer id"))
 	}
-	item := p.bucket.add(node, peerId)
-	defer p.bucket.del(item)
 
-	for {
-		stream, err := node.AcceptNodeStream(ctx)
-		if err != nil {
-			break
-		}
-		go func() {
-			defer stream.Close()
-			c, err := NewContext(stream, peerId)
-			if err == nil {
-				// TODO: close with error
-				p.app.Run(c)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		for {
+			stream, err := node.AcceptNodeStream(ctx)
+			if err != nil {
+				break
 			}
-		}()
+			go func() {
+				defer stream.Close()
+				c, err := NewContext(stream, peerId)
+				if err == nil {
+					// TODO: close with error
+					_ = p.app.Run(c)
+				}
+			}()
 
-	}
+		}
+	}()
 
+	item := p.bucket.PutItem(peerId, node)
+	defer p.bucket.RemoveItem(item)
+
+	wg.Wait()
 }
 
 // New ...
-func New(baseId []byte, app core.App[Context], generator PeerIdGenerator, maxFailedNum uint8) Peer {
-	bucket := new(peerBucket)
-	bucket.items = make([]*peerNodeItem, 0)
-	bucket.rw = new(sync.RWMutex)
+func New(baseId uuid.UUID, app core.App[Context], generator PeerIdGenerator, maxFailedNum uint8) Peer {
 
-	router := new(peerRouter)
-	router.routes = make([]*peerRoute, 0)
-	router.rw = new(sync.RWMutex)
+	bucket := memory.NewBucket[Node, PeerId](comparePeerId)
+	router := memory.NewBucket[*peerRoute, PeerId](comparePeerId)
 
 	dialer := new(peerDialer)
 	dialer.dialerMap = make(map[uint8]NodeDialer)

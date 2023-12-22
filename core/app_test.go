@@ -2,8 +2,8 @@ package core_test
 
 import (
 	"crypto/rand"
-	"testing"
 	"pan/core"
+	"testing"
 
 	mocked "pan/mocks/pan/core"
 
@@ -26,14 +26,14 @@ func TestApp(t *testing.T) {
 		ctx := new(mocked.MockContext)
 
 		handler1 := new(mocked.MockHandler[core.Context])
-		handler1.On("Handle", ctx, mock.Anything).Run(RunNext).Once()
+		handler1.On("Handle", ctx, mock.Anything).Run(RunNext).Return(nil).Once()
 		app.Use(handler1)
 
 		handler2 := new(mocked.MockHandler[core.Context])
-		handler2.On("Handle", ctx, mock.Anything).Run(RunNext).Once()
+		handler2.On("Handle", ctx, mock.Anything).Run(RunNext).Return(nil).Once()
 
 		handler3 := new(mocked.MockHandler[core.Context])
-		handler3.On("Handle", ctx, mock.Anything).Once()
+		handler3.On("Handle", ctx, mock.Anything).Once().Return(nil)
 
 		handler4 := new(mocked.MockHandler[core.Context])
 		app.Use(handler2, handler3, handler4)
@@ -44,6 +44,7 @@ func TestApp(t *testing.T) {
 		handler1.AssertExpectations(t)
 		handler2.AssertExpectations(t)
 		handler3.AssertExpectations(t)
+		handler4.AssertExpectations(t)
 
 	})
 
@@ -60,10 +61,10 @@ func TestApp(t *testing.T) {
 		app.UseFn(method[:1], handler1.Handle)
 
 		handler2 := new(mocked.MockHandler[core.Context])
-		handler2.On("Handle", ctx, mock.Anything).Run(RunNext).Once()
+		handler2.On("Handle", ctx, mock.Anything).Run(RunNext).Return(nil).Once()
 
 		handler3 := new(mocked.MockHandler[core.Context])
-		handler3.On("Handle", ctx, mock.Anything).Once()
+		handler3.On("Handle", ctx, mock.Anything).Once().Return(nil)
 
 		handler4 := new(mocked.MockHandler[core.Context])
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"net"
 
 	"sync"
 
@@ -24,47 +25,36 @@ import (
 
 // TestPeer ...
 func TestPeer(t *testing.T) {
-	t.Run("Attach,Detach and Connect", func(t *testing.T) {
-		t.Skip("To be invalidated")
-		// addr := make([]byte, 32)
-		// rand.Read(addr)
+	t.Run("Attach and Detach", func(t *testing.T) {
 
-		// generator := new(mocked.MockPeerIdGenerator)
-		// routeRepo := new(mocked.MockPeerRouteRepository)
-		// node := new(mocked.MockNode)
+		baseId := uuid.New()
+		app := new(coreMocked.MockApp[peer.Context])
+		generator := new(mocked.MockPeerIdGenerator)
 
-		// dialer := new(mocked.MockNodeDialer)
-		// dialer.On("Type").Once().Return(peer.QUICRouteType)
-		// dialer.On("Connect", addr).Once().Return(node, nil)
+		node := new(mocked.MockNode)
+		dialer := new(mocked.MockNodeDialer)
+		dialer.On("Type").Return(peer.QUICNodeType).Times(3)
 
-		// baseId := uuid.New()
-		// app := new(coreMocked.MockApp[peer.Context])
+		nextDialer := new(mocked.MockNodeDialer)
+		nextDialer.On("Type").Return(peer.QUICNodeType).Times(2)
 
-		// p := peer.New(baseId[:], app, generator, routeRepo)
-		// p.Attach(dialer)
-		// n, err := p.Connect(peer.QUICRouteType, addr)
-		// if err != nil {
-		// 	t.Fatal(err)
-		// }
+		p := peer.New(baseId, app, generator, 0)
+		err := p.Attach(dialer)
+		assert.Nil(t, err, "Error should be nil")
+		err = p.Attach(dialer)
+		assert.Nil(t, err, "Error should be nil with same dialer")
 
-		// assert.Equal(t, node, n, "Node should be same")
+		err = p.Attach(nextDialer)
+		assert.EqualError(t, err, "Duplicate node dialer", "Error should be duplicate")
+		p.Detach(dialer)
+		err = p.Attach(nextDialer)
+		assert.Nil(t, err, "Error should be nil")
 
-		// generator.AssertExpectations(t)
-		// routeRepo.AssertExpectations(t)
-		// dialer.AssertExpectations(t)
-		// node.AssertExpectations(t)
-
-		// //  Detach connect error
-		// terr := errors.New("Test Error")
-		// dialer.On("Connect", addr).Once().Return(nil, terr)
-		// _, err = p.Connect(peer.QUICRouteType, addr)
-		// assert.Equal(t, terr, err, "Error should be same")
-
-		// //  Detach test error
-		// dialer.On("Type").Once().Return(peer.QUICRouteType)
-		// p.Detach(dialer)
-		// _, err = p.Connect(peer.QUICRouteType, addr)
-		// assert.EqualError(t, err, "Not Found node dialer", "Node dialer should not found")
+		app.AssertExpectations(t)
+		generator.AssertExpectations(t)
+		node.AssertExpectations(t)
+		dialer.AssertExpectations(t)
+		nextDialer.AssertExpectations(t)
 
 	})
 
@@ -99,7 +89,7 @@ func TestPeer(t *testing.T) {
 		var authErr error
 		go func() {
 			defer wg.Done()
-			p := peer.New(baseId[:], app, generator, 0)
+			p := peer.New(baseId, app, generator, 0)
 			peerId, authErr = p.Authenticate(node, peer.TestOnlyAuthenticateMode)
 		}()
 
@@ -165,7 +155,7 @@ func TestPeer(t *testing.T) {
 		var authErr error
 		go func() {
 			defer wg.Done()
-			p := peer.New(baseId[:], app, generator, 0)
+			p := peer.New(baseId, app, generator, 0)
 			_, authErr = p.Authenticate(node, peer.TestOnlyAuthenticateMode)
 		}()
 
@@ -219,15 +209,6 @@ func TestPeer(t *testing.T) {
 		ctx := context.Background()
 		node := new(mocked.MockNode)
 		node.On("AcceptNodeStream", ctx).Once().Return(stream, nil)
-		// _, cert, err := core.GenerateKeyAndCert()
-		// if err != nil {
-		// 	t.Fatal(err)
-		// }
-		// x509Cert, err := core.ParseCertWithPem(cert)
-		// if err != nil {
-		// 	t.Fatal(err)
-		// }
-		// node.On("Certificate").Once().Return(x509Cert)
 
 		reqBaseId := uuid.New()
 		reqPeerId := peer.PeerId(uuid.New())
@@ -238,7 +219,7 @@ func TestPeer(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			p := peer.New(baseId[:], app, generator, 0)
+			p := peer.New(baseId, app, generator, 0)
 			p.AcceptAuthenticate(ctx, node)
 		}()
 
@@ -278,7 +259,19 @@ func TestPeer(t *testing.T) {
 	})
 
 	t.Run("Open", func(t *testing.T) {
-		t.Skip("TODO: To be implement")
+
+		baseId := uuid.New()
+		app := new(coreMocked.MockApp[peer.Context])
+		generator := new(mocked.MockPeerIdGenerator)
+
+		p := peer.New(baseId, app, generator, 0)
+		node, err := p.Open(peer.PeerId(baseId))
+
+		assert.Nil(t, node, "Node should be nil")
+		assert.EqualError(t, err, "Not Found peer node", "Error should be not found")
+
+		app.AssertExpectations(t)
+		generator.AssertExpectations(t)
 	})
 
 	t.Run("Request", func(t *testing.T) {
@@ -322,7 +315,7 @@ func TestPeer(t *testing.T) {
 		var rresBody []byte
 		go func() {
 			defer wg.Done()
-			p := peer.New(baseId[:], app, generator, 0)
+			p := peer.New(baseId, app, generator, 0)
 			response, err := p.Request(node, bodyReader, method)
 			if err != nil {
 				t.Fatal(t)
@@ -395,7 +388,7 @@ func TestPeer(t *testing.T) {
 		app := new(coreMocked.MockApp[peer.Context])
 		generator := new(mocked.MockPeerIdGenerator)
 
-		p := peer.New(baseId[:], app, generator, 0)
+		p := peer.New(baseId, app, generator, 0)
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -427,7 +420,31 @@ func TestPeer(t *testing.T) {
 	})
 
 	t.Run("AcceptServe", func(t *testing.T) {
-		t.Skip("TODO: To be implement")
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		ctx := context.Background()
+		node := new(mocked.MockNode)
+		node.On("AcceptNodeStream", ctx).Once().Return(nil, net.ErrClosed).Run(func(args mock.Arguments) { defer wg.Done() })
+
+		baseId := uuid.New()
+		app := new(coreMocked.MockApp[peer.Context])
+		generator := new(mocked.MockPeerIdGenerator)
+		serve := new(mocked.MockNodeServe)
+
+		serve.On("Accept", ctx).Once().Return(node, nil)
+		serve.On("Accept", ctx).Once().Return(nil, net.ErrClosed)
+
+		p := peer.New(baseId, app, generator, 0)
+		p.AcceptServe(ctx, serve)
+
+		wg.Wait()
+
+		node.AssertExpectations(t)
+		app.AssertExpectations(t)
+		generator.AssertExpectations(t)
+		serve.AssertExpectations(t)
 	})
 
 	t.Run("Accept", func(t *testing.T) {
@@ -467,9 +484,9 @@ func TestPeer(t *testing.T) {
 		app.On("Run", mock.Anything).Once().Run(func(args mock.Arguments) {
 			defer wg.Done()
 			appCtx = args.Get(0).(peer.Context)
-		})
+		}).Return(nil)
 
-		p := peer.New(baseId[:], app, generator, 0)
+		p := peer.New(baseId, app, generator, 0)
 		ctx := context.Background()
 		p.Accept(ctx, node, peerId)
 

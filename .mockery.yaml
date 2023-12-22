@@ -8,8 +8,7 @@ packages:
   pan/broadcast:
     interfaces:
       Net:
-      BroadcastAddrGenerator:
-      Model:
+      Repo:
       ServiceSettings:
       Context:
   pan/peer:

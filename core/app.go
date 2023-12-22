@@ -7,7 +7,7 @@ import (
 type App[T Context] interface {
 	Use(handlers ...Handler[T])
 	UseFn(method []byte, handles ...Handle[T])
-	Run(ctx T)
+	Run(ctx T) error
 }
 
 type appStruct[T Context] struct {
@@ -35,34 +35,34 @@ func (app *appStruct[T]) UseFn(method []byte, handles ...Handle[T]) {
 }
 
 // Run ...
-func (app *appStruct[T]) Run(ctx T) {
+func (app *appStruct[T]) Run(ctx T) error {
 
 	app.rw.RLock()
 	handlers := app.handlers[:]
 	app.rw.RUnlock()
 
-	dispatch(ctx, handlers, 0, nil)
+	return dispatch(ctx, handlers, 0, nil)
 }
 
 // New ...
 func New[T Context]() App[T] {
 	app := new(appStruct[T])
 	app.handlers = make([]Handler[T], 0)
+	app.rw = new(sync.RWMutex)
 	return app
 }
 
-func dispatch[T Context](ctx T, handlers []Handler[T], index int, next Next) {
+func dispatch[T Context](ctx T, handlers []Handler[T], index int, next Next) error {
 
 	if index >= len(handlers) {
 		if next != nil {
-			next()
+			return next()
 		}
-		return
+		return nil
 	}
 
 	handler := handlers[index]
-	handler.Handle(ctx, func() {
-		dispatch(ctx, handlers, index+1, next)
+	return handler.Handle(ctx, func() error {
+		return dispatch(ctx, handlers, index+1, next)
 	})
-	return
 }
