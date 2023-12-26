@@ -3,7 +3,6 @@ package peer
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 
 	"io"
@@ -38,36 +37,17 @@ type PeerState uint
 
 // compareUUIDBytes ...
 func compareUUID(prev, next uuid.UUID) int {
-	prevHigh := binary.BigEndian.Uint64(prev[:8])
-	nextHigh := binary.BigEndian.Uint64(next[:8])
-	if prevHigh > nextHigh {
-		return 1
-	}
-	if prevHigh < nextHigh {
-		return -1
-	}
-
-	prevLow := binary.BigEndian.Uint64(prev[8:])
-	nextLow := binary.BigEndian.Uint64(next[8:])
-	if prevLow > nextLow {
-		return 1
-	}
-	if prevLow < nextLow {
-		return -1
-	}
-	return 0
+	return bytes.Compare(prev[:], next[:])
 }
 
 // comparePeerId ...
 func comparePeerId(prev, next PeerId) int {
-	return compareUUID(uuid.UUID(prev), uuid.UUID(next))
+	return bytes.Compare(prev[:], next[:])
 }
 
 type Peer interface {
 	Stat(id PeerId) PeerState
 	Connect(dialerType uint8, addr []byte) (Node, error)
-	Attach(dialer NodeDialer) error
-	Detach(dialer NodeDialer)
 	Authenticate(node Node, mode uint8) (PeerId, error)
 	AcceptAuthenticate(ctx context.Context, node Node)
 	Open(id PeerId) (Node, error)
@@ -162,57 +142,9 @@ type peerRoute struct {
 	FailedNum uint8
 }
 
-type peerDialer struct {
-	dialerMap map[uint8]NodeDialer
-	rw        *sync.RWMutex
-}
-
-// Connect ...
-func (pd *peerDialer) Connect(dialerType uint8, addr []byte) (node Node, err error) {
-	pd.rw.RLock()
-	dialer, ok := pd.dialerMap[dialerType]
-	pd.rw.RUnlock()
-
-	if ok == false {
-		err = errors.New("Not Found node dialer")
-		return
-	}
-
-	node, err = dialer.Connect(addr)
-	return
-}
-
-// Attach ...
-func (pd *peerDialer) Attach(dialer NodeDialer) (err error) {
-
-	t := dialer.Type()
-
-	pd.rw.Lock()
-	cdialer, ok := pd.dialerMap[t]
-	if ok == true && cdialer != dialer {
-		err = errors.New("Duplicate node dialer")
-	} else if ok == false {
-		pd.dialerMap[t] = dialer
-	}
-	pd.rw.Unlock()
-
-	return
-}
-
-// Detach ...
-func (pd *peerDialer) Detach(dialer NodeDialer) {
-	t := dialer.Type()
-
-	pd.rw.Lock()
-	cdialer, ok := pd.dialerMap[t]
-	if ok == true && cdialer == dialer {
-		delete(pd.dialerMap, t)
-	}
-	pd.rw.Unlock()
-}
-
 type peerSt struct {
-	*peerDialer
+	dialers      *memory.Map[uint8, NodeDialer]
+	handshakes   *memory.Map[uint8, NodeHandshake]
 	generator    PeerIdGenerator
 	router       *memory.Bucket[*peerRoute, PeerId]
 	bucket       *memory.Bucket[Node, PeerId]
@@ -234,12 +166,20 @@ func (p *peerSt) Stat(id PeerId) PeerState {
 	return OfflinePeerState
 }
 
-// Authenticate ...
 func (p *peerSt) Authenticate(node Node, mode uint8) (peerId PeerId, err error) {
 
 	body := bytes.NewReader(p.baseId[:])
-	header := NewHeaderSegment([]byte("Mode"), []byte{mode})
-	res, err := p.Request(node, body, []byte("Authenticate"), header)
+	method := append([]byte("Authenticate"), mode)
+	headers := make([]*HeaderSegment, 0)
+	if mode == NormalAuthenticateMode {
+		p.handshakes.Range(func(key uint8, value NodeHandshake) bool {
+			header := NewHeaderSegment([]byte{key}, value.Handshake())
+			headers = append(headers, header)
+			return true
+		})
+	}
+
+	res, err := p.Request(node, body, method, headers...)
 	if err != nil {
 		return
 	}
@@ -324,11 +264,21 @@ AcceptAuthenticate:
 		_ = authCtx.ThrowError(BadRequestErrorCode, "Bad Request")
 		goto NextAcceptAuthenticate
 	}
-	if bytes.Equal([]byte("Authenticate"), authCtx.Method()) == false {
+
+	expected := []byte("Authenticate")
+	idx := len(expected)
+	method := authCtx.Method()
+	if len(method) < idx {
 		_ = authCtx.ThrowError(UnauthorizedErrorCode, "Unauthorized")
 		goto NextAcceptAuthenticate
 	}
 
+	if !bytes.Equal(expected, method[:idx]) {
+		_ = authCtx.ThrowError(UnauthorizedErrorCode, "Unauthorized")
+		goto NextAcceptAuthenticate
+	}
+
+	mode := method[idx]
 	body, err := io.ReadAll(authCtx.Body())
 
 	if err != nil {
@@ -343,15 +293,43 @@ AcceptAuthenticate:
 		goto NextAcceptAuthenticate
 	}
 
+	headers := authCtx.Headers()
+
+	if headers != nil && len(headers) > 0 {
+
+		for _, header := range headers {
+			if len(header.Name()) != 1 {
+				continue
+			}
+			nodeType := header.Name()[0]
+			handshakeNode, handshakeErr := p.Connect(nodeType, header.Value())
+			if handshakeErr != nil {
+				continue
+			}
+			p.Authenticate(handshakeNode, TestOnlyAuthenticateMode)
+			handshakeNode.Close()
+		}
+	}
+
 	_ = authCtx.Respond(bytes.NewReader(p.baseId[:]))
 
-	value := authCtx.Header([]byte("Mode"))
-	if value != nil && value[0] != TestOnlyAuthenticateMode {
+	if mode != TestOnlyAuthenticateMode {
 		p.Accept(ctx, node, peerId)
 	}
 
-	// TODO: try salute
+}
 
+// Connect ...
+func (p *peerSt) Connect(nodeType uint8, addr []byte) (node Node, err error) {
+
+	dialer, ok := p.dialers.Load(nodeType)
+	if ok == false {
+		err = errors.New("Not Found node dialer")
+		return
+	}
+
+	node, err = dialer.Connect(addr)
+	return
 }
 
 // Open ...
@@ -374,7 +352,7 @@ func (p *peerSt) Open(peerId PeerId) (node Node, err error) {
 			continue
 		}
 		route := ritem.Value()
-		node, err = p.peerDialer.Connect(route.NodeType, route.Addr)
+		node, err = p.Connect(route.NodeType, route.Addr)
 		if err == nil {
 			authPeerId, err := p.Authenticate(node, OpenAuthenticateMode)
 			if err == nil && bytes.Equal(authPeerId[:], peerId[:]) {
@@ -506,9 +484,8 @@ func New(baseId uuid.UUID, app core.App[Context], generator PeerIdGenerator, max
 	bucket := memory.NewBucket[Node, PeerId](comparePeerId)
 	router := memory.NewBucket[*peerRoute, PeerId](comparePeerId)
 
-	dialer := new(peerDialer)
-	dialer.dialerMap = make(map[uint8]NodeDialer)
-	dialer.rw = new(sync.RWMutex)
+	dialers := memory.NewMap[uint8, NodeDialer]()
+	handshakes := memory.NewMap[uint8, NodeHandshake]()
 
 	peer := new(peerSt)
 	peer.baseId = baseId
@@ -516,8 +493,9 @@ func New(baseId uuid.UUID, app core.App[Context], generator PeerIdGenerator, max
 	peer.generator = generator
 	peer.maxFailedNum = maxFailedNum
 	peer.bucket = bucket
-	peer.peerDialer = dialer
+	peer.dialers = dialers
 	peer.router = router
+	peer.handshakes = handshakes
 
 	return peer
 }

@@ -36,3 +36,8 @@ type NodeStream interface {
 	io.Writer
 	NodeStreamCloser
 }
+
+type NodeHandshake interface {
+	Type() uint8
+	Handshake() []byte
+}

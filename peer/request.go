@@ -100,6 +100,9 @@ func MarshalRequest(request *Request) (reader io.Reader, err error) {
 	headers := request.Headers()
 	if headers != nil {
 		for _, header := range headers {
+			if header == nil {
+				continue
+			}
 			hstr := CreateSegmentType(HeaderSegmentType)
 			hsrs := CreateHeaderSegment(header)
 			readers = append(readers, hstr)

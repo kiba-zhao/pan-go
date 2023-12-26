@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+
 	"net"
 
 	"sync"
@@ -13,7 +14,6 @@ import (
 	mrand "math/rand"
 	"testing"
 
-	// "pan/core"
 	coreMocked "pan/mocks/pan/core"
 	mocked "pan/mocks/pan/peer"
 	"pan/peer"
@@ -25,38 +25,6 @@ import (
 
 // TestPeer ...
 func TestPeer(t *testing.T) {
-	t.Run("Attach and Detach", func(t *testing.T) {
-
-		baseId := uuid.New()
-		app := new(coreMocked.MockApp[peer.Context])
-		generator := new(mocked.MockPeerIdGenerator)
-
-		node := new(mocked.MockNode)
-		dialer := new(mocked.MockNodeDialer)
-		dialer.On("Type").Return(peer.QUICNodeType).Times(3)
-
-		nextDialer := new(mocked.MockNodeDialer)
-		nextDialer.On("Type").Return(peer.QUICNodeType).Times(2)
-
-		p := peer.New(baseId, app, generator, 0)
-		err := p.Attach(dialer)
-		assert.Nil(t, err, "Error should be nil")
-		err = p.Attach(dialer)
-		assert.Nil(t, err, "Error should be nil with same dialer")
-
-		err = p.Attach(nextDialer)
-		assert.EqualError(t, err, "Duplicate node dialer", "Error should be duplicate")
-		p.Detach(dialer)
-		err = p.Attach(nextDialer)
-		assert.Nil(t, err, "Error should be nil")
-
-		app.AssertExpectations(t)
-		generator.AssertExpectations(t)
-		node.AssertExpectations(t)
-		dialer.AssertExpectations(t)
-		nextDialer.AssertExpectations(t)
-
-	})
 
 	t.Run("Authenticate", func(t *testing.T) {
 
@@ -118,9 +86,8 @@ func TestPeer(t *testing.T) {
 
 		assert.Nil(t, authErr, "Authenticate should without error")
 		assert.Equal(t, resPeerId, peerId, "Peer Id should be same")
-		assert.Equal(t, []byte("Authenticate"), req.Method(), "Request method should be same")
+		assert.Equal(t, bytes.Join([][]byte{[]byte("Authenticate"), []byte{peer.TestOnlyAuthenticateMode}}, nil), req.Method(), "Request method should be same")
 		assert.Equal(t, baseId[:], reqBody, "Request base id should be same")
-		assert.Equal(t, peer.TestOnlyAuthenticateMode, req.Header([]byte("Mode"))[0], "Request mode header should be same")
 
 		app.AssertExpectations(t)
 		generator.AssertExpectations(t)
@@ -183,9 +150,8 @@ func TestPeer(t *testing.T) {
 		wg.Wait()
 
 		assert.ErrorIs(t, terr, authErr, "Authenticate should be error")
-		assert.Equal(t, []byte("Authenticate"), req.Method(), "Request method should be same")
+		assert.Equal(t, bytes.Join([][]byte{[]byte("Authenticate"), []byte{peer.TestOnlyAuthenticateMode}}, nil), req.Method(), "Request method should be same")
 		assert.Equal(t, baseId[:], reqBody, "Request base id should be same")
-		assert.Equal(t, peer.TestOnlyAuthenticateMode, req.Header([]byte("Mode"))[0], "Request mode header should be same")
 
 		app.AssertExpectations(t)
 		generator.AssertExpectations(t)
@@ -223,8 +189,7 @@ func TestPeer(t *testing.T) {
 			p.AcceptAuthenticate(ctx, node)
 		}()
 
-		header := peer.NewHeaderSegment([]byte("Mode"), []byte{peer.TestOnlyAuthenticateMode})
-		req := peer.NewRequest([]byte("Authenticate"), bytes.NewReader(reqBaseId[:]), header)
+		req := peer.NewRequest(bytes.Join([][]byte{[]byte("Authenticate"), []byte{peer.TestOnlyAuthenticateMode}}, nil), bytes.NewReader(reqBaseId[:]))
 		reader, err := peer.MarshalRequest(req)
 		if err != nil {
 			t.Fatal(err)

@@ -1,5 +1,8 @@
 with-expecter: true
 packages:
+  pan/memory:
+    interfaces:
+      HashCode:
   pan/core:
     interfaces:
       Context:
@@ -18,5 +21,6 @@ packages:
       Node:
       NodeStream:
       NodeDialer:
+      NodeHandshake:
       Peer:
       PeerIdGenerator:

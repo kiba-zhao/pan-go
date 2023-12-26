@@ -41,7 +41,7 @@ func (app *appStruct[T]) Run(ctx T) error {
 	handlers := app.handlers[:]
 	app.rw.RUnlock()
 
-	return dispatch(ctx, handlers, 0, nil)
+	return Dispatch(ctx, handlers, 0, nil)
 }
 
 // New ...
@@ -52,7 +52,7 @@ func New[T Context]() App[T] {
 	return app
 }
 
-func dispatch[T Context](ctx T, handlers []Handler[T], index int, next Next) error {
+func Dispatch[T Context, H Handler[T]](ctx T, handlers []H, index int, next Next) error {
 
 	if index >= len(handlers) {
 		if next != nil {
@@ -63,6 +63,6 @@ func dispatch[T Context](ctx T, handlers []Handler[T], index int, next Next) err
 
 	handler := handlers[index]
 	return handler.Handle(ctx, func() error {
-		return dispatch(ctx, handlers, index+1, next)
+		return Dispatch(ctx, handlers, index+1, next)
 	})
 }

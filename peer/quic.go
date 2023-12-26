@@ -1,9 +1,11 @@
 package peer
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 
 	"net"
 
@@ -114,9 +116,23 @@ func (nd *quicNodeDialerSt) Type() uint8 {
 
 // Connect ...
 func (nd *quicNodeDialerSt) Connect(addr []byte) (node Node, err error) {
-	quicAddr, err := UnmarshalQUICAddr(addr)
-	if err == nil {
-		node, err = DialQUICNode(quicAddr, nd.tls, nd.ctx)
+	addrs := bytes.Split(addr, []byte(","))
+	errs := make([]error, 0)
+	for _, addr := range addrs {
+		quicAddr, quicErr := UnmarshalQUICAddr(addr)
+		if quicErr == nil {
+			node, quicErr = DialQUICNode(quicAddr, nd.tls, nd.ctx)
+		}
+
+		if quicErr != nil {
+			errs = append(errs, quicErr)
+			continue
+		}
+		break
+	}
+
+	if len(errs) > 0 {
+		err = errors.Join(errs...)
 	}
 	return
 }
