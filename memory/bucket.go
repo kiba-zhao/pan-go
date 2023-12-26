@@ -1,199 +1,222 @@
 package memory
 
 import (
+	"errors"
 	"slices"
 	"sync"
 )
 
-type BucketBlockCompare[T any] func(prev, next T) int
+type HashCode[T any] interface {
+	HashCode() T
+}
 
-type BucketItem[T any, V any] struct {
-	block *BucketBlock[T, V]
-	idx   int
-	value T
+type BucketItem[T any] struct {
+	hashcode T
+}
+
+// HashCode ...
+func (bi *BucketItem[T]) HashCode() T {
+	return bi.hashcode
+}
+
+// NewBucketItem ...
+func NewBucketItem[T any](hash T) *BucketItem[T] {
+	item := new(BucketItem[T])
+	item.hashcode = hash
+	return item
+}
+
+type NestBucket[H any, T any, V HashCode[T]] struct {
+	*Bucket[T, V]
+	*BucketItem[H]
+}
+
+// NewNestBucket ...
+func NewNestBucket[H any, T any, V HashCode[T]](hash H, cmp BucketItemCompare[T]) *NestBucket[H, T, V] {
+	bucket := new(NestBucket[H, T, V])
+	bucket.Bucket = NewBucket[T, V](cmp)
+	bucket.BucketItem = NewBucketItem[H](hash)
+	return bucket
+}
+
+type Bucket[T any, V HashCode[T]] struct {
+	items []V
 	rw    *sync.RWMutex
+	cmp   BucketItemCompare[T]
 }
 
-// isExpired ...
-func (bi *BucketItem[T, V]) Expired() (expired bool) {
-
-	bi.rw.RLock()
-	expired = bi.idx < 0
-	bi.rw.RUnlock()
-
-	return
-}
-
-// Value ...
-func (bi *BucketItem[T, V]) Value() (val T) {
-
-	bi.rw.RLock()
-	val = bi.value
-	bi.rw.RUnlock()
-
-	return
-}
-
-// Block ...
-// func (bi *BucketItem[T, V]) Block() *BucketBlock[T, V] {
-// 	return bi.block
-// }
-
-type BucketBlock[T any, V any] struct {
-	id    V
-	idx   int
-	items []*BucketItem[T, V]
-}
-
-type Bucket[T any, V any] struct {
-	blocks []*BucketBlock[T, V]
-	rw     *sync.RWMutex
-	cmp    BucketBlockCompare[V]
-}
-
-// FindBlock ...
-// func (b *Bucket[T, V]) FindBlock(targetId V) (block *BucketBlock[T, V]) {
-
-// 	b.rw.RLock()
-// 	idx, existed := findBlockIdx(b.blocks, targetId, b.cmp)
-// 	if existed {
-// 		block = b.blocks[idx]
-// 	}
-// 	b.rw.RUnlock()
-
-// 	return
-// }
-
-// FindItems ...
-func (b *Bucket[T, V]) FindBlockItems(targetId V) (items []*BucketItem[T, V]) {
-
+// GetAllHashCodes ...
+func (b *Bucket[T, V]) GetHashCodes() (hashcodes []T) {
 	b.rw.RLock()
-	idx, existed := findBlockIdx(b.blocks, targetId, b.cmp)
-	if existed {
-		block := b.blocks[idx]
-		if len(block.items) > 0 {
-			items = slices.Clone(block.items)
+	hashs := make([]T, 0)
+	if len(b.items) > 0 {
+		for _, item := range b.items {
+			hashs = append(hashs, item.HashCode())
 		}
 	}
-	b.rw.RUnlock()
 
+	if len(hashs) > 0 {
+		hashcodes = hashs
+	}
+
+	b.rw.RUnlock()
 	return
 }
 
-// FindItems ...
-func (b *Bucket[T, V]) FindBlockItem(targetId V) (item *BucketItem[T, V]) {
+// Count ...
+func (b *Bucket[T, V]) Count() (count int) {
 
 	b.rw.RLock()
-	idx, existed := findBlockIdx(b.blocks, targetId, b.cmp)
-	if existed {
-		block := b.blocks[idx]
-		for _, bitem := range block.items {
-			if bitem.idx >= 0 {
-				item = bitem
-				break
-			}
-		}
 
-	}
+	count = len(b.items)
+
 	b.rw.RUnlock()
-
 	return
 }
 
-// PutItem ...
-func (b *Bucket[T, V]) PutItem(targetId V, value T) (item *BucketItem[T, V]) {
+// GetItem ...
+func (b *Bucket[T, V]) GetAll() (items []V) {
 
-	item = new(BucketItem[T, V])
-	item.value = value
-	item.rw = new(sync.RWMutex)
+	b.rw.RLock()
 
+	if len(b.items) > 0 {
+		items = slices.Clone(b.items)
+	}
+
+	b.rw.RUnlock()
+	return
+}
+
+// GetLastItem ...
+func (b *Bucket[T, V]) GetLastItem() (item V) {
+
+	b.rw.RLock()
+
+	idx := len(b.items) - 1
+	if idx >= 0 {
+		item = b.items[idx]
+	}
+
+	b.rw.RUnlock()
+	return
+}
+
+// GetItem ...
+func (b *Bucket[T, V]) GetItem(hash T) (item V) {
+
+	b.rw.RLock()
+
+	idx, existed := findBucketItemIdx(b.items, hash, b.cmp)
+	if existed {
+		item = b.items[idx]
+	}
+
+	b.rw.RUnlock()
+	return
+}
+
+// SetItem ...
+func (b *Bucket[T, V]) SetItem(item V) {
 	b.rw.Lock()
 
-	idx, existed := findBlockIdx(b.blocks, targetId, b.cmp)
-
+	hash := item.HashCode()
+	idx, existed := findBucketItemIdx(b.items, hash, b.cmp)
 	if existed {
-		block := b.blocks[idx]
-		item.block = block
-		item.idx = len(block.items)
-		block.items = append(block.items, item)
+		b.items[idx] = item
 	} else {
-		block := new(BucketBlock[T, V])
-		item.block = block
-		item.idx = 0
-		block.id = targetId
-		block.items = make([]*BucketItem[T, V], 0, 1)
-		block.items = append(block.items, item)
 		if idx < 0 {
-			block.idx = len(b.blocks)
-			b.blocks = append(b.blocks, block)
+			b.items = append(b.items, item)
 		} else {
-			block.idx = idx
-			b.blocks = slices.Insert(b.blocks, idx, block)
-			for _, nblock := range b.blocks[idx+1:] {
-				nblock.idx++
-			}
+			b.items = slices.Insert(b.items, idx, item)
+		}
+	}
+	b.rw.Unlock()
+}
+
+// GetOrAddItem ...
+func (b *Bucket[T, V]) GetOrAddItem(item V) (ritem V, existed bool) {
+	b.rw.Lock()
+
+	hash := item.HashCode()
+	idx, existed := findBucketItemIdx(b.items, hash, b.cmp)
+	if existed {
+		ritem = b.items[idx]
+	} else {
+		if idx < 0 {
+			b.items = append(b.items, item)
+		} else {
+			b.items = slices.Insert(b.items, idx, item)
+		}
+		ritem = item
+	}
+
+	b.rw.Unlock()
+	return
+}
+
+// AddItem ...
+func (b *Bucket[T, V]) AddItem(item V) (err error) {
+	b.rw.Lock()
+
+	hash := item.HashCode()
+	idx, existed := findBucketItemIdx(b.items, hash, b.cmp)
+	if existed {
+		err = errors.New("Bucket Item already existsed")
+	} else {
+		if idx < 0 {
+			b.items = append(b.items, item)
+		} else {
+			b.items = slices.Insert(b.items, idx, item)
 		}
 	}
 
 	b.rw.Unlock()
-
 	return
 }
 
 // RemoveItem ...
-func (b *Bucket[T, V]) RemoveItem(item *BucketItem[T, V]) {
+func (b *Bucket[T, V]) RemoveItem(item V) {
 
 	b.rw.Lock()
-	item.rw.Lock()
 
-	block := item.block
-	lastIdx := len(block.items) - 1
-	idx := item.idx
-	if item.idx >= 0 && lastIdx >= 0 {
-		items := make([]*BucketItem[T, V], lastIdx)
-		if idx == lastIdx {
-			copy(items, block.items[:lastIdx])
-		} else {
+	lastIdx := len(b.items) - 1
+
+	existed := lastIdx >= 0
+	idx := -1
+	if existed {
+		hash := item.HashCode()
+		idx, existed = findBucketItemIdx(b.items, hash, b.cmp)
+	}
+	if existed {
+		items := make([]V, lastIdx)
+		if idx == lastIdx && idx != 0 {
+			copy(items, b.items[:lastIdx])
+		} else if idx != lastIdx {
 			if idx != 0 {
-				copy(items, block.items[:idx])
+				copy(items, b.items[:idx])
 			}
-			copy(items, block.items[idx+1:])
-			for _, nitem := range items[idx:] {
-				nitem.idx--
-			}
+			copy(items, b.items[idx+1:])
 		}
-		block.items = items
+		b.items = items
 	}
 
-	item.idx = -1
-	item.rw.Unlock()
 	b.rw.Unlock()
-
-	return
 }
 
-// NewBucket ...
-func NewBucket[T any, V any](cmp BucketBlockCompare[V]) *Bucket[T, V] {
+type BucketItemCompare[T any] func(prev, next T) int
 
-	bucket := new(Bucket[T, V])
-	bucket.blocks = make([]*BucketBlock[T, V], 0)
-	bucket.rw = new(sync.RWMutex)
-	bucket.cmp = cmp
-	return bucket
-}
-
-// findBlockIdx ...
-func findBlockIdx[T any, V any](blocks []*BucketBlock[T, V], targetId V, compare BucketBlockCompare[V]) (idx int, existed bool) {
+// findBucketItemIdx ...
+func findBucketItemIdx[T any, V HashCode[T]](items []V, hash T, compare BucketItemCompare[T]) (idx int, existed bool) {
 
 	idx = -1
-	maxIdx := len(blocks) - 1
+	maxIdx := len(items) - 1
 	minIdx := 0
 	prevIdx := -1
 	existed = false
 	for minIdx <= maxIdx {
 		midIdx := (minIdx + maxIdx) / 2
-		block := blocks[midIdx]
-		cmp := compare(block.id, targetId)
+		midItem := items[midIdx]
+		cmp := compare(hash, midItem.HashCode())
 		if cmp == 0 {
 			existed = true
 			idx = midIdx
@@ -214,4 +237,14 @@ func findBlockIdx[T any, V any](blocks []*BucketBlock[T, V], targetId V, compare
 
 	}
 	return
+
+}
+
+// NewBucket ...
+func NewBucket[T any, V HashCode[T]](cmp BucketItemCompare[T]) *Bucket[T, V] {
+	bucket := new(Bucket[T, V])
+	bucket.items = make([]V, 0)
+	bucket.rw = new(sync.RWMutex)
+	bucket.cmp = cmp
+	return bucket
 }

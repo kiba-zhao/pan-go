@@ -1,61 +1,92 @@
 package memory_test
 
 import (
-	"cmp"
+	"bytes"
+	"crypto/rand"
 	"pan/memory"
 	"testing"
+
+	mocked "pan/mocks/pan/memory"
 
 	"github.com/stretchr/testify/assert"
 )
 
 // TestBucket ...
 func TestBucket(t *testing.T) {
-	t.Run("PutItem,RemoveItem and FindBlockItem", func(t *testing.T) {
 
-		bucket := memory.NewBucket[string, int](cmp.Compare[int])
+	t.Run("AddItem", func(t *testing.T) {
 
-		item := bucket.FindBlockItem(3)
-		assert.Nil(t, item, "Item should be nil before put item")
+		hash := make([]byte, 32)
+		rand.Read(hash)
+		item := new(mocked.MockHashCode[[]byte])
+		item.On("HashCode").Times(3).Return(hash)
 
-		rItem := bucket.PutItem(3, "value 3")
-		item = bucket.FindBlockItem(3)
-		assert.Equal(t, "value 3", item.Value(), "Item value should be same")
-		assert.False(t, item.Expired(), "Item should not be expired")
+		bucket := memory.NewBucket[[]byte, *mocked.MockHashCode[[]byte]](bytes.Compare)
+		err := bucket.AddItem(item)
+		secondErr := bucket.AddItem(item)
 
-		bucket.RemoveItem(rItem)
-		item = bucket.FindBlockItem(3)
-		assert.Nil(t, item, "Item should be nil after remove item")
-		assert.True(t, rItem.Expired(), "rItem shoud be expired")
+		assert.Nil(t, err, "Error should be nil")
+		assert.EqualError(t, secondErr, "Bucket Item already existsed", "Second error should be already existed error")
 
-	})
-
-	t.Run("FindBlockItems", func(t *testing.T) {
-
-		bucket := memory.NewBucket[string, int](cmp.Compare[int])
-
-		bucket.PutItem(3, "value 4")
-		bucket.PutItem(3, "value 3")
-		bucket.PutItem(3, "value 5")
-		items := bucket.FindBlockItems(3)
-
-		assert.Len(t, items, 3, "Items length should be 3")
-		assert.Equal(t, "value 4", items[0].Value(), "Items[0] value should be same")
-		assert.Equal(t, "value 3", items[1].Value(), "Items[1] value should be same")
-		assert.Equal(t, "value 5", items[2].Value(), "Items[2] value should be same")
+		item.AssertExpectations(t)
 
 	})
 
-	// t.Run("Test", func(t *testing.T) {
+	t.Run("SetItem", func(t *testing.T) {
+		hash := make([]byte, 32)
+		rand.Read(hash)
+		item := new(mocked.MockHashCode[[]byte])
+		item.On("HashCode").Times(3).Return(hash)
 
-	// 	bucket := memory.NewBucket[string, int](cmp.Compare[int])
+		bucket := memory.NewBucket[[]byte, *mocked.MockHashCode[[]byte]](bytes.Compare)
+		bucket.SetItem(item)
+		bucket.SetItem(item)
 
-	// 	item4 := bucket.PutItem(4, "value 4")
-	// 	item3 := bucket.PutItem(3, "value 3")
-	// 	item5 := bucket.PutItem(5, "value 5")
-	// 	fmt.Println("in test simple item4 block", item4.Block())
-	// 	fmt.Println("in test simple item3 block", item3.Block())
-	// 	fmt.Println("in test simple item5 block", item5.Block())
-	// 	fmt.Println("in test simple bucket", bucket)
+		item.AssertExpectations(t)
 
-	// })
+	})
+
+	t.Run("GetItem And RemoveItem", func(t *testing.T) {
+
+		bucket := memory.NewBucket[[]byte, *mocked.MockHashCode[[]byte]](bytes.Compare)
+
+		hash := make([]byte, 32)
+		rand.Read(hash)
+
+		gitem := bucket.GetItem(hash)
+
+		assert.Nil(t, gitem, "Item should be nil")
+
+		item := new(mocked.MockHashCode[[]byte])
+		item.On("HashCode").Times(3).Return(hash)
+
+		err := bucket.AddItem(item)
+		gitem = bucket.GetItem(hash)
+
+		assert.Nil(t, err, "Error should be nil")
+		assert.Equal(t, item, gitem, "Item should be same")
+
+		oitem := new(mocked.MockHashCode[[]byte])
+		oitem.On("HashCode").Times(4).Return(hash)
+
+		bucket.SetItem(oitem)
+		gitem = bucket.GetItem(hash)
+
+		assert.Equal(t, oitem, gitem, "Item should be same")
+		assert.NotEqual(t, item, oitem, "Other Item should be different")
+
+		bucket.RemoveItem(oitem)
+		gitem = bucket.GetItem(hash)
+
+		assert.Nil(t, gitem, "Item should be nil")
+
+		bucket.RemoveItem(item)
+		gitem = bucket.GetItem(hash)
+
+		assert.Nil(t, gitem, "Item should be nil")
+
+		item.AssertExpectations(t)
+		oitem.AssertExpectations(t)
+
+	})
 }
