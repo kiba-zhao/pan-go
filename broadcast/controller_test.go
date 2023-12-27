@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net"
 	"strconv"
-	"time"
 
 	"pan/broadcast"
 	"pan/core"
@@ -29,13 +28,14 @@ func TestController(t *testing.T) {
 			t.Skip()
 		}
 
+		baseId := uuid.New()
+
 		quicServeInfo := new(broadcast.ServeInfo)
 		quicServeInfo.Port = int32(9000)
 		quicServeInfo.Type = []byte{peer.QUICNodeType}
 
-		repo := new(mocked.MockRepo)
 		pr := new(peerMocked.MockPeer)
-		service := broadcast.NewService(repo, pr, quicServeInfo)
+		service := broadcast.NewService(baseId, pr, quicServeInfo)
 
 		network := new(mocked.MockNet)
 		payloadMatcher := mock.MatchedBy(func(p []byte) bool {
@@ -60,7 +60,6 @@ func TestController(t *testing.T) {
 		ctrl := broadcast.NewController(service, network)
 		ctrl.BroadcastAlive()
 
-		repo.AssertExpectations(t)
 		network.AssertExpectations(t)
 		pr.AssertExpectations(t)
 
@@ -68,13 +67,14 @@ func TestController(t *testing.T) {
 
 	t.Run("BroadcastAlive with dispatch error", func(t *testing.T) {
 
+		baseId := uuid.New()
+
 		quicServeInfo := new(broadcast.ServeInfo)
 		quicServeInfo.Port = int32(9000)
 		quicServeInfo.Type = []byte{peer.QUICNodeType}
 
-		repo := new(mocked.MockRepo)
 		pr := new(peerMocked.MockPeer)
-		service := broadcast.NewService(repo, pr, quicServeInfo)
+		service := broadcast.NewService(baseId, pr, quicServeInfo)
 
 		network := new(mocked.MockNet)
 		payloadMatcher := mock.MatchedBy(func(p []byte) bool {
@@ -105,7 +105,6 @@ func TestController(t *testing.T) {
 		}()
 		ctrl.BroadcastAlive()
 
-		repo.AssertExpectations(t)
 		network.AssertExpectations(t)
 		pr.AssertExpectations(t)
 
@@ -117,6 +116,8 @@ func TestController(t *testing.T) {
 			t.Skip()
 		}
 
+		baseId := uuid.New()
+
 		quicServeInfo := new(broadcast.ServeInfo)
 		quicServeInfo.Port = int32(9000)
 		quicServeInfo.Type = []byte{peer.QUICNodeType}
@@ -124,9 +125,8 @@ func TestController(t *testing.T) {
 		token := make([]byte, 32)
 		rand.Read(token)
 
-		repo := new(mocked.MockRepo)
 		pr := new(peerMocked.MockPeer)
-		service := broadcast.NewService(repo, pr, quicServeInfo)
+		service := broadcast.NewService(baseId, pr, quicServeInfo)
 
 		network := new(mocked.MockNet)
 		payloadMatcher := mock.MatchedBy(func(p []byte) bool {
@@ -151,7 +151,6 @@ func TestController(t *testing.T) {
 		ctrl := broadcast.NewController(service, network)
 		ctrl.BroadcastDead()
 
-		repo.AssertExpectations(t)
 		network.AssertExpectations(t)
 		pr.AssertExpectations(t)
 
@@ -159,20 +158,14 @@ func TestController(t *testing.T) {
 
 	t.Run("BroadcastDead with dispatch error", func(t *testing.T) {
 
+		baseId := uuid.New()
+
 		quicServeInfo := new(broadcast.ServeInfo)
 		quicServeInfo.Port = int32(9000)
 		quicServeInfo.Type = []byte{peer.QUICNodeType}
 
-		token := make([]byte, 32)
-		rand.Read(token)
-
-		rd := new(broadcast.Record)
-		rd.Seq = time.Now().Unix()
-		rd.Token = token
-
-		repo := new(mocked.MockRepo)
 		pr := new(peerMocked.MockPeer)
-		service := broadcast.NewService(repo, pr, quicServeInfo)
+		service := broadcast.NewService(baseId, pr, quicServeInfo)
 
 		network := new(mocked.MockNet)
 		payloadMatcher := mock.MatchedBy(func(p []byte) bool {
@@ -204,7 +197,6 @@ func TestController(t *testing.T) {
 		}()
 		ctrl.BroadcastDead()
 
-		repo.AssertExpectations(t)
 		network.AssertExpectations(t)
 		pr.AssertExpectations(t)
 
@@ -212,13 +204,14 @@ func TestController(t *testing.T) {
 
 	t.Run("Handle Alive", func(t *testing.T) {
 
+		baseId := uuid.New()
+
 		quicServeInfo := new(broadcast.ServeInfo)
 		quicServeInfo.Port = int32(9000)
 		quicServeInfo.Type = []byte{peer.QUICNodeType}
 
-		repo := new(mocked.MockRepo)
 		pr := new(peerMocked.MockPeer)
-		service := broadcast.NewService(repo, pr, quicServeInfo)
+		service := broadcast.NewService(baseId, pr, quicServeInfo)
 		network := new(mocked.MockNet)
 		node := new(peerMocked.MockNode)
 
@@ -245,11 +238,6 @@ func TestController(t *testing.T) {
 		}
 		quicAddr := peer.MarshalQUICAddr(udpAddr)
 
-		repo.On("FindOneWithAddrAndSeq", []byte(addr), msg.Seq).Once().Return(nil, nil)
-		var rd *broadcast.Record
-		repo.On("Save", mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
-			rd = args.Get(0).(*broadcast.Record)
-		})
 		pr.On("Connect", uint8(quicServeInfo.Type[0]), quicAddr).Once().Return(node, nil)
 		pr.On("Authenticate", node, peer.NormalAuthenticateMode).Once().Return(peerId, nil)
 
@@ -264,12 +252,6 @@ func TestController(t *testing.T) {
 			return nil
 		})
 
-		assert.NotNil(t, rd, "Record should not be nil")
-		assert.Equal(t, rd.Seq, msg.Seq, "Seq should be same")
-		assert.Equal(t, rd.Addr, []byte(addr), "Addr should be same")
-		assert.Equal(t, rd.Token, msg.Token, "Token should be same")
-
-		repo.AssertExpectations(t)
 		network.AssertExpectations(t)
 		ctx.AssertExpectations(t)
 		pr.AssertExpectations(t)
@@ -279,6 +261,8 @@ func TestController(t *testing.T) {
 
 	t.Run("Handle Dead", func(t *testing.T) {
 
+		baseId := uuid.New()
+
 		quicServeInfo := new(broadcast.ServeInfo)
 		quicServeInfo.Port = int32(9000)
 		quicServeInfo.Type = []byte{peer.QUICNodeType}
@@ -287,8 +271,7 @@ func TestController(t *testing.T) {
 		addr := []byte(net.JoinHostPort(ip, "9000"))
 
 		pr := new(peerMocked.MockPeer)
-		repo := new(mocked.MockRepo)
-		service := broadcast.NewService(repo, pr, quicServeInfo)
+		service := broadcast.NewService(baseId, pr, quicServeInfo)
 		network := new(mocked.MockNet)
 
 		method := []byte("dead")
@@ -302,12 +285,6 @@ func TestController(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		rd := new(broadcast.Record)
-		rd.Seq = msg.Seq
-		rd.Token = msg.Token
-
-		repo.On("FindOneWithAddrAndSeq", []byte(addr), msg.Seq).Return(rd, nil).Once()
-		repo.On("Save", rd).Return(nil).Once()
 
 		ctx := new(mocked.MockContext)
 		ctx.On("Method").Once().Return(method)
@@ -320,9 +297,6 @@ func TestController(t *testing.T) {
 			return nil
 		})
 
-		assert.Greater(t, rd.DeathTime, int64(0), "DeathTime should be set")
-
-		repo.AssertExpectations(t)
 		network.AssertExpectations(t)
 		ctx.AssertExpectations(t)
 		pr.AssertExpectations(t)
@@ -330,14 +304,14 @@ func TestController(t *testing.T) {
 	})
 
 	t.Run("Handle Others", func(t *testing.T) {
+		baseId := uuid.New()
 
 		quicServeInfo := new(broadcast.ServeInfo)
 		quicServeInfo.Port = int32(9000)
 		quicServeInfo.Type = []byte{peer.QUICNodeType}
 
 		pr := new(peerMocked.MockPeer)
-		repo := new(mocked.MockRepo)
-		service := broadcast.NewService(repo, pr, quicServeInfo)
+		service := broadcast.NewService(baseId, pr, quicServeInfo)
 		network := new(mocked.MockNet)
 
 		method := []byte("others")
@@ -353,7 +327,6 @@ func TestController(t *testing.T) {
 			return nil
 		})
 
-		repo.AssertExpectations(t)
 		network.AssertExpectations(t)
 		ctx.AssertExpectations(t)
 		pr.AssertExpectations(t)

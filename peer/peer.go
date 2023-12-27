@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"crypto/x509"
 	"errors"
 
 	"io"
@@ -47,8 +48,14 @@ func comparePeerId(prev, next PeerId) int {
 }
 
 type Peer interface {
+	AttachDialer(dialer NodeDialer) error
+	DetachDialer(dialer NodeDialer)
+	AttachHandshake(handshake NodeHandshake) error
+	DetachHandshake(handshake NodeHandshake)
+
+	PeerId() PeerId
 	Stat(id PeerId) PeerState
-	Connect(dialerType uint8, addr []byte) (Node, error)
+	Connect(nodeType uint8, addr []byte) (Node, error)
 	Authenticate(node Node, mode uint8) (PeerId, error)
 	AcceptAuthenticate(ctx context.Context, node Node)
 	Open(id PeerId) (Node, error)
@@ -67,6 +74,17 @@ type PeerPassport struct {
 	VerifyPeerId bool
 }
 
+// generatePeerId ...
+func generatePeerId(space uuid.UUID, cert *x509.Certificate) (peerId PeerId, err error) {
+	pubKey, err := core.ExtractPublicKeyFromCert(cert)
+	if err != nil {
+		return
+	}
+
+	peerId = uuid.NewSHA1(space, pubKey)
+	return
+}
+
 type SimplePeerIdGenerator struct {
 	*memory.Bucket[uuid.UUID, *PeerPassport]
 	defaultDeny bool
@@ -80,12 +98,10 @@ func (pg *SimplePeerIdGenerator) Generate(baseId []byte, node Node) (peerId Peer
 	}
 
 	cert := node.Certificate()
-	pubKey, err := core.ExtractPublicKeyFromCert(cert)
+	id, err := generatePeerId(space, cert)
 	if err != nil {
 		return
 	}
-
-	id := uuid.NewSHA1(space, pubKey)
 
 	pass := !pg.defaultDeny
 	passport := pg.GetItem(id)
@@ -137,6 +153,7 @@ type peerNodeItem struct {
 type peerNodeBucket = *memory.NestBucket[PeerId, uint32, *peerNodeItem]
 
 type peerSt struct {
+	peerId       PeerId
 	dialers      *memory.Map[uint8, NodeDialer]
 	handshakes   *memory.Map[uint8, NodeHandshake]
 	generator    PeerIdGenerator
@@ -145,6 +162,27 @@ type peerSt struct {
 	baseId       uuid.UUID
 	app          core.App[Context]
 	maxFailedNum uint8
+}
+
+func (p *peerSt) AttachDialer(dialer NodeDialer) error {
+
+	p.dialers.Store(dialer.Type(), dialer)
+	return nil
+}
+func (p *peerSt) DetachDialer(dialer NodeDialer) {
+	p.dialers.Delete(dialer.Type())
+}
+func (p *peerSt) AttachHandshake(handshake NodeHandshake) error {
+	p.handshakes.Store(handshake.Type(), handshake)
+	return nil
+}
+func (p *peerSt) DetachHandshake(handshake NodeHandshake) {
+	p.handshakes.Delete(handshake.Type())
+}
+
+// PeerId ...
+func (p *peerSt) PeerId() PeerId {
+	return p.peerId
 }
 
 // Stat ...
@@ -482,8 +520,21 @@ func (p *peerSt) Accept(ctx context.Context, node Node, peerId PeerId) {
 	wg.Wait()
 }
 
+type NewPeerOpts struct {
+	Space        uuid.UUID
+	Cert         *x509.Certificate
+	MaxFailedNum uint8
+	App          core.App[Context]
+	Generator    PeerIdGenerator
+}
+
 // New ...
-func New(baseId uuid.UUID, app core.App[Context], generator PeerIdGenerator, maxFailedNum uint8) Peer {
+func New(opts *NewPeerOpts) (Peer, error) {
+
+	peerId, err := generatePeerId(opts.Space, opts.Cert)
+	if err != nil {
+		return nil, err
+	}
 
 	bucket := memory.NewBucket[PeerId, peerNodeBucket](comparePeerId)
 	router := memory.NewBucket[PeerId, peerRouteBucket](comparePeerId)
@@ -492,14 +543,15 @@ func New(baseId uuid.UUID, app core.App[Context], generator PeerIdGenerator, max
 	handshakes := memory.NewMap[uint8, NodeHandshake]()
 
 	peer := new(peerSt)
-	peer.baseId = baseId
-	peer.app = app
-	peer.generator = generator
-	peer.maxFailedNum = maxFailedNum
+	peer.peerId = peerId
+	peer.baseId = opts.Space
+	peer.app = opts.App
+	peer.generator = opts.Generator
+	peer.maxFailedNum = opts.MaxFailedNum
 	peer.bucket = bucket
 	peer.dialers = dialers
 	peer.router = router
 	peer.handshakes = handshakes
 
-	return peer
+	return peer, nil
 }

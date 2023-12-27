@@ -2,31 +2,38 @@ package broadcast
 
 import (
 	"bytes"
-	"crypto/rand"
 	"net"
 	"strconv"
 
+	"pan/memory"
 	"pan/peer"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 )
 
+type aliveItem struct {
+	*memory.BucketItem[[]byte]
+	seq     int64
+	peerId  peer.PeerId
+	expried bool
+}
+
 type Service struct {
 	serveInfos []*ServeInfo
-	repo       Repo
 	seq        int64
-	token      []byte
+	baseId     uuid.UUID
 	rw         *sync.RWMutex
 	pr         peer.Peer
+	store      *memory.Bucket[[]byte, *aliveItem]
 }
 
 // TokenRefresh ...
 func (s *Service) RefreshToken() {
 	s.rw.Lock()
 	s.seq = time.Now().Unix()
-	rand.Read(s.token)
 	s.rw.Unlock()
 }
 
@@ -36,7 +43,7 @@ func (s *Service) GenerateAliveMessage() (payload []byte, err error) {
 	msg := new(Alive)
 	s.rw.RLock()
 	msg.Seq = s.seq
-	msg.Token = s.token
+	msg.BaseId = s.baseId[:]
 	s.rw.RUnlock()
 
 	msg.ServeInfos = s.serveInfos
@@ -54,17 +61,18 @@ func (s *Service) RecvAliveMessage(addr []byte, payload []byte) (err error) {
 	}
 	// Implement: Intercept invalid messages
 
-	rd, err := s.repo.FindOneWithAddrAndSeq(addr, msg.Seq)
-	if err != nil || (rd != nil && rd.Seq >= msg.Seq) {
+	item := s.store.GetItem(msg.BaseId)
+	if item != nil && msg.Seq <= item.seq {
 		return
 	}
+
 	ip, _, err := net.SplitHostPort(string(addr))
 	if err != nil {
 		return
 	}
-	if rd == nil {
-		rd = new(Record)
-	}
+
+	item = new(aliveItem)
+	item.BucketItem = memory.NewBucketItem[[]byte](msg.BaseId)
 
 	// Implement: verify alive message
 	for _, serveInfo := range msg.ServeInfos {
@@ -88,17 +96,16 @@ func (s *Service) RecvAliveMessage(addr []byte, payload []byte) (err error) {
 				node.Close()
 				return
 			}
-			rd.PeerId = peerId[:]
+			item.peerId = peerId
 		}
 	}
 
 	// Implement: set node online
-	rd.Seq = msg.Seq
-	rd.Token = msg.Token
-	rd.Addr = addr
-	err = s.repo.Save(rd)
+	item.seq = msg.Seq
+	item.expried = false
+	s.store.SetItem(item)
 
-	return err
+	return
 }
 
 func (s *Service) GenerateDeadMessage() (payload []byte, err error) {
@@ -106,7 +113,7 @@ func (s *Service) GenerateDeadMessage() (payload []byte, err error) {
 	msg := new(Death)
 	s.rw.RLock()
 	msg.Seq = s.seq
-	msg.Token = s.token
+	msg.BaseId = s.baseId[:]
 	s.rw.RUnlock()
 
 	payload, err = proto.Marshal(msg)
@@ -121,36 +128,37 @@ func (s *Service) RecvDeadMessage(addr []byte, payload []byte) error {
 		return err
 	}
 	// Implement: Intercept invalid messages
-	rd, err := s.repo.FindOneWithAddrAndSeq(addr, msg.Seq)
-	if err != nil || rd == nil || rd.DeathTime > 0 || rd.Seq != msg.Seq || !bytes.Equal(rd.Token, msg.Token) {
+	item := s.store.GetItem(msg.BaseId)
+	if item == nil || msg.Seq < item.seq || item.expried {
 		return err
 	}
 
 	// Implement: verify death message
-	if rd.PeerId != nil {
-		peerId := peer.PeerId(rd.PeerId)
-		state := s.pr.Stat(peerId)
-		if state != peer.OfflinePeerState {
-			// TODO: clean peer node ?
-		}
+
+	peerId := item.peerId
+	state := s.pr.Stat(peerId)
+	if state != peer.OfflinePeerState {
+		// TODO: clean peer node ?
 	}
 
 	// Implement: set node offline
-	rd.Seq = msg.Seq
-	rd.Token = msg.Token
-	rd.Addr = addr
-	rd.DeathTime = time.Now().Unix()
-	err = s.repo.Save(rd)
+	item = new(aliveItem)
+	item.BucketItem = memory.NewBucketItem[[]byte](msg.BaseId)
+	item.seq = msg.Seq
+	item.peerId = peerId
+	item.expried = true
+
+	s.store.SetItem(item)
 
 	return err
 }
 
 // NewService ...
-func NewService(repo Repo, pr peer.Peer, serveInfos ...*ServeInfo) *Service {
+func NewService(baseId uuid.UUID, pr peer.Peer, serveInfos ...*ServeInfo) *Service {
 	service := new(Service)
 	service.serveInfos = serveInfos
-	service.repo = repo
-	service.token = make([]byte, 32)
+	service.store = memory.NewBucket[[]byte, *aliveItem](bytes.Compare)
+	service.baseId = baseId
 	service.rw = new(sync.RWMutex)
 	service.pr = pr
 

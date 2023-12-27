@@ -14,6 +14,7 @@ import (
 	mrand "math/rand"
 	"testing"
 
+	"pan/core"
 	coreMocked "pan/mocks/pan/core"
 	mocked "pan/mocks/pan/peer"
 	"pan/peer"
@@ -26,9 +27,19 @@ import (
 // TestPeer ...
 func TestPeer(t *testing.T) {
 
+	_, certBytes, err := core.GenerateKeyAndCert()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, err := core.ParseCertWithPem(certBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run("Authenticate", func(t *testing.T) {
 
 		baseId := uuid.New()
+
 		app := new(coreMocked.MockApp[peer.Context])
 		generator := new(mocked.MockPeerIdGenerator)
 
@@ -57,7 +68,10 @@ func TestPeer(t *testing.T) {
 		var authErr error
 		go func() {
 			defer wg.Done()
-			p := peer.New(baseId, app, generator, 0)
+			p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
+			if err != nil {
+				t.Fatal(err)
+			}
 			peerId, authErr = p.Authenticate(node, peer.TestOnlyAuthenticateMode)
 		}()
 
@@ -122,7 +136,10 @@ func TestPeer(t *testing.T) {
 		var authErr error
 		go func() {
 			defer wg.Done()
-			p := peer.New(baseId, app, generator, 0)
+			p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
+			if err != nil {
+				t.Fatal(err)
+			}
 			_, authErr = p.Authenticate(node, peer.TestOnlyAuthenticateMode)
 		}()
 
@@ -185,7 +202,10 @@ func TestPeer(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			p := peer.New(baseId, app, generator, 0)
+			p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
+			if err != nil {
+				t.Fatal(err)
+			}
 			p.AcceptAuthenticate(ctx, node)
 		}()
 
@@ -229,7 +249,10 @@ func TestPeer(t *testing.T) {
 		app := new(coreMocked.MockApp[peer.Context])
 		generator := new(mocked.MockPeerIdGenerator)
 
-		p := peer.New(baseId, app, generator, 0)
+		p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
+		if err != nil {
+			t.Fatal(err)
+		}
 		node, err := p.Open(peer.PeerId(baseId))
 
 		assert.Nil(t, node, "Node should be nil")
@@ -280,7 +303,10 @@ func TestPeer(t *testing.T) {
 		var rresBody []byte
 		go func() {
 			defer wg.Done()
-			p := peer.New(baseId, app, generator, 0)
+			p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
+			if err != nil {
+				t.Fatal(err)
+			}
 			response, err := p.Request(node, bodyReader, method)
 			if err != nil {
 				t.Fatal(t)
@@ -353,7 +379,10 @@ func TestPeer(t *testing.T) {
 		app := new(coreMocked.MockApp[peer.Context])
 		generator := new(mocked.MockPeerIdGenerator)
 
-		p := peer.New(baseId, app, generator, 0)
+		p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -401,7 +430,10 @@ func TestPeer(t *testing.T) {
 		serve.On("Accept", ctx).Once().Return(node, nil)
 		serve.On("Accept", ctx).Once().Return(nil, net.ErrClosed)
 
-		p := peer.New(baseId, app, generator, 0)
+		p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
+		if err != nil {
+			t.Fatal(err)
+		}
 		p.AcceptServe(ctx, serve)
 
 		wg.Wait()
@@ -451,7 +483,10 @@ func TestPeer(t *testing.T) {
 			appCtx = args.Get(0).(peer.Context)
 		}).Return(nil)
 
-		p := peer.New(baseId, app, generator, 0)
+		p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
+		if err != nil {
+			t.Fatal(err)
+		}
 		ctx := context.Background()
 		p.Accept(ctx, node, peerId)
 

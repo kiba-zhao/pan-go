@@ -160,6 +160,7 @@ func (b *Bucket[T, V]) AddItem(item V) (err error) {
 
 	hash := item.HashCode()
 	idx, existed := findBucketItemIdx(b.items, hash, b.cmp)
+
 	if existed {
 		err = errors.New("Bucket Item already existsed")
 	} else {
@@ -216,7 +217,7 @@ func findBucketItemIdx[T any, V HashCode[T]](items []V, hash T, compare BucketIt
 	for minIdx <= maxIdx {
 		midIdx := (minIdx + maxIdx) / 2
 		midItem := items[midIdx]
-		cmp := compare(hash, midItem.HashCode())
+		cmp := compare(midItem.HashCode(), hash)
 		if cmp == 0 {
 			existed = true
 			idx = midIdx

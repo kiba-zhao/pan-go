@@ -10,11 +10,11 @@ message ServeInfo{
 
 message Alive {
   int64 seq = 1;
-  bytes token = 2;
-  repeated ServeInfo serveInfos = 3;
+  bytes baseId = 2;
+  repeated ServeInfo serveInfos = 4;
 }
 
 message Death {
   int64 seq = 1;
-  bytes token = 2;
+  bytes baseId = 2;
 }
