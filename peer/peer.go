@@ -100,7 +100,7 @@ func (p *peerSt) authenticate(node Node, method []byte, headers ...*HeaderSegmen
 	}
 
 	if res.IsError() {
-		err = NewReponseError(res.Code(), string(resBody))
+		err = NewResponseError(res.Code(), string(resBody))
 		return
 	}
 

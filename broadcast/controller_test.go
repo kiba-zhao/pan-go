@@ -239,7 +239,7 @@ func TestController(t *testing.T) {
 		quicAddr := peer.MarshalQUICAddr(udpAddr)
 
 		pr.On("Connect", uint8(quicServeInfo.Type[0]), quicAddr).Once().Return(node, nil)
-		pr.On("Authenticate", node, peer.NormalAuthenticateMode).Once().Return(peerId, nil)
+		pr.On("TwowayAuthenticate", node).Once().Return(peerId, nil)
 
 		ctx := new(mocked.MockContext)
 		ctx.On("Method").Once().Return(method)

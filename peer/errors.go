@@ -23,8 +23,8 @@ func (re *ResponseError) Error() string {
 	return re.message
 }
 
-// NewReponseError ...
-func NewReponseError(code int, message string) *ResponseError {
+// NewResponseError ...
+func NewResponseError(code int, message string) *ResponseError {
 	err := new(ResponseError)
 	err.code = code
 	err.message = message

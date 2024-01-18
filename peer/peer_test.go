@@ -82,7 +82,7 @@ func TestPeer(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		res := peer.NewReponse(0, bytes.NewReader(resBaseId[:]))
+		res := peer.NewResponse(0, bytes.NewReader(resBaseId[:]))
 		reader, err := peer.MarshalResponse(res)
 		if err != nil {
 			t.Fatal(err)
@@ -155,7 +155,7 @@ func TestPeer(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		res := peer.NewReponse(0, bytes.NewReader(resBaseId[:]))
+		res := peer.NewResponse(0, bytes.NewReader(resBaseId[:]))
 		reader, err := peer.MarshalResponse(res)
 		if err != nil {
 			t.Fatal(err)
@@ -283,7 +283,7 @@ func TestPeer(t *testing.T) {
 		rand.Read(resBody)
 		resBodyReader := bytes.NewReader(resBody)
 
-		response := peer.NewReponse(resCode, resBodyReader)
+		response := peer.NewResponse(resCode, resBodyReader)
 		resReader, err := peer.MarshalResponse(response)
 		if err != nil {
 			t.Fatal(err)
@@ -362,7 +362,7 @@ func TestPeer(t *testing.T) {
 		rand.Read(resBody)
 		resBodyReader := bytes.NewReader(resBody)
 
-		response := peer.NewReponse(resCode, resBodyReader)
+		response := peer.NewResponse(resCode, resBodyReader)
 		resReader, err := peer.MarshalResponse(response)
 		if err != nil {
 			t.Fatal(err)

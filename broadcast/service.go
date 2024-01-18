@@ -18,7 +18,7 @@ type aliveItem struct {
 	*memory.BucketItem[[]byte]
 	seq     int64
 	peerId  peer.PeerId
-	expried bool
+	expired bool
 }
 
 type Service struct {
@@ -100,7 +100,7 @@ func (s *Service) RecvAliveMessage(addr []byte, payload []byte) (err error) {
 
 	// Implement: set node online
 	item.seq = msg.Seq
-	item.expried = false
+	item.expired = false
 	s.store.SetItem(item)
 
 	return
@@ -127,7 +127,7 @@ func (s *Service) RecvDeadMessage(addr []byte, payload []byte) error {
 	}
 
 	item := s.store.GetItem(msg.BaseId)
-	if item == nil || msg.Seq < item.seq || item.expried {
+	if item == nil || msg.Seq < item.seq || item.expired {
 		return err
 	}
 
@@ -141,7 +141,7 @@ func (s *Service) RecvDeadMessage(addr []byte, payload []byte) error {
 	item.BucketItem = memory.NewBucketItem[[]byte](msg.BaseId)
 	item.seq = msg.Seq
 	item.peerId = peerId
-	item.expried = true
+	item.expired = true
 
 	s.store.SetItem(item)
 

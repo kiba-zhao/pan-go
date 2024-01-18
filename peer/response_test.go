@@ -25,7 +25,7 @@ func TestResponse(t *testing.T) {
 		rand.Read(headerValue)
 
 		header := peer.NewHeaderSegment(headerName, headerValue)
-		response := peer.NewReponse(code, bodyReader, header)
+		response := peer.NewResponse(code, bodyReader, header)
 		reader, err := peer.MarshalResponse(response)
 		if err != nil {
 			t.Fatal(err)

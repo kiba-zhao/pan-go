@@ -44,7 +44,7 @@ func (c *contextSt) ThrowError(code int, message string, headers ...*HeaderSegme
 
 // respond ...
 func (c *contextSt) respond(code int, body io.Reader, headers ...*HeaderSegment) (err error) {
-	res := NewReponse(code, body, headers...)
+	res := NewResponse(code, body, headers...)
 	reader, err := MarshalResponse(res)
 	if err != nil {
 		return

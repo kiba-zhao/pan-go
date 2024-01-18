@@ -46,8 +46,8 @@ func (r *Response) Body() io.Reader {
 	return r.body
 }
 
-// NewReponse ...
-func NewReponse(code int, body io.Reader, headers ...*HeaderSegment) *Response {
+// NewResponse ...
+func NewResponse(code int, body io.Reader, headers ...*HeaderSegment) *Response {
 	response := new(Response)
 	response.code = code
 	response.body = body
