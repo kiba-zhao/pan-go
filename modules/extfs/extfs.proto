@@ -1,0 +1,15 @@
+syntax = "proto3";
+package models;
+
+option go_package = "pan/modules/extfs/models";
+
+message PeerInfo{
+  bytes peerId = 1;
+  bytes hash = 2;
+  int64 time = 3;
+}
+
+message FileInfo{
+
+}
+

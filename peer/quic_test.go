@@ -92,8 +92,8 @@ func newTLSConf(isClient bool) (*tls.Config, *x509.Certificate) {
 
 }
 
-// TestNode node test cases
-func TestNode(t *testing.T) {
+// TestQuic node test cases
+func TestQuic(t *testing.T) {
 
 	t.Run("Serve and Dial success", func(t *testing.T) {
 		// test connect

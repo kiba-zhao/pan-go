@@ -4,6 +4,7 @@ const (
 	BadRequestErrorCode   = 400
 	UnauthorizedErrorCode = 401
 	ForbiddenErrorCode    = 403
+	NotFoundErrorCode     = 404
 	InternalErrorCode     = 500
 )
 

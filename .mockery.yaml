@@ -3,6 +3,7 @@ packages:
   pan/memory:
     interfaces:
       HashCode:
+      MessageQueue:
   pan/core:
     interfaces:
       Context:
@@ -23,3 +24,11 @@ packages:
       NodeHandshake:
       Peer:
       PeerIdGenerator:
+      Provider:
+      Settings:
+      PeerEvent:
+  pan/modules/extfs:
+    config:
+      all: true
+      recursive: true
+      with-expecter: true

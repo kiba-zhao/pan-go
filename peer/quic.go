@@ -41,7 +41,7 @@ type quicNodeSt struct {
 }
 
 // Type ...
-func (n *quicNodeSt) Type() uint8 {
+func (n *quicNodeSt) Type() NodeType {
 	return QUICNodeType
 }
 
@@ -105,12 +105,13 @@ func (ns *quicNodeStreamSt) CloseRead() error {
 }
 
 type quicNodeDialerSt struct {
-	tls *tls.Config
-	ctx context.Context
+	tls       *tls.Config
+	ctx       context.Context
+	handshake []byte
 }
 
 // Type ...
-func (nd *quicNodeDialerSt) Type() uint8 {
+func (nd *quicNodeDialerSt) Type() NodeType {
 	return QUICNodeType
 }
 
@@ -137,11 +138,19 @@ func (nd *quicNodeDialerSt) Connect(addr []byte) (node Node, err error) {
 	return
 }
 
+// Handshake ...
+func (nd *quicNodeDialerSt) Handshake() []byte {
+	return nd.handshake
+}
+
 // NewNodeDialer ...
-func NewNodeDialer(tls *tls.Config, ctx context.Context) NodeDialer {
+func NewNodeDialer(tls *tls.Config, ctx context.Context, addrs ...[]byte) NodeDialer {
 	dialer := new(quicNodeDialerSt)
 	dialer.tls = tls
 	dialer.ctx = ctx
+	if len(addrs) > 0 {
+		dialer.handshake = bytes.Join(addrs, []byte(","))
+	}
 	return dialer
 }
 

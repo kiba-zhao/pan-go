@@ -59,7 +59,6 @@ func (s *Service) RecvAliveMessage(addr []byte, payload []byte) (err error) {
 	if err != nil {
 		return
 	}
-	// Implement: Intercept invalid messages
 
 	item := s.store.GetItem(msg.BaseId)
 	if item != nil && msg.Seq <= item.seq {
@@ -74,7 +73,6 @@ func (s *Service) RecvAliveMessage(addr []byte, payload []byte) (err error) {
 	item = new(aliveItem)
 	item.BucketItem = memory.NewBucketItem[[]byte](msg.BaseId)
 
-	// Implement: verify alive message
 	for _, serveInfo := range msg.ServeInfos {
 		switch serveInfo.Type[0] {
 		case peer.QUICNodeType:
@@ -90,7 +88,7 @@ func (s *Service) RecvAliveMessage(addr []byte, payload []byte) (err error) {
 				err = addrErr
 				return
 			}
-			peerId, authErr := s.pr.Authenticate(node, peer.NormalAuthenticateMode)
+			peerId, authErr := s.pr.TwowayAuthenticate(node)
 			if authErr != nil {
 				err = authErr
 				node.Close()
@@ -127,13 +125,11 @@ func (s *Service) RecvDeadMessage(addr []byte, payload []byte) error {
 	if err != nil {
 		return err
 	}
-	// Implement: Intercept invalid messages
+
 	item := s.store.GetItem(msg.BaseId)
 	if item == nil || msg.Seq < item.seq || item.expried {
 		return err
 	}
-
-	// Implement: verify death message
 
 	peerId := item.peerId
 	state := s.pr.Stat(peerId)
@@ -141,7 +137,6 @@ func (s *Service) RecvDeadMessage(addr []byte, payload []byte) error {
 		// TODO: clean peer node ?
 	}
 
-	// Implement: set node offline
 	item = new(aliveItem)
 	item.BucketItem = memory.NewBucketItem[[]byte](msg.BaseId)
 	item.seq = msg.Seq

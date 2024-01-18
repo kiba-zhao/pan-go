@@ -14,7 +14,6 @@ import (
 	mrand "math/rand"
 	"testing"
 
-	"pan/core"
 	coreMocked "pan/mocks/pan/core"
 	mocked "pan/mocks/pan/peer"
 	"pan/peer"
@@ -27,21 +26,20 @@ import (
 // TestPeer ...
 func TestPeer(t *testing.T) {
 
-	_, certBytes, err := core.GenerateKeyAndCert()
-	if err != nil {
-		t.Fatal(err)
-	}
-	cert, err := core.ParseCertWithPem(certBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("Authenticate", func(t *testing.T) {
+	t.Run("ReverseAuthenticate", func(t *testing.T) {
 
 		baseId := uuid.New()
 
-		app := new(coreMocked.MockApp[peer.Context])
+		provider := new(mocked.MockProvider)
+		settings := new(mocked.MockSettings)
+		settings.On("BaseId").Once().Return(baseId)
+		provider.On("Settings").Once().Return(settings)
+
 		generator := new(mocked.MockPeerIdGenerator)
+		provider.On("PeerIdGenerator").Once().Return(generator)
+
+		event := new(mocked.MockPeerEvent)
+		provider.On("PeerEvent").Once().Return(event)
 
 		reqReader, reqWriter := io.Pipe()
 		resReader, resWriter := io.Pipe()
@@ -61,6 +59,8 @@ func TestPeer(t *testing.T) {
 
 		generator.On("Generate", resBaseId[:], node).Once().Return(resPeerId, nil)
 
+		event.On("OnRouteAdded", resPeerId).Once()
+
 		var wg sync.WaitGroup
 		wg.Add(1)
 
@@ -68,11 +68,8 @@ func TestPeer(t *testing.T) {
 		var authErr error
 		go func() {
 			defer wg.Done()
-			p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
-			if err != nil {
-				t.Fatal(err)
-			}
-			peerId, authErr = p.Authenticate(node, peer.TestOnlyAuthenticateMode)
+			p := peer.NewPeer(provider)
+			peerId, authErr = p.ReverseAuthenticate(node)
 		}()
 
 		req := new(peer.Request)
@@ -100,20 +97,28 @@ func TestPeer(t *testing.T) {
 
 		assert.Nil(t, authErr, "Authenticate should without error")
 		assert.Equal(t, resPeerId, peerId, "Peer Id should be same")
-		assert.Equal(t, bytes.Join([][]byte{[]byte("Authenticate"), []byte{peer.TestOnlyAuthenticateMode}}, nil), req.Method(), "Request method should be same")
+		assert.Equal(t, []byte{peer.ReverseAuthenticateMethod}, req.Method(), "Request method should be same")
 		assert.Equal(t, baseId[:], reqBody, "Request base id should be same")
 
-		app.AssertExpectations(t)
+		provider.AssertExpectations(t)
+		settings.AssertExpectations(t)
 		generator.AssertExpectations(t)
+		event.AssertExpectations(t)
 		node.AssertExpectations(t)
 
 	})
 
-	t.Run("Authenticate with failed", func(t *testing.T) {
+	t.Run("ReverseAuthenticate with failed", func(t *testing.T) {
 
 		baseId := uuid.New()
-		app := new(coreMocked.MockApp[peer.Context])
+		provider := new(mocked.MockProvider)
+
+		settings := new(mocked.MockSettings)
+		settings.On("BaseId").Once().Return(baseId)
+
 		generator := new(mocked.MockPeerIdGenerator)
+		provider.On("Settings").Once().Return(settings)
+		provider.On("PeerIdGenerator").Once().Return(generator)
 
 		reqReader, reqWriter := io.Pipe()
 		resReader, resWriter := io.Pipe()
@@ -136,11 +141,8 @@ func TestPeer(t *testing.T) {
 		var authErr error
 		go func() {
 			defer wg.Done()
-			p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, authErr = p.Authenticate(node, peer.TestOnlyAuthenticateMode)
+			p := peer.NewPeer(provider)
+			_, authErr = p.ReverseAuthenticate(node)
 		}()
 
 		req := new(peer.Request)
@@ -167,10 +169,11 @@ func TestPeer(t *testing.T) {
 		wg.Wait()
 
 		assert.ErrorIs(t, terr, authErr, "Authenticate should be error")
-		assert.Equal(t, bytes.Join([][]byte{[]byte("Authenticate"), []byte{peer.TestOnlyAuthenticateMode}}, nil), req.Method(), "Request method should be same")
+		assert.Equal(t, []byte{peer.ReverseAuthenticateMethod}, req.Method())
 		assert.Equal(t, baseId[:], reqBody, "Request base id should be same")
 
-		app.AssertExpectations(t)
+		provider.AssertExpectations(t)
+		settings.AssertExpectations(t)
 		generator.AssertExpectations(t)
 		node.AssertExpectations(t)
 
@@ -179,8 +182,14 @@ func TestPeer(t *testing.T) {
 	t.Run("AcceptAuthenticate", func(t *testing.T) {
 
 		baseId := uuid.New()
-		app := new(coreMocked.MockApp[peer.Context])
+		provider := new(mocked.MockProvider)
+
+		settings := new(mocked.MockSettings)
+		settings.On("BaseId").Once().Return(baseId)
+
 		generator := new(mocked.MockPeerIdGenerator)
+		provider.On("Settings").Once().Return(settings)
+		provider.On("PeerIdGenerator").Once().Return(generator)
 
 		reqReader, reqWriter := io.Pipe()
 		resReader, resWriter := io.Pipe()
@@ -202,14 +211,11 @@ func TestPeer(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
-			if err != nil {
-				t.Fatal(err)
-			}
+			p := peer.NewPeer(provider)
 			p.AcceptAuthenticate(ctx, node)
 		}()
 
-		req := peer.NewRequest(bytes.Join([][]byte{[]byte("Authenticate"), []byte{peer.TestOnlyAuthenticateMode}}, nil), bytes.NewReader(reqBaseId[:]))
+		req := peer.NewRequest([]byte{peer.ReverseAuthenticateMethod}, bytes.NewReader(reqBaseId[:]))
 		reader, err := peer.MarshalRequest(req)
 		if err != nil {
 			t.Fatal(err)
@@ -237,7 +243,8 @@ func TestPeer(t *testing.T) {
 		assert.Equal(t, 0, res.Code(), "Response code should be same")
 		assert.Equal(t, baseId[:], resBody, "Response base id should be same")
 
-		app.AssertExpectations(t)
+		provider.AssertExpectations(t)
+		settings.AssertExpectations(t)
 		generator.AssertExpectations(t)
 		node.AssertExpectations(t)
 
@@ -246,20 +253,15 @@ func TestPeer(t *testing.T) {
 	t.Run("Open", func(t *testing.T) {
 
 		baseId := uuid.New()
-		app := new(coreMocked.MockApp[peer.Context])
-		generator := new(mocked.MockPeerIdGenerator)
+		provider := new(mocked.MockProvider)
 
-		p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
-		if err != nil {
-			t.Fatal(err)
-		}
+		p := peer.NewPeer(provider)
 		node, err := p.Open(peer.PeerId(baseId))
 
 		assert.Nil(t, node, "Node should be nil")
 		assert.EqualError(t, err, "Not Found peer node", "Error should be not found")
 
-		app.AssertExpectations(t)
-		generator.AssertExpectations(t)
+		provider.AssertExpectations(t)
 	})
 
 	t.Run("Request", func(t *testing.T) {
@@ -293,9 +295,7 @@ func TestPeer(t *testing.T) {
 		node := new(mocked.MockNode)
 		node.On("OpenNodeStream").Once().Return(stream, nil)
 
-		baseId := uuid.New()
-		app := new(coreMocked.MockApp[peer.Context])
-		generator := new(mocked.MockPeerIdGenerator)
+		provider := new(mocked.MockProvider)
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -303,10 +303,7 @@ func TestPeer(t *testing.T) {
 		var rresBody []byte
 		go func() {
 			defer wg.Done()
-			p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
-			if err != nil {
-				t.Fatal(err)
-			}
+			p := peer.NewPeer(provider)
 			response, err := p.Request(node, bodyReader, method)
 			if err != nil {
 				t.Fatal(t)
@@ -341,9 +338,9 @@ func TestPeer(t *testing.T) {
 		assert.Equal(t, resCode, res.Code(), "Response code should be same")
 		assert.Equal(t, resBody, rresBody, "Response Body should be same")
 
+		provider.AssertExpectations(t)
 		node.AssertExpectations(t)
-		app.AssertExpectations(t)
-		generator.AssertExpectations(t)
+
 	})
 
 	t.Run("Request with not all read before response", func(t *testing.T) {
@@ -375,14 +372,8 @@ func TestPeer(t *testing.T) {
 		node := new(mocked.MockNode)
 		node.On("OpenNodeStream").Once().Return(stream, nil)
 
-		baseId := uuid.New()
-		app := new(coreMocked.MockApp[peer.Context])
-		generator := new(mocked.MockPeerIdGenerator)
-
-		p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
-		if err != nil {
-			t.Fatal(err)
-		}
+		provider := new(mocked.MockProvider)
+		p := peer.NewPeer(provider)
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -408,9 +399,8 @@ func TestPeer(t *testing.T) {
 		assert.Equal(t, resCode, res.Code(), "Response code should be same")
 		assert.Equal(t, resBody, rresBody, "Response Body should be same")
 
+		provider.AssertExpectations(t)
 		node.AssertExpectations(t)
-		app.AssertExpectations(t)
-		generator.AssertExpectations(t)
 	})
 
 	t.Run("AcceptServe", func(t *testing.T) {
@@ -422,35 +412,37 @@ func TestPeer(t *testing.T) {
 		node := new(mocked.MockNode)
 		node.On("AcceptNodeStream", ctx).Once().Return(nil, net.ErrClosed).Run(func(args mock.Arguments) { defer wg.Done() })
 
-		baseId := uuid.New()
-		app := new(coreMocked.MockApp[peer.Context])
-		generator := new(mocked.MockPeerIdGenerator)
+		provider := new(mocked.MockProvider)
 		serve := new(mocked.MockNodeServe)
 
 		serve.On("Accept", ctx).Once().Return(node, nil)
 		serve.On("Accept", ctx).Once().Return(nil, net.ErrClosed)
 
-		p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
-		if err != nil {
-			t.Fatal(err)
-		}
+		p := peer.NewPeer(provider)
 		p.AcceptServe(ctx, serve)
 
 		wg.Wait()
 
 		node.AssertExpectations(t)
-		app.AssertExpectations(t)
-		generator.AssertExpectations(t)
+		provider.AssertExpectations(t)
 		serve.AssertExpectations(t)
 	})
 
 	t.Run("Accept", func(t *testing.T) {
 
-		generator := new(mocked.MockPeerIdGenerator)
-		node := new(mocked.MockNode)
+		provider := new(mocked.MockProvider)
 		app := new(coreMocked.MockApp[peer.Context])
-		baseId := uuid.New()
+		provider.On("App").Once().Return(app)
+
+		node := new(mocked.MockNode)
 		peerId := peer.PeerId(uuid.New())
+
+		event := new(mocked.MockPeerEvent)
+		provider.On("PeerEvent").Twice().Return(event)
+
+		event.On("OnNodeAdded", peerId).Once()
+		event.On("OnNodeRemoved", peerId).Once()
+
 		stream := new(TestNodeStream)
 		mockStream := new(mocked.MockNodeStream)
 		stream.Closer = mockStream
@@ -483,10 +475,7 @@ func TestPeer(t *testing.T) {
 			appCtx = args.Get(0).(peer.Context)
 		}).Return(nil)
 
-		p, err := peer.New(&peer.NewPeerOpts{Space: baseId, App: app, Generator: generator, MaxFailedNum: 0, Cert: cert})
-		if err != nil {
-			t.Fatal(err)
-		}
+		p := peer.NewPeer(provider)
 		ctx := context.Background()
 		p.Accept(ctx, node, peerId)
 
@@ -495,7 +484,8 @@ func TestPeer(t *testing.T) {
 		assert.Equal(t, method, appCtx.Method(), "App Context Method should be same")
 		assert.Equal(t, peerId, appCtx.PeerId(), "App Context PeerId should be same")
 
-		generator.AssertExpectations(t)
+		provider.AssertExpectations(t)
+		event.AssertExpectations(t)
 		node.AssertExpectations(t)
 		app.AssertExpectations(t)
 		mockStream.AssertExpectations(t)

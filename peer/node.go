@@ -6,13 +6,19 @@ import (
 	"io"
 )
 
+type NodeType = uint8
+
+type NodeTypeComponent interface {
+	Type() NodeType
+}
+
 type NodeServe interface {
 	Accept(ctx context.Context) (Node, error)
 	Close() error
 }
 
 type Node interface {
-	Type() uint8
+	NodeTypeComponent
 	Addr() []byte
 	Certificate() *x509.Certificate
 	AcceptNodeStream(ctx context.Context) (NodeStream, error)
@@ -21,7 +27,7 @@ type Node interface {
 }
 
 type NodeDialer interface {
-	Type() uint8
+	NodeTypeComponent
 	Connect(addr []byte) (Node, error)
 }
 
@@ -38,6 +44,6 @@ type NodeStream interface {
 }
 
 type NodeHandshake interface {
-	Type() uint8
+	NodeTypeComponent
 	Handshake() []byte
 }
