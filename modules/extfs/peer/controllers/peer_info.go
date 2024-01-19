@@ -12,25 +12,24 @@ import (
 
 // PeerInfoController
 type PeerInfoController struct {
-	ExtFS *services.ExtFSService
+	ExtFS          *services.ExtFSService
+	AuthController *AuthController
 }
 
 // Init ...
 func (c *PeerInfoController) Init(app core.App[peer.Context]) {
-	app.UseFn([]byte("GetPeerInfo"), c.Get)
+	app.UseFn([]byte("GetPeerInfo"), c.AuthController.Auth, c.Get)
 }
 
 // Get
 func (c *PeerInfoController) Get(ctx peer.Context, next core.Next) error {
 	info, err := c.ExtFS.GetLatestOneToRemote()
 	if err != nil {
-		ctx.ThrowError(http.StatusInternalServerError, err.Error())
-		return err
+		return ctx.ThrowError(http.StatusInternalServerError, err.Error())
 	}
 	bodyBytes, err := proto.Marshal(&info)
 	if err != nil {
-		ctx.ThrowError(http.StatusInternalServerError, err.Error())
-		return err
+		return ctx.ThrowError(http.StatusInternalServerError, err.Error())
 	}
 
 	body := bytes.NewReader(bodyBytes)

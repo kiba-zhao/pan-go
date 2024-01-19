@@ -14,6 +14,15 @@ type PeerService struct {
 	PeerEvent events.RemotePeerEvent
 }
 
+// HasRemotePeer ...
+func (s *PeerService) HasEnabledRemotePeer(peerId peer.PeerId) bool {
+	remote, err := s.PeerRepo.FindOne(peerId.String())
+	if err != nil {
+		return false
+	}
+	return remote.Enabled
+}
+
 // SyncRemotePeer ...
 func (s *PeerService) SyncRemotePeer(peerId peer.PeerId) (err error) {
 

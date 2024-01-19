@@ -18,6 +18,7 @@ import (
 // TestPeerRepository ...
 func TestPeerRepository(t *testing.T) {
 
+	// setup function to repositories.PeerRepository
 	setup := func() (repo repositories.PeerRepository, mockDB *sql.DB, mock sqlmock.Sqlmock) {
 		mockDB, mock, err := sqlmock.New()
 		if err != nil {
