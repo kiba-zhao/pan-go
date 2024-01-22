@@ -2,21 +2,21 @@ package repositories_test
 
 import (
 	"database/sql"
-	"pan/modules/extfs/models"
 	"pan/modules/extfs/repositories"
 	"testing"
-	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func TestExtFS(t *testing.T) {
+// TestRemotePeerRepository ...
+func TestRemotePeerRepository(t *testing.T) {
 
-	// setup function to repositories.ExtFSRepository
-	setup := func() (repo repositories.ExtFSRepository, mockDB *sql.DB, mock sqlmock.Sqlmock) {
+	// setup function to repositories.RemotePeerRepository
+	setup := func() (repo repositories.RemotePeerRepository, mockDB *sql.DB, mock sqlmock.Sqlmock) {
 		mockDB, mock, err := sqlmock.New()
 		if err != nil {
 			t.Fatal(err)
@@ -29,7 +29,7 @@ func TestExtFS(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		repo = repositories.NewExtFSRepository(db)
+		repo = repositories.NewRemotePeerRepository(db)
 		return
 	}
 
@@ -37,19 +37,21 @@ func TestExtFS(t *testing.T) {
 		mockDB.Close()
 	}
 
-	t.Run("GetLatestOne", func(t *testing.T) {
+	t.Run("FindOne", func(t *testing.T) {
+
 		repo, mockDB, mock := setup()
 		defer teardown(mockDB)
 
-		var extFSRow models.ExtFS
-		extFSRow.Hash = []byte("hash")
-		extFSRow.CreatedAt = time.Now()
-		mock.ExpectQuery("SELECT  (.+) FROM `ext_fs` (.+) LIMIT 1").WillReturnRows(sqlmock.NewRows([]string{"hash", "created_at"}).AddRow(extFSRow.Hash, extFSRow.CreatedAt))
+		id := uuid.New().String()
+		enabled := true
 
-		row, err := repo.GetLatestOne()
+		mock.ExpectQuery("SELECT (.+) FROM `remote_peers` WHERE (.+) LIMIT 1").WithArgs(id).WillReturnRows(sqlmock.NewRows([]string{"id", "enabled"}).AddRow(id, enabled))
+
+		row, err := repo.FindOne(id)
 
 		assert.Nil(t, err)
-		assert.Equal(t, extFSRow.Hash, row.Hash)
-		assert.Equal(t, extFSRow.CreatedAt, row.CreatedAt)
+		assert.Equal(t, id, row.ID)
+		assert.Equal(t, enabled, row.Enabled)
+
 	})
 }

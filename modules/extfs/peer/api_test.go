@@ -23,14 +23,14 @@ func TestAPI(t *testing.T) {
 		return api
 	}
 
-	t.Run("GetPeerInfo", func(t *testing.T) {
+	t.Run("GetRemoteFilesState", func(t *testing.T) {
 
 		p := new(mockedPeer.MockPeer)
 		api := setup(p)
 
 		peerId := uuid.New()
 		node := new(mockedPeer.MockNode)
-		info := new(models.PeerInfo)
+		info := new(models.RemoteStateInfo)
 		info.PeerId = peerId[:]
 		info.Hash = []byte("hash")
 		info.Time = 123
@@ -42,9 +42,9 @@ func TestAPI(t *testing.T) {
 		res := corePeer.NewResponse(200, reader)
 
 		p.On("Open", peerId).Return(node, nil)
-		p.On("Request", node, nil, []byte("GetPeerInfo")).Return(res, nil)
+		p.On("Request", node, nil, []byte("GetRemoteFilesState")).Return(res, nil)
 
-		resInfo, err := api.GetPeerInfo(peerId)
+		resInfo, err := api.GetRemoteFilesState(peerId)
 
 		assert.Nil(t, err)
 		assert.Equal(t, info.PeerId, resInfo.PeerId)

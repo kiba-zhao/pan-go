@@ -10,20 +10,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// PeerInfoController
-type PeerInfoController struct {
-	ExtFS          *services.ExtFSService
-	AuthController *AuthController
+// RemoteFilesStateController
+type RemoteFilesStateController struct {
+	FilesStateService *services.FilesStateService
+	GuardController   *GuardController
 }
 
 // Init ...
-func (c *PeerInfoController) Init(app core.App[peer.Context]) {
-	app.UseFn([]byte("GetPeerInfo"), c.AuthController.Auth, c.Get)
+func (c *RemoteFilesStateController) Init(app core.App[peer.Context]) {
+	app.UseFn([]byte("GetRemoteFilesState"), c.GuardController.Auth, c.Get)
 }
 
 // Get
-func (c *PeerInfoController) Get(ctx peer.Context, next core.Next) error {
-	info, err := c.ExtFS.GetLatestOneToRemote()
+func (c *RemoteFilesStateController) Get(ctx peer.Context, next core.Next) error {
+	info, err := c.FilesStateService.GetLastOneToRemote()
 	if err != nil {
 		return ctx.ThrowError(http.StatusInternalServerError, err.Error())
 	}

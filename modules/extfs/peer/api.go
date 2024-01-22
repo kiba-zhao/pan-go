@@ -9,8 +9,7 @@ import (
 )
 
 type API interface {
-	GetPeerInfo(peerId peer.PeerId) (models.PeerInfo, error)
-	// GetFileInfos(peerId peer.PeerId, hash []byte) (models.FileInfo, error)
+	GetRemoteFilesState(peerId peer.PeerId) (models.RemoteStateInfo, error)
 }
 
 type apiImpl struct {
@@ -23,24 +22,24 @@ func NewAPI(peer peer.Peer) API {
 	return api
 }
 
-func (a *apiImpl) GetPeerInfo(peerId peer.PeerId) (models.PeerInfo, error) {
+func (a *apiImpl) GetRemoteFilesState(peerId peer.PeerId) (models.RemoteStateInfo, error) {
 
 	node, err := a.Peer.Open(peerId)
 	if err != nil {
-		return models.PeerInfo{}, err
+		return models.RemoteStateInfo{}, err
 	}
 
-	res, err := a.Peer.Request(node, nil, []byte("GetPeerInfo"))
+	res, err := a.Peer.Request(node, nil, []byte("GetRemoteFilesState"))
 	if err != nil {
-		return models.PeerInfo{}, err
+		return models.RemoteStateInfo{}, err
 	}
 
 	body, err := io.ReadAll(res.Body())
 	if err != nil {
-		return models.PeerInfo{}, err
+		return models.RemoteStateInfo{}, err
 	}
 
-	var info models.PeerInfo
+	var info models.RemoteStateInfo
 	err = proto.Unmarshal(body, &info)
 	return info, err
 }

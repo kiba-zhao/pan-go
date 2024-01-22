@@ -20,29 +20,30 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestPeerInfo(t *testing.T) {
+func TestRemoteFilesStateInfo(t *testing.T) {
 
-	// setup function return a pointer to controllers.PeerInfoController
-	setup := func() *controllers.PeerInfoController {
-		ctrl := new(controllers.PeerInfoController)
-		ctrl.ExtFS = new(services.ExtFSService)
+	// setup function return a pointer to controllers.RemoteFilesStateController
+	setup := func() *controllers.RemoteFilesStateController {
+		ctrl := new(controllers.RemoteFilesStateController)
+		ctrl.FilesStateService = new(services.FilesStateService)
+		ctrl.FilesStateService.PeerService = new(services.PeerService)
 		return ctrl
 	}
 
 	t.Run("Get with respond", func(t *testing.T) {
 		ctrl := setup()
 
-		repo := new(mockedRepo.MockExtFSRepository)
+		repo := new(mockedRepo.MockFilesStateRepository)
 		defer repo.AssertExpectations(t)
-		ctrl.ExtFS.ExtFSRepo = repo
-		var extFSRow models.ExtFS
-		extFSRow.Hash = []byte("hash")
-		extFSRow.CreatedAt = time.Now()
-		repo.On("GetLatestOne").Once().Return(extFSRow, nil)
+		ctrl.FilesStateService.FilesStateRepo = repo
+		var stateRow models.FilesState
+		stateRow.Hash = []byte("hash")
+		stateRow.CreatedAt = time.Now()
+		repo.On("GetLastOne").Once().Return(stateRow, nil)
 
 		generator := new(mockedPeer.MockPeerIdGenerator)
 		defer generator.AssertExpectations(t)
-		ctrl.ExtFS.PeerIdGenerator = generator
+		ctrl.FilesStateService.PeerService.PeerIdGenerator = generator
 		peerId := peer.PeerId(uuid.New())
 		generator.On("LocalPeerId").Once().Return(peerId)
 
@@ -65,21 +66,20 @@ func TestPeerInfo(t *testing.T) {
 
 		bodyBytes, err := io.ReadAll(resReader)
 		assert.Nil(t, err)
-		var info models.PeerInfo
+		var info models.RemoteStateInfo
 		err = proto.Unmarshal(bodyBytes, &info)
 		assert.Nil(t, err)
-		assert.Equal(t, extFSRow.Hash, info.Hash)
-		assert.Equal(t, extFSRow.CreatedAt.Unix(), info.Time)
+		assert.Equal(t, stateRow.Hash, info.Hash)
+		assert.Equal(t, stateRow.CreatedAt.Unix(), info.Time)
 	})
 
 	t.Run("Get with error", func(t *testing.T) {
 		ctrl := setup()
-
-		repo := new(mockedRepo.MockExtFSRepository)
+		repo := new(mockedRepo.MockFilesStateRepository)
 		defer repo.AssertExpectations(t)
-		ctrl.ExtFS.ExtFSRepo = repo
+		ctrl.FilesStateService.FilesStateRepo = repo
 		repoErr := errors.New("repo error")
-		repo.On("GetLatestOne").Once().Return(models.ExtFS{}, repoErr)
+		repo.On("GetLastOne").Once().Return(models.FilesState{}, repoErr)
 
 		called := false
 		defer assert.False(t, called)

@@ -6,12 +6,17 @@ import (
 )
 
 type ExtFS struct {
-	PeerService *services.PeerService
+	RemotePeerService       *services.RemotePeerService
+	RemoteFilesStateService *services.RemoteFilesStateService
 }
 
 // OnNodeAdded ...
 func (extfs *ExtFS) OnNodeAdded(peerId peer.PeerId) {
-	extfs.PeerService.SyncRemotePeer(peerId)
+	hasEnabled := extfs.RemotePeerService.HasEnabled(peerId)
+	if !hasEnabled {
+		return
+	}
+	extfs.RemoteFilesStateService.Sync(peerId)
 	// TODO: log error
 }
 

@@ -1,7 +1,6 @@
 package extfs_test
 
 import (
-	"errors"
 	"pan/modules/extfs"
 	"pan/modules/extfs/models"
 	"pan/modules/extfs/services"
@@ -21,138 +20,63 @@ func TestExtFS(t *testing.T) {
 	// setup ...
 	setup := func() *extfs.ExtFS {
 		efs := new(extfs.ExtFS)
-		efs.PeerService = new(services.PeerService)
+		efs.RemotePeerService = new(services.RemotePeerService)
+		efs.RemoteFilesStateService = new(services.RemoteFilesStateService)
 		return efs
 	}
 
-	t.Run("OnNodeAdded success", func(t *testing.T) {
+	t.Run("OnNodeAdded with enabled", func(t *testing.T) {
 
 		peerId := peer.PeerId(uuid.New())
 		efs := setup()
 
-		repo := new(mockedRepo.MockPeerRepository)
-		efs.PeerService.PeerRepo = repo
-		var peerRow models.Peer
-		peerRow.RemoteHash = []byte{1, 2, 3, 4, 5, 6, 7}
-		peerRow.Enabled = true
-		repo.On("FindOne", peerId.String()).Once().Return(peerRow, nil)
+		remotePeerRepo := new(mockedRepo.MockRemotePeerRepository)
+		defer remotePeerRepo.AssertExpectations(t)
+		efs.RemotePeerService.RemotePeerRepo = remotePeerRepo
+		var remotePeerRow models.RemotePeer
+		remotePeerRow.Enabled = true
+		remotePeerRepo.On("FindOne", peerId.String()).Once().Return(remotePeerRow, nil)
+
+		filesStateRepo := new(mockedRepo.MockRemoteFilesStateRepository)
+		defer filesStateRepo.AssertExpectations(t)
+		efs.RemoteFilesStateService.RemoteFilesStateRepo = filesStateRepo
+		var stateRow models.RemoteFilesState
+		stateRow.RemoteHash = []byte{1, 2, 3, 4, 5, 6, 7}
+		filesStateRepo.On("FindOne", peerId.String()).Once().Return(stateRow, nil)
 
 		api := new(mockedPeer.MockAPI)
-		efs.PeerService.API = api
-		var peerInfo models.PeerInfo
-		peerInfo.Hash = []byte{11, 12, 13, 14, 15, 16, 17}
-		peerInfo.Time = 123
-		api.On("GetPeerInfo", peerId).Once().Return(peerInfo, nil)
+		efs.RemoteFilesStateService.API = api
+		defer api.AssertExpectations(t)
+		var stateInfo models.RemoteStateInfo
+		stateInfo.Hash = []byte{11, 12, 13, 14, 15, 16, 17}
+		stateInfo.Time = 123
+		api.On("GetRemoteFilesState", peerId).Once().Return(stateInfo, nil)
 
-		peerRow.ID = peerId.String()
-		peerRow.RemoteHash = peerInfo.Hash
-		peerRow.RemoteTime = peerInfo.Time
-		repo.On("Save", peerRow).Once().Return(nil)
+		stateRow.ID = peerId.String()
+		stateRow.RemoteHash = stateInfo.Hash
+		stateRow.RemoteTime = stateInfo.Time
+		filesStateRepo.On("Save", stateRow).Once().Return(nil)
 
-		event := new(mockedEvent.MockRemotePeerEvent)
-		efs.PeerService.PeerEvent = event
-		event.On("OnRemotePeerUpdated", peerId).Once()
+		event := new(mockedEvent.MockRemoteFilesStateEvent)
+		defer event.AssertExpectations(t)
+		efs.RemoteFilesStateService.RemoteFilesStateEvent = event
+		event.On("OnRemoteFilesStateUpdated", peerId).Once()
 
 		efs.OnNodeAdded(peerId)
 
-		repo.AssertExpectations(t)
-		api.AssertExpectations(t)
-		event.AssertExpectations(t)
 	})
 
-	t.Run("OnNodeAdded failed with Repo.FindOne", func(t *testing.T) {
-
+	t.Run("OnNodeAdded with disabled", func(t *testing.T) {
 		peerId := peer.PeerId(uuid.New())
 		efs := setup()
 
-		repo := new(mockedRepo.MockPeerRepository)
-		efs.PeerService.PeerRepo = repo
-		var peerRow models.Peer
-		peerRow.Enabled = false
-		repo.On("FindOne", peerId.String()).Once().Return(peerRow, errors.New("Test Error"))
-		repo.On("FindOne", peerId.String()).Once().Return(peerRow, nil)
+		remotePeerRepo := new(mockedRepo.MockRemotePeerRepository)
+		defer remotePeerRepo.AssertExpectations(t)
+		efs.RemotePeerService.RemotePeerRepo = remotePeerRepo
+		var remotePeerRow models.RemotePeer
+		remotePeerRow.Enabled = false
+		remotePeerRepo.On("FindOne", peerId.String()).Once().Return(remotePeerRow, nil)
 
 		efs.OnNodeAdded(peerId)
-		efs.OnNodeAdded(peerId)
-
-		repo.AssertExpectations(t)
 	})
-
-	t.Run("OnNodeAdded failed with API.GetPeerInfo", func(t *testing.T) {
-
-		peerId := peer.PeerId(uuid.New())
-		efs := setup()
-
-		repo := new(mockedRepo.MockPeerRepository)
-		efs.PeerService.PeerRepo = repo
-		var peerRow models.Peer
-		peerRow.RemoteHash = []byte{1, 2, 3, 4, 5, 6, 7}
-		peerRow.Enabled = true
-		repo.On("FindOne", peerId.String()).Once().Return(peerRow, nil)
-
-		api := new(mockedPeer.MockAPI)
-		efs.PeerService.API = api
-		var peerInfo models.PeerInfo
-		api.On("GetPeerInfo", peerId).Once().Return(peerInfo, errors.New("Test Error"))
-
-		efs.OnNodeAdded(peerId)
-
-		repo.AssertExpectations(t)
-		api.AssertExpectations(t)
-	})
-
-	t.Run("OnNodeAdded ingore with same RemoteHash", func(t *testing.T) {
-
-		peerId := peer.PeerId(uuid.New())
-		efs := setup()
-
-		repo := new(mockedRepo.MockPeerRepository)
-		efs.PeerService.PeerRepo = repo
-		var peerRow models.Peer
-		peerRow.RemoteHash = []byte{1, 2, 3, 4, 5, 6, 7}
-		peerRow.Enabled = true
-		repo.On("FindOne", peerId.String()).Once().Return(peerRow, nil)
-
-		api := new(mockedPeer.MockAPI)
-		efs.PeerService.API = api
-		var peerInfo models.PeerInfo
-		peerInfo.Hash = peerRow.RemoteHash
-		api.On("GetPeerInfo", peerId).Once().Return(peerInfo, nil)
-
-		efs.OnNodeAdded(peerId)
-
-		repo.AssertExpectations(t)
-		api.AssertExpectations(t)
-	})
-
-	t.Run("OnNodeAdded failed with Repo.Save", func(t *testing.T) {
-
-		peerId := peer.PeerId(uuid.New())
-		efs := setup()
-
-		repo := new(mockedRepo.MockPeerRepository)
-		efs.PeerService.PeerRepo = repo
-		var peerRow models.Peer
-		peerRow.RemoteHash = []byte{1, 2, 3, 4, 5, 6, 7}
-		peerRow.Enabled = true
-		repo.On("FindOne", peerId.String()).Once().Return(peerRow, nil)
-
-		api := new(mockedPeer.MockAPI)
-		efs.PeerService.API = api
-		var peerInfo models.PeerInfo
-		peerInfo.Hash = []byte{11, 12, 13, 14, 15, 16, 17}
-		peerInfo.Time = 123
-		api.On("GetPeerInfo", peerId).Once().Return(peerInfo, nil)
-
-		peerRow.ID = peerId.String()
-		peerRow.RemoteHash = peerInfo.Hash
-		peerRow.RemoteTime = peerInfo.Time
-		repo.On("Save", peerRow).Once().Return(errors.New("Test Error"))
-
-		efs.OnNodeAdded(peerId)
-
-		repo.AssertExpectations(t)
-		api.AssertExpectations(t)
-	})
-
 }

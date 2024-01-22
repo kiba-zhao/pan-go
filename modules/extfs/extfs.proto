@@ -3,13 +3,8 @@ package models;
 
 option go_package = "pan/modules/extfs/models";
 
-message PeerInfo{
+message RemoteStateInfo{
   bytes peerId = 1;
   bytes hash = 2;
   int64 time = 3;
 }
-
-message FileInfo{
-
-}
-
