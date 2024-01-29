@@ -1,10 +1,15 @@
 package extfs_test
 
 import (
+	"bytes"
+	"io/fs"
+	"os"
 	"pan/modules/extfs"
 	"pan/modules/extfs/models"
+	"pan/modules/extfs/repositories"
 	"pan/modules/extfs/services"
 	"pan/peer"
+	"path"
 	"testing"
 
 	mockedEvent "pan/mocks/pan/modules/extfs/events"
@@ -12,6 +17,8 @@ import (
 	mockedRepo "pan/mocks/pan/modules/extfs/repositories"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // TestExtFS ...
@@ -22,8 +29,151 @@ func TestExtFS(t *testing.T) {
 		efs := new(extfs.ExtFS)
 		efs.RemotePeerService = new(services.RemotePeerService)
 		efs.RemoteFilesStateService = new(services.RemoteFilesStateService)
+		efs.TargetService = new(services.TargetService)
+		efs.TargetService.FileInfoService = new(services.FileInfoService)
 		return efs
 	}
+
+	setupTempFS := func() string {
+		dir, err := os.MkdirTemp(os.TempDir(), "extfs-test")
+		if err != nil {
+			panic(err)
+		}
+		return dir
+	}
+
+	setupTempDir := func(dirPath string) ([]string, []fs.FileInfo, []byte) {
+
+		firstLevelDirPath, err := os.MkdirTemp(dirPath, "first-level")
+		if err != nil {
+			panic(err)
+		}
+
+		secondLevelDirPath, err := os.MkdirTemp(firstLevelDirPath, "second-level")
+		if err != nil {
+			panic(err)
+		}
+
+		fileName := "test.txt"
+		fileContent := []byte("ExtFS Test File Content!")
+		os.WriteFile(path.Join(dirPath, fileName), fileContent, 0644)
+		os.WriteFile(path.Join(firstLevelDirPath, fileName), fileContent, 0644)
+		os.WriteFile(path.Join(secondLevelDirPath, fileName), fileContent, 0644)
+
+		dirFS := os.DirFS(dirPath)
+		filePaths := make([]string, 0)
+		fileStats := make([]fs.FileInfo, 0)
+		fs.WalkDir(dirFS, ".", func(path string, d fs.DirEntry, err error) error {
+			if err == nil && d.IsDir() == false {
+				filePaths = append(filePaths, path)
+				stat, err := d.Info()
+				if err == nil {
+					fileStats = append(fileStats, stat)
+				}
+			}
+			return err
+		})
+
+		return filePaths, fileStats, fileContent
+	}
+
+	teardownTempFS := func(path string) {
+		os.RemoveAll(path)
+	}
+
+	t.Run("OnInit", func(t *testing.T) {
+		dirPath := setupTempFS()
+		defer teardownTempFS(dirPath)
+		filePaths, fileStats, fileContent := setupTempDir(dirPath)
+		dirStat, err := os.Stat(dirPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		dirSize := int64(0)
+		for _, stat := range fileStats {
+			dirSize += stat.Size()
+		}
+
+		efs := setup()
+		sig, err := efs.TargetService.FileInfoService.GenerateFileSignature(bytes.NewReader(fileContent))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		targetRepo := new(mockedRepo.MockTargetRepository)
+		defer targetRepo.AssertExpectations(t)
+		efs.TargetService.TargetRepo = targetRepo
+
+		var targetRow models.Target
+		targetRow.ID = uint(123)
+		targetRow.FilePath = dirPath
+		targetRow.Enabled = true
+		targetRepo.On("FindAllWithEnabled").Once().Return([]models.Target{targetRow}, nil)
+		sTargetRow := targetRow
+		sTargetRow.Name = dirStat.Name()
+		sTargetRow.ModifyTime = dirStat.ModTime()
+		sTargetRow.Total = uint(len(filePaths))
+		sTargetRow.Size = dirSize
+		targetRepo.On("Save", sTargetRow).Once().Return(nil)
+
+		fileInfoRepo := new(mockedRepo.MockFileInfoRepository)
+		defer fileInfoRepo.AssertExpectations(t)
+		efs.TargetService.FileInfoService.FileInfoRepo = fileInfoRepo
+
+		fileInfoRepo.On("UpdateEachFileInfoByTargetID", targetRow.ID, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+			fileInfoIteration := args.Get(1).(repositories.FileInfoIteration)
+			var fileInfo models.FileInfo
+			fileInfo.RelativePath = filePaths[0]
+			err := fileInfoIteration(&fileInfo)
+
+			assert.Nil(t, err)
+			assert.Equal(t, fileStats[0].ModTime(), fileInfo.ModifyTime)
+			assert.Equal(t, fileStats[0].Size(), fileInfo.Size)
+			assert.Equal(t, sig, fileInfo.Hash)
+			assert.Equal(t, fileStats[0].Name(), fileInfo.Name)
+
+			var missFileInfo models.FileInfo
+			missFileInfo.RelativePath = filePaths[0] + "_miss"
+			err = fileInfoIteration(&missFileInfo)
+
+			assert.Equal(t, fs.ErrNotExist, err)
+
+		})
+
+		var firstFileInfo models.FileInfo
+		firstFileInfo.TargetID = targetRow.ID
+		firstFileInfo.RelativePath = filePaths[0]
+		fileInfoRepo.On("FindOrCreateByTargetIDAndRelativePath", targetRow.ID, firstFileInfo.RelativePath).Once().Return(firstFileInfo, nil)
+		sFirstFileInfo := firstFileInfo
+		sFirstFileInfo.Hash = sig
+		sFirstFileInfo.ModifyTime = fileStats[0].ModTime()
+		sFirstFileInfo.Size = fileStats[0].Size()
+		sFirstFileInfo.Name = fileStats[0].Name()
+		fileInfoRepo.On("Save", sFirstFileInfo).Once().Return(nil)
+		var secondFileInfo models.FileInfo
+		secondFileInfo.TargetID = targetRow.ID
+		secondFileInfo.RelativePath = filePaths[1]
+		fileInfoRepo.On("FindOrCreateByTargetIDAndRelativePath", targetRow.ID, secondFileInfo.RelativePath).Once().Return(secondFileInfo, nil)
+		sSecondFileInfo := secondFileInfo
+		sSecondFileInfo.Hash = sig
+		sSecondFileInfo.ModifyTime = fileStats[1].ModTime()
+		sSecondFileInfo.Size = fileStats[1].Size()
+		sSecondFileInfo.Name = fileStats[1].Name()
+		fileInfoRepo.On("Save", sSecondFileInfo).Once().Return(nil)
+		var thirdFileInfo models.FileInfo
+		thirdFileInfo.TargetID = targetRow.ID
+		thirdFileInfo.RelativePath = filePaths[2]
+		fileInfoRepo.On("FindOrCreateByTargetIDAndRelativePath", targetRow.ID, thirdFileInfo.RelativePath).Once().Return(thirdFileInfo, nil)
+		sThirdFileInfo := thirdFileInfo
+		sThirdFileInfo.Hash = sig
+		sThirdFileInfo.ModifyTime = fileStats[2].ModTime()
+		sThirdFileInfo.Size = fileStats[2].Size()
+		sThirdFileInfo.Name = fileStats[2].Name()
+		fileInfoRepo.On("Save", sThirdFileInfo).Once().Return(nil)
+
+		efs.OnInit()
+
+	})
 
 	t.Run("OnNodeAdded with enabled", func(t *testing.T) {
 

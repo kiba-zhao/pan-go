@@ -12,12 +12,12 @@ type PeerStatService struct {
 }
 
 // FindOne ...
-func (s *PeerStatService) FindOne(id string) (stat *models.PeerStat, err error) {
+func (s *PeerStatService) FindOne(id string) (stat models.PeerStat, err error) {
 	peerId, err := uuid.Parse(id)
 	if err != nil {
 		return
 	}
-	stat = new(models.PeerStat)
+
 	stat.ID = id
 	stat.Stat = s.Peer.Stat(peerId)
 

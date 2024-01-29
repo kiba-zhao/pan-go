@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"pan/modules/extfs/events"
+	"pan/modules/extfs/models"
 	extfs "pan/modules/extfs/peer"
 	"pan/modules/extfs/repositories"
 	"pan/peer"
@@ -14,10 +15,15 @@ type RemoteFilesStateService struct {
 	RemoteFilesStateEvent events.RemoteFilesStateEvent
 }
 
+func (s *RemoteFilesStateService) FindOne(peerId peer.PeerId) (state models.RemoteFilesState, err error) {
+	state, err = s.RemoteFilesStateRepo.FindOne(peerId.String())
+	return
+}
+
 // Sync ...
 func (s *RemoteFilesStateService) Sync(peerId peer.PeerId) (err error) {
 
-	stateRow, err := s.RemoteFilesStateRepo.FindOne(peerId.String())
+	stateRow, err := s.FindOne(peerId)
 	if err != nil {
 		return
 	}

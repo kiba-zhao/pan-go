@@ -8,6 +8,14 @@ import (
 type ExtFS struct {
 	RemotePeerService       *services.RemotePeerService
 	RemoteFilesStateService *services.RemoteFilesStateService
+	TargetService           *services.TargetService
+}
+
+func (extfs *ExtFS) OnInit() {
+	err := extfs.TargetService.Scan()
+	if err != nil {
+		// TODO: log error
+	}
 }
 
 // OnNodeAdded ...
