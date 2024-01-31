@@ -35,11 +35,17 @@ func (repo *fileInfoRepositoryImpl) FindOrCreateByTargetIDAndRelativePath(target
 
 func (repo *fileInfoRepositoryImpl) Save(fileInfo models.FileInfo) error {
 	results := repo.DB.Save(&fileInfo)
+	if results.Error == nil && results.RowsAffected != 1 {
+		return gorm.ErrRecordNotFound
+	}
 	return results.Error
 }
 
 func (repo *fileInfoRepositoryImpl) UpdateEachFileInfoByTargetID(targetID uint, iteration FileInfoIteration) error {
-	rows, err := repo.DB.Where("target_id = ? ", targetID).Rows()
+	var model models.FileInfo
+	model.TargetID = targetID
+	rows, err := repo.DB.Model(&model).Where(&model).Rows()
+
 	defer rows.Close()
 	if err != nil {
 		return err
@@ -54,7 +60,7 @@ func (repo *fileInfoRepositoryImpl) UpdateEachFileInfoByTargetID(targetID uint, 
 		}
 
 		modifyTime := fileInfo.ModifyTime
-		err := iteration(&fileInfo)
+		err = iteration(&fileInfo)
 		if err == fs.ErrNotExist {
 			err = repo.DB.Delete(&fileInfo).Error
 			continue

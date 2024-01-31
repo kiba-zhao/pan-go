@@ -23,7 +23,7 @@ func NewTargetRepository(db *gorm.DB) TargetRepository {
 
 func (repo *targetRepositoryImpl) FindAllWithEnabled() (targets []models.Target, err error) {
 
-	results := repo.DB.Where("enabled = ?", true).Find(&targets)
+	results := repo.DB.Find(&targets, models.Target{Enabled: true})
 	return targets, results.Error
 }
 

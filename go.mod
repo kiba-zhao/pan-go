@@ -85,6 +85,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/sqlite v1.5.4 // indirect
 	gorm.io/gorm v1.25.5 // indirect
+	gorm.io/plugin/optimisticlock v1.1.1 // indirect
 )
 
 replace google.golang.org/protobuf v1.31.0 => github.com/protocolbuffers/protobuf-go v1.31.0

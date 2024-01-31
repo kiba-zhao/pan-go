@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -45,9 +44,8 @@ func TestTagRepository(t *testing.T) {
 
 		id := uint(1)
 		name := "tag name"
-		owner := uuid.New().String()
 
-		mock.ExpectQuery("SELECT (.+) FROM `tags` WHERE `tags`.`deleted_at` IS NULL").WithArgs().WillReturnRows(sqlmock.NewRows([]string{"id", "name", "owner"}).AddRow(id, name, owner))
+		mock.ExpectQuery("SELECT (.+) FROM `tags` WHERE `tags`.`deleted_at` IS NULL").WithArgs().WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(id, name))
 
 		tags, err := repo.Find(nil)
 		if err != nil {
@@ -57,7 +55,6 @@ func TestTagRepository(t *testing.T) {
 		assert.Len(t, tags, 1)
 		assert.Equal(t, id, tags[0].ID)
 		assert.Equal(t, name, tags[0].Name)
-		assert.Equal(t, owner, tags[0].Owner)
 	})
 
 	t.Run("Find with condition", func(t *testing.T) {
@@ -66,14 +63,13 @@ func TestTagRepository(t *testing.T) {
 
 		id := uint(1)
 		name := "tag name"
-		owner := uuid.New().String()
 		limit := 101
 		offset := 1
 
 		sql := fmt.Sprintf("SELECT (.+) FROM `tags` WHERE (.+) LIMIT %d OFFSET %d", limit, offset)
-		mock.ExpectQuery(sql).WithArgs(owner, name+"%").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "owner"}).AddRow(id, name, owner))
+		mock.ExpectQuery(sql).WithArgs(name + "%").WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(id, name))
 
-		tags, err := repo.Find(&models.TagFindCondition{Name: name, Owner: owner, Limit: limit, Offset: offset})
+		tags, err := repo.Find(&models.TagFindCondition{Name: name, Limit: limit, Offset: offset})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -81,6 +77,5 @@ func TestTagRepository(t *testing.T) {
 		assert.Len(t, tags, 1)
 		assert.Equal(t, id, tags[0].ID)
 		assert.Equal(t, name, tags[0].Name)
-		assert.Equal(t, owner, tags[0].Owner)
 	})
 }
