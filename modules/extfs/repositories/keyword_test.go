@@ -14,10 +14,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// TestTagRepository ...
-func TestTagRepository(t *testing.T) {
+// TestKeywordRepository ...
+func TestKeywordRepository(t *testing.T) {
 
-	setup := func() (repo repositories.TagRepository, mockDB *sql.DB, mock sqlmock.Sqlmock) {
+	setup := func() (repo repositories.KeywordRepository, mockDB *sql.DB, mock sqlmock.Sqlmock) {
 		mockDB, mock, err := sqlmock.New()
 		if err != nil {
 			t.Fatal(err)
@@ -30,7 +30,7 @@ func TestTagRepository(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		repo = repositories.NewTagRepository(db)
+		repo = repositories.NewKeywordRepository(db)
 		return
 	}
 
@@ -43,18 +43,18 @@ func TestTagRepository(t *testing.T) {
 		defer teardown(mockDB)
 
 		id := uint(1)
-		name := "tag name"
+		name := "keyword name"
 
-		mock.ExpectQuery("SELECT (.+) FROM `tags` WHERE `tags`.`deleted_at` IS NULL").WithArgs().WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(id, name))
+		mock.ExpectQuery("SELECT (.+) FROM `keywords` WHERE `keywords`.`deleted_at` IS NULL").WithArgs().WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(id, name))
 
-		tags, err := repo.Find(nil)
+		keywords, err := repo.Find(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		assert.Len(t, tags, 1)
-		assert.Equal(t, id, tags[0].ID)
-		assert.Equal(t, name, tags[0].Name)
+		assert.Len(t, keywords, 1)
+		assert.Equal(t, id, keywords[0].ID)
+		assert.Equal(t, name, keywords[0].Name)
 	})
 
 	t.Run("Find with condition", func(t *testing.T) {
@@ -62,20 +62,20 @@ func TestTagRepository(t *testing.T) {
 		defer teardown(mockDB)
 
 		id := uint(1)
-		name := "tag name"
+		name := "keyword name"
 		limit := 101
 		offset := 1
 
-		sql := fmt.Sprintf("SELECT (.+) FROM `tags` WHERE (.+) LIMIT %d OFFSET %d", limit, offset)
+		sql := fmt.Sprintf("SELECT (.+) FROM `keywords` WHERE (.+) LIMIT %d OFFSET %d", limit, offset)
 		mock.ExpectQuery(sql).WithArgs(name + "%").WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(id, name))
 
-		tags, err := repo.Find(&models.TagFindCondition{Name: name, Limit: limit, Offset: offset})
+		keywords, err := repo.Find(&models.KeywordFindCondition{Keyword: name, Limit: limit, Offset: offset})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		assert.Len(t, tags, 1)
-		assert.Equal(t, id, tags[0].ID)
-		assert.Equal(t, name, tags[0].Name)
+		assert.Len(t, keywords, 1)
+		assert.Equal(t, id, keywords[0].ID)
+		assert.Equal(t, name, keywords[0].Name)
 	})
 }

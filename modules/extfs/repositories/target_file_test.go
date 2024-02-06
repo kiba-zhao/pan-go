@@ -14,9 +14,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestFileInfoRepository(t *testing.T) {
+func TestTargetFileRepository(t *testing.T) {
 
-	setup := func() (repo repositories.FileInfoRepository, mockDB *sql.DB, mock sqlmock.Sqlmock) {
+	setup := func() (repo repositories.TargetFileRepository, mockDB *sql.DB, mock sqlmock.Sqlmock) {
 		mockDB, mock, err := sqlmock.New()
 		if err != nil {
 			t.Fatal(err)
@@ -29,7 +29,7 @@ func TestFileInfoRepository(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		repo = repositories.NewFileInfoRepository(db)
+		repo = repositories.NewTargetFileRepository(db)
 		return
 	}
 
@@ -41,7 +41,7 @@ func TestFileInfoRepository(t *testing.T) {
 		repo, mockDB, mock := setup()
 		defer teardown(mockDB)
 
-		var fileInfoRow models.FileInfo
+		var fileInfoRow models.TargetFile
 		fileInfoRow.ID = 1
 		fileInfoRow.TargetID = 1
 		fileInfoRow.RelativePath = "path"
@@ -50,7 +50,7 @@ func TestFileInfoRepository(t *testing.T) {
 		fileInfoRow.Name = "name"
 		fileInfoRow.Size = 100
 
-		mock.ExpectQuery("SELECT  (.+) FROM `file_infos` WHERE `file_infos`.`target_id` = \\? AND `file_infos`.`relative_path` = \\? AND `file_infos`.`deleted_at` IS NULL ORDER BY `file_infos`.`id` LIMIT 1").WithArgs(fileInfoRow.TargetID, fileInfoRow.RelativePath).WillReturnRows(sqlmock.NewRows([]string{"id", "target_id", "relative_path", "hash", "modify_time", "name", "size"}).AddRow(fileInfoRow.ID, fileInfoRow.TargetID, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ModifyTime, fileInfoRow.Name, fileInfoRow.Size))
+		mock.ExpectQuery("SELECT  (.+) FROM `target_files` WHERE `target_files`.`target_id` = \\? AND `target_files`.`relative_path` = \\? AND `target_files`.`deleted_at` IS NULL ORDER BY `target_files`.`id` LIMIT 1").WithArgs(fileInfoRow.TargetID, fileInfoRow.RelativePath).WillReturnRows(sqlmock.NewRows([]string{"id", "target_id", "relative_path", "hash", "modify_time", "name", "size"}).AddRow(fileInfoRow.ID, fileInfoRow.TargetID, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ModifyTime, fileInfoRow.Name, fileInfoRow.Size))
 
 		row, err := repo.FindOrCreateByTargetIDAndRelativePath(fileInfoRow.TargetID, fileInfoRow.RelativePath)
 
@@ -69,7 +69,7 @@ func TestFileInfoRepository(t *testing.T) {
 		repo, mockDB, mock := setup()
 		defer teardown(mockDB)
 
-		var fileInfoRow models.FileInfo
+		var fileInfoRow models.TargetFile
 		fileInfoRow.TargetID = 1
 		fileInfoRow.RelativePath = "path"
 		fileInfoRow.Hash = []byte("hash")
@@ -77,13 +77,13 @@ func TestFileInfoRepository(t *testing.T) {
 		fileInfoRow.Name = "name"
 		fileInfoRow.Size = 100
 
-		mock.ExpectExec("INSERT INTO `file_infos`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), fileInfoRow.TargetID, fileInfoRow.Name, fileInfoRow.Size, fileInfoRow.ModifyTime, fileInfoRow.RelativePath, fileInfoRow.Hash).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("INSERT INTO `target_files`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), fileInfoRow.TargetID, fileInfoRow.Name, fileInfoRow.Size, fileInfoRow.ModifyTime, fileInfoRow.RelativePath, fileInfoRow.Hash).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		err := repo.Save(fileInfoRow)
 		assert.Nil(t, err)
 
 		fileInfoRow.ID = 1
-		mock.ExpectExec("UPDATE `file_infos` SET (.+) WHERE `file_infos`.`deleted_at` IS NULL AND `id` = \\?").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), fileInfoRow.TargetID, fileInfoRow.Name, fileInfoRow.Size, fileInfoRow.ModifyTime, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("UPDATE `target_files` SET (.+) WHERE `target_files`.`deleted_at` IS NULL AND `id` = \\?").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), fileInfoRow.TargetID, fileInfoRow.Name, fileInfoRow.Size, fileInfoRow.ModifyTime, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ID).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		err = repo.Save(fileInfoRow)
 		assert.Nil(t, err)
@@ -93,7 +93,7 @@ func TestFileInfoRepository(t *testing.T) {
 		repo, mockDB, mock := setup()
 		defer teardown(mockDB)
 
-		var fileInfoRow models.FileInfo
+		var fileInfoRow models.TargetFile
 		fileInfoRow.ID = 1
 		fileInfoRow.TargetID = 1
 		fileInfoRow.RelativePath = "path"
@@ -103,10 +103,10 @@ func TestFileInfoRepository(t *testing.T) {
 		fileInfoRow.Size = 100
 		modifyTime := time.Now()
 
-		mock.ExpectQuery("SELECT  (.+) FROM `file_infos` WHERE `file_infos`.`target_id` = \\? AND `file_infos`.`deleted_at` IS NULL").WithArgs(fileInfoRow.TargetID).WillReturnRows(sqlmock.NewRows([]string{"id", "target_id", "relative_path", "hash", "modify_time", "name", "size"}).AddRow(fileInfoRow.ID, fileInfoRow.TargetID, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ModifyTime, fileInfoRow.Name, fileInfoRow.Size))
-		mock.ExpectExec("UPDATE `file_infos` SET (.+) WHERE `file_infos`.`deleted_at` IS NULL AND `id` = \\?").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), fileInfoRow.TargetID, fileInfoRow.Name, fileInfoRow.Size, modifyTime, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectQuery("SELECT  (.+) FROM `target_files` WHERE `target_files`.`target_id` = \\? AND `target_files`.`deleted_at` IS NULL").WithArgs(fileInfoRow.TargetID).WillReturnRows(sqlmock.NewRows([]string{"id", "target_id", "relative_path", "hash", "modify_time", "name", "size"}).AddRow(fileInfoRow.ID, fileInfoRow.TargetID, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ModifyTime, fileInfoRow.Name, fileInfoRow.Size))
+		mock.ExpectExec("UPDATE `target_files` SET (.+) WHERE `target_files`.`deleted_at` IS NULL AND `id` = \\?").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), fileInfoRow.TargetID, fileInfoRow.Name, fileInfoRow.Size, modifyTime, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ID).WillReturnResult(sqlmock.NewResult(1, 1))
 
-		err := repo.UpdateEachFileInfoByTargetID(fileInfoRow.TargetID, func(fileInfo *models.FileInfo) error {
+		err := repo.UpdateEachFileInfoByTargetID(fileInfoRow.TargetID, func(fileInfo *models.TargetFile) error {
 			assert.Equal(t, fileInfoRow.ID, fileInfo.ID)
 			assert.Equal(t, fileInfoRow.TargetID, fileInfo.TargetID)
 			assert.Equal(t, fileInfoRow.RelativePath, fileInfo.RelativePath)
@@ -119,10 +119,10 @@ func TestFileInfoRepository(t *testing.T) {
 		})
 		assert.Nil(t, err)
 
-		mock.ExpectQuery("SELECT  (.+) FROM `file_infos` WHERE `file_infos`.`target_id` = \\? AND `file_infos`.`deleted_at` IS NULL").WithArgs(fileInfoRow.TargetID).WillReturnRows(sqlmock.NewRows([]string{"id", "target_id", "relative_path", "hash", "modify_time", "name", "size"}).AddRow(fileInfoRow.ID, fileInfoRow.TargetID, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ModifyTime, fileInfoRow.Name, fileInfoRow.Size))
-		mock.ExpectExec("UPDATE `file_infos` SET `deleted_at`=\\? WHERE `file_infos`.`id` = \\? AND `file_infos`.`deleted_at` IS NULL").WithArgs(sqlmock.AnyArg(), fileInfoRow.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectQuery("SELECT  (.+) FROM `target_files` WHERE `target_files`.`target_id` = \\? AND `target_files`.`deleted_at` IS NULL").WithArgs(fileInfoRow.TargetID).WillReturnRows(sqlmock.NewRows([]string{"id", "target_id", "relative_path", "hash", "modify_time", "name", "size"}).AddRow(fileInfoRow.ID, fileInfoRow.TargetID, fileInfoRow.RelativePath, fileInfoRow.Hash, fileInfoRow.ModifyTime, fileInfoRow.Name, fileInfoRow.Size))
+		mock.ExpectExec("UPDATE `target_files` SET `deleted_at`=\\? WHERE `target_files`.`id` = \\? AND `target_files`.`deleted_at` IS NULL").WithArgs(sqlmock.AnyArg(), fileInfoRow.ID).WillReturnResult(sqlmock.NewResult(1, 1))
 
-		err = repo.UpdateEachFileInfoByTargetID(fileInfoRow.TargetID, func(fileInfo *models.FileInfo) error {
+		err = repo.UpdateEachFileInfoByTargetID(fileInfoRow.TargetID, func(fileInfo *models.TargetFile) error {
 			assert.Equal(t, fileInfoRow.ID, fileInfo.ID)
 			assert.Equal(t, fileInfoRow.TargetID, fileInfo.TargetID)
 			assert.Equal(t, fileInfoRow.RelativePath, fileInfo.RelativePath)

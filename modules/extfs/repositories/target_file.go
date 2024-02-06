@@ -7,33 +7,33 @@ import (
 	"gorm.io/gorm"
 )
 
-type FileInfoIteration = func(fileInfo *models.FileInfo) error
-type FileInfoRepository interface {
-	FindOrCreateByTargetIDAndRelativePath(targetID uint, relativePath string) (models.FileInfo, error)
-	Save(fileInfo models.FileInfo) error
+type FileInfoIteration = func(fileInfo *models.TargetFile) error
+type TargetFileRepository interface {
+	FindOrCreateByTargetIDAndRelativePath(targetID uint, relativePath string) (models.TargetFile, error)
+	Save(fileInfo models.TargetFile) error
 	UpdateEachFileInfoByTargetID(targetID uint, iteration FileInfoIteration) error
 }
 
-type fileInfoRepositoryImpl struct {
+type TargetFileRepositoryImpl struct {
 	DB *gorm.DB
 }
 
-func NewFileInfoRepository(db *gorm.DB) FileInfoRepository {
-	repo := new(fileInfoRepositoryImpl)
+func NewTargetFileRepository(db *gorm.DB) TargetFileRepository {
+	repo := new(TargetFileRepositoryImpl)
 	repo.DB = db
 	return repo
 }
 
-func (repo *fileInfoRepositoryImpl) FindOrCreateByTargetIDAndRelativePath(targetID uint, relativePath string) (models.FileInfo, error) {
+func (repo *TargetFileRepositoryImpl) FindOrCreateByTargetIDAndRelativePath(targetID uint, relativePath string) (models.TargetFile, error) {
 
-	var model models.FileInfo
+	var model models.TargetFile
 	model.TargetID = targetID
 	model.RelativePath = relativePath
 	results := repo.DB.FirstOrCreate(&model, model)
 	return model, results.Error
 }
 
-func (repo *fileInfoRepositoryImpl) Save(fileInfo models.FileInfo) error {
+func (repo *TargetFileRepositoryImpl) Save(fileInfo models.TargetFile) error {
 	results := repo.DB.Save(&fileInfo)
 	if results.Error == nil && results.RowsAffected != 1 {
 		return gorm.ErrRecordNotFound
@@ -41,8 +41,8 @@ func (repo *fileInfoRepositoryImpl) Save(fileInfo models.FileInfo) error {
 	return results.Error
 }
 
-func (repo *fileInfoRepositoryImpl) UpdateEachFileInfoByTargetID(targetID uint, iteration FileInfoIteration) error {
-	var model models.FileInfo
+func (repo *TargetFileRepositoryImpl) UpdateEachFileInfoByTargetID(targetID uint, iteration FileInfoIteration) error {
+	var model models.TargetFile
 	model.TargetID = targetID
 	rows, err := repo.DB.Model(&model).Where(&model).Rows()
 
@@ -53,7 +53,7 @@ func (repo *fileInfoRepositoryImpl) UpdateEachFileInfoByTargetID(targetID uint, 
 
 	for rows.Next() {
 
-		var fileInfo models.FileInfo
+		var fileInfo models.TargetFile
 		err = repo.DB.ScanRows(rows, &fileInfo)
 		if err != nil {
 			break

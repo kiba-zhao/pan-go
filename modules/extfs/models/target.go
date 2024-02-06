@@ -15,3 +15,8 @@ type Target struct {
 	Enabled    bool `gorm:"index"`
 	Total      uint
 }
+
+type TargetSearchCondition struct {
+	SearchCondition
+	Keyword string `form:"keyword" binding:"omitempty"`
+}

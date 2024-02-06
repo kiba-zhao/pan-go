@@ -8,8 +8,8 @@ import (
 )
 
 type TargetService struct {
-	FileInfoService *FileInfoService
-	TargetRepo      repositories.TargetRepository
+	TargetFileService *TargetFileService
+	TargetRepo        repositories.TargetRepository
 }
 
 func (s *TargetService) Scan() error {
@@ -20,7 +20,7 @@ func (s *TargetService) Scan() error {
 
 	errs := make([]error, 0)
 	for _, target := range targets {
-		upgradeErr := s.FileInfoService.UpgradeFileInfoForTarget(target)
+		upgradeErr := s.TargetFileService.UpgradeFileInfoForTarget(target)
 		if upgradeErr != nil {
 			errs = append(errs, upgradeErr)
 		}
@@ -51,7 +51,7 @@ func (s *TargetService) ScanTarget(target models.Target) error {
 	target.ModifyTime = stat.ModTime()
 
 	if stat.IsDir() {
-		fileInfoTotal, err := s.FileInfoService.ScanFileInfosForDirectory(target)
+		fileInfoTotal, err := s.TargetFileService.ScanFileInfosForDirectory(target)
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func (s *TargetService) ScanTarget(target models.Target) error {
 	} else {
 		target.Size = stat.Size()
 		target.Total = 1
-		err := s.FileInfoService.ScanFileInfoForTarget(target)
+		err := s.TargetFileService.ScanFileInfoForTarget(target)
 		if err != nil {
 			return err
 		}

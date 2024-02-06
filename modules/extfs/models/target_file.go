@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type FileInfo struct {
+type TargetFile struct {
 	gorm.Model
 	TargetID     uint
 	Name         string `gorm:"size:255"`
@@ -16,7 +16,7 @@ type FileInfo struct {
 	Hash         []byte `gorm:"size:64"`
 }
 
-type FileInfoTotal struct {
+type TargetFilesTotal struct {
 	Size  int64
 	Total uint
 }

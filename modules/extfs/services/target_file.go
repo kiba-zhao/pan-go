@@ -12,14 +12,14 @@ import (
 
 const CHUNK_SIZE = 64 * 1024
 
-type FileInfoService struct {
-	FileInfoRepo repositories.FileInfoRepository
+type TargetFileService struct {
+	TargetFileRepo repositories.TargetFileRepository
 }
 
-func (s *FileInfoService) UpgradeFileInfoForTarget(target models.Target) error {
+func (s *TargetFileService) UpgradeFileInfoForTarget(target models.Target) error {
 
 	dirFS := os.DirFS(target.FilePath)
-	return s.FileInfoRepo.UpdateEachFileInfoByTargetID(target.ID, func(fileInfo *models.FileInfo) (err error) {
+	return s.TargetFileRepo.UpdateEachFileInfoByTargetID(target.ID, func(fileInfo *models.TargetFile) (err error) {
 
 		file, err := dirFS.Open(fileInfo.RelativePath)
 		if err != nil {
@@ -48,8 +48,8 @@ func (s *FileInfoService) UpgradeFileInfoForTarget(target models.Target) error {
 	})
 }
 
-func (s *FileInfoService) ScanFileInfoForTarget(target models.Target) error {
-	fileInfo, err := s.FileInfoRepo.FindOrCreateByTargetIDAndRelativePath(target.ID, target.FilePath)
+func (s *TargetFileService) ScanFileInfoForTarget(target models.Target) error {
+	fileInfo, err := s.TargetFileRepo.FindOrCreateByTargetIDAndRelativePath(target.ID, target.FilePath)
 	if err != nil || fileInfo.ModifyTime == target.ModifyTime {
 		return err
 	}
@@ -72,14 +72,14 @@ func (s *FileInfoService) ScanFileInfoForTarget(target models.Target) error {
 		fileInfo.Hash = sig
 	}
 
-	err = s.FileInfoRepo.Save(fileInfo)
+	err = s.TargetFileRepo.Save(fileInfo)
 
 	return err
 }
 
-func (s *FileInfoService) ScanFileInfosForDirectory(target models.Target) (models.FileInfoTotal, error) {
+func (s *TargetFileService) ScanFileInfosForDirectory(target models.Target) (models.TargetFilesTotal, error) {
 	dirFS := os.DirFS(target.FilePath)
-	var fileInfoTotal models.FileInfoTotal
+	var fileInfosTotal models.TargetFilesTotal
 
 	err := fs.WalkDir(dirFS, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -90,7 +90,7 @@ func (s *FileInfoService) ScanFileInfosForDirectory(target models.Target) (model
 			return err
 		}
 
-		fileInfo, err := s.FileInfoRepo.FindOrCreateByTargetIDAndRelativePath(target.ID, path)
+		fileInfo, err := s.TargetFileRepo.FindOrCreateByTargetIDAndRelativePath(target.ID, path)
 		if err != nil || stat.ModTime() == fileInfo.ModifyTime {
 			return err
 		}
@@ -113,20 +113,20 @@ func (s *FileInfoService) ScanFileInfosForDirectory(target models.Target) (model
 			fileInfo.Hash = sig
 		}
 
-		err = s.FileInfoRepo.Save(fileInfo)
+		err = s.TargetFileRepo.Save(fileInfo)
 
 		if err == nil {
-			fileInfoTotal.Size += fileInfo.Size
-			fileInfoTotal.Total++
+			fileInfosTotal.Size += fileInfo.Size
+			fileInfosTotal.Total++
 		}
 
 		return err
 	})
 
-	return fileInfoTotal, err
+	return fileInfosTotal, err
 }
 
-func (s *FileInfoService) GenerateFileSignature(reader io.Reader) ([]byte, error) {
+func (s *TargetFileService) GenerateFileSignature(reader io.Reader) ([]byte, error) {
 
 	hash := sha512.New()
 	var err error
@@ -143,7 +143,7 @@ func (s *FileInfoService) GenerateFileSignature(reader io.Reader) ([]byte, error
 	return hash.Sum(nil), err
 }
 
-func (s *FileInfoService) EqualFileInfo(fileInfo models.FileInfo, name string, size int64, hash []byte) bool {
+func (s *TargetFileService) EqualFileInfo(fileInfo models.TargetFile, name string, size int64, hash []byte) bool {
 	if fileInfo.Name != name {
 		return false
 	}

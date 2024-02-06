@@ -30,7 +30,7 @@ func TestExtFS(t *testing.T) {
 		efs.RemotePeerService = new(services.RemotePeerService)
 		efs.RemoteFilesStateService = new(services.RemoteFilesStateService)
 		efs.TargetService = new(services.TargetService)
-		efs.TargetService.FileInfoService = new(services.FileInfoService)
+		efs.TargetService.TargetFileService = new(services.TargetFileService)
 		return efs
 	}
 
@@ -95,7 +95,7 @@ func TestExtFS(t *testing.T) {
 		}
 
 		efs := setup()
-		sig, err := efs.TargetService.FileInfoService.GenerateFileSignature(bytes.NewReader(fileContent))
+		sig, err := efs.TargetService.TargetFileService.GenerateFileSignature(bytes.NewReader(fileContent))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,13 +116,13 @@ func TestExtFS(t *testing.T) {
 		sTargetRow.Size = dirSize
 		targetRepo.On("Save", sTargetRow).Once().Return(nil)
 
-		fileInfoRepo := new(mockedRepo.MockFileInfoRepository)
-		defer fileInfoRepo.AssertExpectations(t)
-		efs.TargetService.FileInfoService.FileInfoRepo = fileInfoRepo
+		TargetFileRepo := new(mockedRepo.MockTargetFileRepository)
+		defer TargetFileRepo.AssertExpectations(t)
+		efs.TargetService.TargetFileService.TargetFileRepo = TargetFileRepo
 
-		fileInfoRepo.On("UpdateEachFileInfoByTargetID", targetRow.ID, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+		TargetFileRepo.On("UpdateEachFileInfoByTargetID", targetRow.ID, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
 			fileInfoIteration := args.Get(1).(repositories.FileInfoIteration)
-			var fileInfo models.FileInfo
+			var fileInfo models.TargetFile
 			fileInfo.RelativePath = filePaths[0]
 			err := fileInfoIteration(&fileInfo)
 
@@ -132,7 +132,7 @@ func TestExtFS(t *testing.T) {
 			assert.Equal(t, sig, fileInfo.Hash)
 			assert.Equal(t, fileStats[0].Name(), fileInfo.Name)
 
-			var missFileInfo models.FileInfo
+			var missFileInfo models.TargetFile
 			missFileInfo.RelativePath = filePaths[0] + "_miss"
 			err = fileInfoIteration(&missFileInfo)
 
@@ -140,36 +140,36 @@ func TestExtFS(t *testing.T) {
 
 		})
 
-		var firstFileInfo models.FileInfo
+		var firstFileInfo models.TargetFile
 		firstFileInfo.TargetID = targetRow.ID
 		firstFileInfo.RelativePath = filePaths[0]
-		fileInfoRepo.On("FindOrCreateByTargetIDAndRelativePath", targetRow.ID, firstFileInfo.RelativePath).Once().Return(firstFileInfo, nil)
+		TargetFileRepo.On("FindOrCreateByTargetIDAndRelativePath", targetRow.ID, firstFileInfo.RelativePath).Once().Return(firstFileInfo, nil)
 		sFirstFileInfo := firstFileInfo
 		sFirstFileInfo.Hash = sig
 		sFirstFileInfo.ModifyTime = fileStats[0].ModTime()
 		sFirstFileInfo.Size = fileStats[0].Size()
 		sFirstFileInfo.Name = fileStats[0].Name()
-		fileInfoRepo.On("Save", sFirstFileInfo).Once().Return(nil)
-		var secondFileInfo models.FileInfo
+		TargetFileRepo.On("Save", sFirstFileInfo).Once().Return(nil)
+		var secondFileInfo models.TargetFile
 		secondFileInfo.TargetID = targetRow.ID
 		secondFileInfo.RelativePath = filePaths[1]
-		fileInfoRepo.On("FindOrCreateByTargetIDAndRelativePath", targetRow.ID, secondFileInfo.RelativePath).Once().Return(secondFileInfo, nil)
+		TargetFileRepo.On("FindOrCreateByTargetIDAndRelativePath", targetRow.ID, secondFileInfo.RelativePath).Once().Return(secondFileInfo, nil)
 		sSecondFileInfo := secondFileInfo
 		sSecondFileInfo.Hash = sig
 		sSecondFileInfo.ModifyTime = fileStats[1].ModTime()
 		sSecondFileInfo.Size = fileStats[1].Size()
 		sSecondFileInfo.Name = fileStats[1].Name()
-		fileInfoRepo.On("Save", sSecondFileInfo).Once().Return(nil)
-		var thirdFileInfo models.FileInfo
+		TargetFileRepo.On("Save", sSecondFileInfo).Once().Return(nil)
+		var thirdFileInfo models.TargetFile
 		thirdFileInfo.TargetID = targetRow.ID
 		thirdFileInfo.RelativePath = filePaths[2]
-		fileInfoRepo.On("FindOrCreateByTargetIDAndRelativePath", targetRow.ID, thirdFileInfo.RelativePath).Once().Return(thirdFileInfo, nil)
+		TargetFileRepo.On("FindOrCreateByTargetIDAndRelativePath", targetRow.ID, thirdFileInfo.RelativePath).Once().Return(thirdFileInfo, nil)
 		sThirdFileInfo := thirdFileInfo
 		sThirdFileInfo.Hash = sig
 		sThirdFileInfo.ModifyTime = fileStats[2].ModTime()
 		sThirdFileInfo.Size = fileStats[2].Size()
 		sThirdFileInfo.Name = fileStats[2].Name()
-		fileInfoRepo.On("Save", sThirdFileInfo).Once().Return(nil)
+		TargetFileRepo.On("Save", sThirdFileInfo).Once().Return(nil)
 
 		efs.OnInit()
 
