@@ -1,5 +1,0 @@
-syntax = "proto3";
-package peer;
-
-option go_package = "pan/peer";
-

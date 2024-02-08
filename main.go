@@ -1,13 +1,12 @@
 package main
 
-import "pan/desktop"
+import "pan/app"
 
-func init() {
-	println("Hello, Init!")
-}
 func main() {
-	println("Hello, World!")
-	dt := desktop.New()
-	defer dt.Destroy()
-	dt.Show()
+	a := app.New()
+	err := a.Init()
+	if err != nil {
+		panic(err)
+	}
+	a.Run()
 }

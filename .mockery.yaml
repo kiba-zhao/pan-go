@@ -1,33 +1,6 @@
 with-expecter: true
 packages:
-  pan/memory:
-    interfaces:
-      HashCode:
-      MessageQueue:
-  pan/core:
-    interfaces:
-      Context:
-      Handler:
-      App:
-  pan/broadcast:
-    interfaces:
-      Net:
-      ServiceSettings:
-      Context:
-  pan/peer:
-    interfaces:
-      Context:
-      NodeServe:
-      Node:
-      NodeStream:
-      NodeDialer:
-      NodeHandshake:
-      Peer:
-      PeerIdGenerator:
-      Provider:
-      Settings:
-      PeerEvent:
-  pan/modules/extfs:
+  pan/app:
     config:
       all: true
       recursive: true
