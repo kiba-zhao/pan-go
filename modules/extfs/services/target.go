@@ -70,3 +70,15 @@ func (s *TargetService) ScanTarget(target models.Target) error {
 	err = s.TargetRepo.Save(target)
 	return err
 }
+
+func (s *TargetService) Search(condition *models.TargetSearchCondition) (result models.TargetSearchResult, err error) {
+
+	total, targets, err := s.TargetRepo.Search(condition)
+	if err != nil {
+		return
+	}
+
+	result.Total = total
+	result.Items = targets
+	return
+}

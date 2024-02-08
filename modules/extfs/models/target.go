@@ -20,3 +20,5 @@ type TargetSearchCondition struct {
 	SearchCondition
 	Keyword string `form:"keyword" binding:"omitempty"`
 }
+
+type TargetSearchResult = SearchResult[Target]

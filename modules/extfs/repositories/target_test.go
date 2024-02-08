@@ -2,6 +2,7 @@ package repositories_test
 
 import (
 	"database/sql"
+	"fmt"
 	"pan/modules/extfs/models"
 	"pan/modules/extfs/repositories"
 	"testing"
@@ -51,7 +52,7 @@ func TestTarget(t *testing.T) {
 		targetRow.CreatedAt = time.Now()
 		targetRow.UpdatedAt = time.Now()
 
-		mock.ExpectQuery("SELECT  (.+) FROM `targets` WHERE `targets`.`enabled` = \\? AND `targets`.`deleted_at` IS NULL ").WithArgs(true).WillReturnRows(sqlmock.NewRows([]string{"id", "enabled", "name", "file_path", "size", "total", "modify_time", "created_at", "updated_at"}).
+		mock.ExpectQuery("SELECT  (.+) FROM `targets` WHERE `targets`.`enabled` = \\? AND `targets`.`deleted_at` IS NULL").WithArgs(true).WillReturnRows(sqlmock.NewRows([]string{"id", "enabled", "name", "file_path", "size", "total", "modify_time", "created_at", "updated_at"}).
 			AddRow(targetRow.ID, targetRow.Enabled, targetRow.Name, targetRow.FilePath, targetRow.Size, targetRow.Total, targetRow.ModifyTime, targetRow.CreatedAt, targetRow.UpdatedAt))
 
 		rows, err := repo.FindAllWithEnabled()
@@ -90,6 +91,49 @@ func TestTarget(t *testing.T) {
 
 		err = repo.Save(targetRow)
 		assert.NoError(t, err)
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		repo, mockDB, mock := setup()
+		defer teardown(mockDB)
+
+		var condition models.TargetSearchCondition
+
+		condition.Limit = 321
+		condition.Offset = 32
+		condition.Keyword = " key1, key2 ,key 3"
+
+		total := int64(123)
+		mock.ExpectQuery("SELECT  (.+) FROM `targets` WHERE (.+) AND `targets`.`deleted_at` IS NULL").WillReturnRows(sqlmock.NewRows([]string{"count"}).
+			AddRow(total))
+
+		var targetRow models.Target
+		targetRow.ID = 1
+		targetRow.Enabled = true
+		targetRow.Name = "target name"
+		targetRow.FilePath = "target file path"
+		targetRow.Size = 100
+		targetRow.Total = 10
+		targetRow.ModifyTime = time.Now()
+		targetRow.CreatedAt = time.Now()
+		targetRow.UpdatedAt = time.Now()
+
+		sql := fmt.Sprintf("SELECT (.+) FROM `targets` WHERE (.+) LIMIT %d OFFSET %d", condition.Limit, condition.Offset)
+		mock.ExpectQuery(sql).WillReturnRows(sqlmock.NewRows([]string{"id", "enabled", "name", "file_path", "size", "total", "modify_time", "created_at", "updated_at"}).
+			AddRow(targetRow.ID, targetRow.Enabled, targetRow.Name, targetRow.FilePath, targetRow.Size, targetRow.Total, targetRow.ModifyTime, targetRow.CreatedAt, targetRow.UpdatedAt))
+
+		rTotal, rTargets, err := repo.Search(&condition)
+
+		assert.NoError(t, err)
+		assert.Equal(t, total, rTotal)
+		assert.Equal(t, targetRow.ID, rTargets[0].ID)
+		assert.Equal(t, targetRow.Name, rTargets[0].Name)
+		assert.Equal(t, targetRow.FilePath, rTargets[0].FilePath)
+		assert.Equal(t, targetRow.Size, rTargets[0].Size)
+		assert.Equal(t, targetRow.Total, rTargets[0].Total)
+		assert.Equal(t, targetRow.Enabled, rTargets[0].Enabled)
+		assert.Equal(t, targetRow.CreatedAt, rTargets[0].CreatedAt)
+		assert.Equal(t, targetRow.UpdatedAt, rTargets[0].UpdatedAt)
 	})
 
 }
