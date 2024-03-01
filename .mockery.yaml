@@ -1,6 +1,6 @@
 with-expecter: true
 packages:
-  pan/app:
+  pan:
     config:
       all: true
       recursive: true

@@ -1,0 +1,18 @@
+{
+    "button":{
+        "Close":"关闭",
+        "Submit":"提交"
+    },
+    "Header":{
+        "Modules":"模块管理",
+        "Settings":"应用设置"
+    },
+    "Modules":{
+        "Settings":"设置",
+        "Details":"详情",
+        "Remove":"移除",
+        "Filter":"筛选",
+        "Search":"关键字检索",
+        "Total":"共匹配 {{Total}} 条记录"
+    }
+}

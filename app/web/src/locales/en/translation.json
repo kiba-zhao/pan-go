@@ -1,0 +1,26 @@
+{
+    "errors":{
+        "NotFound":"Not Found",
+        "NotFoundDesc":"Sorry, the page you visited does not exist."
+    },
+    "languages":{
+        "en":"English",
+        "zh-CN":"中文"
+    },
+    "button":{
+        "Close":"Close",
+        "Submit":"Submit"
+    },
+    "Header":{
+        "Modules":"Modules",
+        "Settings":"Settings"
+    },
+    "Modules":{
+        "Settings":"Open Settings",
+        "Details":"Details",
+        "Remove":"Remove",
+        "Filter":"Modules Filter",
+        "Search":"Search",
+        "Total":" {{Total}} records matched in total "
+    }
+}
