@@ -16,7 +16,7 @@ import TranslateIcon from "@mui/icons-material/Translate";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 import { useTranslation } from "react-i18next";
-import { useHref } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 function LangSelect() {
   const { t, i18n } = useTranslation();
@@ -67,6 +67,7 @@ function LangSelect() {
 }
 
 function Header() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   useEffect(() => {});
   return (
@@ -77,7 +78,12 @@ function Header() {
         }}
       >
         <Typography variant="h6" component="div" noWrap sx={{ flexGrow: 1 }}>
-          <Link href={useHref("/")} color={"inherit"} underline="none">
+          <Link
+            sx={{ cursor: "pointer" }}
+            color={"inherit"}
+            underline="none"
+            onClick={() => navigate("/")}
+          >
             PAN-GO
           </Link>
         </Typography>
@@ -92,7 +98,7 @@ function Header() {
               size="large"
               aria-label="Modules"
               color="inherit"
-              href={useHref("/modules")}
+              onClick={() => navigate("/modules")}
             >
               <ViewModuleIcon />
             </IconButton>
@@ -106,7 +112,7 @@ function Header() {
               size="large"
               aria-label="Settings"
               color="inherit"
-              href={useHref("/settings")}
+              onClick={() => navigate("/settings")}
             >
               <SettingsIcon />
             </IconButton>

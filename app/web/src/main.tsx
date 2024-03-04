@@ -4,15 +4,15 @@ import { ThemeProvider } from "@emotion/react";
 import { CssBaseline } from "@mui/material";
 import theme from "./theme.tsx";
 import App from "./App.tsx";
-import { HashRouter } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <HashRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <App />
-      </HashRouter>
+      </BrowserRouter>
     </ThemeProvider>
   </React.StrictMode>
 );

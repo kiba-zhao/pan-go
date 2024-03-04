@@ -8,7 +8,7 @@ export default ({ mode }: UserConfig) => {
     plugins: [react()],
     server: {
       proxy: {
-        [`/${env.VITE_API_PATH}`]: env.VITE_PROXY_URL,
+        [env.VITE_PROXY_PATH]: env.VITE_PROXY_URL,
       },
     },
     optimizeDeps: {

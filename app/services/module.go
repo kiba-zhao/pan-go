@@ -1,6 +1,7 @@
 package services
 
 import (
+	"pan/app/errors"
 	"pan/app/models"
 	"pan/core"
 	"strings"
@@ -8,6 +9,27 @@ import (
 
 type ModuleService struct {
 	Registry core.Registry
+}
+
+// SetEnabled, Retrieve the module from Registry based on name. If the module implements the Enabling Module interface, set it; otherwise, return an error
+func (s *ModuleService) SetEnabled(name string, enable bool) error {
+	module := s.Registry.GetModuleByName(name)
+	if module == nil {
+		return errors.ErrNotFound
+	}
+	if enablingModule, ok := module.(EnabledModule); ok {
+		return enablingModule.SetEnable(enable)
+	}
+	return errors.ErrForbidden
+}
+
+// Get
+func (s *ModuleService) Get(name string) (models.Module, error) {
+	module := s.Registry.GetModuleByName(name)
+	if module == nil {
+		return models.Module{}, errors.ErrNotFound
+	}
+	return generateModule(module), nil
 }
 
 func (s *ModuleService) GetAll() []models.Module {

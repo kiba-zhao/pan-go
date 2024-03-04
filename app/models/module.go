@@ -17,3 +17,8 @@ type ModuleSearchResult struct {
 	Total int
 	Items []Module
 }
+
+// ModuleEnabled struct, Name and Enabled fields are tagged
+type ModuleEnabled struct {
+	Enabled *bool `form:"enabled" binding:"required"`
+}

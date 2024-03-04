@@ -71,5 +71,6 @@ func (cfg *configImpl) Save() error {
 		fv := iv.FieldByName(ft.Name)
 		cfg.viper.Set(ft.Name, fv.Interface())
 	}
+
 	return cfg.viper.WriteConfig()
 }

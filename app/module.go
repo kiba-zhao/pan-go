@@ -1,20 +1,19 @@
-//go:generate npm --prefix ./web install
-//go:generate npm --prefix ./web run build -- -m production
 package app
 
 import (
 	"embed"
-	"io/fs"
-	"net/http"
 	"pan/app/controllers"
 	"pan/app/services"
 	"pan/core"
 )
 
+//go:generate npm --prefix ./web install
+//go:generate npm --prefix ./web run build -- -m production --base /app/
 //go:embed web/dist
 var embedFS embed.FS
 
 type Module struct {
+	*core.BrowserRouteWebModule
 	settings *Settings
 	cfg      core.Config
 	registry core.Registry
@@ -25,6 +24,8 @@ func NewModule() *Module {
 	m := new(Module)
 	m.settings = &Settings{}
 	initSettings(m.settings)
+
+	m.BrowserRouteWebModule = core.NewBrowserRouteWebModule(embedFS, "web/dist")
 
 	return m
 }
@@ -52,25 +53,13 @@ func (m *Module) OnInitConfig(cfg core.Config) error {
 
 func (m *Module) SetupToWeb(router core.WebRouter) {
 
+	// TODO: Dependency Injection
 	// Mount Controllers
+	ctrlRouter := router.Group("/api")
 	var ctrl controllers.ModuleController
 	ctrl.ModuleService = &services.ModuleService{}
 	ctrl.ModuleService.Registry = m.registry
-	ctrl.Init(router)
-
-	// Mount Static Files
-	dist, err := fs.Sub(embedFS, "web/dist")
-	if err != nil {
-		panic(err)
-	}
-
-	router.StaticFileFS("/", "./", http.FS(dist))
-	fs.WalkDir(dist, ".", func(path string, d fs.DirEntry, err error) error {
-		if err == nil && d.IsDir() == false {
-			router.StaticFileFS(path, path, http.FS(dist))
-		}
-		return err
-	})
+	ctrl.Init(ctrlRouter)
 
 }
 

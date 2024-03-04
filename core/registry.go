@@ -13,6 +13,7 @@ type RegistryModule interface {
 type Registry interface {
 	AddModule(module AppModule) error
 	GetModules() []AppModule
+	GetModuleByName(name string) AppModule
 }
 
 type registryImpl struct {
@@ -36,7 +37,7 @@ func (r *registryImpl) AddModule(module AppModule) error {
 	if len(r.modules) > 0 {
 		for _, m := range r.modules {
 			if m.Name() == module.Name() {
-				return errors.New("Module Conflict")
+				return errors.New("module conflict")
 			}
 		}
 	}
@@ -49,4 +50,15 @@ func (r *registryImpl) GetModules() []AppModule {
 	r.rw.RLock()
 	defer r.rw.RUnlock()
 	return slices.Clone(r.modules)
+}
+
+func (r *registryImpl) GetModuleByName(name string) AppModule {
+	r.rw.RLock()
+	defer r.rw.RUnlock()
+	for _, m := range r.modules {
+		if m.Name() == name {
+			return m
+		}
+	}
+	return nil
 }

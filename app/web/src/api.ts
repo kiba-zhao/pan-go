@@ -1,6 +1,8 @@
 import { ModuleSearchResult } from "./api.tsx";
 
-const ROOT_PATH = import.meta.env.VITE_PROXY_PATH || ".";
+const ROOT_PATH = `${import.meta.env.BASE_URL}${
+  import.meta.env.VITE_API_PATH || ""
+}`;
 
 async function createError(res: Response): Promise<any> {
   let contentType = res.headers.get("Content-Type");
