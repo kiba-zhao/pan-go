@@ -169,13 +169,15 @@ func TestModules(t *testing.T) {
 
 	})
 
-	t.Run("PUT /modules/:name/actions/set-enabled", func(t *testing.T) {
+	t.Run("PATCH /modules/:name", func(t *testing.T) {
 		web, ctrl := setup()
 
 		name := "name1"
 		enabled := true
-		moduleEnabled := &models.ModuleEnabled{Enabled: &enabled}
-		reqBody, err := json.Marshal(moduleEnabled)
+		avatar := "Avatar A"
+		desc := "Desc A"
+		moduleFields := &models.ModuleFields{Enabled: &enabled}
+		reqBody, err := json.Marshal(moduleFields)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -186,29 +188,36 @@ func TestModules(t *testing.T) {
 
 		module := new(appTestMocked.MockAppEnabledModule)
 		defer module.AssertExpectations(t)
+		module.On("Desc").Once().Return(desc)
+		module.On("Avatar").Once().Return(avatar)
+		module.On("Name").Once().Return(name)
+		module.On("Enabled").Once().Return(enabled)
 		module.On("SetEnable", enabled).Once().Return(nil)
 		registry.On("GetModuleByName", name).Once().Return(module)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("PUT", "/modules/"+name+"/actions/set-enabled", bytes.NewReader(reqBody))
+		req, _ := http.NewRequest("PATCH", "/modules/"+name, bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var result models.ModuleEnabled
+		var result models.Module
 		err = json.Unmarshal(w.Body.Bytes(), &result)
 		assert.Nil(t, err)
-		assert.Equal(t, enabled, *result.Enabled)
+		assert.Equal(t, name, result.Name)
+		assert.Equal(t, enabled, result.Enabled)
+		assert.Equal(t, avatar, result.Avatar)
+		assert.Equal(t, desc, result.Desc)
 
 	})
 
-	t.Run("PUT /modules/:name/actions/set-enabled with Module Not Found", func(t *testing.T) {
+	t.Run("PATCH /modules/:name with Module Not Found", func(t *testing.T) {
 		web, ctrl := setup()
 
 		name := "name2"
 		enabled := false
-		moduleEnabled := &models.ModuleEnabled{Enabled: &enabled}
-		reqBody, err := json.Marshal(moduleEnabled)
+		moduleFields := &models.ModuleFields{Enabled: &enabled}
+		reqBody, err := json.Marshal(moduleFields)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -220,7 +229,7 @@ func TestModules(t *testing.T) {
 		registry.On("GetModuleByName", name).Once().Return(nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("PUT", "/modules/"+name+"/actions/set-enabled", bytes.NewReader(reqBody))
+		req, _ := http.NewRequest("PATCH", "/modules/"+name, bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		web.ServeHTTP(w, req)
 
@@ -228,13 +237,13 @@ func TestModules(t *testing.T) {
 
 	})
 
-	t.Run("PUT /modules/:name/actions/set-enabled with Forbidden", func(t *testing.T) {
+	t.Run("PATCH /modules/:name with Forbidden", func(t *testing.T) {
 		web, ctrl := setup()
 
 		name := "name3"
 		enabled := false
-		moduleEnabled := &models.ModuleEnabled{Enabled: &enabled}
-		reqBody, err := json.Marshal(moduleEnabled)
+		moduleFields := &models.ModuleFields{Enabled: &enabled}
+		reqBody, err := json.Marshal(moduleFields)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -248,20 +257,20 @@ func TestModules(t *testing.T) {
 		registry.On("GetModuleByName", name).Once().Return(module)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("PUT", "/modules/"+name+"/actions/set-enabled", bytes.NewReader(reqBody))
+		req, _ := http.NewRequest("PATCH", "/modules/"+name, bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusForbidden, w.Code)
 	})
 
-	t.Run("PUT /modules/:name/actions/set-enabled with Server Error", func(t *testing.T) {
+	t.Run("PATCH /modules/:name with Server Error", func(t *testing.T) {
 		web, ctrl := setup()
 
 		name := "name4"
 		enabled := false
-		moduleEnabled := &models.ModuleEnabled{Enabled: &enabled}
-		reqBody, err := json.Marshal(moduleEnabled)
+		moduleFields := &models.ModuleFields{Enabled: &enabled}
+		reqBody, err := json.Marshal(moduleFields)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -276,22 +285,23 @@ func TestModules(t *testing.T) {
 		registry.On("GetModuleByName", name).Once().Return(module)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("PUT", "/modules/"+name+"/actions/set-enabled", bytes.NewReader(reqBody))
+		req, _ := http.NewRequest("PATCH", "/modules/"+name, bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
-	t.Run("PUT /modules/:name/actions/set-enabled with Bad Request", func(t *testing.T) {
+	t.Run("PATCH /modules/:name with Bad Request", func(t *testing.T) {
 		web, ctrl := setup()
+		name := "name4"
 
 		registry := new(mocked.MockRegistry)
 		defer registry.AssertExpectations(t)
 		ctrl.ModuleService.Registry = registry
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("PUT", "/modules/name/actions/set-enabled", bytes.NewBuffer([]byte("{}")))
+		req, _ := http.NewRequest("PATCH", "/modules/"+name, bytes.NewBuffer([]byte("{}")))
 		req.Header.Set("Content-Type", "application/json")
 		web.ServeHTTP(w, req)
 

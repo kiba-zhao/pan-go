@@ -1,20 +1,16 @@
-import { useEffect } from "react";
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
+import { useEffect } from "react";
 
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 
-import * as api from "./api";
-import { Context } from "./api.tsx";
-import RouteView from "./routes";
+import { APIProvider } from "./api.tsx";
 import Header from "./components/Header";
+import RouteView from "./routes";
 
-export function APIProvider({ children }: { children: React.ReactNode }) {
-  return <Context.Provider value={api}>{children}</Context.Provider>;
-}
 function App() {
   useEffect(() => {
     document.title = "pan-go";

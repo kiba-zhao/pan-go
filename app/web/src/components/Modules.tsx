@@ -1,46 +1,58 @@
-import { useEffect, Fragment, useState, useReducer } from "react";
+import { ChangeEvent, Fragment, useEffect, useReducer, useState } from "react";
 
-import Grid from "@mui/material/Grid";
-import Stack from "@mui/material/Stack";
-import Avatar from "@mui/material/Avatar";
-import Typography from "@mui/material/Typography";
-import Box from "@mui/material/Box";
-import Drawer from "@mui/material/Drawer";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
-import Switch from "@mui/material/Switch";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import CardActions from "@mui/material/CardActions";
 import Autocomplete from "@mui/material/Autocomplete";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardActions from "@mui/material/CardActions";
+import CardContent from "@mui/material/CardContent";
+import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
+import Grid from "@mui/material/Grid";
 import LinearProgress from "@mui/material/LinearProgress";
 import Skeleton from "@mui/material/Skeleton";
+import Stack from "@mui/material/Stack";
+import Switch from "@mui/material/Switch";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 
 import { useTranslation } from "react-i18next";
 
 import {
-  useAPI,
-  ModuleSearchResult,
   ModuleItem as ModuleItemType,
+  ModuleSearchResult,
+  useAPI,
 } from "../api.tsx";
 
-const initialModuleResultState: ModuleSearchResult = {
+type ModuleResultState = ModuleSearchResult & { Version: number };
+const initialModuleResultState: ModuleResultState = {
   Total: 0,
   Items: new Array<ModuleItemType>(),
+  Version: 0,
 };
 
-type ModuleResultState = ModuleSearchResult;
-type ModuleResultAction = { type: "set"; value: ModuleResultState };
+type ModuleResultSetAction = { type: "set"; value: ModuleResultState };
+type ModuleItemSetAction = {
+  type: "setItem";
+  item: ModuleItemType;
+  version: number;
+};
 
 function modulesReducer(
-  // state: ModuleSearchResult,
-  _: ModuleSearchResult,
-  action: ModuleResultAction
+  state: ModuleResultState,
+  action: ModuleResultSetAction | ModuleItemSetAction
 ): ModuleResultState {
   switch (action.type) {
     case "set":
       return { ...action.value, Items: action.value.Items || [] };
+    case "setItem":
+      if (action.version != state.Version) return state;
+      const idx = state.Items.findIndex(
+        (item) => item.Name == action.item.Name
+      );
+      state.Items[idx] = action.item;
+      return state;
     default:
       throw new Error("Unknown action");
   }
@@ -72,7 +84,7 @@ function Modules() {
     setLoading(true);
     const results = await api.SearchModules(keyword);
     if (version != submitVersion) return;
-    dispatch({ type: "set", value: results });
+    dispatch({ type: "set", value: { ...results, Version: version } });
     setLoading(false);
   };
 
@@ -110,7 +122,11 @@ function Modules() {
         <Grid container spacing={2} paddingTop={2}>
           {moduleResults.Items.map((v: ModuleItemType) => (
             <Grid item key={v.Name} xs={12} sm={6} md={4} lg={3}>
-              <ModuleItem module={v} disabled={loading}></ModuleItem>
+              <ModuleItem
+                module={v}
+                disabled={loading}
+                scopeVersion={submitVersion}
+              ></ModuleItem>
             </Grid>
           ))}
         </Grid>
@@ -122,10 +138,44 @@ function Modules() {
 interface ModuleItemProps {
   module: ModuleItemType;
   disabled: boolean;
+  scopeVersion: number;
 }
 
-function ModuleItem({ module, disabled }: ModuleItemProps) {
+function ModuleItem({ module, disabled, scopeVersion }: ModuleItemProps) {
   const { t } = useTranslation();
+
+  const [loading, setLoading] = useState(false);
+  const [enabledVersion, setEnabledVersion] = useState(0);
+  const [enabled, setEnabled] = useState(module.Enabled);
+
+  const onEnableChange = async (value: boolean) => {
+    setEnabled(value);
+    setEnabledVersion(enabledVersion + 1);
+  };
+
+  const [_, dispatch] = useReducer(modulesReducer, initialModuleResultState);
+
+  const api = useAPI();
+  const onEnableSync = async (enabled: boolean, version: number) => {
+    if (version != enabledVersion) return;
+    setLoading(true);
+    try {
+      const item = await api.SetModuleEnabled(module.Name, enabled);
+      dispatch({ type: "setItem", item, version: scopeVersion });
+    } catch {
+      setEnabled(!enabled);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (disabled || module.ReadOnly || enabledVersion == 0) {
+      return;
+    }
+    onEnableSync(enabled, enabledVersion);
+  }, [enabledVersion]);
+
   return (
     <Card raised={true}>
       <CardContent>
@@ -171,8 +221,11 @@ function ModuleItem({ module, disabled }: ModuleItemProps) {
           sx={{ display: "flex", justifyContent: "flex-end" }}
         >
           <Switch
-            defaultChecked={module.Enabled}
-            disabled={disabled || module.ReadOnly}
+            checked={enabled}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              onEnableChange(event.target.checked)
+            }
+            disabled={disabled || module.ReadOnly || loading}
           ></Switch>
         </Box>
       </CardActions>

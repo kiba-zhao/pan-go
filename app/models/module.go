@@ -19,6 +19,6 @@ type ModuleSearchResult struct {
 }
 
 // ModuleEnabled struct, Name and Enabled fields are tagged
-type ModuleEnabled struct {
+type ModuleFields struct {
 	Enabled *bool `form:"enabled" binding:"required"`
 }

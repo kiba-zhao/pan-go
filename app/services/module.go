@@ -12,15 +12,19 @@ type ModuleService struct {
 }
 
 // SetEnabled, Retrieve the module from Registry based on name. If the module implements the Enabling Module interface, set it; otherwise, return an error
-func (s *ModuleService) SetEnabled(name string, enable bool) error {
+func (s *ModuleService) Update(name string, enable bool) (models.Module, error) {
 	module := s.Registry.GetModuleByName(name)
 	if module == nil {
-		return errors.ErrNotFound
+		return models.Module{}, errors.ErrNotFound
 	}
 	if enablingModule, ok := module.(EnabledModule); ok {
-		return enablingModule.SetEnable(enable)
+		err := enablingModule.SetEnable(enable)
+		if err != nil {
+			return models.Module{}, err
+		}
+		return generateModule(module), nil
 	}
-	return errors.ErrForbidden
+	return models.Module{}, errors.ErrForbidden
 }
 
 // Get

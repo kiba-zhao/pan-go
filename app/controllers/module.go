@@ -15,18 +15,17 @@ type ModuleController struct {
 func (ctrl *ModuleController) Init(router core.WebRouter) {
 	router.GET("/modules", ctrl.Search)
 	router.GET("/modules/:name", ctrl.Get)
-	router.PUT("/modules/:name/actions/set-enabled", ctrl.SetEnabled)
+	router.PATCH("/modules/:name", ctrl.Update)
 }
 
-// SetEnabled, called ModuleService.SetEnabled with models.ModuleEnabled
-func (ctrl *ModuleController) SetEnabled(ctx core.WebContext) {
-	var enabled models.ModuleEnabled
-	if err := ctx.ShouldBind(&enabled); err != nil {
+func (ctrl *ModuleController) Update(ctx core.WebContext) {
+	var fields models.ModuleFields
+	if err := ctx.ShouldBind(&fields); err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 	name := ctx.Param("name")
-	err := ctrl.ModuleService.SetEnabled(name, *enabled.Enabled)
+	module, err := ctrl.ModuleService.Update(name, *fields.Enabled)
 	if err == errors.ErrNotFound {
 		ctx.AbortWithError(http.StatusNotFound, err)
 		return
@@ -39,7 +38,7 @@ func (ctrl *ModuleController) SetEnabled(ctx core.WebContext) {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	ctx.JSON(http.StatusOK, enabled)
+	ctx.JSON(http.StatusOK, module)
 }
 
 func (ctrl *ModuleController) Get(ctx core.WebContext) {

@@ -5,3 +5,9 @@ package extfs
 type Settings struct {
 	Enabled bool
 }
+
+func defaultSettings() *Settings {
+	return &Settings{
+		Enabled: true,
+	}
+}

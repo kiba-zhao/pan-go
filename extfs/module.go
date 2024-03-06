@@ -19,7 +19,7 @@ type Module struct {
 func NewModule() *Module {
 	m := new(Module)
 	m.BrowserRouteWebModule = core.NewBrowserRouteWebModule(embedFS, "web/dist")
-	m.settings = &Settings{}
+	m.settings = defaultSettings()
 
 	return m
 }
