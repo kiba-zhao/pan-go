@@ -14,16 +14,12 @@ var embedFS embed.FS
 
 type Module struct {
 	*core.BrowserRouteWebModule
-	settings *Settings
-	cfg      core.Config
 	registry core.Registry
 }
 
 func NewModule() *Module {
 
 	m := new(Module)
-	m.settings = &Settings{}
-	initSettings(m.settings)
 
 	m.BrowserRouteWebModule = core.NewBrowserRouteWebModule(embedFS, "web/dist")
 
@@ -40,15 +36,6 @@ func (m *Module) Name() string {
 
 func (m *Module) Desc() string {
 	return "App Module"
-}
-
-func (m *Module) Settings() interface{} {
-	return m.settings
-}
-
-func (m *Module) OnInitConfig(cfg core.Config) error {
-	m.cfg = cfg
-	return nil
 }
 
 func (m *Module) SetupToWeb(router core.WebRouter) {

@@ -12,6 +12,7 @@ import Header from "./components/Header";
 import RouteView from "./routes";
 
 function App() {
+  // const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
   useEffect(() => {
     document.title = "pan-go";
     console.log(1111, import.meta.env);

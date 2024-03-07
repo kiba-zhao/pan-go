@@ -12,14 +12,12 @@ var embedFS embed.FS
 
 type Module struct {
 	*core.BrowserRouteWebModule
-	settings *Settings
-	cfg      core.Config
+	cfg core.Config
 }
 
 func NewModule() *Module {
 	m := new(Module)
 	m.BrowserRouteWebModule = core.NewBrowserRouteWebModule(embedFS, "web/dist")
-	m.settings = defaultSettings()
 
 	return m
 }
@@ -43,14 +41,10 @@ func (m *Module) SetupToWeb(router core.WebRouter) {
 
 }
 
-// TODO: ConfigModule with settings
-func (m *Module) Settings() interface{} {
-	return m.settings
-}
-
 // TODO: OnInitConfig
 func (m *Module) OnInitConfig(cfg core.Config) error {
-
+	settings := defaultSettings()
+	cfg.Init(settings)
 	m.cfg = cfg
 	return nil
 }
@@ -62,16 +56,34 @@ func (m *Module) HasWeb() bool {
 
 // TODO: EnabledModule
 func (m *Module) Enabled() bool {
-	return m.settings.Enabled
+	var settings Settings
+	err := m.cfg.Load(&settings)
+	if err != nil {
+		// TODO: log error
+		return false
+	}
+	return settings.Enabled
 }
 
 // TODO: SetEnable
 func (m *Module) SetEnable(enable bool) error {
-	m.settings.Enabled = enable
-	return m.cfg.Save()
+	var settings Settings
+	err := m.cfg.Load(&settings)
+	if err != nil {
+		return err
+	}
+	settings.Enabled = enable
+	return m.cfg.Sync(&settings)
 }
 
 // TODO: ReadOnlyModule
 func (m *Module) ReadOnly() bool {
 	return false
+}
+
+// initForApp
+func (m *Module) InitForApp() error {
+
+	// TODO: trigger tasks
+	return nil
 }

@@ -1,16 +1,18 @@
 package core
 
-import "path"
-
 type AppModule interface {
 	Avatar() string
 	Name() string
 	Desc() string
 }
 
+type InitAppModule interface {
+	InitForApp() error
+}
+
 type App struct {
 	settings *Settings
-	config   *configImpl
+	config   Config
 	web      *WebApp
 	registry Registry
 }
@@ -18,21 +20,20 @@ type App struct {
 func New() *App {
 	app := new(App)
 	app.settings = &Settings{}
-	app.config = &configImpl{}
 	app.web = NewWebApp(app.settings)
 	app.registry = &registryImpl{}
+
+	cfgPath := generateAppConfigPath(app.settings)
+	app.config = newConfig(cfgPath)
 	return app
 }
 
 func (app *App) Init() error {
 
 	err := app.settings.init()
-	if err != nil {
-		return err
+	if err == nil {
+		app.config.Init(app.settings)
 	}
-
-	configPath := path.Join(app.settings.AppRoot(), app.settings.AppName()+".toml")
-	err = app.config.init(configPath, app.settings)
 
 	return err
 }
@@ -41,19 +42,16 @@ func (app *App) Mount(modules ...interface{}) {
 	for _, module := range modules {
 
 		m, ok := module.(AppModule)
-		if ok == false {
+		if !ok {
 			// TODO: Log error
 			continue
 		}
 
 		cm, ok := module.(ConfigModule)
 		if ok {
-			cfg := &configImpl{}
-			cfgPath := path.Join(app.settings.AppRoot(), "conf.d", m.Name()+".toml")
-			err := cfg.init(cfgPath, cm.Settings())
-			if err == nil {
-				cm.OnInitConfig(cfg)
-			}
+			cfgPath := generateConfigPath(app.settings, m.Name())
+			cfg := newConfig(cfgPath)
+			err := cm.OnInitConfig(cfg)
 			if err != nil {
 				// TODO: Log error
 				continue
@@ -72,6 +70,20 @@ func (app *App) Mount(modules ...interface{}) {
 	}
 }
 
-func (app *App) Run() error {
-	return app.web.Run()
+func (app *App) Run() (err error) {
+
+	modules := app.registry.GetModules()
+	for _, m := range modules {
+		if im, ok := m.(InitAppModule); ok {
+			err = im.InitForApp()
+			if err != nil {
+				break
+			}
+		}
+	}
+
+	if err == nil {
+		err = app.web.Run()
+	}
+	return err
 }

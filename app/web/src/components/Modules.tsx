@@ -229,6 +229,7 @@ function ModuleItem({ module, disabled, scopeVersion }: ModuleItemProps) {
           ></Switch>
         </Box>
       </CardActions>
+      {loading ? <LinearProgress /> : <></>}
     </Card>
   );
 }
