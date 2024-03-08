@@ -10,19 +10,22 @@ import (
 	"github.com/spf13/viper"
 )
 
+type ConfigMarshalHandle = func(settings interface{}) error
+type ConfigSyncHandle = func(marshal ConfigMarshalHandle) (interface{}, error)
+
 type ConfigModule interface {
 	OnInitConfig(cfg Config) error
 }
 
 type Config interface {
 	Init(settings interface{})
-	Load(settings interface{}) error
-	Sync(settings interface{}) error
+	Marshal(settings interface{}) error
+	Sync(handle ConfigSyncHandle) error
 }
 
 type configImpl struct {
-	viper  *viper.Viper
-	locker sync.Mutex
+	viper *viper.Viper
+	rw    sync.RWMutex
 }
 
 func newConfig(configPath string) Config {
@@ -34,8 +37,8 @@ func newConfig(configPath string) Config {
 
 func (cfg *configImpl) Init(settings interface{}) {
 
-	cfg.locker.Lock()
-	defer cfg.locker.Unlock()
+	cfg.rw.Lock()
+	defer cfg.rw.Unlock()
 	// Set defaults
 	t := reflect.TypeOf(settings).Elem()
 	v := reflect.ValueOf(settings)
@@ -60,14 +63,10 @@ func (cfg *configImpl) Init(settings interface{}) {
 	}
 }
 
-func (cfg *configImpl) Load(settings interface{}) error {
-	return cfg.viper.Unmarshal(settings)
-}
+func (cfg *configImpl) Sync(handle ConfigSyncHandle) error {
 
-func (cfg *configImpl) Sync(settings interface{}) error {
-
-	cfg.locker.Lock()
-	defer cfg.locker.Unlock()
+	cfg.rw.Lock()
+	defer cfg.rw.Unlock()
 
 	configFilePath := cfg.viper.ConfigFileUsed()
 	configDirPath := path.Dir(configFilePath)
@@ -75,6 +74,11 @@ func (cfg *configImpl) Sync(settings interface{}) error {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(configDirPath, 0755)
 	}
+	if err != nil {
+		return err
+	}
+
+	settings, err := handle(cfg.marshal)
 	if err != nil {
 		return err
 	}
@@ -98,6 +102,16 @@ func (cfg *configImpl) Sync(settings interface{}) error {
 		return nil
 	}
 	return cfg.viper.WriteConfig()
+}
+
+func (cfg *configImpl) Marshal(settings interface{}) error {
+	cfg.rw.RLock()
+	defer cfg.rw.RUnlock()
+	return cfg.marshal(settings)
+}
+
+func (cfg *configImpl) marshal(settings interface{}) error {
+	return cfg.viper.Unmarshal(settings)
 }
 
 func generateAppConfigPath(settings *Settings) string {

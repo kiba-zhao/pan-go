@@ -3,6 +3,12 @@ package extfs
 import (
 	"embed"
 	"pan/core"
+	"pan/extfs/controllers"
+	"pan/extfs/repositories"
+	"pan/extfs/services"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 //go:generate npm --prefix ./web install
@@ -12,12 +18,16 @@ var embedFS embed.FS
 
 type Module struct {
 	*core.BrowserRouteWebModule
-	cfg core.Config
+	cfg      core.Config
+	settings *services.SettingsService
+	db       *gorm.DB
 }
 
 func NewModule() *Module {
 	m := new(Module)
 	m.BrowserRouteWebModule = core.NewBrowserRouteWebModule(embedFS, "web/dist")
+
+	m.settings = &services.SettingsService{}
 
 	return m
 }
@@ -39,14 +49,34 @@ func (m *Module) SetupToWeb(router core.WebRouter) {
 	// TODO: Dependency Injection
 	// Mount Controllers
 
+	api := router.Group("/api")
+	var targetCtrl controllers.TargetController
+	targetCtrl.TargetService = &services.TargetService{}
+	targetCtrl.TargetService.TargetRepo = repositories.NewTargetRepository(m.db)
+	targetCtrl.SettingsService = m.settings
+	targetCtrl.Init(api)
+
 }
 
 // TODO: OnInitConfig
 func (m *Module) OnInitConfig(cfg core.Config) error {
-	settings := defaultSettings()
+
+	// intialize settings
+	settings := &Settings{}
+	settings.init()
 	cfg.Init(settings)
 	m.cfg = cfg
-	return nil
+
+	// set settings service properties
+	m.settings.Settings = &settings.Settings
+	m.settings.Config = cfg
+
+	// create db
+	db, err := gorm.Open(sqlite.Open(settings.DBFilePath), &gorm.Config{})
+	if err == nil {
+		m.db = db
+	}
+	return err
 }
 
 // TODO: HasWeb
@@ -56,8 +86,8 @@ func (m *Module) HasWeb() bool {
 
 // TODO: EnabledModule
 func (m *Module) Enabled() bool {
-	var settings Settings
-	err := m.cfg.Load(&settings)
+	settings := &Settings{}
+	err := m.cfg.Marshal(settings)
 	if err != nil {
 		// TODO: log error
 		return false
@@ -67,13 +97,16 @@ func (m *Module) Enabled() bool {
 
 // TODO: SetEnable
 func (m *Module) SetEnable(enable bool) error {
-	var settings Settings
-	err := m.cfg.Load(&settings)
-	if err != nil {
-		return err
-	}
-	settings.Enabled = enable
-	return m.cfg.Sync(&settings)
+
+	return m.cfg.Sync(func(marshal core.ConfigMarshalHandle) (interface{}, error) {
+		settings := &Settings{}
+		err := marshal(settings)
+		if err != nil {
+			return nil, err
+		}
+		settings.Enabled = enable
+		return settings, nil
+	})
 }
 
 // TODO: ReadOnlyModule

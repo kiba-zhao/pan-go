@@ -42,11 +42,11 @@ func (m *Module) SetupToWeb(router core.WebRouter) {
 
 	// TODO: Dependency Injection
 	// Mount Controllers
-	ctrlRouter := router.Group("/api")
+	api := router.Group("/api")
 	var ctrl controllers.ModuleController
 	ctrl.ModuleService = &services.ModuleService{}
 	ctrl.ModuleService.Registry = m.registry
-	ctrl.Init(ctrlRouter)
+	ctrl.Init(api)
 
 }
 

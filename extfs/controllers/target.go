@@ -5,10 +5,10 @@ import (
 	"pan/core"
 	"pan/extfs/models"
 	"pan/extfs/services"
-	"strconv"
 )
 
 type TargetController struct {
+	ListUtilsController
 	TargetService *services.TargetService
 }
 
@@ -27,6 +27,6 @@ func (c *TargetController) Search(ctx core.WebContext) {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	ctx.Header("Content-Range", strconv.FormatInt(total, 10))
+	c.SetTotal(ctx, total)
 	ctx.JSON(http.StatusOK, items)
 }
