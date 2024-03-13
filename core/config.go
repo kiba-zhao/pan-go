@@ -17,6 +17,10 @@ type ConfigModule interface {
 	OnInitConfig(cfg Config) error
 }
 
+type CoreConfigModule interface {
+	OnInitCoreConfig(cfg Config) error
+}
+
 type Config interface {
 	Init(settings interface{})
 	Marshal(settings interface{}) error

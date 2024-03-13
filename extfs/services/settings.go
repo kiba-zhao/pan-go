@@ -11,9 +11,3 @@ type SettingsService struct {
 	Config   core.Config
 	rw       sync.RWMutex
 }
-
-func (s *SettingsService) GetTotalHeaderName() string {
-	s.rw.RLock()
-	defer s.rw.RUnlock()
-	return s.Settings.TotalHeaderName
-}

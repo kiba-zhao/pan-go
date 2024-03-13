@@ -53,7 +53,6 @@ func (m *Module) SetupToWeb(router core.WebRouter) {
 	var targetCtrl controllers.TargetController
 	targetCtrl.TargetService = &services.TargetService{}
 	targetCtrl.TargetService.TargetRepo = repositories.NewTargetRepository(m.db)
-	targetCtrl.SettingsService = m.settings
 	targetCtrl.Init(api)
 
 }

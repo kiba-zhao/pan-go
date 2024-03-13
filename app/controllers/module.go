@@ -62,10 +62,12 @@ func (ctrl *ModuleController) Search(ctx core.WebContext) {
 		return
 	}
 
-	result, err := ctrl.ModuleService.Search(conditions)
+	total, items, err := ctrl.ModuleService.Search(conditions)
 	if err != nil {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	ctx.JSON(http.StatusOK, result)
+
+	core.SetCountHeaderForWeb(ctx, total)
+	ctx.JSON(http.StatusOK, items)
 }

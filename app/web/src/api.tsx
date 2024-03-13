@@ -26,9 +26,6 @@ export interface ModuleItem {
   HasWeb: boolean;
 }
 
-export interface SearchResult<T> {
-  Total: number;
-  Items: T[];
-}
+export type SearchResult<T> = [number, T[]];
 
 export type ModuleSearchResult = SearchResult<ModuleItem>;

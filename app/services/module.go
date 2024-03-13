@@ -45,9 +45,7 @@ func (s *ModuleService) GetAll() []models.Module {
 	return result
 }
 
-func (s *ModuleService) Search(conditions models.ModuleSearchCondition) (models.ModuleSearchResult, error) {
-
-	var result models.ModuleSearchResult
+func (s *ModuleService) Search(conditions models.ModuleSearchCondition) (total int64, items []models.Module, err error) {
 
 	keywords := strings.Split(conditions.Keyword, ",")
 	kws := make([]string, 0)
@@ -59,12 +57,14 @@ func (s *ModuleService) Search(conditions models.ModuleSearchCondition) (models.
 	}
 
 	if len(kws) == 0 {
-		result.Items = s.GetAll()
-		result.Total = len(result.Items)
-		return result, nil
+		items = s.GetAll()
+		total = int64(len(items))
+		return
 	}
 
 	modules := s.Registry.GetModules()
+	total = 0
+	items = make([]models.Module, 0)
 	for _, m := range modules {
 
 		matchedStatus := -1
@@ -82,11 +82,11 @@ func (s *ModuleService) Search(conditions models.ModuleSearchCondition) (models.
 			continue
 		}
 
-		result.Total++
-		result.Items = append(result.Items, generateModule(m))
+		total++
+		items = append(items, generateModule(m))
 	}
 
-	return result, nil
+	return
 }
 
 type EnabledModule interface {

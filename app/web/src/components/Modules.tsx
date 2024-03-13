@@ -1,4 +1,4 @@
-import { ChangeEvent, Fragment, useEffect, useReducer, useState } from "react";
+import { ChangeEvent, Fragment, useMemo, useState } from "react";
 
 import Autocomplete from "@mui/material/Autocomplete";
 import Avatar from "@mui/material/Avatar";
@@ -19,82 +19,42 @@ import Typography from "@mui/material/Typography";
 
 import { useTranslation } from "react-i18next";
 
-import {
-  ModuleItem as ModuleItemType,
-  ModuleSearchResult,
-  useAPI,
-} from "../api.tsx";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { ModuleItem as ModuleItemType, useAPI } from "../api.tsx";
 
-type ModuleResultState = ModuleSearchResult & { Version: number };
-const initialModuleResultState: ModuleResultState = {
-  Total: 0,
-  Items: new Array<ModuleItemType>(),
-  Version: 0,
-};
-
-type ModuleResultSetAction = { type: "set"; value: ModuleResultState };
-type ModuleItemSetAction = {
-  type: "setItem";
-  item: ModuleItemType;
-  version: number;
-};
-
-function modulesReducer(
-  state: ModuleResultState,
-  action: ModuleResultSetAction | ModuleItemSetAction
-): ModuleResultState {
-  switch (action.type) {
-    case "set":
-      return { ...action.value, Items: action.value.Items || [] };
-    case "setItem":
-      if (action.version != state.Version) return state;
-      const idx = state.Items.findIndex(
-        (item) => item.Name == action.item.Name
-      );
-      state.Items[idx] = action.item;
-      return state;
-    default:
-      throw new Error("Unknown action");
-  }
-}
+const MODULES_QUERY_KEY = "modules";
 
 function Modules() {
   const { t } = useTranslation();
 
-  const [moduleResults, dispatch] = useReducer(
-    modulesReducer,
-    initialModuleResultState
-  );
-  const [loading, setLoading] = useState(false);
-
   const [showFilter, setShowFilter] = useState(false);
   const onFilterClose = () => setShowFilter(false);
-  const onFilterOpen = () => !loading && setShowFilter(true);
 
   const [keyword, setKeyword] = useState("");
-  const [submitVersion, setSubmitVersion] = useState(0);
-  const onFilterChange = async (value: string) => {
-    if (loading) return;
-    setKeyword(value);
-    setSubmitVersion(submitVersion + 1);
-  };
 
   const api = useAPI();
-  const onSearch = async (keyword: string, version: number) => {
-    setLoading(true);
-    const results = await api.SearchModules(keyword);
-    if (version != submitVersion) return;
-    dispatch({ type: "set", value: { ...results, Version: version } });
-    setLoading(false);
-  };
 
-  useEffect(() => {
-    onSearch(keyword, submitVersion);
-  }, [submitVersion]);
+  const {
+    isFetching,
+    data: results,
+    refetch,
+  } = useQuery({
+    queryKey: [MODULES_QUERY_KEY, keyword],
+    queryFn: () => api.SearchModules(keyword),
+  });
+  const [total, items] = results || [0, []];
+
+  const onFilterOpen = () => !isFetching && setShowFilter(true);
+
+  const onFilterChange = async (value: string) => {
+    if (isFetching) return;
+    if (value == keyword) return await refetch();
+    setKeyword(value);
+  };
 
   return (
     <Fragment>
-      {loading ? <LinearProgress /> : <></>}
+      {isFetching ? <LinearProgress /> : <></>}
       <Box padding={2}>
         <ModuleFilter
           value={keyword}
@@ -115,18 +75,12 @@ function Modules() {
           </Typography>
         </Typography>
         <Divider>
-          {moduleResults.Total > 0
-            ? t("Modules.Total", { Total: moduleResults.Total })
-            : ""}
+          {total > 0 ? t("Modules.Total", { Total: total }) : ""}
         </Divider>
         <Grid container spacing={2} paddingTop={2}>
-          {moduleResults.Items.map((v: ModuleItemType) => (
+          {items.map((v: ModuleItemType) => (
             <Grid item key={v.Name} xs={12} sm={6} md={4} lg={3}>
-              <ModuleItem
-                module={v}
-                disabled={loading}
-                scopeVersion={submitVersion}
-              ></ModuleItem>
+              <ModuleItem module={v} disabled={isFetching}></ModuleItem>
             </Grid>
           ))}
         </Grid>
@@ -138,43 +92,29 @@ function Modules() {
 interface ModuleItemProps {
   module: ModuleItemType;
   disabled: boolean;
-  scopeVersion: number;
 }
 
-function ModuleItem({ module, disabled, scopeVersion }: ModuleItemProps) {
+function ModuleItem({ module, disabled }: ModuleItemProps) {
   const { t } = useTranslation();
 
-  const [loading, setLoading] = useState(false);
-  const [enabledVersion, setEnabledVersion] = useState(0);
   const [enabled, setEnabled] = useState(module.Enabled);
 
-  const onEnableChange = async (value: boolean) => {
-    setEnabled(value);
-    setEnabledVersion(enabledVersion + 1);
-  };
-
-  const [_, dispatch] = useReducer(modulesReducer, initialModuleResultState);
-
   const api = useAPI();
-  const onEnableSync = async (enabled: boolean, version: number) => {
-    if (version != enabledVersion) return;
-    setLoading(true);
-    try {
-      const item = await api.SetModuleEnabled(module.Name, enabled);
-      dispatch({ type: "setItem", item, version: scopeVersion });
-    } catch {
-      setEnabled(!enabled);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { isPending, mutate } = useMutation({
+    mutationFn: (value: boolean) => api.SetModuleEnabled(module.Name, value),
+    onMutate: (value) => {
+      const ctx = { enabled };
+      setEnabled(value);
+      return ctx;
+    },
+    onError: (_, v, ctx) => ctx && setEnabled(ctx.enabled),
+  });
 
-  useEffect(() => {
-    if (disabled || module.ReadOnly || enabledVersion == 0) {
-      return;
-    }
-    onEnableSync(enabled, enabledVersion);
-  }, [enabledVersion]);
+  const onEnableChange = mutate;
+
+  const disabledSwitch = useMemo(() => {
+    return disabled || module.ReadOnly || isPending;
+  }, [disabled, module.ReadOnly, isPending]);
 
   return (
     <Card raised={true}>
@@ -225,11 +165,11 @@ function ModuleItem({ module, disabled, scopeVersion }: ModuleItemProps) {
             onChange={(event: ChangeEvent<HTMLInputElement>) =>
               onEnableChange(event.target.checked)
             }
-            disabled={disabled || module.ReadOnly || loading}
+            disabled={disabledSwitch}
           ></Switch>
         </Box>
       </CardActions>
-      {loading ? <LinearProgress /> : <></>}
+      {isPending ? <LinearProgress /> : <></>}
     </Card>
   );
 }

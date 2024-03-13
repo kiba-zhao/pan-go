@@ -24,7 +24,6 @@ func TestTargetController(t *testing.T) {
 		ctrl.Init(web)
 
 		ctrl.TargetService = &services.TargetService{}
-		ctrl.SettingsService = &services.SettingsService{}
 		return web, ctrl
 	}
 
@@ -42,17 +41,12 @@ func TestTargetController(t *testing.T) {
 		}
 		targetRepo.On("Search", models.TargetSearchCondition{}).Once().Return(total, targets, nil)
 
-		totalHeaderName := "X-Total-Count1"
-		ctrl.SettingsService.Settings = &models.Settings{
-			TotalHeaderName: totalHeaderName,
-		}
-
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/targets", nil)
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(totalHeaderName))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(core.CountHeaderName))
 		var results []models.Target
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
@@ -82,11 +76,6 @@ func TestTargetController(t *testing.T) {
 		}
 		targetRepo.On("Search", condition).Once().Return(total, targets, nil)
 
-		totalHeaderName := "X-Total-Count2"
-		ctrl.SettingsService.Settings = &models.Settings{
-			TotalHeaderName: totalHeaderName,
-		}
-
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/targets", nil)
 		q := req.URL.Query()
@@ -100,7 +89,7 @@ func TestTargetController(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(totalHeaderName))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(core.CountHeaderName))
 		var results []models.Target
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)

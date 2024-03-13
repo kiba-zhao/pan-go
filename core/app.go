@@ -58,6 +58,15 @@ func (app *App) Mount(modules ...interface{}) {
 			}
 		}
 
+		ccm, ok := module.(CoreConfigModule)
+		if ok {
+			err := ccm.OnInitCoreConfig(app.config)
+			if err != nil {
+				// TODO: Log error
+				continue
+			}
+		}
+
 		err := app.registry.AddModule(m)
 		if err != nil {
 			// TODO: Log error
@@ -67,6 +76,7 @@ func (app *App) Mount(modules ...interface{}) {
 		if wm, ok := m.(WebModule); ok {
 			app.web.Mount(wm)
 		}
+
 	}
 }
 

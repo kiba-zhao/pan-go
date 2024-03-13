@@ -8,7 +8,6 @@ import (
 )
 
 type TargetController struct {
-	ListUtilsController
 	TargetService *services.TargetService
 }
 
@@ -27,6 +26,6 @@ func (c *TargetController) Search(ctx core.WebContext) {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	c.SetTotal(ctx, total)
+	core.SetCountHeaderForWeb(ctx, total)
 	ctx.JSON(http.StatusOK, items)
 }

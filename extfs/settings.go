@@ -15,6 +15,5 @@ type Settings struct {
 
 func (s *Settings) init() {
 	s.Enabled = true
-	s.Settings.TotalHeaderName = "X-Total-Count"
 	s.Settings.DBFilePath = path.Join(os.TempDir(), "extfs.db")
 }

@@ -10,6 +10,7 @@ import (
 	"pan/app/models"
 	"pan/app/services"
 	"pan/core"
+	"strconv"
 	"testing"
 
 	appTestMocked "pan/mocks/pan/app/test"
@@ -57,11 +58,12 @@ func TestModules(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var result models.ModuleSearchResult
-		err := json.Unmarshal(w.Body.Bytes(), &result)
+		total := int64(len(modules))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(core.CountHeaderName))
+		var items []models.Module
+		err := json.Unmarshal(w.Body.Bytes(), &items)
 		assert.Nil(t, err)
-		assert.Equal(t, len(modules), result.Total)
-		assert.Equal(t, len(modules), len(result.Items))
+		assert.Equal(t, len(modules), len(items))
 
 	})
 
@@ -101,19 +103,19 @@ func TestModules(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var result models.ModuleSearchResult
-		err := json.Unmarshal(w.Body.Bytes(), &result)
+		var items []models.Module
+		err := json.Unmarshal(w.Body.Bytes(), &items)
 		assert.Nil(t, err)
-		assert.Equal(t, 2, result.Total)
-		assert.Equal(t, 2, len(result.Items))
-		itemA := result.Items[0]
+		assert.Equal(t, strconv.FormatInt(2, 10), w.Header().Get(core.CountHeaderName))
+		assert.Equal(t, 2, len(items))
+		itemA := items[0]
 		assert.Equal(t, "Avatar A", itemA.Avatar)
 		assert.Equal(t, "Name A", itemA.Name)
 		assert.Equal(t, "Desc A", itemA.Desc)
 		assert.Equal(t, true, itemA.Enabled)
 		assert.Equal(t, true, itemA.ReadOnly)
 		assert.Equal(t, false, itemA.HasWeb)
-		itemB := result.Items[1]
+		itemB := items[1]
 		assert.Equal(t, "Avatar B", itemB.Avatar)
 		assert.Equal(t, "Name B", itemB.Name)
 		assert.Equal(t, "Desc B", itemB.Desc)
