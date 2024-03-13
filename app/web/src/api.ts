@@ -16,7 +16,10 @@ const { fetchOne, fetchMany } = simple(ROOT_PATH);
 export async function SearchModules(
   keyword: string
 ): Promise<ModuleSearchResult> {
-  return await fetchMany(withPath("modules", "merge"), withQuery({ keyword }));
+  return await fetchMany(
+    withPath("modules", "merge"),
+    withQuery({ q: keyword })
+  );
 }
 
 export async function GetModule(name: string): Promise<ModuleItem> {

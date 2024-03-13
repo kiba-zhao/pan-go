@@ -10,7 +10,7 @@ type Module struct {
 }
 
 type ModuleSearchCondition struct {
-	Keyword string `form:"keyword" binding:"omitempty"`
+	Keyword string `form:"q" binding:"omitempty"`
 }
 
 // ModuleEnabled struct, Name and Enabled fields are tagged

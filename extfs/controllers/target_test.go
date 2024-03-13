@@ -53,7 +53,7 @@ func TestTargetController(t *testing.T) {
 		assert.Equal(t, targets, results)
 	})
 
-	t.Run("GET /targets with query", func(t *testing.T) {
+	t.Run("GET /targets?q=keyword with query", func(t *testing.T) {
 		web, ctrl := setup()
 
 		targetRepo := new(mockedRepo.MockTargetRepository)
@@ -67,7 +67,7 @@ func TestTargetController(t *testing.T) {
 		condition.RangeStart = 0
 		condition.RangeEnd = 12
 		condition.SortField = "name"
-		condition.SortOrder = true
+		condition.SortOrder = "desc"
 
 		total := int64(10)
 		targets := []models.Target{
@@ -79,12 +79,12 @@ func TestTargetController(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/targets", nil)
 		q := req.URL.Query()
-		q.Add("keyword", condition.Keyword)
+		q.Add("q", condition.Keyword)
 		q.Add("enabled", strconv.FormatBool(enabled))
-		q.Add("range-start", strconv.Itoa(condition.RangeStart))
-		q.Add("range-end", strconv.Itoa(condition.RangeEnd))
-		q.Add("sort-field", condition.SortField)
-		q.Add("sort-order", strconv.FormatBool(condition.SortOrder))
+		q.Add("_start", strconv.Itoa(condition.RangeStart))
+		q.Add("_end", strconv.Itoa(condition.RangeEnd))
+		q.Add("_sort", condition.SortField)
+		q.Add("_order", condition.SortOrder)
 		req.URL.RawQuery = q.Encode()
 		web.ServeHTTP(w, req)
 
@@ -103,10 +103,10 @@ func TestTargetController(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/targets", nil)
 		q := req.URL.Query()
 		q.Add("enabled", "enabled")
-		q.Add("range-start", "range-start")
-		q.Add("range-end", "range-end")
-		q.Add("sort-field", "sort-field")
-		q.Add("sort-order", "sort-order")
+		q.Add("_start", "range-start")
+		q.Add("_end", "range-end")
+		q.Add("_sort", "sort-field")
+		q.Add("_order", "sort-order")
 		req.URL.RawQuery = q.Encode()
 		web.ServeHTTP(w, req)
 

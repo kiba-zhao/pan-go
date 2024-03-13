@@ -24,7 +24,18 @@ func (repo *targetRepositoryImpl) Search(conditions models.TargetSearchCondition
 	db := repo.DB
 
 	if len(conditions.SortField) > 0 {
-		db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: conditions.SortField}, Desc: conditions.SortOrder})
+		fields := strings.Split(conditions.SortField, ",")
+		orders := strings.Split(conditions.SortOrder, ",")
+		for i, field := range fields {
+			if len(strings.Trim(field, " ")) <= 0 {
+				continue
+			}
+			order := false
+			if len(orders) > i {
+				order = strings.ToLower(orders[i]) == "desc"
+			}
+			db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: field}, Desc: order})
+		}
 	}
 
 	if len(conditions.Keyword) > 0 {

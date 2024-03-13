@@ -13,6 +13,6 @@ type Target struct {
 type TargetSearchCondition struct {
 	RangeSearchCondition
 	SortSearchCondition
-	Keyword string `form:"keyword" binding:"omitempty"`
+	Keyword string `form:"q" binding:"omitempty"`
 	Enabled *bool  `form:"enabled" binding:"omitempty"`
 }

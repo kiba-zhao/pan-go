@@ -98,7 +98,7 @@ func TestModules(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/modules", nil)
 		q := req.URL.Query()
-		q.Add("keyword", "Name A,Desc B")
+		q.Add("q", "Name A,Desc B")
 		req.URL.RawQuery = q.Encode()
 		web.ServeHTTP(w, req)
 
