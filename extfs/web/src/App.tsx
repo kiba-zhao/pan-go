@@ -1,31 +1,42 @@
 import { Admin, Resource } from "react-admin";
+import { QueryClient } from "react-query";
+import { BrowserRouter } from "react-router-dom";
 import { dataProvider } from "./api";
+import { useI18nProvider } from "./i18n";
 
-import polyglotI18nProvider from "ra-i18n-polyglot";
-import englishMessages from "ra-language-english";
+import Dashboard from "./components/Dashboard";
+import NotFound from "./components/NotFound";
+import {
+  TargetCreate,
+  TargetEdit,
+  TargetShow,
+  Targets,
+} from "./components/Targets";
 
-import { TargetEdit, Targets } from "./components/Targets";
-
-const i18nProvider = polyglotI18nProvider(
-  (locale) =>
-    !locale || locale == "en"
-      ? englishMessages
-      : import(`./locales/${locale}/translation.json`),
-  "en", // Default locale
-  [
-    { locale: "en", name: "English" },
-    // { locale: "fr", name: "Français" },
-  ]
-);
-
-export const App = () => (
-  <Admin
-    dataProvider={dataProvider}
-    i18nProvider={i18nProvider}
-    // layout={AppLayout}
-  >
-    <Resource name="targets" list={Targets} edit={TargetEdit} />
-  </Admin>
-);
+const queryClient = new QueryClient();
+export const App = () => {
+  const i18nProvider = useI18nProvider();
+  if (!i18nProvider) return null;
+  return (
+    <BrowserRouter>
+      <Admin
+        dataProvider={dataProvider}
+        i18nProvider={i18nProvider}
+        catchAll={NotFound}
+        dashboard={Dashboard}
+        queryClient={queryClient}
+        // layout={AppLayout}
+      >
+        <Resource
+          name="targets"
+          list={Targets}
+          edit={TargetEdit}
+          show={TargetShow}
+          create={TargetCreate}
+        />
+      </Admin>
+    </BrowserRouter>
+  );
+};
 
 export default App;

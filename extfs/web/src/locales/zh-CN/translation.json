@@ -1,0 +1,14 @@
+{
+  "resources": {
+    "targets": {
+      "name": "目标文件",
+      "fields": {
+        "name": "命名",
+        "filepath": "文件路径",
+        "enabled": "启用",
+        "createAt": "创建时间",
+        "updateAt": "更新时间"
+      }
+    }
+  }
+}

@@ -11,9 +11,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@haxqer/ra-language-chinese": "^4.16.2",
+    "@tanstack/react-query": "^5.28.4",
     "fetch-utils": "github:kiba-zhao/fetch-utils",
-    "i18next": "^23.10.0",
-    "ra-i18n-i18next": "^4.16.11",
+    "i18next": "^23.10.1",
+    "i18next-browser-languagedetector": "^7.2.0",
+    "i18next-resources-to-backend": "^1.2.0",
+    "ra-i18n-i18next": "^4.16.12",
     "react": "^18.2.0",
     "react-admin": "^4.16.11",
     "react-dom": "^18.2.0"
