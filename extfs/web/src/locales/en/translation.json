@@ -1,1 +1,19 @@
-{}
+{
+  "resources": {
+    "targets": {
+      "filters": {
+        "has_enabled": "Enabled / Disabled",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "has_invalid": "Status",
+        "invalid": "Invalid",
+        "valid": "Valid"
+      }
+    }
+  },
+  "others": {
+    "table": {
+      "actions": "Actions"
+    }
+  }
+}

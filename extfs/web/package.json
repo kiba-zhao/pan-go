@@ -20,13 +20,16 @@
     "ra-i18n-i18next": "^4.16.12",
     "react": "^18.2.0",
     "react-admin": "^4.16.11",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-virtualized-auto-sizer": "^1.0.24",
+    "react-window": "^1.8.10"
   },
   "devDependencies": {
     "@faker-js/faker": "^8.4.1",
     "@types/node": "^20.11.24",
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
+    "@types/react-window": "^1.8.8",
     "@typescript-eslint/eslint-plugin": "^7.0.2",
     "@typescript-eslint/parser": "^7.0.2",
     "@vitejs/plugin-react": "^4.2.1",

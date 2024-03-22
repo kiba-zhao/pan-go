@@ -3,17 +3,22 @@ import {
   Layout,
   LayoutProps,
   LocalesMenuButton,
+  RefreshIconButton,
   TitlePortal,
-  Toolbar,
+  ToggleThemeButton,
 } from "react-admin";
 
 const AppBar = () => (
-  <AdminAppBar>
-    <Toolbar>
-      <TitlePortal />
-      <LocalesMenuButton />
-    </Toolbar>
-  </AdminAppBar>
+  <AdminAppBar
+    toolbar={
+      <>
+        <TitlePortal />
+        <ToggleThemeButton />
+        <LocalesMenuButton />
+        <RefreshIconButton />
+      </>
+    }
+  ></AdminAppBar>
 );
 
 export const AppLayout = (props: LayoutProps) => (
