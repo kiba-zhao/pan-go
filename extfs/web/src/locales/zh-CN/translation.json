@@ -23,6 +23,11 @@
   "others": {
     "table": {
       "actions": "操作"
+    },
+    "input": {
+      "filepath": {
+        "title": "磁盘文件选择"
+      }
     }
   }
 }

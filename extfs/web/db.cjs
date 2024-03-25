@@ -50,9 +50,7 @@ function generateDiskFile(folders) {
     filepath,
     parent: folder,
     fileType: isDir ? "D" : "F",
-    mimeType: isDir
-      ? undefined
-      : faker.helpers.arrayElement([faker.system.mimeType(), undefined]),
+    updateAt: faker.date.past(),
   };
 }
 
@@ -62,5 +60,6 @@ function generateDiskRoot() {
     filepath: "/",
     fileType: "D",
     parent: "",
+    updateAt: faker.date.past(),
   };
 }

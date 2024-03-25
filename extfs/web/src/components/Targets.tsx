@@ -36,24 +36,31 @@ import {
 import { useFormContext } from "react-hook-form";
 
 import Block from "@mui/icons-material/Block";
+import CloseIcon from "@mui/icons-material/Close";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import ToggleOn from "@mui/icons-material/ToggleOn";
+import AppBar from "@mui/material/AppBar";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
+import Link from "@mui/material/Link";
 import ListItem from "@mui/material/ListItem";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Slide from "@mui/material/Slide";
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import { TransitionProps } from "@mui/material/transitions";
 import useMediaQuery from "@mui/material/useMediaQuery";
@@ -160,12 +167,68 @@ export const Targets = () => {
   );
 };
 
+type FilePathBreadcrumbsProps = {
+  filepath: string;
+  disabled: boolean;
+  onSelect: (value: string) => void;
+};
+const FilePathBreadcrumbs = ({
+  disabled,
+  filepath,
+  onSelect,
+}: FilePathBreadcrumbsProps) => {
+  const paths = filepath.split("/").slice(1);
+  const onSelectPathName = (path: string) => {
+    if (disabled) return;
+    onSelect(path);
+  };
+  const elements = paths.map((pathname, index) => {
+    if (index === paths.length - 1) {
+      return <Typography key={index}>{pathname}</Typography>;
+    }
+    const path = "/" + paths.slice(0, index + 1).join("/");
+    return (
+      <Link
+        underline="hover"
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          cursor: disabled ? "default" : "pointer",
+        }}
+        color="inherit"
+        key={index}
+        onClick={() => onSelectPathName(path)}
+      >
+        {pathname}
+      </Link>
+    );
+  });
+  return (
+    <Breadcrumbs aria-label="breadcrumb" sx={{ pt: 2, pl: 2 }}>
+      <Link
+        key="root"
+        underline="hover"
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          cursor: disabled ? "default" : "pointer",
+        }}
+        color="inherit"
+        onClick={() => onSelectPathName("/")}
+      >
+        <FolderIcon sx={{ mr: 0.5 }} fontSize="inherit" />
+      </Link>
+      {elements}
+    </Breadcrumbs>
+  );
+};
+
 interface FilePathItem {
   id: string;
   filepath: string;
   parent: string;
   fileType: string;
-  mimeType?: string;
+  updateAt: string;
 }
 
 type FilePathSelectorProps = {
@@ -192,6 +255,8 @@ const FilePathSelector = ({
   onChange,
   resource,
 }: FilePathSelectorProps) => {
+  const t = useTranslate();
+
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -226,6 +291,10 @@ const FilePathSelector = ({
     }));
   }, [data]);
 
+  const onRefresh = () => {
+    if (!isFetching) refetch();
+  };
+
   const onSelected = (item: FilePathItem) => {
     onChange(item.filepath);
     onClose();
@@ -234,6 +303,7 @@ const FilePathSelector = ({
   const onEnter = (item: FilePathItem) => {
     setParent(item.filepath);
   };
+
   return (
     <Dialog
       fullScreen={fullScreen}
@@ -241,9 +311,46 @@ const FilePathSelector = ({
       onClose={onClose}
       TransitionComponent={FilePathSelectorTransition}
     >
-      <DialogTitle>Disk Path Selector</DialogTitle>
+      <AppBar sx={{ position: "relative" }}>
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            onClick={onClose}
+            aria-label="close"
+          >
+            <CloseIcon />
+          </IconButton>
+          <Typography sx={{ ml: 2, flex: 1 }} variant="h6" component="div">
+            {t("others.input.filepath.title")}
+          </Typography>
+          <IconButton
+            color="inherit"
+            onClick={onRefresh}
+            aria-label="refresh"
+            disabled={isFetching}
+          >
+            <RefreshIcon />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+      <FilePathBreadcrumbs
+        filepath={parent}
+        onSelect={setParent}
+        disabled={isFetching}
+      ></FilePathBreadcrumbs>
       <DialogContent sx={fullScreen ? void 0 : { height: 680, width: 552 }}>
-        <AutoSizer disableWidth={true}>
+        <Box
+          height="100%"
+          sx={{
+            display: isFetching ? "flex" : "none",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <CircularProgress />
+        </Box>
+        <AutoSizer disableWidth={true} hidden={isFetching}>
           {({ height }) => (
             <FixedSizeList
               height={height}
@@ -285,7 +392,10 @@ const FilePathSelector = ({
                         )}
                       </Avatar>
                     </ListItemAvatar>
-                    <ListItemText primary={rows[index].name} />
+                    <ListItemText
+                      primary={rows[index].name}
+                      secondary={rows[index].updateAt}
+                    />
                   </ListItemButton>
                 </ListItem>
               )}
