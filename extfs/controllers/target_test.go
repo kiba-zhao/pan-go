@@ -1,7 +1,9 @@
 package controllers_test
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"pan/core"
@@ -113,4 +115,115 @@ func TestTargetController(t *testing.T) {
 		assert.Equal(t, 400, w.Code)
 	})
 
+	t.Run("GET /targets/:id", func(t *testing.T) {
+
+		web, ctrl := setup()
+
+		targetRepo := new(mockedRepo.MockTargetRepository)
+		defer targetRepo.AssertExpectations(t)
+		ctrl.TargetService.TargetRepo = targetRepo
+
+		id := uint(123)
+		var version *uint8
+		target := models.Target{ID: id, Name: "Target A", FilePath: "/path_a"}
+		targetRepo.On("Select", id, version).Once().Return(target, nil)
+
+		w := httptest.NewRecorder()
+		url := fmt.Sprintf("/targets/%d", id)
+		req, _ := http.NewRequest("GET", url, nil)
+		web.ServeHTTP(w, req)
+
+		assert.Equal(t, 200, w.Code)
+		var result models.Target
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		assert.Nil(t, err)
+		assert.Equal(t, target, result)
+	})
+
+	t.Run("Post /targets", func(t *testing.T) {
+
+		web, ctrl := setup()
+
+		targetRepo := new(mockedRepo.MockTargetRepository)
+		defer targetRepo.AssertExpectations(t)
+		ctrl.TargetService.TargetRepo = targetRepo
+
+		fields := models.TargetFields{
+			Name:     "Target A",
+			FilePath: "/path_a",
+			Enabled:  true,
+		}
+		target := models.Target{Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled}
+		newTarget := models.Target{ID: 123, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Version: 1}
+		targetRepo.On("Save", target, false).Once().Return(newTarget, nil)
+
+		jsonData, _ := json.Marshal(fields)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/targets", bytes.NewReader(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		web.ServeHTTP(w, req)
+
+		assert.Equal(t, 201, w.Code)
+		var result models.Target
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		assert.Nil(t, err)
+		assert.Equal(t, newTarget, result)
+	})
+
+	t.Run("Patch /targets/:id", func(t *testing.T) {
+
+		web, ctrl := setup()
+
+		targetRepo := new(mockedRepo.MockTargetRepository)
+		defer targetRepo.AssertExpectations(t)
+		ctrl.TargetService.TargetRepo = targetRepo
+
+		id := uint(123)
+		var version *uint8
+		fields := models.TargetFields{
+			Name:     "Target A",
+			FilePath: "/path_a",
+			Enabled:  true,
+		}
+		target := models.Target{ID: id, Name: "Target B", FilePath: "/path_b", Enabled: false, Version: 1}
+		saveTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Version: target.Version}
+		newTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Version: 2}
+		targetRepo.On("Select", id, version).Once().Return(target, nil)
+		targetRepo.On("Save", saveTarget, true).Once().Return(newTarget, nil)
+
+		jsonData, _ := json.Marshal(fields)
+		w := httptest.NewRecorder()
+		url := fmt.Sprintf("/targets/%d", id)
+		req, _ := http.NewRequest("PATCH", url, bytes.NewReader(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		web.ServeHTTP(w, req)
+
+		assert.Equal(t, 200, w.Code)
+		var result models.Target
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		assert.Nil(t, err)
+		assert.Equal(t, newTarget, result)
+	})
+
+	t.Run("Delete /targets/:id", func(t *testing.T) {
+
+		web, ctrl := setup()
+
+		targetRepo := new(mockedRepo.MockTargetRepository)
+		defer targetRepo.AssertExpectations(t)
+		ctrl.TargetService.TargetRepo = targetRepo
+
+		id := uint(123)
+		var version *uint8
+		target := models.Target{ID: id, Name: "Target A", FilePath: "/path_a"}
+		targetRepo.On("Select", id, version).Once().Return(target, nil)
+		targetRepo.On("Delete", target).Once().Return(nil)
+
+		w := httptest.NewRecorder()
+		url := fmt.Sprintf("/targets/%d", id)
+		req, _ := http.NewRequest("DELETE", url, nil)
+		web.ServeHTTP(w, req)
+
+		assert.Equal(t, 204, w.Code)
+	})
 }

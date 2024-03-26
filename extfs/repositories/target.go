@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"pan/extfs/errors"
 	"pan/extfs/models"
 	"strings"
 
@@ -10,6 +11,9 @@ import (
 
 type TargetRepository interface {
 	Search(conditions models.TargetSearchCondition) (total int64, items []models.Target, err error)
+	Save(target models.Target, withVersion bool) (models.Target, error)
+	Select(id uint, version *uint8) (models.Target, error)
+	Delete(target models.Target) error
 }
 
 type targetRepositoryImpl struct {
@@ -18,6 +22,34 @@ type targetRepositoryImpl struct {
 
 func NewTargetRepository(db *gorm.DB) TargetRepository {
 	return &targetRepositoryImpl{DB: db}
+}
+
+func (repo *targetRepositoryImpl) Save(target models.Target, withVersion bool) (models.Target, error) {
+	db := repo.DB
+
+	if target.ID == 0 {
+		result := db.Create(&target)
+		return target, result.Error
+	}
+
+	var results *gorm.DB
+	if !withVersion {
+		results = db.Save(&target)
+	} else {
+		results = db.Model(&target).Where("version = ?", target.Version).Updates(models.Target{
+			Name:     target.Name,
+			FilePath: target.FilePath,
+			Enabled:  target.Enabled,
+			Version:  target.Version + 1,
+			Invalid:  target.Invalid,
+		})
+	}
+
+	if results.Error == nil && results.RowsAffected != 1 {
+		return target, errors.ErrNotFound
+	}
+
+	return target, results.Error
 }
 
 func (repo *targetRepositoryImpl) Search(conditions models.TargetSearchCondition) (total int64, items []models.Target, err error) {
@@ -71,4 +103,24 @@ func (repo *targetRepositoryImpl) Search(conditions models.TargetSearchCondition
 	results = db.Find(&items)
 	err = results.Error
 	return
+}
+
+func (repo *targetRepositoryImpl) Select(id uint, version *uint8) (models.Target, error) {
+	var target models.Target
+	results := repo.DB.Take(&target, id)
+	if results.Error == gorm.ErrRecordNotFound {
+		return target, errors.ErrNotFound
+	}
+	if version != nil && target.Version != *version {
+		return target, errors.ErrConflict
+	}
+	return target, results.Error
+}
+
+func (repo *targetRepositoryImpl) Delete(target models.Target) error {
+	results := repo.DB.Where("version = ?", target.Version).Delete(&target)
+	if results.Error == nil && results.RowsAffected != 1 {
+		return errors.ErrNotFound
+	}
+	return results.Error
 }

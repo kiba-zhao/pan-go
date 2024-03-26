@@ -3,8 +3,10 @@ package controllers
 import (
 	"net/http"
 	"pan/core"
+	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/services"
+	"strconv"
 )
 
 type TargetController struct {
@@ -13,6 +15,10 @@ type TargetController struct {
 
 func (c *TargetController) Init(router core.WebRouter) {
 	router.GET("/targets", c.Search)
+	router.POST("/targets", c.Create)
+	router.PATCH("/targets/:id", c.Update)
+	router.GET("/targets/:id", c.Select)
+	router.DELETE("/targets/:id", c.Delete)
 }
 
 func (c *TargetController) Search(ctx core.WebContext) {
@@ -28,4 +34,96 @@ func (c *TargetController) Search(ctx core.WebContext) {
 	}
 	core.SetCountHeaderForWeb(ctx, total)
 	ctx.JSON(http.StatusOK, items)
+}
+
+func (c *TargetController) Create(ctx core.WebContext) {
+	var fields models.TargetFields
+	if err := ctx.ShouldBind(&fields); err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	target, err := c.TargetService.Create(fields)
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	ctx.JSON(http.StatusCreated, target)
+}
+
+func (c *TargetController) Update(ctx core.WebContext) {
+	var fields models.TargetFields
+	if err := ctx.ShouldBind(&fields); err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	paramId := ctx.Param("id")
+	id, err := strconv.ParseUint(paramId, 10, 32)
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	var opts models.TargetQueryOptions
+	if err := ctx.ShouldBindQuery(&opts); err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	target, err := c.TargetService.Update(fields, uint(id), opts)
+	if err == errors.ErrConflict {
+		ctx.AbortWithError(http.StatusConflict, err)
+		return
+	}
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	ctx.JSON(http.StatusOK, target)
+}
+
+func (c *TargetController) Select(ctx core.WebContext) {
+	paramId := ctx.Param("id")
+	id, err := strconv.ParseUint(paramId, 10, 32)
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	var opts models.TargetQueryOptions
+	if err := ctx.ShouldBindQuery(&opts); err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	target, err := c.TargetService.Select(uint(id), opts)
+	if err == errors.ErrNotFound {
+		ctx.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	ctx.JSON(http.StatusOK, target)
+}
+
+func (c *TargetController) Delete(ctx core.WebContext) {
+	paramId := ctx.Param("id")
+	id, err := strconv.ParseUint(paramId, 10, 32)
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	var opts models.TargetQueryOptions
+	if err := ctx.ShouldBindQuery(&opts); err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	err = c.TargetService.Delete(uint(id), opts)
+	if err == errors.ErrNotFound {
+		ctx.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	ctx.Status(http.StatusNoContent)
 }
