@@ -35,11 +35,13 @@ const (
 )
 
 func wrapNoRouteHandleFunc(name string, m NoRouteWebModule) noRouteHandlerFunc {
-	index := len(name) + 1
+	modulePath := "/" + name
+	modulePathLen := len(modulePath)
 	return func(ctx WebContext) {
 		path := ctx.Request.URL.Path
+		pathLen := len(path)
 		accepted := ctx.NegotiateFormat(MIMEHTML) == MIMEHTML
-		if accepted && strings.Index(path, name) == 1 && path[index] == '/' {
+		if accepted && strings.HasPrefix(path, modulePath) && (pathLen == modulePathLen || path[modulePathLen] == '/') {
 			m.NoRoute(ctx)
 			return
 		}

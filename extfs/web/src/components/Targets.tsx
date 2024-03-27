@@ -1,7 +1,6 @@
 import {
   BooleanField,
   BooleanInput,
-  BulkDeleteButton,
   BulkExportButton,
   CloneButton,
   Create,
@@ -71,7 +70,6 @@ import { FixedSizeList } from "react-window";
 
 const TargetBulkActions = () => (
   <>
-    <BulkDeleteButton mutationMode="pessimistic" />
     <BulkExportButton />
   </>
 );
@@ -228,10 +226,11 @@ interface FilePathItem {
   filepath: string;
   parent: string;
   fileType: string;
-  updateAt: string;
+  updatedAt: string;
 }
 
 type FilePathSelectorProps = {
+  open: boolean;
   value: string;
   resource: string;
   onClose: () => void;
@@ -250,6 +249,7 @@ const FilePathSelectorTransition = forwardRef(
 );
 
 const FilePathSelector = ({
+  open,
   value,
   onClose,
   onChange,
@@ -277,7 +277,7 @@ const FilePathSelector = ({
       meta: { noPagination: true },
       filter: { parent },
     },
-    { onError }
+    { onError, enabled: open }
   );
 
   const rows = useMemo(() => {
@@ -307,7 +307,7 @@ const FilePathSelector = ({
   return (
     <Dialog
       fullScreen={fullScreen}
-      open={true}
+      open={open}
       onClose={onClose}
       TransitionComponent={FilePathSelectorTransition}
     >
@@ -394,7 +394,7 @@ const FilePathSelector = ({
                     </ListItemAvatar>
                     <ListItemText
                       primary={rows[index].name}
-                      secondary={rows[index].updateAt}
+                      secondary={rows[index].updatedAt}
                     />
                   </ListItemButton>
                 </ListItem>
@@ -453,6 +453,7 @@ const FilePathInput = ({
       />
       {open && (
         <FilePathSelector
+          open={open}
           value={filepath}
           resource="disk-files"
           onChange={onChange}
@@ -477,8 +478,8 @@ const TargetEditActions = () => (
   <TopToolbar>
     <CreateButton />
     <CloneButton />
-    <ShowButton />
     <ListButton />
+    <ShowButton />
   </TopToolbar>
 );
 
@@ -491,7 +492,7 @@ export const TargetEdit = () => (
       <BooleanInput source="enabled" />
       <BooleanInput source="invalid" disabled={true} />
       <DateTimeInput source="createAt" disabled={true} />
-      <DateTimeInput source="updateAt" disabled={true} />
+      <DateTimeInput source="updatedAt" disabled={true} />
     </SimpleForm>
   </Edit>
 );
@@ -512,7 +513,7 @@ export const TargetShow = () => (
       <BooleanField source="enabled" />
       <BooleanField source="invalid" />
       <DateField source="createAt" showTime />
-      <DateField source="updateAt" showTime />
+      <DateField source="updatedAt" showTime />
     </SimpleShowLayout>
   </Show>
 );

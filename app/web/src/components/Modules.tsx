@@ -107,7 +107,7 @@ function ModuleItem({ module, disabled }: ModuleItemProps) {
       setEnabled(value);
       return ctx;
     },
-    onError: (_, v, ctx) => ctx && setEnabled(ctx.enabled),
+    onError: (_, _v, ctx) => ctx && setEnabled(ctx.enabled),
   });
 
   const onEnableChange = mutate;
@@ -145,7 +145,7 @@ function ModuleItem({ module, disabled }: ModuleItemProps) {
           <Button
             variant="text"
             size="small"
-            href={`/${module.Name}`}
+            href={`/${module.Name}/`}
             disabled={disabled}
           >
             {t("Modules.Details")}

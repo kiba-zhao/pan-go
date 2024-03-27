@@ -22,8 +22,9 @@ const darkTheme: RaThemeOptions = {
 export const App = () => {
   const i18nProvider = useI18nProvider();
   if (!i18nProvider) return null;
+  console.log(1111, import.meta.env.BASE_URL);
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Admin
         disableTelemetry
         theme={defaultTheme}

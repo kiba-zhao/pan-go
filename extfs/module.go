@@ -4,6 +4,7 @@ import (
 	"embed"
 	"pan/core"
 	"pan/extfs/controllers"
+	"pan/extfs/models"
 	"pan/extfs/repositories"
 	"pan/extfs/services"
 
@@ -74,6 +75,7 @@ func (m *Module) OnInitConfig(cfg core.Config) error {
 	db, err := gorm.Open(sqlite.Open(settings.DBFilePath), &gorm.Config{})
 	if err == nil {
 		m.db = db
+		err = m.InitDB()
 	}
 	return err
 }
@@ -118,4 +120,9 @@ func (m *Module) InitForApp() error {
 
 	// TODO: trigger tasks
 	return nil
+}
+
+func (m *Module) InitDB() error {
+	err := m.db.AutoMigrate(&models.Target{})
+	return err
 }
