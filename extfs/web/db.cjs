@@ -28,7 +28,7 @@ function generateTarget() {
     filepath: faker.system.directoryPath(),
     enabled: faker.datatype.boolean(),
     version: faker.number.int(0, 255),
-    invalid: faker.datatype.boolean(),
+    available: faker.datatype.boolean(),
     createAt: faker.date.past(),
     updateAt: faker.date.past(),
   };
@@ -37,16 +37,15 @@ function generateTarget() {
 function generateDiskFile(folders) {
   const isDir = faker.datatype.boolean();
   const folder = faker.helpers.arrayElement(folders);
-  const filepath = path.join(
-    folder,
-    isDir ? faker.word.sample() : faker.system.fileName()
-  );
+  const name = isDir ? faker.word.sample() : faker.system.fileName();
+  const filepath = path.join(folder, name);
 
   if (isDir) {
     folders.push(filepath);
   }
   return {
     id: faker.string.nanoid(),
+    name,
     filepath,
     parent: folder,
     fileType: isDir ? "D" : "F",
@@ -57,6 +56,7 @@ function generateDiskFile(folders) {
 function generateDiskRoot() {
   return {
     id: faker.string.nanoid(),
+    name: "/",
     filepath: "/",
     fileType: "D",
     parent: "",

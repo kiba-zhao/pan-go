@@ -98,7 +98,7 @@ func TestTargetController(t *testing.T) {
 		assert.Equal(t, targets, results)
 	})
 
-	t.Run("GET /targets with invalid query", func(t *testing.T) {
+	t.Run("GET /targets with available query", func(t *testing.T) {
 		web, _ := setup()
 
 		w := httptest.NewRecorder()
@@ -148,13 +148,16 @@ func TestTargetController(t *testing.T) {
 		defer targetRepo.AssertExpectations(t)
 		ctrl.TargetService.TargetRepo = targetRepo
 
+		enabled := true
+		available := false
+		version := uint8(1)
 		fields := models.TargetFields{
 			Name:     "Target A",
 			FilePath: "/path_a",
-			Enabled:  true,
+			Enabled:  &enabled,
 		}
-		target := models.Target{Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled}
-		newTarget := models.Target{ID: 123, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Version: 1}
+		target := models.Target{Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: &version}
+		newTarget := models.Target{ID: 123, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: &version}
 		targetRepo.On("Save", target, false).Once().Return(newTarget, nil)
 
 		jsonData, _ := json.Marshal(fields)
@@ -180,14 +183,18 @@ func TestTargetController(t *testing.T) {
 
 		id := uint(123)
 		var version *uint8
+		enabled := false
+		available := false
 		fields := models.TargetFields{
 			Name:     "Target A",
 			FilePath: "/path_a",
-			Enabled:  true,
+			Enabled:  &enabled,
 		}
-		target := models.Target{ID: id, Name: "Target B", FilePath: "/path_b", Enabled: false, Version: 1}
-		saveTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Version: target.Version}
-		newTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Version: 2}
+		firstVersion := uint8(1)
+		target := models.Target{ID: id, Name: "Target B", FilePath: "/path_b", Enabled: fields.Enabled, Available: &available, Version: &firstVersion}
+		saveTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: target.Version}
+		sencodVersion := firstVersion + 1
+		newTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: &sencodVersion}
 		targetRepo.On("Select", id, version).Once().Return(target, nil)
 		targetRepo.On("Save", saveTarget, true).Once().Return(newTarget, nil)
 

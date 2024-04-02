@@ -9,7 +9,7 @@ import (
 type TargetFields struct {
 	Name     string `form:"name" binding:"required" json:"name"`
 	FilePath string `form:"filepath" binding:"required" json:"filepath"`
-	Enabled  bool   `form:"enabled" binding:"required" json:"enabled"`
+	Enabled  *bool  `form:"enabled" binding:"required" json:"enabled"`
 }
 
 type TargetQueryOptions struct {
@@ -23,9 +23,9 @@ type Target struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt" form:"deletedAt"`
 	Name      string         `gorm:"size:255" json:"name" form:"name"`
 	FilePath  string         `gorm:"size:255"  json:"filepath" form:"filepath"`
-	Enabled   bool           `gorm:"index" json:"enabled" form:"enabled"`
-	Invalid   *bool          `gorm:"index" json:"invalid" form:"invalid"`
-	Version   uint8          `gorm:"index" json:"version" form:"version"`
+	Enabled   *bool          `gorm:"index" json:"enabled" form:"enabled"`
+	Available *bool          `gorm:"index" json:"available" form:"available"`
+	Version   *uint8         `gorm:"index" json:"version" form:"version"`
 }
 
 type TargetSearchCondition struct {

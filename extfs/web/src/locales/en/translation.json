@@ -5,9 +5,9 @@
         "has_enabled": "Enabled / Disabled",
         "enabled": "Enabled",
         "disabled": "Disabled",
-        "has_invalid": "Status",
-        "invalid": "Invalid",
-        "valid": "Valid"
+        "has_available": "Status",
+        "available": "Available",
+        "not_available": "Not available"
       }
     }
   },

@@ -56,6 +56,10 @@ func (m *Module) SetupToWeb(router core.WebRouter) {
 	targetCtrl.TargetService.TargetRepo = repositories.NewTargetRepository(m.db)
 	targetCtrl.Init(api)
 
+	var diskfileCtrl controllers.DiskFileController
+	diskfileCtrl.DiskFileService = &services.DiskFileService{}
+	diskfileCtrl.Init(api)
+
 }
 
 // TODO: OnInitConfig

@@ -38,12 +38,14 @@ func TestTargetRepository(t *testing.T) {
 		defer mockDB.Close()
 
 		rowCount := int64(123)
+		version := uint8(133)
+		enabled := true
 		var target models.Target
 		target.ID = 1
 		target.Name = "Target A"
 		target.FilePath = "/path_a"
-		target.Version = 133
-		target.Enabled = true
+		target.Version = &version
+		target.Enabled = &enabled
 		target.CreatedAt = time.Now()
 		target.UpdatedAt = time.Now()
 
@@ -63,12 +65,14 @@ func TestTargetRepository(t *testing.T) {
 		repo, mockDB, mock := setup()
 		defer mockDB.Close()
 
+		version := uint8(133)
+		enabled := true
 		var target models.Target
 		target.ID = 133
 		target.Name = "Target A"
 		target.FilePath = "/path_a"
-		target.Version = 133
-		target.Enabled = true
+		target.Version = &version
+		target.Enabled = &enabled
 		target.CreatedAt = time.Now()
 		target.UpdatedAt = time.Now()
 
@@ -85,13 +89,14 @@ func TestTargetRepository(t *testing.T) {
 		repo, mockDB, mock := setup()
 		defer mockDB.Close()
 
+		enabled := true
 		target := models.Target{
 			Name:     "Target A",
 			FilePath: "/path_a",
-			Enabled:  true,
+			Enabled:  &enabled,
 		}
 
-		mock.ExpectExec("INSERT INTO `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.Enabled, target.Invalid, target.Version).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("INSERT INTO `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.Enabled, target.Available, target.Version).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err := repo.Save(target, false)
 		assert.Nil(t, err)
@@ -100,11 +105,12 @@ func TestTargetRepository(t *testing.T) {
 		assert.Equal(t, target.FilePath, result.FilePath)
 		assert.Equal(t, target.Enabled, result.Enabled)
 		assert.Equal(t, target.Version, result.Version)
-		assert.Equal(t, target.Invalid, result.Invalid)
+		assert.Equal(t, target.Available, result.Available)
 
+		version := uint8(2)
 		target.ID = 2
-		target.Version = 2
-		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.Enabled, target.Invalid, target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+		target.Version = &version
+		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.Enabled, target.Available, target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err = repo.Save(target, false)
 		assert.Nil(t, err)
@@ -113,13 +119,15 @@ func TestTargetRepository(t *testing.T) {
 		assert.Equal(t, target.FilePath, result.FilePath)
 		assert.Equal(t, target.Enabled, result.Enabled)
 		assert.Equal(t, target.Version, result.Version)
-		assert.Equal(t, target.Invalid, result.Invalid)
+		assert.Equal(t, target.Available, result.Available)
 
-		invalid := true
+		available := true
+		_version := uint8(3)
 		target.ID = 3
-		target.Version = 3
-		target.Invalid = &invalid
-		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), target.Name, target.FilePath, target.Enabled, target.Invalid, target.Version+1, target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+		target.Version = &_version
+		target.Available = &available
+		newVersion := _version + 1
+		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), target.Name, target.FilePath, target.Enabled, target.Available, &newVersion, target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err = repo.Save(target, true)
 		assert.Nil(t, err)
@@ -127,8 +135,8 @@ func TestTargetRepository(t *testing.T) {
 		assert.Equal(t, target.Name, result.Name)
 		assert.Equal(t, target.FilePath, result.FilePath)
 		assert.Equal(t, target.Enabled, result.Enabled)
-		assert.Equal(t, target.Version+1, result.Version)
-		assert.Equal(t, target.Invalid, result.Invalid)
+		assert.Equal(t, newVersion, *result.Version)
+		assert.Equal(t, target.Available, result.Available)
 
 	})
 
@@ -136,12 +144,14 @@ func TestTargetRepository(t *testing.T) {
 		repo, mockDB, mock := setup()
 		defer mockDB.Close()
 
+		version := uint8(133)
+		enabled := true
 		target := models.Target{
 			ID:       133,
-			Version:  13,
+			Version:  &version,
 			Name:     "Target A",
 			FilePath: "/path_a",
-			Enabled:  true,
+			Enabled:  &enabled,
 		}
 
 		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))

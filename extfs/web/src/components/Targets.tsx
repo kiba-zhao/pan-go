@@ -68,6 +68,8 @@ import { Fragment, forwardRef, useMemo, useState } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { FixedSizeList } from "react-window";
 
+import { basename, dirname, generateParents } from "../lib/path";
+
 const TargetBulkActions = () => (
   <>
     <BulkExportButton />
@@ -105,16 +107,16 @@ const TargetInvalidFilter = () => {
   const t = useTranslate();
   return (
     <FilterList
-      label={t("resources.targets.filters.has_invalid")}
+      label={t("resources.targets.filters.has_available")}
       icon={<Block />}
     >
       <FilterListItem
-        label={t("resources.targets.filters.invalid")}
-        value={{ invalid: true }}
+        label={t("resources.targets.filters.available")}
+        value={{ available: true }}
       />
       <FilterListItem
-        label={t("resources.targets.filters.valid")}
-        value={{ invalid: false }}
+        label={t("resources.targets.filters.not_available")}
+        value={{ available: false }}
       />
     </FilterList>
   );
@@ -154,7 +156,7 @@ export const Targets = () => {
         <TextField source="name" />
         <TextField source="filepath" />
         <BooleanField source="enabled" />
-        <BooleanField source="invalid" />
+        <BooleanField source="available" />
         <DateField source="createAt" showTime />
         <WrapperField label={t("others.table.actions")}>
           <EditButton />
@@ -166,25 +168,35 @@ export const Targets = () => {
 };
 
 type FilePathBreadcrumbsProps = {
-  filepath: string;
+  value: string;
   disabled: boolean;
   onSelect: (value: string) => void;
 };
 const FilePathBreadcrumbs = ({
   disabled,
-  filepath,
+  value,
   onSelect,
 }: FilePathBreadcrumbsProps) => {
-  const paths = filepath.split("/").slice(1);
+  const [root, ...paths] = useMemo(
+    () => (value == "" ? [value] : generateParents(value, true)),
+    [value]
+  );
+  const rootOnly = useMemo(() => value === root, [value, root]);
+  const dirPath = useMemo(
+    () => (paths.length > 0 ? paths[paths.length - 1] : undefined),
+    [paths]
+  );
+  const filename = useMemo(
+    () => (rootOnly ? "" : basename(value, { dirname: dirPath, root })),
+    [value, dirPath, rootOnly]
+  );
   const onSelectPathName = (path: string) => {
     if (disabled) return;
     onSelect(path);
   };
-  const elements = paths.map((pathname, index) => {
-    if (index === paths.length - 1) {
-      return <Typography key={index}>{pathname}</Typography>;
-    }
-    const path = "/" + paths.slice(0, index + 1).join("/");
+  const elements = paths.map((path, idx) => {
+    const dirPath = idx > 0 ? paths[idx - 1] : root;
+    const filename = basename(path, { dirname: dirPath, root });
     return (
       <Link
         underline="hover"
@@ -194,10 +206,10 @@ const FilePathBreadcrumbs = ({
           cursor: disabled ? "default" : "pointer",
         }}
         color="inherit"
-        key={index}
+        key={idx}
         onClick={() => onSelectPathName(path)}
       >
-        {pathname}
+        {filename}
       </Link>
     );
   });
@@ -212,17 +224,21 @@ const FilePathBreadcrumbs = ({
           cursor: disabled ? "default" : "pointer",
         }}
         color="inherit"
-        onClick={() => onSelectPathName("/")}
+        onClick={() => onSelectPathName(root)}
       >
         <FolderIcon sx={{ mr: 0.5 }} fontSize="inherit" />
       </Link>
       {elements}
+      <Typography color="text.primary" hidden={rootOnly}>
+        {filename}
+      </Typography>
     </Breadcrumbs>
   );
 };
 
 interface FilePathItem {
   id: string;
+  name: string;
   filepath: string;
   parent: string;
   fileType: string;
@@ -267,10 +283,9 @@ const FilePathSelector = ({
   };
 
   const [parent, setParent] = useState<string>(() => {
-    if (!value || value.trim() === "") return "/";
-    const parentValues = value.split("/").slice(0, -1);
-    return parentValues.length <= 1 ? "/" : parentValues.join("/");
+    return value !== "" ? dirname(value) : "";
   });
+
   const { isFetching, data, refetch } = useGetList<FilePathItem>(
     resource,
     {
@@ -279,17 +294,6 @@ const FilePathSelector = ({
     },
     { onError, enabled: open }
   );
-
-  const rows = useMemo(() => {
-    if (data === void 0) {
-      return [];
-    }
-    return data.map((item) => ({
-      name:
-        item.filepath === "/" ? item.filepath : item.filepath.split("/").pop(),
-      ...item,
-    }));
-  }, [data]);
 
   const onRefresh = () => {
     if (!isFetching) refetch();
@@ -303,6 +307,8 @@ const FilePathSelector = ({
   const onEnter = (item: FilePathItem) => {
     setParent(item.filepath);
   };
+
+  const rows = useMemo(() => data || [], [data]);
 
   return (
     <Dialog
@@ -335,10 +341,11 @@ const FilePathSelector = ({
         </Toolbar>
       </AppBar>
       <FilePathBreadcrumbs
-        filepath={parent}
+        value={parent}
         onSelect={setParent}
         disabled={isFetching}
       ></FilePathBreadcrumbs>
+
       <DialogContent sx={fullScreen ? void 0 : { height: 680, width: 552 }}>
         <Box
           height="100%"
@@ -426,7 +433,7 @@ const FilePathInput = ({
     typeof rest.value === "string" ? rest.value : ""
   );
   const onOpen = () => {
-    setFilePath(getValues(source));
+    setFilePath(getValues(source) || "");
     setOpen(true);
   };
 
@@ -490,7 +497,7 @@ export const TargetEdit = () => (
       <TextInput source="name" />
       <FilePathInput source="filepath" />
       <BooleanInput source="enabled" />
-      <BooleanInput source="invalid" disabled={true} />
+      <BooleanInput source="available" disabled={true} />
       <DateTimeInput source="createAt" disabled={true} />
       <DateTimeInput source="updatedAt" disabled={true} />
     </SimpleForm>
@@ -511,7 +518,7 @@ export const TargetShow = () => (
       <TextField source="name" />
       <TextField source="filepath" />
       <BooleanField source="enabled" />
-      <BooleanField source="invalid" />
+      <BooleanField source="available" />
       <DateField source="createAt" showTime />
       <DateField source="updatedAt" showTime />
     </SimpleShowLayout>

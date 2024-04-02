@@ -6,7 +6,7 @@
         "name": "命名",
         "filepath": "文件路径",
         "enabled": "启用",
-        "invalid": "无效",
+        "available": "可用",
         "createAt": "创建时间",
         "updateAt": "更新时间"
       },
@@ -14,9 +14,9 @@
         "has_enabled": "启用/停用",
         "enabled": "启用",
         "disabled": "停用",
-        "has_invalid": "无效/有效",
-        "invalid": "无效",
-        "valid": "有效"
+        "has_available": "状态",
+        "available": "可用",
+        "not_available": "不可用"
       }
     }
   },
