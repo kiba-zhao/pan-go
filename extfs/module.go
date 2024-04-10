@@ -1,132 +1,89 @@
 package extfs
 
 import (
-	"embed"
-	"pan/core"
+	"os"
+	"pan/app"
 	"pan/extfs/controllers"
 	"pan/extfs/models"
 	"pan/extfs/repositories"
 	"pan/extfs/services"
+	"path"
+	"reflect"
+	"sync"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-//go:generate npm --prefix ./web install
-//go:generate npm --prefix ./web run build -- -m production --base /extfs/
-//go:embed web/dist
-var embedFS embed.FS
-
-type Module struct {
-	*core.BrowserRouteWebModule
-	cfg      core.Config
-	settings *services.SettingsService
-	db       *gorm.DB
+type webController interface {
+	Init(router app.WebRouter)
 }
 
-func NewModule() *Module {
-	m := new(Module)
-	m.BrowserRouteWebModule = core.NewBrowserRouteWebModule(embedFS, "web/dist")
-
-	m.settings = &services.SettingsService{}
-
-	return m
+type module struct {
+	Config      app.AppConfig
+	db          *gorm.DB
+	dbOnce      sync.Once
+	controllers []webController
+	ctrlOnce    sync.Once
 }
 
-func (m *Module) Avatar() string {
-	return ""
+func New() interface{} {
+	return &module{}
 }
 
-func (m *Module) Name() string {
-	return "extfs"
-}
+func (m *module) GetComponents() []interface{} {
 
-func (m *Module) Desc() string {
-	return "ExtFS Module"
-}
-
-// TODO: SetupToWeb
-func (m *Module) SetupToWeb(router core.WebRouter) {
-	// TODO: Dependency Injection
-	// Mount Controllers
-
-	api := router.Group("/api")
-	var targetCtrl controllers.TargetController
-	targetCtrl.TargetService = &services.TargetService{}
-	targetCtrl.TargetService.TargetRepo = repositories.NewTargetRepository(m.db)
-	targetCtrl.Init(api)
-
-	var diskfileCtrl controllers.DiskFileController
-	diskfileCtrl.DiskFileService = &services.DiskFileService{}
-	diskfileCtrl.Init(api)
-
-}
-
-// TODO: OnInitConfig
-func (m *Module) OnInitConfig(cfg core.Config) error {
-
-	// intialize settings
-	settings := &Settings{}
-	settings.init()
-	cfg.Init(settings)
-	m.cfg = cfg
-
-	// set settings service properties
-	m.settings.Settings = &settings.Settings
-	m.settings.Config = cfg
-
-	// create db
-	db, err := gorm.Open(sqlite.Open(settings.DBFilePath), &gorm.Config{})
-	if err == nil {
-		m.db = db
-		err = m.InitDB()
-	}
-	return err
-}
-
-// TODO: HasWeb
-func (m *Module) HasWeb() bool {
-	return true
-}
-
-// TODO: EnabledModule
-func (m *Module) Enabled() bool {
-	settings := &Settings{}
-	err := m.cfg.Marshal(settings)
-	if err != nil {
-		// TODO: log error
-		return false
-	}
-	return settings.Enabled
-}
-
-// TODO: SetEnable
-func (m *Module) SetEnable(enable bool) error {
-
-	return m.cfg.Sync(func(marshal core.ConfigMarshalHandle) (interface{}, error) {
-		settings := &Settings{}
-		err := marshal(settings)
-		if err != nil {
-			return nil, err
+	m.ctrlOnce.Do(func() {
+		m.controllers = []webController{
+			&controllers.TargetController{},
+			&controllers.DiskFileController{},
 		}
-		settings.Enabled = enable
-		return settings, nil
 	})
+
+	components := []interface{}{m}
+	for _, ctrl := range m.controllers {
+		components = append(components, ctrl)
+	}
+	return components
 }
 
-// TODO: ReadOnlyModule
-func (m *Module) ReadOnly() bool {
-	return false
+func (m *module) GetDependencies() map[reflect.Type]interface{} {
+
+	m.dbOnce.Do(func() {
+		settings, err := m.Config.Read()
+		if err == nil {
+			basePath := settings.RootPath
+			_, err := os.Stat(basePath)
+			if os.IsNotExist(err) {
+				err = os.MkdirAll(basePath, 0755)
+			}
+			if err == nil {
+				dbPath := path.Join(basePath, "extfs.db")
+				m.db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+			}
+		}
+		if err == nil {
+			err = m.db.AutoMigrate(&models.Target{})
+		}
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	return map[reflect.Type]interface{}{
+		reflect.TypeFor[repositories.TargetRepository](): repositories.NewTargetRepository(m.db),
+		reflect.TypeFor[*services.TargetService]():       &services.TargetService{},
+		reflect.TypeFor[*services.DiskFileService]():     &services.DiskFileService{},
+	}
 }
 
-// initForApp
-func (m *Module) InitForApp() error {
+func (m *module) SetupToWeb(webApp app.WebApp) error {
 
-	// TODO: trigger tasks
+	router := webApp.Group("/api/extfs")
+
+	for _, ctrl := range m.controllers {
+		ctrl.Init(router)
+	}
+
 	return nil
-}
-
-func (m *Module) InitDB() error {
-	err := m.db.AutoMigrate(&models.Target{})
-	return err
 }

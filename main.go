@@ -1,30 +1,36 @@
 package main
 
 import (
+	"embed"
+	"io/fs"
 	"pan/app"
-	"pan/core"
 	"pan/extfs"
+	"pan/runtime"
 )
 
-func mountApp(coreApp *core.App) {
-	m := app.NewModule()
-	coreApp.Mount(m)
-}
-
-func mountExtFS(coreApp *core.App) {
-	m := extfs.NewModule()
-	coreApp.Mount(m)
-}
+//go:generate npm --prefix ./web install && npm --prefix ./web audit fix
+//go:generate npm --prefix ./web run build -- -m production
+//go:embed web/dist
+var embedFS embed.FS
 
 func main() {
 
-	coreApp := core.New()
-	err := coreApp.Init()
+	assetsFS, err := fs.Sub(embedFS, "web/dist")
+	if err != nil {
+		panic(err)
+	}
+
+	engine := runtime.New()
+
+	err = engine.Mount(app.New(), extfs.New(), app.NewWebAssets("/", assetsFS))
+
+	var ctx runtime.Context
+	if err == nil {
+		ctx, err = engine.Bootstrap()
+	}
 
 	if err == nil {
-		mountApp(coreApp)
-		mountExtFS(coreApp)
-		err = coreApp.Run()
+		err = ctx.Wait()
 	}
 
 	if err != nil {

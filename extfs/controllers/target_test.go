@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"pan/core"
+	"pan/app"
 	"pan/extfs/controllers"
 	"pan/extfs/models"
 	"pan/extfs/services"
@@ -20,9 +20,9 @@ import (
 
 func TestTargetController(t *testing.T) {
 
-	setup := func() (web *core.WebApp, ctrl *controllers.TargetController) {
+	setup := func() (web app.WebApp, ctrl *controllers.TargetController) {
 		ctrl = new(controllers.TargetController)
-		web = core.NewWebApp(&core.Settings{})
+		web = app.NewWebApp()
 		ctrl.Init(web)
 
 		ctrl.TargetService = &services.TargetService{}
@@ -48,7 +48,7 @@ func TestTargetController(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(core.CountHeaderName))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(app.CountHeaderName))
 		var results []models.Target
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
@@ -91,7 +91,7 @@ func TestTargetController(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(core.CountHeaderName))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(app.CountHeaderName))
 		var results []models.Target
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)

@@ -1,0 +1,33 @@
+{
+  "resources": {
+    "extfs/targets": {
+      "name": "目标文件",
+      "fields": {
+        "name": "命名",
+        "filepath": "文件路径",
+        "enabled": "启用",
+        "available": "可用",
+        "createAt": "创建时间",
+        "updateAt": "更新时间"
+      },
+      "filters": {
+        "has_enabled": "启用/停用",
+        "enabled": "启用",
+        "disabled": "停用",
+        "has_available": "状态",
+        "available": "可用",
+        "not_available": "不可用"
+      }
+    }
+  },
+  "others": {
+    "table": {
+      "actions": "操作"
+    },
+    "input": {
+      "filepath": {
+        "title": "磁盘文件选择"
+      }
+    }
+  }
+}

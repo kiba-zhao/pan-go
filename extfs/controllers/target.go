@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"net/http"
-	"pan/core"
+	"pan/app"
 	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/services"
@@ -13,7 +13,7 @@ type TargetController struct {
 	TargetService *services.TargetService
 }
 
-func (c *TargetController) Init(router core.WebRouter) {
+func (c *TargetController) Init(router app.WebRouter) {
 	router.GET("/targets", c.Search)
 	router.POST("/targets", c.Create)
 	router.PATCH("/targets/:id", c.Update)
@@ -21,7 +21,7 @@ func (c *TargetController) Init(router core.WebRouter) {
 	router.DELETE("/targets/:id", c.Delete)
 }
 
-func (c *TargetController) Search(ctx core.WebContext) {
+func (c *TargetController) Search(ctx app.WebContext) {
 	var conditions models.TargetSearchCondition
 	if err := ctx.ShouldBind(&conditions); err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
@@ -32,11 +32,11 @@ func (c *TargetController) Search(ctx core.WebContext) {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	core.SetCountHeaderForWeb(ctx, total)
+	app.SetCountHeaderForWeb(ctx, total)
 	ctx.JSON(http.StatusOK, items)
 }
 
-func (c *TargetController) Create(ctx core.WebContext) {
+func (c *TargetController) Create(ctx app.WebContext) {
 	var fields models.TargetFields
 	if err := ctx.ShouldBind(&fields); err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
@@ -50,7 +50,7 @@ func (c *TargetController) Create(ctx core.WebContext) {
 	ctx.JSON(http.StatusCreated, target)
 }
 
-func (c *TargetController) Update(ctx core.WebContext) {
+func (c *TargetController) Update(ctx app.WebContext) {
 	var fields models.TargetFields
 	if err := ctx.ShouldBind(&fields); err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
@@ -80,7 +80,7 @@ func (c *TargetController) Update(ctx core.WebContext) {
 	ctx.JSON(http.StatusOK, target)
 }
 
-func (c *TargetController) Select(ctx core.WebContext) {
+func (c *TargetController) Select(ctx app.WebContext) {
 	paramId := ctx.Param("id")
 	id, err := strconv.ParseUint(paramId, 10, 32)
 	if err != nil {
@@ -104,7 +104,7 @@ func (c *TargetController) Select(ctx core.WebContext) {
 	ctx.JSON(http.StatusOK, target)
 }
 
-func (c *TargetController) Delete(ctx core.WebContext) {
+func (c *TargetController) Delete(ctx app.WebContext) {
 	paramId := ctx.Param("id")
 	id, err := strconv.ParseUint(paramId, 10, 32)
 	if err != nil {

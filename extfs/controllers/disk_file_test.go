@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"pan/core"
+	"pan/app"
 	"pan/extfs/controllers"
 	"pan/extfs/models"
 	"pan/extfs/services"
@@ -18,9 +18,9 @@ import (
 
 func TestDiskFileController(t *testing.T) {
 
-	setup := func() (web *core.WebApp, ctrl *controllers.DiskFileController) {
+	setup := func() (web app.WebApp, ctrl *controllers.DiskFileController) {
 		ctrl = new(controllers.DiskFileController)
-		web = core.NewWebApp(&core.Settings{})
+		web = app.NewWebApp()
 		ctrl.Init(web)
 
 		ctrl.DiskFileService = &services.DiskFileService{}
@@ -53,7 +53,7 @@ func TestDiskFileController(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(core.CountHeaderName))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(app.CountHeaderName))
 
 		var rows []models.DiskFile
 		err := json.Unmarshal(w.Body.Bytes(), &rows)
@@ -91,7 +91,7 @@ func TestDiskFileController(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(core.CountHeaderName))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(app.CountHeaderName))
 		var rows []models.DiskFile
 		err = json.Unmarshal(w.Body.Bytes(), &rows)
 		assert.Nil(t, err)
@@ -134,7 +134,7 @@ func TestDiskFileController(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(core.CountHeaderName))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(app.CountHeaderName))
 		var rows []models.DiskFile
 		err = json.Unmarshal(w.Body.Bytes(), &rows)
 		assert.Nil(t, err)

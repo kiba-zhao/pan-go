@@ -1,7 +1,8 @@
 module pan
 
-// go 1.22.0
-go 1.21.3
+go 1.22.2
+
+// go 1.21.9
 
 require (
 	fyne.io/fyne/v2 v2.4.3
@@ -84,6 +85,7 @@ require (
 	golang.org/x/mobile v0.0.0-20230531173138-3c911d8e3eda // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect

@@ -1,0 +1,25 @@
+{
+  "resources": {
+    "extfs/targets": {
+      "name": "Target of ExtFS",
+      "filters": {
+        "has_enabled": "Enabled / Disabled",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "has_available": "Status",
+        "available": "Available",
+        "not_available": "Not available"
+      }
+    }
+  },
+  "others": {
+    "table": {
+      "actions": "Actions"
+    },
+    "input": {
+      "filepath": {
+        "title": "Disk File Selector"
+      }
+    }
+  }
+}
