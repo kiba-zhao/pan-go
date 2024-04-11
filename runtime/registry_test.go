@@ -15,14 +15,14 @@ func TestRegistry(t *testing.T) {
 		return registry
 	}
 
-	t.Run("AddModule", func(t *testing.T) {
+	t.Run("Append", func(t *testing.T) {
 		registry := setup()
 
 		module := &TestModule{}
-		err := registry.AddModule(module, reflect.TypeOf(module))
+		err := registry.Append(module, reflect.TypeOf(module))
 		assert.Nil(t, err)
 
-		err = registry.AddModule(module, reflect.TypeFor[runtime.Module]())
+		err = registry.Append(module, reflect.TypeFor[runtime.Module]())
 		assert.Equal(t, runtime.ErrModuleType, err)
 	})
 

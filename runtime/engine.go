@@ -17,7 +17,7 @@ type Module interface {
 }
 
 type ProviderModule interface {
-	GetModules() []interface{}
+	Modules() []interface{}
 }
 
 type InitializeModule interface {
@@ -87,7 +87,7 @@ func (engine *Engine) Mount(modules ...interface{}) error {
 		}
 
 		if len(types) > 0 {
-			err = engine.Registry.AddModule(module, types...)
+			err = engine.Registry.Append(module, types...)
 		}
 
 		if err != nil {
@@ -95,7 +95,7 @@ func (engine *Engine) Mount(modules ...interface{}) error {
 		}
 
 		if providerModule, ok := module.(ProviderModule); ok {
-			modules := providerModule.GetModules()
+			modules := providerModule.Modules()
 			if len(modules) > 0 {
 				err = engine.Mount(modules...)
 			}
@@ -110,13 +110,13 @@ func (engine *Engine) Mount(modules ...interface{}) error {
 
 func (engine *Engine) Bootstrap() (Context, error) {
 	registry := engine.Registry
-	err := TraverseModules(registry, func(module InitializeModule) error {
+	err := TraverseRegistry(registry, func(module InitializeModule) error {
 		return module.Init(registry)
 	})
 
 	var ctx errgroup.Group
 	if err == nil {
-		TraverseModules(registry, func(module ReadyModule) error {
+		TraverseRegistry(registry, func(module ReadyModule) error {
 			ctx.Go(module.Ready)
 			return nil
 		})

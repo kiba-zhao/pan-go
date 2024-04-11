@@ -10,12 +10,12 @@ import (
 type TraverseFunc[T any] func(module T) error
 
 type Registry interface {
-	CountModules(t reflect.Type) int
-	AddModule(module interface{}, types ...reflect.Type) error
-	GetAllModules() []interface{}
-	GetModules(t reflect.Type) ([]interface{}, bool)
-	TraverseAllModules(f TraverseFunc[interface{}]) error
-	TraverseModules(f TraverseFunc[interface{}], t reflect.Type) error
+	Count(t reflect.Type) int
+	Append(module interface{}, types ...reflect.Type) error
+	Modules() []interface{}
+	ModulesByType(t reflect.Type) ([]interface{}, bool)
+	Traverse(f TraverseFunc[interface{}]) error
+	TraverseByType(f TraverseFunc[interface{}], t reflect.Type) error
 }
 
 var ErrModuleType = errors.New("[engine:Registry] Module Error: wrong type")
@@ -31,13 +31,13 @@ func NewRegistry() Registry {
 	return registry
 }
 
-func (r *registryImpl) CountModules(t reflect.Type) int {
+func (r *registryImpl) Count(t reflect.Type) int {
 	r.rw.RLock()
 	defer r.rw.RUnlock()
 	return len(r.modules[t])
 }
 
-func (r *registryImpl) AddModule(module interface{}, types ...reflect.Type) error {
+func (r *registryImpl) Append(module interface{}, types ...reflect.Type) error {
 	r.rw.Lock()
 	defer r.rw.Unlock()
 
@@ -57,7 +57,7 @@ func (r *registryImpl) AddModule(module interface{}, types ...reflect.Type) erro
 	return err
 }
 
-func (r *registryImpl) GetAllModules() []interface{} {
+func (r *registryImpl) Modules() []interface{} {
 	r.rw.RLock()
 	defer r.rw.RUnlock()
 
@@ -68,14 +68,14 @@ func (r *registryImpl) GetAllModules() []interface{} {
 	return modules
 }
 
-func (r *registryImpl) GetModules(t reflect.Type) ([]interface{}, bool) {
+func (r *registryImpl) ModulesByType(t reflect.Type) ([]interface{}, bool) {
 	r.rw.RLock()
 	defer r.rw.RUnlock()
 	modules, ok := r.modules[t]
 	return modules, ok
 }
 
-func (r *registryImpl) TraverseAllModules(f TraverseFunc[interface{}]) error {
+func (r *registryImpl) Traverse(f TraverseFunc[interface{}]) error {
 
 	r.rw.RLock()
 	keys := make([]reflect.Type, 0, len(r.modules))
@@ -109,7 +109,7 @@ func (r *registryImpl) TraverseAllModules(f TraverseFunc[interface{}]) error {
 	return err
 }
 
-func (r *registryImpl) TraverseModules(f TraverseFunc[interface{}], t reflect.Type) error {
+func (r *registryImpl) TraverseByType(f TraverseFunc[interface{}], t reflect.Type) error {
 
 	r.rw.RLock()
 	ms, ok := r.modules[t]
@@ -132,10 +132,10 @@ func (r *registryImpl) TraverseModules(f TraverseFunc[interface{}], t reflect.Ty
 	return err
 }
 
-func TraverseModules[T any](registry Registry, f TraverseFunc[T]) error {
+func TraverseRegistry[T any](registry Registry, f TraverseFunc[T]) error {
 	t := reflect.TypeFor[T]()
 
-	return registry.TraverseModules(func(module interface{}) error {
+	return registry.TraverseByType(func(module interface{}) error {
 		if m, ok := module.(T); ok {
 			return f(m)
 		}

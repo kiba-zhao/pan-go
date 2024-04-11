@@ -57,7 +57,7 @@ func (m *module) DB() *gorm.DB {
 	return m.db
 }
 
-func (m *module) GetComponents() []app.Component {
+func (m *module) Components() []app.Component {
 
 	m.ctrlOnce.Do(func() {
 

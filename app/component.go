@@ -76,7 +76,7 @@ func (c *lazyComponentImpl[T]) Target() interface{} {
 }
 
 type ComponentProvider interface {
-	GetComponents() []Component
+	Components() []Component
 }
 
 var ErrComponentConflict = errors.New("[app:Component] Injector Error: dependency conflict")
@@ -90,10 +90,10 @@ func (in *injector) Init(registry runtime.Registry) error {
 	pendings := make(ComponentPendings)
 
 	// traverse component provider
-	err := runtime.TraverseModules(registry, func(provider ComponentProvider) error {
+	err := runtime.TraverseRegistry(registry, func(provider ComponentProvider) error {
 		internalStore := make(ComponentStore)
 		var componentErr error
-		components := provider.GetComponents()
+		components := provider.Components()
 		for _, component := range components {
 			// inject component
 			componentErr = injectComponent(component, pendings, internalStore, store)

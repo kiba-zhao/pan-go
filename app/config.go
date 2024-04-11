@@ -55,7 +55,7 @@ func (c *configImpl[T]) Init(registry runtime.Registry) error {
 
 	// init listeners
 	c.listeners = make([]ConfigListener[T], 0)
-	return runtime.TraverseModules(registry, func(listener ConfigListener[T]) error {
+	return runtime.TraverseRegistry(registry, func(listener ConfigListener[T]) error {
 		listenerErr := listener.OnConfigChanged(settings, c)
 		if listenerErr == nil {
 			c.listeners = append(c.listeners, listener)
@@ -70,13 +70,13 @@ func (c *configImpl[T]) EngineTypes() []reflect.Type {
 	}
 }
 
-func (c *configImpl[T]) GetComponents() []Component {
+func (c *configImpl[T]) Components() []Component {
 	return []Component{
 		NewComponent[Config[T]](c, ComponentExternalScope),
 	}
 }
 
-func (c *configImpl[T]) readSettings() (T, error) {
+func (c *configImpl[T]) read() (T, error) {
 	var settings T
 	var err error
 	if c.isPtrType {
@@ -93,7 +93,7 @@ func (c *configImpl[T]) Read() (T, error) {
 	c.rw.RLock()
 	defer c.rw.RUnlock()
 
-	return c.readSettings()
+	return c.read()
 }
 
 func (c *configImpl[T]) Write(settings T) error {

@@ -48,7 +48,7 @@ func TestEngine(t *testing.T) {
 
 		providerModule := &mocked.MockProviderModule{}
 		defer providerModule.AssertExpectations(t)
-		providerModule.On("GetModules").Once().Return([]interface{}{module, &TestModule{}})
+		providerModule.On("Modules").Once().Return([]interface{}{module, &TestModule{}})
 
 		err := e.Mount(providerModule)
 		assert.Nil(t, err)

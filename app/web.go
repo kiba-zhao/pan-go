@@ -24,7 +24,7 @@ type WebModule interface {
 }
 
 type WebModuleProvider interface {
-	GetWebModules() []WebModule
+	WebModules() []WebModule
 }
 
 type webServer struct {
@@ -38,12 +38,12 @@ func (w *webServer) Init(registry runtime.Registry) error {
 	app := NewWebApp()
 	w.webApp = app
 
-	err := runtime.TraverseModules(registry, func(module WebModule) error {
+	err := runtime.TraverseRegistry(registry, func(module WebModule) error {
 		return module.SetupToWeb(app)
 	})
 	if err == nil {
-		err = runtime.TraverseModules(registry, func(module WebModuleProvider) error {
-			for _, wc := range module.GetWebModules() {
+		err = runtime.TraverseRegistry(registry, func(module WebModuleProvider) error {
+			for _, wc := range module.WebModules() {
 				perr := wc.SetupToWeb(app)
 				if perr != nil {
 					return perr
@@ -62,7 +62,7 @@ func (w *webServer) EngineTypes() []reflect.Type {
 	}
 }
 
-func (w *webServer) GetComponents() []Component {
+func (w *webServer) Components() []Component {
 	return []Component{
 		NewComponent(w, ComponentNoneScope),
 	}

@@ -1,15 +1,15 @@
 package runtime
 
-type simpleModule struct {
+type module struct {
 	modules []interface{}
 }
 
-func NewSimpleModule(modules ...interface{}) interface{} {
-	return &simpleModule{
+func NewModule(modules ...interface{}) interface{} {
+	return &module{
 		modules: modules,
 	}
 }
 
-func (s *simpleModule) GetModules() []interface{} {
+func (s *module) Modules() []interface{} {
 	return s.modules
 }
