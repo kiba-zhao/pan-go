@@ -70,9 +70,9 @@ func (c *configImpl[T]) EngineTypes() []reflect.Type {
 	}
 }
 
-func (c *configImpl[T]) GetDependencies() map[reflect.Type]interface{} {
-	return map[reflect.Type]interface{}{
-		reflect.TypeFor[Config[T]](): c,
+func (c *configImpl[T]) GetComponents() []Component {
+	return []Component{
+		NewComponent[Config[T]](c, ComponentExternalScope),
 	}
 }
 

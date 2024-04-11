@@ -62,8 +62,10 @@ func (w *webServer) EngineTypes() []reflect.Type {
 	}
 }
 
-func (w *webServer) GetComponents() []interface{} {
-	return []interface{}{w}
+func (w *webServer) GetComponents() []Component {
+	return []Component{
+		NewComponent(w, ComponentNoneScope),
+	}
 }
 
 func (w *webServer) Ready() error {

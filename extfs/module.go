@@ -8,7 +8,6 @@ import (
 	"pan/extfs/repositories"
 	"pan/extfs/services"
 	"path"
-	"reflect"
 	"sync"
 
 	"gorm.io/driver/sqlite"
@@ -25,31 +24,16 @@ type module struct {
 	dbOnce      sync.Once
 	controllers []webController
 	ctrlOnce    sync.Once
+	components  []app.Component
 }
 
 func New() interface{} {
 	return &module{}
 }
 
-func (m *module) GetComponents() []interface{} {
-
-	m.ctrlOnce.Do(func() {
-		m.controllers = []webController{
-			&controllers.TargetController{},
-			&controllers.DiskFileController{},
-		}
-	})
-
-	components := []interface{}{m}
-	for _, ctrl := range m.controllers {
-		components = append(components, ctrl)
-	}
-	return components
-}
-
-func (m *module) GetDependencies() map[reflect.Type]interface{} {
-
+func (m *module) DB() *gorm.DB {
 	m.dbOnce.Do(func() {
+		var db *gorm.DB
 		settings, err := m.Config.Read()
 		if err == nil {
 			basePath := settings.RootPath
@@ -59,22 +43,44 @@ func (m *module) GetDependencies() map[reflect.Type]interface{} {
 			}
 			if err == nil {
 				dbPath := path.Join(basePath, "extfs.db")
-				m.db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+				db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 			}
 		}
 		if err == nil {
-			err = m.db.AutoMigrate(&models.Target{})
+			err = db.AutoMigrate(&models.Target{})
 		}
 		if err != nil {
 			panic(err)
 		}
+		m.db = db
 	})
+	return m.db
+}
 
-	return map[reflect.Type]interface{}{
-		reflect.TypeFor[repositories.TargetRepository](): repositories.NewTargetRepository(m.db),
-		reflect.TypeFor[*services.TargetService]():       &services.TargetService{},
-		reflect.TypeFor[*services.DiskFileService]():     &services.DiskFileService{},
-	}
+func (m *module) GetComponents() []app.Component {
+
+	m.ctrlOnce.Do(func() {
+
+		// base
+		m.components = append(m.components,
+			app.NewComponent(m, app.ComponentNoneScope),
+		)
+
+		// repositories
+		setupRepository(m, repositories.NewTargetRepository)
+
+		// services
+		m.components = append(m.components,
+			app.NewComponent(&services.TargetService{}, app.ComponentExternalScope),
+			app.NewComponent(&services.DiskFileService{}, app.ComponentExternalScope),
+		)
+
+		// controllers
+		setupController(m, &controllers.TargetController{})
+		setupController(m, &controllers.DiskFileController{})
+
+	})
+	return m.components
 }
 
 func (m *module) SetupToWeb(webApp app.WebApp) error {
@@ -86,4 +92,16 @@ func (m *module) SetupToWeb(webApp app.WebApp) error {
 	}
 
 	return nil
+}
+
+func setupController[T webController](m *module, controller T) {
+	m.controllers = append(m.controllers, controller)
+	m.components = append(m.components, app.NewComponent(controller, app.ComponentNoneScope))
+}
+
+type LazyRepositoryFunc[T any] func(db *gorm.DB) T
+
+func setupRepository[T any](m *module, repoFunc LazyRepositoryFunc[T]) {
+	lazyFunc := func() T { return repoFunc(m.DB()) }
+	m.components = append(m.components, app.NewLazyComponent(lazyFunc, app.ComponentInternalScope))
 }
