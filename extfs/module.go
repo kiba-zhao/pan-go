@@ -4,10 +4,14 @@ import (
 	"os"
 	"pan/app"
 	"pan/extfs/controllers"
+	"pan/extfs/dispatchers"
+	dispatcherImpl "pan/extfs/dispatchers/impl"
 	"pan/extfs/models"
 	"pan/extfs/repositories"
+	repoImpl "pan/extfs/repositories/impl"
 	"pan/extfs/services"
 	"path"
+	"reflect"
 	"sync"
 
 	"gorm.io/driver/sqlite"
@@ -23,7 +27,7 @@ type module struct {
 	db          *gorm.DB
 	dbOnce      sync.Once
 	controllers []webController
-	ctrlOnce    sync.Once
+	initOnce    sync.Once
 	components  []app.Component
 }
 
@@ -59,25 +63,28 @@ func (m *module) DB() *gorm.DB {
 
 func (m *module) Components() []app.Component {
 
-	m.ctrlOnce.Do(func() {
+	m.initOnce.Do(func() {
 
 		// base
 		m.components = append(m.components,
 			app.NewComponent(m, app.ComponentNoneScope),
+			app.NewLazyComponent(m.DB, app.ComponentInternalScope),
 		)
 
 		// repositories
-		setupRepository(m, repositories.NewTargetRepository)
+		setupComponent[repositories.TargetRepository](m, &repoImpl.TargetRepository{})
 
 		// services
-		m.components = append(m.components,
-			app.NewComponent(&services.TargetService{}, app.ComponentExternalScope),
-			app.NewComponent(&services.DiskFileService{}, app.ComponentExternalScope),
-		)
+		setupComponent(m, &services.TargetService{})
+		setupComponent(m, &services.DiskFileService{})
 
 		// controllers
 		setupController(m, &controllers.TargetController{})
 		setupController(m, &controllers.DiskFileController{})
+
+		// dispatchers
+		setupComponent(m, dispatcherImpl.NewTargetDispatcherBucket())
+		setupComponent[dispatchers.TargetDispatcher](m, &dispatcherImpl.TargetDispatcher{})
 
 	})
 	return m.components
@@ -99,9 +106,10 @@ func setupController[T webController](m *module, controller T) {
 	m.components = append(m.components, app.NewComponent(controller, app.ComponentNoneScope))
 }
 
-type LazyRepositoryFunc[T any] func(db *gorm.DB) T
-
-func setupRepository[T any](m *module, repoFunc LazyRepositoryFunc[T]) {
-	lazyFunc := func() T { return repoFunc(m.DB()) }
-	m.components = append(m.components, app.NewLazyComponent(lazyFunc, app.ComponentInternalScope))
+func setupComponent[T any](m *module, component T) {
+	t := reflect.TypeFor[T]()
+	if t.Kind() == reflect.Interface {
+		m.components = append(m.components, app.NewComponentByType(reflect.TypeOf(component), component, app.ComponentNoneScope))
+	}
+	m.components = append(m.components, app.NewComponent(component, app.ComponentInternalScope))
 }

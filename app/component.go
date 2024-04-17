@@ -21,48 +21,62 @@ const (
 	ComponentExternalScope = "external"
 )
 
-type componentBase[T any] struct {
+type componentBase struct {
+	ty    reflect.Type
 	scope string
 }
 
-func (c *componentBase[T]) Type() reflect.Type {
-	return reflect.TypeFor[T]()
+func (c *componentBase) Type() reflect.Type {
+	return c.ty
 }
 
-func (c *componentBase[T]) Scope() string {
+func (c *componentBase) Scope() string {
 	return c.scope
 }
 
-type componentImpl[T any] struct {
-	componentBase[T]
-	target T
+type componentImpl struct {
+	componentBase
+	target interface{}
 }
 
 func NewComponent[T any](target T, scope string) Component {
-
-	base := componentBase[T]{
+	base := componentBase{
+		ty:    reflect.TypeFor[T](),
 		scope: scope,
 	}
 
-	return &componentImpl[T]{
+	return &componentImpl{
 		target:        target,
 		componentBase: base,
 	}
 }
 
-func (c *componentImpl[T]) Target() interface{} {
+func NewComponentByType(ty reflect.Type, target interface{}, scope string) Component {
+
+	base := componentBase{
+		ty:    ty,
+		scope: scope,
+	}
+
+	return &componentImpl{
+		target:        target,
+		componentBase: base,
+	}
+}
+
+func (c *componentImpl) Target() interface{} {
 	return c.target
 }
 
 type LazyComponentFunc[T any] func() T
 
 type lazyComponentImpl[T any] struct {
-	componentBase[T]
+	componentBase
 	lazyFunc LazyComponentFunc[T]
 }
 
 func NewLazyComponent[T any](lazyFunc LazyComponentFunc[T], scope string) Component {
-	base := componentBase[T]{
+	base := componentBase{
 		scope: scope,
 	}
 	return &lazyComponentImpl[T]{

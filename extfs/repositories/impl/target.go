@@ -1,4 +1,4 @@
-package repositories
+package impl
 
 import (
 	"pan/extfs/errors"
@@ -9,22 +9,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type TargetRepository interface {
-	Search(conditions models.TargetSearchCondition) (total int64, items []models.Target, err error)
-	Save(target models.Target, withVersion bool) (models.Target, error)
-	Select(id uint, version *uint8) (models.Target, error)
-	Delete(target models.Target) error
-}
-
-type targetRepositoryImpl struct {
+type TargetRepository struct {
 	DB *gorm.DB
 }
 
-func NewTargetRepository(db *gorm.DB) TargetRepository {
-	return &targetRepositoryImpl{DB: db}
-}
-
-func (repo *targetRepositoryImpl) Save(target models.Target, withVersion bool) (models.Target, error) {
+func (repo *TargetRepository) Save(target models.Target, withVersion bool) (models.Target, error) {
 	db := repo.DB
 
 	if target.ID == 0 {
@@ -53,7 +42,7 @@ func (repo *targetRepositoryImpl) Save(target models.Target, withVersion bool) (
 	return target, results.Error
 }
 
-func (repo *targetRepositoryImpl) Search(conditions models.TargetSearchCondition) (total int64, items []models.Target, err error) {
+func (repo *TargetRepository) Search(conditions models.TargetSearchCondition) (total int64, items []models.Target, err error) {
 	db := repo.DB
 
 	if len(conditions.SortField) > 0 {
@@ -106,7 +95,7 @@ func (repo *targetRepositoryImpl) Search(conditions models.TargetSearchCondition
 	return
 }
 
-func (repo *targetRepositoryImpl) Select(id uint, version *uint8) (models.Target, error) {
+func (repo *TargetRepository) Select(id uint, version *uint8) (models.Target, error) {
 	var target models.Target
 	results := repo.DB.Take(&target, id)
 	if results.Error == gorm.ErrRecordNotFound {
@@ -118,7 +107,7 @@ func (repo *targetRepositoryImpl) Select(id uint, version *uint8) (models.Target
 	return target, results.Error
 }
 
-func (repo *targetRepositoryImpl) Delete(target models.Target) error {
+func (repo *TargetRepository) Delete(target models.Target) error {
 	results := repo.DB.Where("version = ?", target.Version).Delete(&target)
 	if results.Error == nil && results.RowsAffected != 1 {
 		return errors.ErrNotFound

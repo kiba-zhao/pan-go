@@ -6,6 +6,10 @@ import (
 	"gorm.io/gorm"
 )
 
+/**
+ * Target Model
+ */
+
 type TargetFields struct {
 	Name     string `form:"name" binding:"required" json:"name"`
 	FilePath string `form:"filepath" binding:"required" json:"filepath"`
@@ -21,8 +25,9 @@ type Target struct {
 	CreatedAt time.Time      `json:"createAt" form:"createAt"`
 	UpdatedAt time.Time      `json:"updatedAt" form:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt" form:"deletedAt"`
-	Name      string         `gorm:"size:255" json:"name" form:"name"`
-	FilePath  string         `gorm:"size:255"  json:"filepath" form:"filepath"`
+	Name      string         `gorm:"size:255;index" json:"name" form:"name"`
+	FilePath  string         `json:"filepath" form:"filepath"`
+	HashCode  string         `gorm:"size:28;index" json:"-" form:"-"`
 	Enabled   *bool          `gorm:"index" json:"enabled" form:"enabled"`
 	Available *bool          `gorm:"index" json:"available" form:"available"`
 	Version   *uint8         `gorm:"index" json:"version" form:"version"`

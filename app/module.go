@@ -19,7 +19,7 @@ func getRootPath() string {
 	if err != nil {
 		panic(err)
 	}
-	return path.Join(homePath, ".pan")
+	return path.Join(homePath, ".pan-go")
 }
 
 func parseConfigPath(settings AppSettings) string {

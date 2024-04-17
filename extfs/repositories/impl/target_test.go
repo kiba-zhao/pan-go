@@ -1,9 +1,10 @@
-package repositories_test
+package impl_test
 
 import (
 	"database/sql"
 	"pan/extfs/models"
 	"pan/extfs/repositories"
+	"pan/extfs/repositories/impl"
 	"testing"
 	"time"
 
@@ -28,7 +29,7 @@ func TestTargetRepository(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		repo = repositories.NewTargetRepository(db)
+		repo = &impl.TargetRepository{DB: db}
 		return
 
 	}
@@ -96,7 +97,7 @@ func TestTargetRepository(t *testing.T) {
 			Enabled:  &enabled,
 		}
 
-		mock.ExpectExec("INSERT INTO `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.Enabled, target.Available, target.Version).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("INSERT INTO `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.HashCode, target.Enabled, target.Available, target.Version).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err := repo.Save(target, false)
 		assert.Nil(t, err)
@@ -110,7 +111,7 @@ func TestTargetRepository(t *testing.T) {
 		version := uint8(2)
 		target.ID = 2
 		target.Version = &version
-		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.Enabled, target.Available, target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.HashCode, target.Enabled, target.Available, target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err = repo.Save(target, false)
 		assert.Nil(t, err)
