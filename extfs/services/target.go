@@ -9,6 +9,7 @@ import (
 	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/repositories"
+	"path"
 )
 
 type TargetService struct {
@@ -39,7 +40,7 @@ func (s *TargetService) Create(fields models.TargetFields) (models.Target, error
 
 	target_, err := s.TargetRepo.Save(target, false)
 	if err == nil {
-		err = s.TargetDispatcher.Scan(target_)
+		err = s.TargetDispatcher.Scan(target_, nil)
 	}
 	return target_, err
 }
@@ -72,7 +73,7 @@ func (s *TargetService) Update(fields models.TargetFields, id uint, opts models.
 		return target, errors.ErrConflict
 	}
 	if err == nil {
-		err = s.TargetDispatcher.Scan(target)
+		err = s.TargetDispatcher.Scan(target, nil)
 	}
 	return target, err
 }
@@ -92,7 +93,7 @@ func (s *TargetService) Delete(id uint, opts models.TargetQueryOptions) error {
 		return errors.ErrConflict
 	}
 	if err == nil {
-		err = s.TargetDispatcher.Clean(target)
+		err = s.TargetDispatcher.Clean(target, nil)
 	}
 	return err
 }
@@ -122,11 +123,12 @@ func (s *TargetService) Scan(id uint) error {
 		return s.TargetFileService.ScanFileByTarget(target.FilePath, target)
 	}
 
-	return fs.WalkDir(os.DirFS(target.FilePath), target.FilePath, func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() || err != nil {
+	return fs.WalkDir(os.DirFS(target.FilePath), ".", func(filepath string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
 			return err
 		}
-		return s.TargetFileService.ScanFileByTarget(path, target)
+
+		return s.TargetFileService.ScanFileByTarget(path.Join(target.FilePath, filepath), target)
 	})
 }
 

@@ -22,12 +22,16 @@ func (s *TargetFileService) ScanByTarget(target models.Target) error {
 			return s.TargetFileRepo.Delete(targetFile)
 		}
 
+		var stat os.FileInfo
 		isUpdated, err := exploreFile(&targetFile)
-		if err != nil {
-			return err
+		if err == nil {
+			stat, err = os.Stat(targetFile.FilePath)
 		}
 
-		stat, err := os.Stat(targetFile.FilePath)
+		if os.IsNotExist(err) {
+			return s.TargetFileRepo.Delete(targetFile)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -61,16 +65,16 @@ func (s *TargetFileService) ScanFileByTarget(filepath string, target models.Targ
 		return err
 	}
 
-	stat, err := os.Stat(filepath)
-	if err != nil {
-		return err
-	}
-
 	if err == errors.ErrNotFound {
 		targetFile = models.TargetFile{}
 		targetFile.FilePath = filepath
 		targetFile.HashCode = hashCode
 		targetFile.TargetID = target.ID
+	}
+
+	stat, err := os.Stat(filepath)
+	if err != nil {
+		return err
 	}
 
 	targetFile.TargetHashCode = target.HashCode

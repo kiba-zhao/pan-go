@@ -13,9 +13,11 @@ import (
 	"strconv"
 	"testing"
 
+	mockedDispatcher "pan/mocks/pan/extfs/dispatchers"
 	mockedRepo "pan/mocks/pan/extfs/repositories"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestTargetController(t *testing.T) {
@@ -26,6 +28,7 @@ func TestTargetController(t *testing.T) {
 		ctrl.Init(web)
 
 		ctrl.TargetService = &services.TargetService{}
+		ctrl.TargetService.TargetFileService = &services.TargetFileService{}
 		return web, ctrl
 	}
 
@@ -156,9 +159,14 @@ func TestTargetController(t *testing.T) {
 			FilePath: "/path_a",
 			Enabled:  &enabled,
 		}
-		target := models.Target{Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: &version}
 		newTarget := models.Target{ID: 123, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: &version}
-		targetRepo.On("Save", target, false).Once().Return(newTarget, nil)
+		targetRepo.On("Save", mock.AnythingOfType("models.Target"), false).Once().Return(newTarget, nil)
+
+		targetDispatcher := new(mockedDispatcher.MockTargetDispatcher)
+		defer targetDispatcher.AssertExpectations(t)
+		ctrl.TargetService.TargetDispatcher = targetDispatcher
+
+		targetDispatcher.On("Scan", newTarget, mock.Anything).Once().Return(nil)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
@@ -192,11 +200,16 @@ func TestTargetController(t *testing.T) {
 		}
 		firstVersion := uint8(1)
 		target := models.Target{ID: id, Name: "Target B", FilePath: "/path_b", Enabled: fields.Enabled, Available: &available, Version: &firstVersion}
-		saveTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: target.Version}
 		sencodVersion := firstVersion + 1
 		newTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: &sencodVersion}
 		targetRepo.On("Select", id, version).Once().Return(target, nil)
-		targetRepo.On("Save", saveTarget, true).Once().Return(newTarget, nil)
+		targetRepo.On("Save", mock.AnythingOfType("models.Target"), true).Once().Return(newTarget, nil)
+
+		targetDispatcher := new(mockedDispatcher.MockTargetDispatcher)
+		defer targetDispatcher.AssertExpectations(t)
+		ctrl.TargetService.TargetDispatcher = targetDispatcher
+
+		targetDispatcher.On("Scan", newTarget, mock.Anything).Once().Return(nil)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
@@ -225,6 +238,12 @@ func TestTargetController(t *testing.T) {
 		target := models.Target{ID: id, Name: "Target A", FilePath: "/path_a"}
 		targetRepo.On("Select", id, version).Once().Return(target, nil)
 		targetRepo.On("Delete", target).Once().Return(nil)
+
+		targetDispatcher := new(mockedDispatcher.MockTargetDispatcher)
+		defer targetDispatcher.AssertExpectations(t)
+		ctrl.TargetService.TargetDispatcher = targetDispatcher
+
+		targetDispatcher.On("Clean", target).Once().Return(nil)
 
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/targets/%d", id)
