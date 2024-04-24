@@ -143,7 +143,7 @@ func TestTargetController(t *testing.T) {
 		assert.Equal(t, target, result)
 	})
 
-	t.Run("Post /targets", func(t *testing.T) {
+	t.Run("POST /targets", func(t *testing.T) {
 
 		web, ctrl := setup()
 
@@ -159,7 +159,7 @@ func TestTargetController(t *testing.T) {
 			FilePath: "/path_a",
 			Enabled:  &enabled,
 		}
-		newTarget := models.Target{ID: 123, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: &version}
+		newTarget := models.Target{ID: 123, Name: fields.Name, FilePath: fields.FilePath, Enabled: *fields.Enabled, Available: available, Version: version}
 		targetRepo.On("Save", mock.AnythingOfType("models.Target"), false).Once().Return(newTarget, nil)
 
 		targetDispatcher := new(mockedDispatcher.MockTargetDispatcher)
@@ -181,7 +181,7 @@ func TestTargetController(t *testing.T) {
 		assert.Equal(t, newTarget, result)
 	})
 
-	t.Run("Patch /targets/:id", func(t *testing.T) {
+	t.Run("PATCH /targets/:id", func(t *testing.T) {
 
 		web, ctrl := setup()
 
@@ -199,9 +199,9 @@ func TestTargetController(t *testing.T) {
 			Enabled:  &enabled,
 		}
 		firstVersion := uint8(1)
-		target := models.Target{ID: id, Name: "Target B", FilePath: "/path_b", Enabled: fields.Enabled, Available: &available, Version: &firstVersion}
+		target := models.Target{ID: id, Name: "Target B", FilePath: "/path_b", Enabled: *fields.Enabled, Available: available, Version: firstVersion}
 		sencodVersion := firstVersion + 1
-		newTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: &available, Version: &sencodVersion}
+		newTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: *fields.Enabled, Available: available, Version: sencodVersion}
 		targetRepo.On("Select", id, version).Once().Return(target, nil)
 		targetRepo.On("Save", mock.AnythingOfType("models.Target"), true).Once().Return(newTarget, nil)
 
@@ -225,7 +225,7 @@ func TestTargetController(t *testing.T) {
 		assert.Equal(t, newTarget, result)
 	})
 
-	t.Run("Delete /targets/:id", func(t *testing.T) {
+	t.Run("DELETE /targets/:id", func(t *testing.T) {
 
 		web, ctrl := setup()
 

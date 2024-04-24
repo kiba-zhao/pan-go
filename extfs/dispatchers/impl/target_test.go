@@ -57,7 +57,7 @@ func TestTarget(t *testing.T) {
 		target.ID = uint(123)
 		target.FilePath = ""
 		target.Name = "Target A"
-		target.Available = &available
+		target.Available = available
 
 		targetRepo := new(mockedRepo.MockTargetRepository)
 		dispatcher.TargetService.TargetRepo = targetRepo
@@ -68,7 +68,7 @@ func TestTarget(t *testing.T) {
 		newTarget.HashCode = "hash code"
 		newTarget.FilePath = root
 		newTarget.Name = "Target B"
-		newTarget.Available = &available
+		newTarget.Available = available
 		targetRepo.On("Select", target.ID, mock.Anything).Return(newTarget, nil)
 
 		var wg sync.WaitGroup

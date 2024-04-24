@@ -34,9 +34,9 @@ func (s *TargetService) Create(fields models.TargetFields) (models.Target, error
 	target.Name = fields.Name
 	target.HashCode = generateHashCodeByFilePath(fields.FilePath)
 	target.FilePath = fields.FilePath
-	target.Enabled = fields.Enabled
-	target.Available = &available
-	target.Version = &version
+	target.Enabled = *fields.Enabled
+	target.Available = available
+	target.Version = version
 
 	target_, err := s.TargetRepo.Save(target, false)
 	if err == nil {
@@ -65,8 +65,8 @@ func (s *TargetService) Update(fields models.TargetFields, id uint, opts models.
 
 	target.Name = fields.Name
 	target.FilePath = fields.FilePath
-	target.Enabled = fields.Enabled
-	target.Available = &available
+	target.Enabled = *fields.Enabled
+	target.Available = available
 
 	target, err = s.TargetRepo.Save(target, true)
 	if err == errors.ErrNotFound {
@@ -105,7 +105,7 @@ func (s *TargetService) Scan(id uint) error {
 		return err
 	}
 
-	if target.Available == nil || !*target.Available || target.DeletedAt.Valid {
+	if !target.Available || target.DeletedAt.Valid {
 		return errors.ErrConflict
 	}
 

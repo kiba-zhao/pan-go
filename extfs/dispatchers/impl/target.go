@@ -32,7 +32,7 @@ type TargetDispatcher struct {
 }
 
 func (d *TargetDispatcher) Scan(target models.Target) error {
-	if target.Available == nil || !*target.Available || target.DeletedAt.Valid {
+	if !target.Available || target.DeletedAt.Valid {
 		return errors.ErrConflict
 	}
 

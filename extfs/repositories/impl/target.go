@@ -25,12 +25,12 @@ func (repo *TargetRepository) Save(target models.Target, withVersion bool) (mode
 	if !withVersion {
 		results = db.Save(&target)
 	} else {
-		version := (*target.Version) + 1
+		version := target.Version + 1
 		results = db.Model(&target).Where("version = ?", target.Version).Updates(models.Target{
 			Name:      target.Name,
 			FilePath:  target.FilePath,
 			Enabled:   target.Enabled,
-			Version:   &version,
+			Version:   version,
 			Available: target.Available,
 		})
 	}
@@ -101,7 +101,7 @@ func (repo *TargetRepository) Select(id uint, version *uint8) (models.Target, er
 	if results.Error == gorm.ErrRecordNotFound {
 		return target, errors.ErrNotFound
 	}
-	if version != nil && *target.Version != *version {
+	if version != nil && target.Version != *version {
 		return target, errors.ErrConflict
 	}
 	return target, results.Error

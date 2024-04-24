@@ -45,8 +45,8 @@ func TestTargetRepository(t *testing.T) {
 		target.ID = 1
 		target.Name = "Target A"
 		target.FilePath = "/path_a"
-		target.Version = &version
-		target.Enabled = &enabled
+		target.Version = version
+		target.Enabled = enabled
 		target.CreatedAt = time.Now()
 		target.UpdatedAt = time.Now()
 
@@ -72,8 +72,8 @@ func TestTargetRepository(t *testing.T) {
 		target.ID = 133
 		target.Name = "Target A"
 		target.FilePath = "/path_a"
-		target.Version = &version
-		target.Enabled = &enabled
+		target.Version = version
+		target.Enabled = enabled
 		target.CreatedAt = time.Now()
 		target.UpdatedAt = time.Now()
 
@@ -94,7 +94,7 @@ func TestTargetRepository(t *testing.T) {
 		target := models.Target{
 			Name:     "Target A",
 			FilePath: "/path_a",
-			Enabled:  &enabled,
+			Enabled:  enabled,
 		}
 
 		mock.ExpectExec("INSERT INTO `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.HashCode, target.Enabled, target.Available, target.Version).WillReturnResult(sqlmock.NewResult(1, 1))
@@ -110,7 +110,7 @@ func TestTargetRepository(t *testing.T) {
 
 		version := uint8(2)
 		target.ID = 2
-		target.Version = &version
+		target.Version = version
 		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), target.Name, target.FilePath, target.HashCode, target.Enabled, target.Available, target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err = repo.Save(target, false)
@@ -125,8 +125,8 @@ func TestTargetRepository(t *testing.T) {
 		available := true
 		_version := uint8(3)
 		target.ID = 3
-		target.Version = &_version
-		target.Available = &available
+		target.Version = _version
+		target.Available = available
 		newVersion := _version + 1
 		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), target.Name, target.FilePath, target.Enabled, target.Available, &newVersion, target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -136,7 +136,7 @@ func TestTargetRepository(t *testing.T) {
 		assert.Equal(t, target.Name, result.Name)
 		assert.Equal(t, target.FilePath, result.FilePath)
 		assert.Equal(t, target.Enabled, result.Enabled)
-		assert.Equal(t, newVersion, *result.Version)
+		assert.Equal(t, newVersion, result.Version)
 		assert.Equal(t, target.Available, result.Available)
 
 	})
@@ -149,10 +149,10 @@ func TestTargetRepository(t *testing.T) {
 		enabled := true
 		target := models.Target{
 			ID:       133,
-			Version:  &version,
+			Version:  version,
 			Name:     "Target A",
 			FilePath: "/path_a",
-			Enabled:  &enabled,
+			Enabled:  enabled,
 		}
 
 		mock.ExpectExec("UPDATE `targets`").WithArgs(sqlmock.AnyArg(), target.Version, target.ID).WillReturnResult(sqlmock.NewResult(1, 1))
