@@ -3,7 +3,6 @@ package impl
 import (
 	"cmp"
 	"pan/cache"
-	"pan/extfs/dispatchers"
 	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/services"
@@ -11,11 +10,9 @@ import (
 )
 
 type TargetDispatcherItem struct {
-	id          uint
-	pending     *models.Target
-	processing  *models.Target
-	done        dispatchers.DispatchDone
-	pendingDone dispatchers.DispatchDone
+	id         uint
+	pending    *models.Target
+	processing *models.Target
 	sync.Mutex
 }
 
@@ -34,24 +31,24 @@ type TargetDispatcher struct {
 	Bucket        TargetDispatcherBucket
 }
 
-func (d *TargetDispatcher) Scan(target models.Target, done dispatchers.DispatchDone) error {
+func (d *TargetDispatcher) Scan(target models.Target) error {
 	if target.Available == nil || !*target.Available || target.DeletedAt.Valid {
 		return errors.ErrConflict
 	}
 
-	return handleTarget(d, target, done)
+	return handleTarget(d, target)
 }
 
-func (d *TargetDispatcher) Clean(target models.Target, done dispatchers.DispatchDone) error {
+func (d *TargetDispatcher) Clean(target models.Target) error {
 	// TODO: to be implemented
 	if !target.DeletedAt.Valid {
 		return errors.ErrConflict
 	}
 
-	return handleTarget(d, target, done)
+	return handleTarget(d, target)
 }
 
-func handleTarget(dispatcher *TargetDispatcher, target models.Target, done dispatchers.DispatchDone) error {
+func handleTarget(dispatcher *TargetDispatcher, target models.Target) error {
 
 	item, _ := dispatcher.Bucket.SearchOrStore(&TargetDispatcherItem{
 		id: target.ID,
@@ -60,7 +57,6 @@ func handleTarget(dispatcher *TargetDispatcher, target models.Target, done dispa
 	item.Lock()
 	defer item.Unlock()
 	item.pending = &target
-	item.pendingDone = done
 
 	if item.processing != nil {
 		return nil
@@ -71,9 +67,7 @@ func handleTarget(dispatcher *TargetDispatcher, target models.Target, done dispa
 		for {
 			item.Lock()
 			item.processing = item.pending
-			item.done = item.pendingDone
 			item.pending = nil
-			item.pendingDone = nil
 			if item.processing == nil {
 				defer item.Unlock()
 				break
@@ -81,16 +75,12 @@ func handleTarget(dispatcher *TargetDispatcher, target models.Target, done dispa
 			target_ := item.processing
 			item.Unlock()
 
-			var err error
 			if target_.DeletedAt.Valid {
-				err = dispatcher.TargetService.Clean(target.ID)
+				_ = dispatcher.TargetService.Clean(target.ID)
 			} else {
-				err = dispatcher.TargetService.Scan(target.ID)
+				_ = dispatcher.TargetService.Scan(target.ID)
 			}
 
-			if item.done != nil {
-				item.done(err)
-			}
 		}
 
 	}()

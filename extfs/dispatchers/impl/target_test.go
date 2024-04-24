@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
 )
 
 func TestTarget(t *testing.T) {
@@ -81,6 +82,7 @@ func TestTarget(t *testing.T) {
 
 		var saveTargetFile models.TargetFile
 		targetFileRepo.On("Save", mock.Anything).Once().Return(saveTargetFile, nil).Run(func(args mock.Arguments) {
+			defer wg.Done()
 			targetFile := args.Get(0).(models.TargetFile)
 
 			saveTargetFile.TargetID = targetFile.TargetID
@@ -94,15 +96,39 @@ func TestTarget(t *testing.T) {
 
 		})
 
-		err = dispatcher.Scan(target, func(err error) {
-			defer wg.Done()
-			assert.Nil(t, err)
-		})
+		err = dispatcher.Scan(target)
 		assert.Nil(t, err)
 		if err != nil {
 			wg.Done()
 		}
 
+		wg.Wait()
+	})
+
+	t.Run("Clean", func(t *testing.T) {
+		dispatcher := setup()
+
+		target := models.Target{}
+		target.ID = uint(123)
+		target.DeletedAt = gorm.DeletedAt{Valid: true}
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		targetRepo := new(mockedRepo.MockTargetRepository)
+		dispatcher.TargetService.TargetRepo = targetRepo
+		defer targetRepo.AssertExpectations(t)
+		targetRepo.On("Select", target.ID, mock.Anything).Return(target, nil)
+
+		targetFileRepo := new(mockedRepo.MockTargetFileRepository)
+		dispatcher.TargetService.TargetFileService.TargetFileRepo = targetFileRepo
+		defer targetFileRepo.AssertExpectations(t)
+		targetFileRepo.On("DeleteByTargetId", target.ID).Once().Return(nil).Run(func(args mock.Arguments) {
+			defer wg.Done()
+		})
+
+		err := dispatcher.Clean(target)
+		assert.Nil(t, err)
 		wg.Wait()
 	})
 }

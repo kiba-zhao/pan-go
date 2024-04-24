@@ -40,7 +40,7 @@ func (s *TargetService) Create(fields models.TargetFields) (models.Target, error
 
 	target_, err := s.TargetRepo.Save(target, false)
 	if err == nil {
-		err = s.TargetDispatcher.Scan(target_, nil)
+		err = s.TargetDispatcher.Scan(target_)
 	}
 	return target_, err
 }
@@ -73,7 +73,7 @@ func (s *TargetService) Update(fields models.TargetFields, id uint, opts models.
 		return target, errors.ErrConflict
 	}
 	if err == nil {
-		err = s.TargetDispatcher.Scan(target, nil)
+		err = s.TargetDispatcher.Scan(target)
 	}
 	return target, err
 }
@@ -93,7 +93,7 @@ func (s *TargetService) Delete(id uint, opts models.TargetQueryOptions) error {
 		return errors.ErrConflict
 	}
 	if err == nil {
-		err = s.TargetDispatcher.Clean(target, nil)
+		err = s.TargetDispatcher.Clean(target)
 	}
 	return err
 }

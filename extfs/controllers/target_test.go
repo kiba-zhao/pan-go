@@ -166,7 +166,7 @@ func TestTargetController(t *testing.T) {
 		defer targetDispatcher.AssertExpectations(t)
 		ctrl.TargetService.TargetDispatcher = targetDispatcher
 
-		targetDispatcher.On("Scan", newTarget, mock.Anything).Once().Return(nil)
+		targetDispatcher.On("Scan", newTarget).Once().Return(nil)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
@@ -209,7 +209,7 @@ func TestTargetController(t *testing.T) {
 		defer targetDispatcher.AssertExpectations(t)
 		ctrl.TargetService.TargetDispatcher = targetDispatcher
 
-		targetDispatcher.On("Scan", newTarget, mock.Anything).Once().Return(nil)
+		targetDispatcher.On("Scan", newTarget).Once().Return(nil)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
