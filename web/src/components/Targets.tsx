@@ -85,18 +85,17 @@ const TargetListActions = () => (
 );
 
 const TargetEnabledFilter = () => {
-  const t = useTranslate();
   return (
     <FilterList
-      label={t("resources.extfs/targets.filters.has_enabled")}
+      label="resources.extfs/targets.filters.has_enabled"
       icon={<ToggleOn />}
     >
       <FilterListItem
-        label={t("resources.extfs/targets.filters.enabled")}
+        label="resources.extfs/targets.filters.enabled"
         value={{ enabled: true }}
       />
       <FilterListItem
-        label={t("resources.extfs/targets.filters.disabled")}
+        label="resources.extfs/targets.filters.disabled"
         value={{ enabled: false }}
       />
     </FilterList>
@@ -104,18 +103,17 @@ const TargetEnabledFilter = () => {
 };
 
 const TargetInvalidFilter = () => {
-  const t = useTranslate();
   return (
     <FilterList
-      label={t("resources.extfs/targets.filters.has_available")}
+      label="resources.extfs/targets.filters.has_available"
       icon={<Block />}
     >
       <FilterListItem
-        label={t("resources.extfs/targets.filters.available")}
+        label="resources.extfs/targets.filters.available"
         value={{ available: true }}
       />
       <FilterListItem
-        label={t("resources.extfs/targets.filters.not_available")}
+        label="resources.extfs/targets.filters.not_available"
         value={{ available: false }}
       />
     </FilterList>
@@ -146,7 +144,6 @@ const TargetFilters = () => {
 };
 
 export const Targets = () => {
-  const t = useTranslate();
   return (
     <List actions={<TargetListActions />} aside={<TargetFilters />}>
       <DatagridConfigurable
@@ -158,7 +155,7 @@ export const Targets = () => {
         <BooleanField source="enabled" />
         <BooleanField source="available" />
         <DateField source="createAt" showTime />
-        <WrapperField label={t("others.table.actions")}>
+        <WrapperField label="others.table.actions">
           <EditButton />
           <ShowButton />
         </WrapperField>

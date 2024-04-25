@@ -5,8 +5,8 @@
       "fields": {
         "name": "命名",
         "filepath": "文件路径",
-        "enabled": "启用",
-        "available": "可用",
+        "enabled": "启用状态",
+        "available": "可用状态",
         "createAt": "创建时间",
         "updateAt": "更新时间"
       },
@@ -17,6 +17,28 @@
         "has_available": "状态",
         "available": "可用",
         "not_available": "不可用"
+      }
+    },
+    "extfs/target-files": {
+      "name": "目标文件项",
+      "fields": {
+        "target": "目标文件",
+        "filepath": "文件路径",
+        "mimeType": "MIME 类型",
+        "size": "文件大小",
+        "checkSum": "文件签名",
+        "modTime": "修改时间",
+        "available": "可用状态",
+        "createAt": "创建时间",
+        "updateAt": "更新时间"
+      },
+      "filters": {
+        "has_available": "状态",
+        "available": "可用状态",
+        "not_available": "不可用"
+      },
+      "show": {
+        "summary": "概要"
       }
     }
   },

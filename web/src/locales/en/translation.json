@@ -10,6 +10,20 @@
         "available": "Available",
         "not_available": "Not available"
       }
+    },
+    "extfs/target-files": {
+      "name": "Target File of ExtFS",
+      "fields": {
+        "target": "Target Name"
+      },
+      "filters": {
+        "has_available": "Status",
+        "available": "Available",
+        "not_available": "Not available"
+      },
+      "show": {
+        "summary": "Summary"
+      }
     }
   },
   "others": {

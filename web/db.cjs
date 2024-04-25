@@ -15,9 +15,17 @@ module.exports = () => {
   );
   diskFiles.unshift(generateDiskRoot());
 
+  const targetFiles = targets.reduce((files, target) => {
+    return files.concat(
+      faker.helpers.multiple(() => generateTargetFile(target), {
+        count: { min: 1, max: 10 },
+      })
+    );
+  }, []);
   return {
     targets,
     "disk-files": diskFiles,
+    "target-files": targetFiles,
   };
 };
 
@@ -60,6 +68,21 @@ function generateDiskRoot() {
     filepath: "/",
     fileType: "D",
     parent: "",
+    updateAt: faker.date.past(),
+  };
+}
+
+function generateTargetFile(target) {
+  return {
+    targetId: target.id,
+    available: target.available,
+    id: faker.number.int({ min: 1, max: 999999 }),
+    filepath: faker.system.filePath(),
+    size: faker.number.int(),
+    modTime: faker.date.past(),
+    checkSum: faker.string.alphanumeric(88),
+    mimeType: faker.system.mimeType(),
+    createAt: faker.date.past(),
     updateAt: faker.date.past(),
   };
 }

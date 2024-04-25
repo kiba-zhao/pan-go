@@ -8,6 +8,11 @@ import Dashboard from "./components/Dashboard";
 import { AppLayout } from "./components/Layout";
 import NotFound from "./components/NotFound";
 import {
+  TargetFileIcon,
+  TargetFileShow,
+  TargetFiles,
+} from "./components/TargetFiles";
+import {
   TargetCreate,
   TargetEdit,
   TargetShow,
@@ -22,7 +27,6 @@ const darkTheme: RaThemeOptions = {
 export const App = () => {
   const i18nProvider = useI18nProvider();
   if (!i18nProvider) return null;
-  console.log(1111, import.meta.env.BASE_URL);
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Admin
@@ -42,6 +46,14 @@ export const App = () => {
           edit={TargetEdit}
           show={TargetShow}
           create={TargetCreate}
+        />
+        <Resource
+          name="extfs/target-files"
+          icon={TargetFileIcon}
+          list={TargetFiles}
+          show={TargetFileShow}
+          hasEdit={false}
+          hasCreate={false}
         />
       </Admin>
     </BrowserRouter>
