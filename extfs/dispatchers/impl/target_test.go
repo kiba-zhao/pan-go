@@ -78,7 +78,7 @@ func TestTarget(t *testing.T) {
 		dispatcher.TargetService.TargetFileService.TargetFileRepo = targetFileRepo
 		defer targetFileRepo.AssertExpectations(t)
 		targetFileRepo.On("TraverseByTargetId", mock.Anything, newTarget.ID).Once().Return(nil)
-		targetFileRepo.On("SelectByFilePathAndTargetId", filePath, newTarget.ID, mock.AnythingOfType("string")).Once().Return(models.TargetFile{}, errors.ErrNotFound)
+		targetFileRepo.On("SelectByFilePathAndTargetId", filePath, newTarget.ID, mock.AnythingOfType("string"), false).Once().Return(models.TargetFile{}, errors.ErrNotFound)
 
 		var saveTargetFile models.TargetFile
 		targetFileRepo.On("Save", mock.Anything).Once().Return(saveTargetFile, nil).Run(func(args mock.Arguments) {

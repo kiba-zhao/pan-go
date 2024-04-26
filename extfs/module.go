@@ -51,7 +51,7 @@ func (m *module) DB() *gorm.DB {
 			}
 		}
 		if err == nil {
-			err = db.AutoMigrate(&models.Target{})
+			err = db.AutoMigrate(&models.Target{}, &models.TargetFile{})
 		}
 		if err != nil {
 			panic(err)
@@ -73,14 +73,17 @@ func (m *module) Components() []app.Component {
 
 		// repositories
 		setupComponent[repositories.TargetRepository](m, &repoImpl.TargetRepository{})
+		setupComponent[repositories.TargetFileRepository](m, &repoImpl.TargetFileRepository{})
 
 		// services
 		setupComponent(m, &services.TargetService{})
 		setupComponent(m, &services.DiskFileService{})
+		setupComponent(m, &services.TargetFileService{})
 
 		// controllers
 		setupController(m, &controllers.TargetController{})
 		setupController(m, &controllers.DiskFileController{})
+		setupController(m, &controllers.TargetFileController{})
 
 		// dispatchers
 		setupComponent(m, dispatcherImpl.NewTargetDispatcherBucket())

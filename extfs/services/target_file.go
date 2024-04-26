@@ -15,6 +15,30 @@ type TargetFileService struct {
 	TargetFileRepo repositories.TargetFileRepository
 }
 
+func (s *TargetFileService) Search(conditions models.TargetFileSearchCondition) (total int64, items []models.TargetFile, err error) {
+	total, items_, err := s.TargetFileRepo.Search(conditions, true)
+	if err != nil {
+		return
+	}
+
+	for _, item := range items_ {
+		setTargetFileAvailable(&item, &item.Target)
+		if conditions.Available == nil || *conditions.Available == item.Available {
+			items = append(items, item)
+		}
+	}
+	return
+}
+
+func (s *TargetFileService) Select(id uint64) (models.TargetFile, error) {
+	targetFile, err := s.TargetFileRepo.Select(id, true)
+	if err != nil {
+		return targetFile, err
+	}
+	setTargetFileAvailable(&targetFile, &targetFile.Target)
+	return targetFile, nil
+}
+
 func (s *TargetFileService) ScanByTarget(target models.Target) error {
 	return s.TargetFileRepo.TraverseByTargetId(func(targetFile models.TargetFile) error {
 
@@ -60,7 +84,7 @@ func (s *TargetFileService) CleanByTarget(target models.Target) error {
 
 func (s *TargetFileService) ScanFileByTarget(filepath string, target models.Target) error {
 	hashCode := generateHashCodeByFilePath(filepath)
-	targetFile, err := s.TargetFileRepo.SelectByFilePathAndTargetId(filepath, target.ID, hashCode)
+	targetFile, err := s.TargetFileRepo.SelectByFilePathAndTargetId(filepath, target.ID, hashCode, false)
 	if err != nil && err != errors.ErrNotFound {
 		return err
 	}
@@ -121,4 +145,17 @@ func exploreFile(targetFile *models.TargetFile) (updated bool, err error) {
 	}
 
 	return
+}
+
+func setTargetFileAvailable(targetFile *models.TargetFile, target *models.Target) {
+	targetFile.Available = *target.Enabled
+	if targetFile.Available {
+		setTargetAvailable(target)
+		targetFile.Available = target.Available
+	}
+	if targetFile.Available {
+		_, err := os.Stat(targetFile.FilePath)
+		targetFile.Available = err == nil
+	}
+
 }

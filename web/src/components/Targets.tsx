@@ -136,7 +136,7 @@ const TargetFilters = () => {
           <SavedQueriesList />
           <FilterLiveSearch />
           <TargetEnabledFilter />
-          <TargetInvalidFilter />
+          {/* <TargetInvalidFilter /> */}
         </CardContent>
       </Card>
     </Box>

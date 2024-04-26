@@ -15,6 +15,7 @@ type TargetFileRepository interface {
 	Save(targetFile models.TargetFile) (models.TargetFile, error)
 	Delete(targetFile models.TargetFile) error
 	DeleteByTargetId(targetId uint) error
-	Select(id uint64) (models.TargetFile, error)
-	SelectByFilePathAndTargetId(filepath string, targetId uint, hashCode string) (models.TargetFile, error)
+	Select(id uint64, includeAssociated bool) (models.TargetFile, error)
+	SelectByFilePathAndTargetId(filepath string, targetId uint, hashCode string, includeAssociated bool) (models.TargetFile, error)
+	Search(conditions models.TargetFileSearchCondition, includeAssociated bool) (total int64, items []models.TargetFile, err error)
 }

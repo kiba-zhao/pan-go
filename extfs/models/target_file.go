@@ -22,4 +22,14 @@ type TargetFile struct {
 	Size           int64          `gorm:"index" json:"size" form:"size"`
 	ModTime        time.Time      `json:"modTime" form:"modTime"`
 	CheckSum       string         `gorm:"size:88:index" json:"checkSum" form:"checkSum"`
+	Available      bool           `gorm:"-" json:"available" form:"available"`
+	Target         Target         `gorm:"foreignKey:TargetID" json:"-" form:"-"`
+}
+
+type TargetFileSearchCondition struct {
+	RangeSearchCondition
+	SortSearchCondition
+	Keyword   string `form:"q" binding:"omitempty"`
+	Available *bool  `form:"available" binding:"omitempty"`
+	TargetID  uint   `form:"targetId" binding:"omitempty" json:"targetId"`
 }

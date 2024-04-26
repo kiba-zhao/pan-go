@@ -72,7 +72,7 @@ const TargetFileFilters = () => {
         <CardContent>
           <SavedQueriesList />
           <FilterLiveSearch />
-          <TargetFileInvalidFilter />
+          {/* <TargetFileInvalidFilter /> */}
         </CardContent>
       </Card>
     </Box>

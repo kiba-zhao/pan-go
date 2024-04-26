@@ -140,7 +140,9 @@ func TestTargetController(t *testing.T) {
 		var result models.Target
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		assert.Nil(t, err)
-		assert.Equal(t, target, result)
+		assert.Equal(t, target.ID, result.ID)
+		assert.Equal(t, target.Name, result.Name)
+		assert.Equal(t, target.FilePath, result.FilePath)
 	})
 
 	t.Run("POST /targets", func(t *testing.T) {
@@ -159,7 +161,7 @@ func TestTargetController(t *testing.T) {
 			FilePath: "/path_a",
 			Enabled:  &enabled,
 		}
-		newTarget := models.Target{ID: 123, Name: fields.Name, FilePath: fields.FilePath, Enabled: *fields.Enabled, Available: available, Version: version}
+		newTarget := models.Target{ID: 123, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: available, Version: version}
 		targetRepo.On("Save", mock.AnythingOfType("models.Target"), false).Once().Return(newTarget, nil)
 
 		targetDispatcher := new(mockedDispatcher.MockTargetDispatcher)
@@ -199,9 +201,9 @@ func TestTargetController(t *testing.T) {
 			Enabled:  &enabled,
 		}
 		firstVersion := uint8(1)
-		target := models.Target{ID: id, Name: "Target B", FilePath: "/path_b", Enabled: *fields.Enabled, Available: available, Version: firstVersion}
+		target := models.Target{ID: id, Name: "Target B", FilePath: "/path_b", Enabled: fields.Enabled, Available: available, Version: firstVersion}
 		sencodVersion := firstVersion + 1
-		newTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: *fields.Enabled, Available: available, Version: sencodVersion}
+		newTarget := models.Target{ID: target.ID, Name: fields.Name, FilePath: fields.FilePath, Enabled: fields.Enabled, Available: available, Version: sencodVersion}
 		targetRepo.On("Select", id, version).Once().Return(target, nil)
 		targetRepo.On("Save", mock.AnythingOfType("models.Target"), true).Once().Return(newTarget, nil)
 

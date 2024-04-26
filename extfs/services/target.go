@@ -19,7 +19,19 @@ type TargetService struct {
 }
 
 func (s *TargetService) Search(conditions models.TargetSearchCondition) (total int64, items []models.Target, err error) {
-	return s.TargetRepo.Search(conditions)
+	total, items_, err := s.TargetRepo.Search(conditions)
+	if err != nil {
+		return
+	}
+
+	for _, item := range items_ {
+		setTargetAvailable(&item)
+		if conditions.Available == nil || *conditions.Available == item.Available {
+			items = append(items, item)
+		}
+	}
+
+	return
 }
 
 func (s *TargetService) Create(fields models.TargetFields) (models.Target, error) {
@@ -34,7 +46,7 @@ func (s *TargetService) Create(fields models.TargetFields) (models.Target, error
 	target.Name = fields.Name
 	target.HashCode = generateHashCodeByFilePath(fields.FilePath)
 	target.FilePath = fields.FilePath
-	target.Enabled = *fields.Enabled
+	target.Enabled = fields.Enabled
 	target.Available = available
 	target.Version = version
 
@@ -65,7 +77,7 @@ func (s *TargetService) Update(fields models.TargetFields, id uint, opts models.
 
 	target.Name = fields.Name
 	target.FilePath = fields.FilePath
-	target.Enabled = *fields.Enabled
+	target.Enabled = fields.Enabled
 	target.Available = available
 
 	target, err = s.TargetRepo.Save(target, true)
@@ -99,7 +111,7 @@ func (s *TargetService) Delete(id uint, opts models.TargetQueryOptions) error {
 }
 
 func (s *TargetService) Scan(id uint) error {
-	// TODO: Scenes that have been cleaned up
+
 	target, err := s.TargetRepo.Select(id, nil)
 	if err != nil {
 		return err
@@ -146,4 +158,9 @@ func (s *TargetService) Clean(id uint) error {
 func generateHashCodeByFilePath(filepath string) string {
 	hash := sha1.Sum([]byte(filepath))
 	return base64.StdEncoding.EncodeToString(hash[:])
+}
+
+func setTargetAvailable(target *models.Target) {
+	_, err := os.Stat(target.FilePath)
+	target.Available = err == nil
 }

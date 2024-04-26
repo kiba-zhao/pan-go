@@ -77,6 +77,7 @@ type lazyComponentImpl[T any] struct {
 
 func NewLazyComponent[T any](lazyFunc LazyComponentFunc[T], scope string) Component {
 	base := componentBase{
+		ty:    reflect.TypeFor[T](),
 		scope: scope,
 	}
 	return &lazyComponentImpl[T]{
