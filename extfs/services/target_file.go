@@ -21,6 +21,11 @@ func (s *TargetFileService) Search(conditions models.TargetFileSearchCondition) 
 		return
 	}
 
+	items = make([]models.TargetFile, 0)
+	if total == 0 {
+		return
+	}
+
 	for _, item := range items_ {
 		setTargetFileAvailable(&item, &item.Target)
 		if conditions.Available == nil || *conditions.Available == item.Available {
@@ -148,11 +153,8 @@ func exploreFile(targetFile *models.TargetFile) (updated bool, err error) {
 }
 
 func setTargetFileAvailable(targetFile *models.TargetFile, target *models.Target) {
-	targetFile.Available = *target.Enabled
-	if targetFile.Available {
-		setTargetAvailable(target)
-		targetFile.Available = target.Available
-	}
+	setTargetAvailable(target)
+	targetFile.Available = target.Available
 	if targetFile.Available {
 		_, err := os.Stat(targetFile.FilePath)
 		targetFile.Available = err == nil

@@ -18,7 +18,7 @@ module.exports = () => {
   const targetFiles = targets.reduce((files, target) => {
     return files.concat(
       faker.helpers.multiple(() => generateTargetFile(target), {
-        count: { min: 1, max: 10 },
+        count: { min: 30, max: 100 },
       })
     );
   }, []);

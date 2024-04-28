@@ -52,12 +52,13 @@ func TestTarget(t *testing.T) {
 		filePath := path.Join(root, fileName)
 		os.WriteFile(filePath, []byte("hello"), 0644)
 
-		available := true
+		enabled := true
 		target := models.Target{}
 		target.ID = uint(123)
 		target.FilePath = ""
 		target.Name = "Target A"
-		target.Available = available
+		target.Enabled = &enabled
+		target.Available = true
 
 		targetRepo := new(mockedRepo.MockTargetRepository)
 		dispatcher.TargetService.TargetRepo = targetRepo
@@ -68,7 +69,8 @@ func TestTarget(t *testing.T) {
 		newTarget.HashCode = "hash code"
 		newTarget.FilePath = root
 		newTarget.Name = "Target B"
-		newTarget.Available = available
+		newTarget.Enabled = &enabled
+		newTarget.Available = true
 		targetRepo.On("Select", target.ID, mock.Anything).Return(newTarget, nil)
 
 		var wg sync.WaitGroup

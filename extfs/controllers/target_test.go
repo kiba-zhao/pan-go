@@ -40,9 +40,10 @@ func TestTargetController(t *testing.T) {
 		ctrl.TargetService.TargetRepo = targetRepo
 
 		total := int64(10)
+		enabled := false
 		targets := []models.Target{
-			{Name: "Target A", FilePath: "/path_a"},
-			{Name: "Target B", FilePath: "/path_b"},
+			{Name: "Target A", FilePath: "/path_a", Enabled: &enabled},
+			{Name: "Target B", FilePath: "/path_b", Enabled: &enabled},
 		}
 		targetRepo.On("Search", models.TargetSearchCondition{}).Once().Return(total, targets, nil)
 
@@ -65,7 +66,7 @@ func TestTargetController(t *testing.T) {
 		defer targetRepo.AssertExpectations(t)
 		ctrl.TargetService.TargetRepo = targetRepo
 
-		enabled := true
+		enabled := false
 		condition := models.TargetSearchCondition{}
 		condition.Keyword = "keyword"
 		condition.Enabled = &enabled
@@ -76,8 +77,8 @@ func TestTargetController(t *testing.T) {
 
 		total := int64(10)
 		targets := []models.Target{
-			{Name: "Target A", FilePath: "/path_a"},
-			{Name: "Target B", FilePath: "/path_b"},
+			{Name: "Target A", FilePath: "/path_a", Enabled: &enabled},
+			{Name: "Target B", FilePath: "/path_b", Enabled: &enabled},
 		}
 		targetRepo.On("Search", condition).Once().Return(total, targets, nil)
 
@@ -101,7 +102,7 @@ func TestTargetController(t *testing.T) {
 		assert.Equal(t, targets, results)
 	})
 
-	t.Run("GET /targets with available query", func(t *testing.T) {
+	t.Run("GET /targets with invalid query", func(t *testing.T) {
 		web, _ := setup()
 
 		w := httptest.NewRecorder()
@@ -127,8 +128,9 @@ func TestTargetController(t *testing.T) {
 		ctrl.TargetService.TargetRepo = targetRepo
 
 		id := uint(123)
+		enbaled := false
 		var version *uint8
-		target := models.Target{ID: id, Name: "Target A", FilePath: "/path_a"}
+		target := models.Target{ID: id, Name: "Target A", FilePath: "/path_a", Enabled: &enbaled}
 		targetRepo.On("Select", id, version).Once().Return(target, nil)
 
 		w := httptest.NewRecorder()

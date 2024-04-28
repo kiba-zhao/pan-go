@@ -32,15 +32,19 @@ type TargetDispatcher struct {
 }
 
 func (d *TargetDispatcher) Scan(target models.Target) error {
-	if !target.Available || target.DeletedAt.Valid {
+	if target.DeletedAt.Valid {
 		return errors.ErrConflict
+	}
+
+	if !target.Available {
+		return nil
 	}
 
 	return handleTarget(d, target)
 }
 
 func (d *TargetDispatcher) Clean(target models.Target) error {
-	// TODO: to be implemented
+
 	if !target.DeletedAt.Valid {
 		return errors.ErrConflict
 	}

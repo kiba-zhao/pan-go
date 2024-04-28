@@ -14,7 +14,7 @@ import {
   FilterList,
   FilterListItem,
   FilterLiveSearch,
-  List,
+  InfiniteList,
   ListButton,
   SavedQueriesList,
   SelectColumnsButton,
@@ -34,9 +34,9 @@ import {
 
 import { useFormContext } from "react-hook-form";
 
-import Block from "@mui/icons-material/Block";
 import CloseIcon from "@mui/icons-material/Close";
 import FolderIcon from "@mui/icons-material/Folder";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -59,6 +59,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Slide from "@mui/material/Slide";
 import Toolbar from "@mui/material/Toolbar";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import { TransitionProps } from "@mui/material/transitions";
@@ -69,6 +70,7 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import { FixedSizeList } from "react-window";
 
 import { basename, dirname, generateParents } from "../lib/path";
+import { InfinitePagination } from "./Custom";
 
 const TargetBulkActions = () => (
   <>
@@ -103,10 +105,15 @@ const TargetEnabledFilter = () => {
 };
 
 const TargetInvalidFilter = () => {
+  const t = useTranslate();
   return (
     <FilterList
       label="resources.extfs/targets.filters.has_available"
-      icon={<Block />}
+      icon={
+        <Tooltip title={t("resources.extfs/targets.filters.help_available")}>
+          <InfoOutlinedIcon />
+        </Tooltip>
+      }
     >
       <FilterListItem
         label="resources.extfs/targets.filters.available"
@@ -136,7 +143,7 @@ const TargetFilters = () => {
           <SavedQueriesList />
           <FilterLiveSearch />
           <TargetEnabledFilter />
-          {/* <TargetInvalidFilter /> */}
+          <TargetInvalidFilter />
         </CardContent>
       </Card>
     </Box>
@@ -145,7 +152,11 @@ const TargetFilters = () => {
 
 export const Targets = () => {
   return (
-    <List actions={<TargetListActions />} aside={<TargetFilters />}>
+    <InfiniteList
+      actions={<TargetListActions />}
+      aside={<TargetFilters />}
+      pagination={<InfinitePagination />}
+    >
       <DatagridConfigurable
         bulkActionButtons={<TargetBulkActions />}
         preferenceKey="targets.datagrid"
@@ -160,7 +171,7 @@ export const Targets = () => {
           <ShowButton />
         </WrapperField>
       </DatagridConfigurable>
-    </List>
+    </InfiniteList>
   );
 };
 

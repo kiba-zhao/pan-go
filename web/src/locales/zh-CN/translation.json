@@ -14,6 +14,7 @@
         "has_enabled": "启用/停用",
         "enabled": "启用",
         "disabled": "停用",
+        "help_available": "总数不受该过滤器影响",
         "has_available": "状态",
         "available": "可用",
         "not_available": "不可用"
@@ -33,8 +34,9 @@
         "updateAt": "更新时间"
       },
       "filters": {
-        "has_available": "状态",
-        "available": "可用状态",
+        "help_available": "总数不受该过滤器影响",
+        "has_available": "可用状态",
+        "available": "可用",
         "not_available": "不可用"
       },
       "show": {
@@ -46,6 +48,7 @@
     "table": {
       "actions": "操作"
     },
+    "pagination": "总共 {{total}} 项",
     "input": {
       "filepath": {
         "title": "磁盘文件选择"

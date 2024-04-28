@@ -24,6 +24,11 @@ func (s *TargetService) Search(conditions models.TargetSearchCondition) (total i
 		return
 	}
 
+	items = make([]models.Target, 0)
+	if total == 0 {
+		return
+	}
+
 	for _, item := range items_ {
 		setTargetAvailable(&item)
 		if conditions.Available == nil || *conditions.Available == item.Available {
@@ -52,6 +57,7 @@ func (s *TargetService) Create(fields models.TargetFields) (models.Target, error
 
 	target_, err := s.TargetRepo.Save(target, false)
 	if err == nil {
+		setTargetAvailable(&target_)
 		err = s.TargetDispatcher.Scan(target_)
 	}
 	return target_, err
@@ -85,13 +91,19 @@ func (s *TargetService) Update(fields models.TargetFields, id uint, opts models.
 		return target, errors.ErrConflict
 	}
 	if err == nil {
+		setTargetAvailable(&target)
 		err = s.TargetDispatcher.Scan(target)
 	}
 	return target, err
 }
 
 func (s *TargetService) Select(id uint, opts models.TargetQueryOptions) (models.Target, error) {
-	return s.TargetRepo.Select(id, opts.Version)
+	target, err := s.TargetRepo.Select(id, opts.Version)
+	if err != nil {
+		return target, err
+	}
+	setTargetAvailable(&target)
+	return target, nil
 }
 
 func (s *TargetService) Delete(id uint, opts models.TargetQueryOptions) error {
@@ -117,6 +129,7 @@ func (s *TargetService) Scan(id uint) error {
 		return err
 	}
 
+	setTargetAvailable(&target)
 	if !target.Available || target.DeletedAt.Valid {
 		return errors.ErrConflict
 	}
@@ -161,6 +174,9 @@ func generateHashCodeByFilePath(filepath string) string {
 }
 
 func setTargetAvailable(target *models.Target) {
-	_, err := os.Stat(target.FilePath)
-	target.Available = err == nil
+	target.Available = *target.Enabled
+	if target.Available {
+		_, err := os.Stat(target.FilePath)
+		target.Available = err == nil
+	}
 }

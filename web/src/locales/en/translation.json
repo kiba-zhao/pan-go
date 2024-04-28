@@ -6,6 +6,7 @@
         "has_enabled": "Enabled / Disabled",
         "enabled": "Enabled",
         "disabled": "Disabled",
+        "help_available": "The total count is not affected by this filter",
         "has_available": "Status",
         "available": "Available",
         "not_available": "Not available"
@@ -17,6 +18,7 @@
         "target": "Target Name"
       },
       "filters": {
+        "help_available": "The total count is not affected by this filter",
         "has_available": "Status",
         "available": "Available",
         "not_available": "Not available"
@@ -30,6 +32,7 @@
     "table": {
       "actions": "Actions"
     },
+    "pagination": "{{total}} results",
     "input": {
       "filepath": {
         "title": "Disk File Selector"

@@ -1,8 +1,12 @@
-import Block from "@mui/icons-material/Block";
+import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import DoDisturbOnOutlinedIcon from "@mui/icons-material/DoDisturbOnOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import Tooltip from "@mui/material/Tooltip";
 
 import {
   BooleanField,
@@ -11,7 +15,7 @@ import {
   FilterListItem,
   FilterLiveSearch,
   FunctionField,
-  List,
+  InfiniteList,
   ReferenceField,
   SavedQueriesList,
   SearchInput,
@@ -19,10 +23,12 @@ import {
   SimpleList,
   TabbedShowLayout,
   TextField,
+  useTranslate,
 } from "react-admin";
 
 import { formatBytes } from "../lib/byte";
 import { basename } from "../lib/path";
+import { InfinitePagination } from "./Custom";
 
 export const TargetFileIcon = InsertDriveFileIcon;
 
@@ -40,10 +46,17 @@ type TargetFile = {
 };
 
 const TargetFileInvalidFilter = () => {
+  const t = useTranslate();
   return (
     <FilterList
       label="resources.extfs/target-files.filters.has_available"
-      icon={<Block />}
+      icon={
+        <Tooltip
+          title={t("resources.extfs/target-files.filters.help_available")}
+        >
+          <InfoOutlinedIcon />
+        </Tooltip>
+      }
     >
       <FilterListItem
         label="resources.extfs/target-files.filters.available"
@@ -72,7 +85,7 @@ const TargetFileFilters = () => {
         <CardContent>
           <SavedQueriesList />
           <FilterLiveSearch />
-          {/* <TargetFileInvalidFilter /> */}
+          <TargetFileInvalidFilter />
         </CardContent>
       </Card>
     </Box>
@@ -94,14 +107,25 @@ const TargetFileSimpleFilters = [
 
 export const TargetFiles = () => {
   return (
-    <List aside={<TargetFileFilters />} filters={TargetFileSimpleFilters}>
+    <InfiniteList
+      aside={<TargetFileFilters />}
+      filters={TargetFileSimpleFilters}
+      pagination={<InfinitePagination />}
+    >
       <SimpleList<TargetFile>
         linkType="show"
         primaryText={(record) => basename(record.filepath)}
         secondaryText={(record) => formatBytes(record.size)}
         tertiaryText={(record) => new Date(record.modTime).toLocaleString()}
+        leftIcon={(record) =>
+          record.available ? (
+            <CheckCircleOutlineOutlinedIcon color="success" />
+          ) : (
+            <DoDisturbOnOutlinedIcon color="error" />
+          )
+        }
       />
-    </List>
+    </InfiniteList>
   );
 };
 
