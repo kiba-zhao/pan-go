@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"cmp"
 	"crypto/rand"
-	"pan/cache"
+	"pan/app/cache"
+	mocked "pan/mocks/pan/app/cache"
 	"testing"
-
-	mocked "pan/mocks/pan/cache"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -56,9 +55,10 @@ func TestBucket(t *testing.T) {
 		bucket := cache.NewBucket[int, *mocked.MockHashCode[int]](cmp.Compare)
 		items := bucket.Items()
 
-		assert.Nil(t, items, "items should be nil")
+		assert.Empty(t, items)
 
-		item := new(mocked.MockHashCode[int])
+		item := &mocked.MockHashCode[int]{}
+		defer item.AssertExpectations(t)
 		item.On("HashCode").Return(1)
 
 		bucket.Store(item)
@@ -67,7 +67,6 @@ func TestBucket(t *testing.T) {
 		assert.Len(t, items, 1, "items should has 1")
 		assert.Equal(t, item, items[0], "items[0] should be same")
 
-		item.AssertExpectations(t)
 	})
 
 	t.Run("At", func(t *testing.T) {

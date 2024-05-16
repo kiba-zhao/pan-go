@@ -10,6 +10,7 @@ import (
 	"pan/extfs/repositories"
 	repoImpl "pan/extfs/repositories/impl"
 	"pan/extfs/services"
+	"pan/runtime"
 	"path"
 	"reflect"
 	"sync"
@@ -28,7 +29,7 @@ type module struct {
 	dbOnce      sync.Once
 	controllers []webController
 	initOnce    sync.Once
-	components  []app.Component
+	components  []runtime.Component
 }
 
 func New() interface{} {
@@ -61,14 +62,14 @@ func (m *module) DB() *gorm.DB {
 	return m.db
 }
 
-func (m *module) Components() []app.Component {
+func (m *module) Components() []runtime.Component {
 
 	m.initOnce.Do(func() {
 
 		// base
 		m.components = append(m.components,
-			app.NewComponent(m, app.ComponentNoneScope),
-			app.NewLazyComponent(m.DB, app.ComponentInternalScope),
+			runtime.NewComponent(m, runtime.ComponentNoneScope),
+			runtime.NewLazyComponent(m.DB, runtime.ComponentInternalScope),
 		)
 
 		// repositories
@@ -106,13 +107,13 @@ func (m *module) SetupToWeb(webApp app.WebApp) error {
 
 func setupController[T webController](m *module, controller T) {
 	m.controllers = append(m.controllers, controller)
-	m.components = append(m.components, app.NewComponent(controller, app.ComponentNoneScope))
+	m.components = append(m.components, runtime.NewComponent(controller, runtime.ComponentNoneScope))
 }
 
 func setupComponent[T any](m *module, component T) {
 	t := reflect.TypeFor[T]()
 	if t.Kind() == reflect.Interface {
-		m.components = append(m.components, app.NewComponentByType(reflect.TypeOf(component), component, app.ComponentNoneScope))
+		m.components = append(m.components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentNoneScope))
 	}
-	m.components = append(m.components, app.NewComponent(component, app.ComponentInternalScope))
+	m.components = append(m.components, runtime.NewComponent(component, runtime.ComponentInternalScope))
 }

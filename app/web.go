@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,15 +29,17 @@ type WebModuleProvider interface {
 }
 
 type webServer struct {
-	webApp WebApp
 	Config AppConfig
+	app    WebApp
+	once   sync.Once
 }
 
 func (w *webServer) Init(registry runtime.Registry) error {
 
-	// init webApp
-	app := NewWebApp()
-	w.webApp = app
+	w.once.Do(func() {
+		w.app = NewWebApp()
+	})
+	app := w.app
 
 	err := runtime.TraverseRegistry(registry, func(module WebModule) error {
 		return module.SetupToWeb(app)
@@ -62,16 +65,17 @@ func (w *webServer) EngineTypes() []reflect.Type {
 	}
 }
 
-func (w *webServer) Components() []Component {
-	return []Component{
-		NewComponent(w, ComponentNoneScope),
+func (w *webServer) Components() []runtime.Component {
+
+	return []runtime.Component{
+		runtime.NewComponent(w, runtime.ComponentNoneScope),
 	}
 }
 
 func (w *webServer) Ready() error {
 	settings, err := w.Config.Read()
 	if err == nil {
-		err = w.webApp.Run(settings.WebHost + ":" + strconv.Itoa(settings.WebPort))
+		err = w.app.Run(settings.WebHost + ":" + strconv.Itoa(settings.WebPort))
 	}
 	return err
 }

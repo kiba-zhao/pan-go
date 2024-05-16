@@ -2,7 +2,7 @@ package impl
 
 import (
 	"cmp"
-	"pan/cache"
+	"pan/app/cache"
 	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/services"
@@ -20,10 +20,11 @@ func (t *TargetDispatcherItem) HashCode() uint {
 	return t.id
 }
 
-type TargetDispatcherBucket = *cache.Bucket[uint, *TargetDispatcherItem]
+type TargetDispatcherBucket = cache.Bucket[uint, *TargetDispatcherItem]
 
 func NewTargetDispatcherBucket() TargetDispatcherBucket {
-	return cache.NewBucket[uint, *TargetDispatcherItem](cmp.Compare[uint])
+	bucket := cache.NewBucket[uint, *TargetDispatcherItem](cmp.Compare[uint])
+	return cache.WrapSyncBucket(bucket)
 }
 
 type TargetDispatcher struct {

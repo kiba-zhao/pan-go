@@ -1,8 +1,7 @@
-package app
+package runtime
 
 import (
 	"errors"
-	"pan/runtime"
 	"reflect"
 )
 
@@ -94,18 +93,18 @@ type ComponentProvider interface {
 	Components() []Component
 }
 
-var ErrComponentConflict = errors.New("[app:Component] Injector Error: dependency conflict")
-var ErrComponentScope = errors.New("[app:Component] Injector Error: invalid component scope")
+var ErrComponentConflict = errors.New("[runtime:Component] Injector Error: dependency conflict")
+var ErrComponentScope = errors.New("[runtime:Component] Injector Error: invalid component scope")
 
-type injector struct {
+type Injector struct {
 }
 
-func (in *injector) Init(registry runtime.Registry) error {
+func (in *Injector) Init(registry Registry) error {
 	store := make(ComponentStore)
 	pendings := make(ComponentPendings)
 
 	// traverse component provider
-	err := runtime.TraverseRegistry(registry, func(provider ComponentProvider) error {
+	err := TraverseRegistry(registry, func(provider ComponentProvider) error {
 		internalStore := make(ComponentStore)
 		var componentErr error
 		components := provider.Components()
@@ -121,7 +120,7 @@ func (in *injector) Init(registry runtime.Registry) error {
 	return err
 }
 
-func (in *injector) EngineTypes() []reflect.Type {
+func (in *Injector) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[ComponentProvider](),
 	}

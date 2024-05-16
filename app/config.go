@@ -70,9 +70,9 @@ func (c *configImpl[T]) EngineTypes() []reflect.Type {
 	}
 }
 
-func (c *configImpl[T]) Components() []Component {
-	return []Component{
-		NewComponent[Config[T]](c, ComponentExternalScope),
+func (c *configImpl[T]) Components() []runtime.Component {
+	return []runtime.Component{
+		runtime.NewComponent[Config[T]](c, runtime.ComponentExternalScope),
 	}
 }
 

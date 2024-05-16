@@ -136,9 +136,20 @@ func TraverseRegistry[T any](registry Registry, f TraverseFunc[T]) error {
 	t := reflect.TypeFor[T]()
 
 	return registry.TraverseByType(func(module interface{}) error {
-		if m, ok := module.(T); ok {
-			return f(m)
-		}
-		return ErrModuleType
+		return f(module.(T))
 	}, t)
+}
+
+func ModulesForType[T any](registry Registry) []T {
+
+	t := reflect.TypeFor[T]()
+	modules, ok := registry.ModulesByType(t)
+	if !ok {
+		return nil
+	}
+	var ts []T
+	for _, module := range modules {
+		ts = append(ts, module.(T))
+	}
+	return ts
 }
