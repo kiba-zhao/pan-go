@@ -2,11 +2,11 @@ package node
 
 type Next = func() error
 
-type HandleFunc func(ctx Context, next Next) error
+type HandleFunc[T any] func(ctx T, next Next) error
 
-type HandleChain []HandleFunc
+type HandleChain[T any] []HandleFunc[T]
 
-func Dispatch(ctx Context, chain HandleChain, index int, next Next) error {
+func Dispatch[T any](ctx T, chain HandleChain[T], index int, next Next) error {
 
 	if index >= len(chain) {
 		if next != nil {

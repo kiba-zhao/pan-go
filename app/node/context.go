@@ -75,5 +75,11 @@ func (c *Context) ThrowError(code int, err error) {
 }
 
 func InitContext(ctx *Context) {
+	ctx.code = -1
 	ctx.session = cache.NewBucket[SessionKey, *SessionItem](bytes.Compare)
+
+	ctx.request = &Request{}
+	InitRequest(ctx.request)
+
+	InitResponse(&ctx.Response)
 }

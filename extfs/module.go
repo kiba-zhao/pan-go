@@ -28,8 +28,7 @@ type module struct {
 	db          *gorm.DB
 	dbOnce      sync.Once
 	controllers []webController
-	initOnce    sync.Once
-	components  []runtime.Component
+	ctrlOnce    sync.Once
 }
 
 func New() interface{} {
@@ -62,58 +61,63 @@ func (m *module) DB() *gorm.DB {
 	return m.db
 }
 
+func (m *module) Controllers() []webController {
+	m.ctrlOnce.Do(func() {
+		m.controllers = append(m.controllers,
+			&controllers.TargetController{},
+			&controllers.DiskFileController{},
+			&controllers.TargetFileController{},
+		)
+	})
+	return m.controllers
+}
+
 func (m *module) Components() []runtime.Component {
 
-	m.initOnce.Do(func() {
+	var components []runtime.Component
+	// base
+	components = append(components,
+		runtime.NewComponent(m, runtime.ComponentNoneScope),
+		runtime.NewLazyComponent(m.DB, runtime.ComponentInternalScope),
+	)
 
-		// base
-		m.components = append(m.components,
-			runtime.NewComponent(m, runtime.ComponentNoneScope),
-			runtime.NewLazyComponent(m.DB, runtime.ComponentInternalScope),
-		)
+	// repositories
+	components = setupComponent[repositories.TargetRepository](components, &repoImpl.TargetRepository{})
+	components = setupComponent[repositories.TargetFileRepository](components, &repoImpl.TargetFileRepository{})
 
-		// repositories
-		setupComponent[repositories.TargetRepository](m, &repoImpl.TargetRepository{})
-		setupComponent[repositories.TargetFileRepository](m, &repoImpl.TargetFileRepository{})
+	// services
+	components = setupComponent(components, &services.TargetService{})
+	components = setupComponent(components, &services.DiskFileService{})
+	components = setupComponent(components, &services.TargetFileService{})
 
-		// services
-		setupComponent(m, &services.TargetService{})
-		setupComponent(m, &services.DiskFileService{})
-		setupComponent(m, &services.TargetFileService{})
+	// dispatchers
+	components = setupComponent(components, dispatcherImpl.NewTargetDispatcherBucket())
+	components = setupComponent[dispatchers.TargetDispatcher](components, &dispatcherImpl.TargetDispatcher{})
 
-		// controllers
-		setupController(m, &controllers.TargetController{})
-		setupController(m, &controllers.DiskFileController{})
-		setupController(m, &controllers.TargetFileController{})
+	// controllers
+	for _, ctrl := range m.Controllers() {
+		components = append(components, runtime.NewComponent(ctrl, runtime.ComponentNoneScope))
+	}
 
-		// dispatchers
-		setupComponent(m, dispatcherImpl.NewTargetDispatcherBucket())
-		setupComponent[dispatchers.TargetDispatcher](m, &dispatcherImpl.TargetDispatcher{})
-
-	})
-	return m.components
+	return components
 }
 
 func (m *module) SetupToWeb(webApp app.WebApp) error {
 
 	router := webApp.Group("/api/extfs")
 
-	for _, ctrl := range m.controllers {
+	for _, ctrl := range m.Controllers() {
 		ctrl.Init(router)
 	}
 
 	return nil
 }
 
-func setupController[T webController](m *module, controller T) {
-	m.controllers = append(m.controllers, controller)
-	m.components = append(m.components, runtime.NewComponent(controller, runtime.ComponentNoneScope))
-}
-
-func setupComponent[T any](m *module, component T) {
+func setupComponent[T any](components []runtime.Component, component T) []runtime.Component {
 	t := reflect.TypeFor[T]()
 	if t.Kind() == reflect.Interface {
-		m.components = append(m.components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentNoneScope))
+		components = append(components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentNoneScope))
 	}
-	m.components = append(m.components, runtime.NewComponent(component, runtime.ComponentInternalScope))
+	components = append(components, runtime.NewComponent(component, runtime.ComponentInternalScope))
+	return components
 }

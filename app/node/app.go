@@ -9,14 +9,26 @@ import (
 	"pan/app/cache"
 )
 
+type AppContext = *Context
+type AppHandleFunc = HandleFunc[AppContext]
+type AppHandleChain = HandleChain[AppContext]
+
+func NewAppContext() AppContext {
+	ctx := &Context{}
+	InitContext(ctx)
+	return ctx
+}
+
 type AppHandleGroup interface {
-	Use(...HandleFunc) AppHandleGroup
-	Handle(RequestName, ...HandleFunc) AppHandleGroup
-	Default(...HandleFunc) AppHandleGroup
+	Use(...AppHandleFunc) AppHandleGroup
+	Handle(RequestName, ...AppHandleFunc) AppHandleGroup
+	Default(...AppHandleFunc) AppHandleGroup
+	Group() AppHandleGroup
+	Route(name RequestName) AppHandleGroup
 }
 
 type AppHandleChainItem[T any] struct {
-	handles HandleChain
+	handles AppHandleChain
 	code    T
 }
 
@@ -29,7 +41,7 @@ type AppSequence = uint16
 type App struct {
 	*AppRouter
 	routes    cache.Bucket[RequestName, *AppHandleChainItem[RequestName]]
-	defaults  HandleChain
+	defaults  AppHandleChain
 	defaults_ cache.Bucket[AppSequence, *AppHandleChainItem[AppSequence]]
 	rw        sync.RWMutex
 	seq_      AppSequence
@@ -50,7 +62,7 @@ func NewApp() *App {
 	return app
 }
 
-func (app *App) route(name RequestName, handles HandleChain) {
+func (app *App) route(name RequestName, handles AppHandleChain) {
 	route := &AppHandleChainItem[RequestName]{}
 	route.code = name
 	route.handles = append(handles, app.dispatchDefaults)
@@ -60,7 +72,7 @@ func (app *App) route(name RequestName, handles HandleChain) {
 	}
 }
 
-func (app *App) setDefaults(seq AppSequence, handles HandleChain) {
+func (app *App) setDefaults(seq AppSequence, handles AppHandleChain) {
 	if len(handles) > 0 {
 		defaultItem := &AppHandleChainItem[AppSequence]{}
 		defaultItem.handles = handles
@@ -75,13 +87,13 @@ func (app *App) setDefaults(seq AppSequence, handles HandleChain) {
 	}
 }
 
-func (app *App) Route(name RequestName) *AppRouter {
+func (app *App) newRoute(name RequestName) *AppRouter {
 	app.seq_++
 	return NewAppRouter(app, name)
 }
 
-func (app *App) Group() AppHandleGroup {
-	return app.Route(nil)
+func (app *App) newGroup() AppHandleGroup {
+	return app.newRoute(nil)
 }
 
 func (app *App) Init(extreme bool) {
@@ -99,7 +111,7 @@ func (app *App) Init(extreme bool) {
 	}
 }
 
-func (app *App) Run(ctx Context, next Next) error {
+func (app *App) Run(ctx AppContext, next Next) error {
 
 	name := ctx.Name()
 	route, ok := app.routes.Search(name)
@@ -110,7 +122,7 @@ func (app *App) Run(ctx Context, next Next) error {
 	return app.dispatchDefaults(ctx, next)
 }
 
-func (app *App) dispatchDefaults(ctx Context, next Next) error {
+func (app *App) dispatchDefaults(ctx AppContext, next Next) error {
 
 	app.rw.RLock()
 	if len(app.defaults) <= 0 {
@@ -127,7 +139,7 @@ type AppRouter struct {
 	seq         AppSequence
 	name        RequestName
 	app         *App
-	middlewares HandleChain
+	middlewares AppHandleChain
 }
 
 func NewAppRouter(app *App, name RequestName) *AppRouter {
@@ -138,12 +150,12 @@ func NewAppRouter(app *App, name RequestName) *AppRouter {
 	return router
 }
 
-func (router *AppRouter) Use(handles ...HandleFunc) AppHandleGroup {
+func (router *AppRouter) Use(handles ...AppHandleFunc) AppHandleGroup {
 	router.middlewares = append(router.middlewares, handles...)
 	return returnAppHandleGroup(router)
 }
 
-func (router *AppRouter) Handle(name RequestName, handles ...HandleFunc) AppHandleGroup {
+func (router *AppRouter) Handle(name RequestName, handles ...AppHandleFunc) AppHandleGroup {
 
 	name_ := name
 	if len(router.name) > 0 {
@@ -156,22 +168,30 @@ func (router *AppRouter) Handle(name RequestName, handles ...HandleFunc) AppHand
 	return returnAppHandleGroup(router)
 }
 
-func (router *AppRouter) Default(handles ...HandleFunc) AppHandleGroup {
+func (router *AppRouter) Default(handles ...AppHandleFunc) AppHandleGroup {
 
 	app := router.app
-	var defaults HandleChain
+	var defaults AppHandleChain
 
 	if len(handles) > 0 {
 		handles_ := slices.Concat(router.middlewares, handles)
 		defaults = handles_
 		if len(router.name) > 0 {
 			handle := routeHandle(router.name, handles_)
-			defaults = HandleChain{handle}
+			defaults = AppHandleChain{handle}
 		}
 	}
 	app.setDefaults(router.seq, defaults)
 
 	return returnAppHandleGroup(router)
+}
+
+func (router *AppRouter) Group() AppHandleGroup {
+	return router.app.newGroup()
+}
+
+func (router *AppRouter) Route(name RequestName) AppHandleGroup {
+	return router.app.newRoute(name)
 }
 
 func returnAppHandleGroup(router *AppRouter) AppHandleGroup {
@@ -181,8 +201,8 @@ func returnAppHandleGroup(router *AppRouter) AppHandleGroup {
 	return router.app
 }
 
-func routeHandle(name RequestName, handles HandleChain) HandleFunc {
-	return func(ctx Context, next Next) error {
+func routeHandle(name RequestName, handles AppHandleChain) AppHandleFunc {
+	return func(ctx AppContext, next Next) error {
 		if bytes.HasPrefix(ctx.Name(), name) {
 			return Dispatch(ctx, handles, 0, next)
 		}

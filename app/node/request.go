@@ -38,3 +38,8 @@ func UnmarshalRequest(reader io.Reader, request *Request) error {
 
 	return UnmarshalMessage(reader, &request.Message)
 }
+
+func InitRequest(request *Request) {
+	request.header = &Header{}
+	InitHeader(request.header)
+}

@@ -34,3 +34,8 @@ func UnmarshalResponse(reader io.Reader, response *Response) error {
 
 	return UnmarshalMessage(reader, &response.Message)
 }
+
+func InitResponse(response *Response) {
+	response.header = &Header{}
+	InitHeader(response.header)
+}
