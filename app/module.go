@@ -11,7 +11,11 @@ func New() interface{} {
 	settings := newDefaultSettings(getRootPath())
 	config := NewConfig(settings, parseConfigPath)
 
-	return runtime.NewModule(&runtime.Injector{}, config, NewNodeModule(), &webServer{})
+	provider := runtime.NewComponentProvider(
+		runtime.NewComponent[AppSettings](settings, runtime.ComponentExternalScope),
+	)
+
+	return runtime.NewModule(&runtime.Injector{}, &provider, config, &webServer{}, &nodeModule{}, &broadcast{}, &quicModule{})
 }
 
 func getRootPath() string {

@@ -1,13 +1,19 @@
 package app
 
 import (
+	"cmp"
+	"context"
+	"errors"
 	"io/fs"
 	"net/http"
+	"pan/app/cache"
 	"pan/runtime"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,18 +34,93 @@ type WebModuleProvider interface {
 	WebModules() []WebModule
 }
 
+type webServerItem struct {
+	server *http.Server
+}
+
+func (w *webServerItem) HashCode() string {
+	return w.server.Addr
+}
+
 type webServer struct {
-	Config AppConfig
-	app    WebApp
-	once   sync.Once
+	app        WebApp
+	appLocker  sync.RWMutex
+	registry   runtime.Registry
+	locker     sync.Locker
+	addresses  []string
+	sigChan    chan bool
+	sigOnce    sync.Once
+	hasPending bool
+}
+
+func (w *webServer) SetSig(sig bool) {
+
+	if w.hasPending {
+		return
+	}
+
+	w.sigOnce.Do(func() {
+		w.sigChan = make(chan bool, 1)
+	})
+
+	w.hasPending = true
+	w.sigChan <- sig
+
+}
+
+func (w *webServer) OnConfigUpdated(settings AppSettings) {
+	w.locker.Lock()
+	defer w.locker.Unlock()
+
+	if slices.Equal(w.addresses, settings.WebAddress) {
+		return
+	}
+
+	w.addresses = settings.WebAddress
+	w.SetSig(true)
 }
 
 func (w *webServer) Init(registry runtime.Registry) error {
+	w.locker.Lock()
+	w.registry = registry
+	w.SetSig(true)
+	w.locker.Unlock()
 
-	w.once.Do(func() {
-		w.app = NewWebApp()
-	})
+	return w.ReloadModules()
+}
+
+func (w *webServer) EngineTypes() []reflect.Type {
+	return []reflect.Type{
+		reflect.TypeFor[WebModule](),
+		reflect.TypeFor[WebModuleProvider](),
+	}
+}
+
+func (w *webServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+
+	w.appLocker.RLock()
 	app := w.app
+	w.appLocker.RUnlock()
+
+	if app != nil {
+		app.ServeHTTP(rw, req)
+	} else {
+		http.Error(rw, ErrUnavailable.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (w *webServer) ReloadModules() error {
+	w.locker.Lock()
+	registry := w.registry
+	w.locker.Unlock()
+	if registry == nil {
+		return ErrUnavailable
+	}
+
+	w.appLocker.Lock()
+	defer w.appLocker.Unlock()
+
+	app := NewWebApp()
 
 	err := runtime.TraverseRegistry(registry, func(module WebModule) error {
 		return module.SetupToWeb(app)
@@ -55,29 +136,63 @@ func (w *webServer) Init(registry runtime.Registry) error {
 			return nil
 		})
 	}
+
+	if err == nil {
+		w.app = app
+	}
+
 	return err
-}
-
-func (w *webServer) EngineTypes() []reflect.Type {
-	return []reflect.Type{
-		reflect.TypeFor[WebModule](),
-		reflect.TypeFor[WebModuleProvider](),
-	}
-}
-
-func (w *webServer) Components() []runtime.Component {
-
-	return []runtime.Component{
-		runtime.NewComponent(w, runtime.ComponentNoneScope),
-	}
 }
 
 func (w *webServer) Ready() error {
-	settings, err := w.Config.Read()
-	if err == nil {
-		err = w.app.Run(settings.WebHost + ":" + strconv.Itoa(settings.WebPort))
+
+	var bucket cache.Bucket[string, *webServerItem]
+	w.sigOnce.Do(func() {
+		w.sigChan = make(chan bool, 1)
+	})
+
+	for {
+
+		sig := <-w.sigChan
+		w.locker.Lock()
+		w.hasPending = false
+		addresses := w.addresses
+		w.locker.Unlock()
+
+		if bucket != nil {
+			for _, item := range bucket.Items() {
+				item.server.Shutdown(context.Background())
+			}
+		}
+
+		if !sig {
+			break
+		}
+
+		bucket_ := cache.NewBucket[string, *webServerItem](cmp.Compare[string])
+		bucket = cache.WrapSyncBucket(bucket_)
+		for _, address := range addresses {
+			httpServer := &http.Server{
+				Addr:    address,
+				Handler: w,
+			}
+			item := &webServerItem{server: httpServer}
+			bucket.Store(item)
+			go func(s *http.Server) {
+				for {
+					err := s.ListenAndServe()
+					if errors.Is(err, http.ErrServerClosed) {
+						break
+					}
+					time.Sleep(6 * time.Second)
+				}
+
+			}(httpServer)
+		}
+
 	}
-	return err
+
+	return nil
 }
 
 type webAssets struct {

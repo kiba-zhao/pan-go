@@ -13,12 +13,13 @@ type HashCode[T any] interface {
 type Bucket[T any, V HashCode[T]] interface {
 	HashCodes() []T
 	Size() int
-	Swap(item V) (previous V, ok bool)
-	Search(hash T) (item V, ok bool)
-	SearchOrStore(item V) (ritem V, ok bool)
-	Store(item V) (err error)
-	Delete(item V)
-	At(index int) (item V, ok bool)
+	Swap(V) (V, bool)
+	Index(T) (int, bool)
+	Search(T) (V, bool)
+	SearchOrStore(V) (V, bool)
+	Store(V) error
+	Delete(V)
+	At(int) (V, bool)
 	Items() []V
 }
 
@@ -86,10 +87,42 @@ func (b *SimpleBucket[T, V]) At(index int) (item V, ok bool) {
 	return
 }
 
+func (b *SimpleBucket[T, V]) Index(hash T) (idx int, ok bool) {
+	idx = -1
+	maxIdx := len(b.items) - 1
+	minIdx := 0
+	prevIdx := -1
+	ok = false
+	for minIdx <= maxIdx {
+		midIdx := (minIdx + maxIdx) / 2
+		midItem := b.items[midIdx]
+		cmp := b.cmp(midItem.HashCode(), hash)
+		if cmp == 0 {
+			ok = true
+			idx = midIdx
+			break
+		}
+
+		if cmp < 0 {
+			prevIdx = midIdx
+			minIdx = midIdx + 1
+			continue
+		}
+		if prevIdx+1 == midIdx {
+			idx = midIdx
+			break
+		}
+
+		maxIdx = midIdx
+
+	}
+	return
+}
+
 // Search ...
 func (b *SimpleBucket[T, V]) Search(hash T) (item V, ok bool) {
 
-	idx, ok := SearchBucketIndex(b.items, hash, b.cmp)
+	idx, ok := b.Index(hash)
 	if ok {
 		item = b.items[idx]
 	}
@@ -101,7 +134,7 @@ func (b *SimpleBucket[T, V]) Search(hash T) (item V, ok bool) {
 func (b *SimpleBucket[T, V]) Swap(item V) (previous V, ok bool) {
 
 	hash := item.HashCode()
-	idx, ok := SearchBucketIndex(b.items, hash, b.cmp)
+	idx, ok := b.Index(hash)
 	if ok {
 		previous = b.items[idx]
 		b.items[idx] = item
@@ -119,7 +152,7 @@ func (b *SimpleBucket[T, V]) Swap(item V) (previous V, ok bool) {
 func (b *SimpleBucket[T, V]) SearchOrStore(item V) (ritem V, ok bool) {
 
 	hash := item.HashCode()
-	idx, ok := SearchBucketIndex(b.items, hash, b.cmp)
+	idx, ok := b.Index(hash)
 	if ok {
 		ritem = b.items[idx]
 	} else {
@@ -138,7 +171,7 @@ func (b *SimpleBucket[T, V]) SearchOrStore(item V) (ritem V, ok bool) {
 func (b *SimpleBucket[T, V]) Store(item V) (err error) {
 
 	hash := item.HashCode()
-	idx, ok := SearchBucketIndex(b.items, hash, b.cmp)
+	idx, ok := b.Index(hash)
 
 	if ok {
 		err = errors.New("Bucket Item already existsed")
@@ -162,7 +195,7 @@ func (b *SimpleBucket[T, V]) Delete(item V) {
 	idx := -1
 	if ok {
 		hash := item.HashCode()
-		idx, ok = SearchBucketIndex(b.items, hash, b.cmp)
+		idx, ok = b.Index(hash)
 	}
 	if ok {
 		items := make([]V, lastIdx)
@@ -224,6 +257,13 @@ func (b *RWBucket[T, V]) At(index int) (V, bool) {
 	return b.bucket.At(index)
 }
 
+func (b *RWBucket[T, V]) Index(hash T) (int, bool) {
+	b.rw.RLock()
+	defer b.rw.RUnlock()
+
+	return b.bucket.Index(hash)
+}
+
 // Search ...
 func (b *RWBucket[T, V]) Search(hash T) (V, bool) {
 
@@ -267,38 +307,3 @@ func (b *RWBucket[T, V]) Delete(item V) {
 }
 
 type BucketItemCompare[T any] func(prev, next T) int
-
-// SearchBucketIndex ...
-func SearchBucketIndex[T any, V HashCode[T]](items []V, hash T, compare BucketItemCompare[T]) (idx int, ok bool) {
-
-	idx = -1
-	maxIdx := len(items) - 1
-	minIdx := 0
-	prevIdx := -1
-	ok = false
-	for minIdx <= maxIdx {
-		midIdx := (minIdx + maxIdx) / 2
-		midItem := items[midIdx]
-		cmp := compare(midItem.HashCode(), hash)
-		if cmp == 0 {
-			ok = true
-			idx = midIdx
-			break
-		}
-
-		if cmp < 0 {
-			prevIdx = midIdx
-			minIdx = midIdx + 1
-			continue
-		}
-		if prevIdx+1 == midIdx {
-			idx = midIdx
-			break
-		}
-
-		maxIdx = midIdx - 1
-
-	}
-	return
-
-}

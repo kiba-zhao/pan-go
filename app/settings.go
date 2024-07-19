@@ -5,23 +5,23 @@ import "path"
 type AppSettings = *Settings
 
 type Settings struct {
-	RootPath        string
-	WebHost         string
-	WebPort         int
-	Host            string
-	Port            int
-	PrivateKeyPath  string
-	CertificatePath string
+	RootPath            string
+	WebAddress          []string
+	NodeAddress         []string
+	BroadcastAddress    []string
+	BroadcastBufferSize int
+	PrivateKeyPath      string
+	CertificatePath     string
 }
 
 func newDefaultSettings(rootPath string) AppSettings {
 	settings := &Settings{}
 	settings.RootPath = rootPath
-	settings.WebHost = "127.0.0.1"
-	settings.WebPort = 9002
-	settings.Host = "0.0.0.0"
-	settings.Port = 9000
+	settings.WebAddress = []string{"127.0.0.1:9002"}
+	settings.NodeAddress = []string{"0.0.0.0:9000"}
+	settings.BroadcastAddress = []string{"224.0.0.120:9100"}
 	settings.PrivateKeyPath = path.Join(rootPath, "key.pem")
 	settings.CertificatePath = path.Join(rootPath, "cert.pem")
+
 	return settings
 }

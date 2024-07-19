@@ -24,7 +24,7 @@ type AppHandleGroup interface {
 	Handle(RequestName, ...AppHandleFunc) AppHandleGroup
 	Default(...AppHandleFunc) AppHandleGroup
 	Group() AppHandleGroup
-	Route(name RequestName) AppHandleGroup
+	Route(RequestName) AppHandleGroup
 }
 
 type AppHandleChainItem[T any] struct {

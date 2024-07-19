@@ -24,7 +24,7 @@ type webController interface {
 }
 
 type module struct {
-	Config      app.AppConfig
+	AppSettings app.AppSettings
 	db          *gorm.DB
 	dbOnce      sync.Once
 	controllers []webController
@@ -38,18 +38,16 @@ func New() interface{} {
 func (m *module) DB() *gorm.DB {
 	m.dbOnce.Do(func() {
 		var db *gorm.DB
-		settings, err := m.Config.Read()
-		if err == nil {
-			basePath := settings.RootPath
-			_, err := os.Stat(basePath)
-			if os.IsNotExist(err) {
-				err = os.MkdirAll(basePath, 0755)
-			}
-			if err == nil {
-				dbPath := path.Join(basePath, "extfs.db")
-				db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-			}
+		basePath := m.AppSettings.RootPath
+		_, err := os.Stat(basePath)
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(basePath, 0755)
 		}
+		if err == nil {
+			dbPath := path.Join(basePath, "extfs.db")
+			db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+		}
+
 		if err == nil {
 			err = db.AutoMigrate(&models.Target{}, &models.TargetFile{})
 		}

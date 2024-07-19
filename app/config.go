@@ -15,17 +15,17 @@ type AppConfig = Config[AppSettings]
 type ParseConfigPath[T any] func(settings T) string
 
 type ConfigListener[T any] interface {
-	OnConfigChanged(settings T, cfg Config[T]) error
+	OnConfigUpdated(settings T)
 }
 
 type Config[T any] interface {
-	Read() (settings T, err error)
-	Write(settings T) error
+	Load() (settings T, err error)
+	Save(settings T) error
 }
 
 type configImpl[T any] struct {
 	rw        sync.RWMutex
-	listeners []ConfigListener[T]
+	registry  runtime.Registry
 	viper     *viper.Viper
 	isPtrType bool
 }
@@ -46,22 +46,12 @@ func NewConfig[T any](settings T, parse ParseConfigPath[T]) Config[T] {
 }
 
 func (c *configImpl[T]) Init(registry runtime.Registry) error {
+	c.registry = registry
 
 	// init settings
-	settings, err := c.Read()
-	if err != nil {
-		return err
-	}
+	_, err := c.Load()
+	return err
 
-	// init listeners
-	c.listeners = make([]ConfigListener[T], 0)
-	return runtime.TraverseRegistry(registry, func(listener ConfigListener[T]) error {
-		listenerErr := listener.OnConfigChanged(settings, c)
-		if listenerErr == nil {
-			c.listeners = append(c.listeners, listener)
-		}
-		return listenerErr
-	})
 }
 
 func (c *configImpl[T]) EngineTypes() []reflect.Type {
@@ -89,14 +79,18 @@ func (c *configImpl[T]) read() (T, error) {
 	return settings, err
 }
 
-func (c *configImpl[T]) Read() (T, error) {
+func (c *configImpl[T]) Load() (T, error) {
 	c.rw.RLock()
 	defer c.rw.RUnlock()
 
-	return c.read()
+	settings, err := c.read()
+	if err == nil {
+		onSettingsUpdated(c.registry, settings)
+	}
+	return settings, err
 }
 
-func (c *configImpl[T]) Write(settings T) error {
+func (c *configImpl[T]) Save(settings T) error {
 
 	c.rw.Lock()
 	defer c.rw.Unlock()
@@ -137,9 +131,7 @@ func (c *configImpl[T]) Write(settings T) error {
 
 	err = c.viper.WriteConfig()
 	if err == nil {
-		for _, listener := range c.listeners {
-			err = listener.OnConfigChanged(settings, c)
-		}
+		onSettingsUpdated(c.registry, settings)
 	}
 	return err
 }
@@ -159,5 +151,12 @@ func setDefaultSettings[T any](viper *viper.Viper, settings T) {
 		}
 		fv := iv.FieldByName(field.Name)
 		viper.SetDefault(field.Name, fv.Interface())
+	}
+}
+
+func onSettingsUpdated[T any](registry runtime.Registry, settings T) {
+	listeners := runtime.ModulesForType[ConfigListener[T]](registry)
+	for _, listener := range listeners {
+		listener.OnConfigUpdated(settings)
 	}
 }

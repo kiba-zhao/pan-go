@@ -3,6 +3,7 @@ package runtime
 import (
 	"errors"
 	"reflect"
+	"strings"
 )
 
 type ComponentStore = map[reflect.Type]interface{}
@@ -93,6 +94,20 @@ type ComponentProvider interface {
 	Components() []Component
 }
 
+type simpleComponentProvider struct {
+	components []Component
+}
+
+func NewComponentProvider(components ...Component) ComponentProvider {
+	provider := &simpleComponentProvider{}
+	provider.components = components
+	return provider
+}
+
+func (s *simpleComponentProvider) Components() []Component {
+	return s.components
+}
+
 var ErrComponentConflict = errors.New("[runtime:Component] Injector Error: dependency conflict")
 var ErrComponentScope = errors.New("[runtime:Component] Injector Error: invalid component scope")
 
@@ -177,10 +192,21 @@ func injectComponent(component Component, pendings ComponentPendings, internalSt
 		if !(field.Type.Kind() == reflect.Ptr || field.Type.Kind() == reflect.Struct || field.Type.Kind() == reflect.Interface) {
 			continue
 		}
-		if tag, ok := field.Tag.Lookup("inject"); ok && tag == "-" {
-			continue
+
+		volatile := false
+		if tag, ok := field.Tag.Lookup("inject"); ok {
+			if tag == "-" {
+				continue
+			}
+			volatileIdx := strings.Index(tag, "volatile")
+			if volatileIdx == 0 || (volatileIdx > 0 && tag[volatileIdx-1] == ';') {
+				volatile = true
+			}
 		}
 		fv := iv.FieldByName(field.Name)
+		if !fv.IsNil() && !volatile {
+			continue
+		}
 		field_target, ok := internalStore[field.Type]
 		if !ok {
 			field_target, ok = store[field.Type]

@@ -9,3 +9,4 @@ const (
 )
 
 var ErrNotFound = errors.New("not found")
+var ErrUnavailable = errors.New("unavailable")

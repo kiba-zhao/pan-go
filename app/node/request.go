@@ -14,6 +14,14 @@ type Request struct {
 	name RequestName
 }
 
+func NewRequest(name RequestName, body io.Reader) *Request {
+	request := &Request{}
+	request.name = name
+	request.body = body
+	InitRequest(request)
+	return request
+}
+
 func (r *Request) Name() RequestName {
 	return r.name
 }
