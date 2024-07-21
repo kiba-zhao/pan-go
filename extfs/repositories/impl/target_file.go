@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"pan/app"
 	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/repositories"
@@ -11,11 +12,16 @@ import (
 )
 
 type TargetFileRepository struct {
-	DB *gorm.DB
+	Provider repositories.ComponentProvider
 }
 
 func (repo *TargetFileRepository) Save(targetFile models.TargetFile) (models.TargetFile, error) {
-	results := repo.DB.Save(&targetFile)
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return targetFile, app.ErrUnavailable
+	}
+
+	results := db.Save(&targetFile)
 	if results.Error == nil && results.RowsAffected != 1 {
 		return targetFile, errors.ErrNotFound
 	}
@@ -23,7 +29,11 @@ func (repo *TargetFileRepository) Save(targetFile models.TargetFile) (models.Tar
 }
 
 func (repo *TargetFileRepository) Delete(targetFile models.TargetFile) error {
-	results := repo.DB.Delete(&targetFile)
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return app.ErrUnavailable
+	}
+	results := db.Delete(&targetFile)
 	if results.Error == nil && results.RowsAffected != 1 {
 		return errors.ErrNotFound
 	}
@@ -31,15 +41,22 @@ func (repo *TargetFileRepository) Delete(targetFile models.TargetFile) error {
 }
 
 func (repo *TargetFileRepository) DeleteByTargetId(targetId uint) error {
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return app.ErrUnavailable
+	}
 	var targetFile models.TargetFile
 	targetFile.TargetID = targetId
 
-	results := repo.DB.Where(&targetFile).Delete(&targetFile)
+	results := db.Where(&targetFile).Delete(&targetFile)
 	return results.Error
 }
 
 func (repo *TargetFileRepository) Select(id uint64, includeAssociated bool) (models.TargetFile, error) {
-	db := repo.DB
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return models.TargetFile{}, app.ErrUnavailable
+	}
 	if includeAssociated {
 		db = db.Preload(clause.Associations)
 	}
@@ -54,7 +71,10 @@ func (repo *TargetFileRepository) Select(id uint64, includeAssociated bool) (mod
 
 func (repo *TargetFileRepository) SelectByFilePathAndTargetId(filepath string, targetId uint, hashCode string, includeAssociated bool) (models.TargetFile, error) {
 
-	db := repo.DB
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return models.TargetFile{}, app.ErrUnavailable
+	}
 	if includeAssociated {
 		db = db.Preload(clause.Associations)
 	}
@@ -72,10 +92,15 @@ func (repo *TargetFileRepository) SelectByFilePathAndTargetId(filepath string, t
 }
 
 func (repo *TargetFileRepository) TraverseByTargetId(f repositories.TargetFileTraverse, targetId uint) error {
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return app.ErrUnavailable
+	}
+
 	var targetFile models.TargetFile
 	targetFile.TargetID = targetId
 
-	rows, err := repo.DB.Model(&targetFile).Where(&targetFile).Rows()
+	rows, err := db.Model(&targetFile).Where(&targetFile).Rows()
 
 	if err != nil {
 		return err
@@ -84,7 +109,7 @@ func (repo *TargetFileRepository) TraverseByTargetId(f repositories.TargetFileTr
 
 	for rows.Next() {
 		var targetFile_ models.TargetFile
-		err = repo.DB.ScanRows(rows, &targetFile_)
+		err = db.ScanRows(rows, &targetFile_)
 		if err != nil {
 			break
 		}
@@ -99,7 +124,10 @@ func (repo *TargetFileRepository) TraverseByTargetId(f repositories.TargetFileTr
 
 func (repo *TargetFileRepository) Search(conditions models.TargetFileSearchCondition, includeAssociated bool) (total int64, items []models.TargetFile, err error) {
 
-	db := repo.DB
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return 0, nil, app.ErrUnavailable
+	}
 
 	if len(conditions.SortField) > 0 {
 		fields := strings.Split(conditions.SortField, ",")
@@ -117,7 +145,7 @@ func (repo *TargetFileRepository) Search(conditions models.TargetFileSearchCondi
 	}
 
 	if len(conditions.Keyword) > 0 {
-		tx := repo.DB
+		tx := db
 		keywords := strings.Split(conditions.Keyword, ",")
 		for _, keyword := range keywords {
 			trimKeyword := strings.Trim(keyword, " ")

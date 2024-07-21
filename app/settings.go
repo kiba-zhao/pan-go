@@ -8,10 +8,11 @@ type Settings struct {
 	RootPath            string
 	WebAddress          []string
 	NodeAddress         []string
-	BroadcastAddress    []string
-	BroadcastBufferSize int
 	PrivateKeyPath      string
 	CertificatePath     string
+	BroadcastAddress    []string
+	BroadcastBufferSize int
+	BroadcasQuicPorts   []int
 }
 
 func newDefaultSettings(rootPath string) AppSettings {
@@ -22,6 +23,7 @@ func newDefaultSettings(rootPath string) AppSettings {
 	settings.BroadcastAddress = []string{"224.0.0.120:9100"}
 	settings.PrivateKeyPath = path.Join(rootPath, "key.pem")
 	settings.CertificatePath = path.Join(rootPath, "cert.pem")
+	settings.BroadcasQuicPorts = []int{9000}
 
 	return settings
 }

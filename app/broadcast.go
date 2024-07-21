@@ -16,7 +16,7 @@ import (
 )
 
 type BroadcastModule interface {
-	ServeBroadcast([]byte) error
+	ServeBroadcast([]byte, string) error
 }
 
 type broadcastPacketBuffer struct {
@@ -128,7 +128,7 @@ func (bs *broadcastServer) ListenAndServe() error {
 			bufferItem.cancel()
 			bufferItem.wg.Wait()
 		}
-		go bs.broadcast.Serve(buffer)
+		go bs.broadcast.Serve(buffer, addr.IP.String())
 	}
 	return err
 }
@@ -169,7 +169,7 @@ func packBuffer(buffer []byte) []byte {
 }
 
 type Broadcast interface {
-	Serve([]byte) error
+	Serve([]byte, string) error
 	Deliver([]byte) error
 }
 
@@ -203,7 +203,7 @@ func (b *broadcast) Addresses() []string {
 	return b.addresses
 }
 
-func (b *broadcast) Serve(payload []byte) error {
+func (b *broadcast) Serve(payload []byte, ip string) error {
 	b.registryLocker.RLock()
 	registry := b.registry
 	b.registryLocker.RUnlock()
@@ -213,7 +213,7 @@ func (b *broadcast) Serve(payload []byte) error {
 	}
 
 	return runtime.TraverseRegistry(registry, func(module BroadcastModule) error {
-		return module.ServeBroadcast(payload)
+		return module.ServeBroadcast(payload, ip)
 	})
 }
 

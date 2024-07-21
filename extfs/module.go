@@ -24,9 +24,9 @@ type webController interface {
 }
 
 type module struct {
-	AppSettings app.AppSettings
-	db          *gorm.DB
-	dbOnce      sync.Once
+	rootPath    string
+	db          repositories.RepositoryDB
+	dbLocker    sync.RWMutex
 	controllers []webController
 	ctrlOnce    sync.Once
 }
@@ -35,27 +35,35 @@ func New() interface{} {
 	return &module{}
 }
 
-func (m *module) DB() *gorm.DB {
-	m.dbOnce.Do(func() {
-		var db *gorm.DB
-		basePath := m.AppSettings.RootPath
-		_, err := os.Stat(basePath)
-		if os.IsNotExist(err) {
-			err = os.MkdirAll(basePath, 0755)
-		}
-		if err == nil {
-			dbPath := path.Join(basePath, "extfs.db")
-			db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-		}
+func (m *module) OnConfigUpdated(settings app.AppSettings) {
 
-		if err == nil {
-			err = db.AutoMigrate(&models.Target{}, &models.TargetFile{})
-		}
-		if err != nil {
-			panic(err)
-		}
-		m.db = db
-	})
+	m.dbLocker.Lock()
+	defer m.dbLocker.Unlock()
+
+	if m.rootPath == settings.RootPath {
+		return
+	}
+
+	m.rootPath = settings.RootPath
+
+	var db repositories.RepositoryDB
+	_, err := os.Stat(m.rootPath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(m.rootPath, 0755)
+	}
+	if err == nil {
+		dbPath := path.Join(m.rootPath, "extfs.db")
+		db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	}
+	if err == nil {
+		err = db.AutoMigrate(&models.Target{}, &models.TargetFile{})
+	}
+	m.db = db
+}
+
+func (m *module) DB() repositories.RepositoryDB {
+	m.dbLocker.RLock()
+	defer m.dbLocker.RUnlock()
 	return m.db
 }
 
@@ -75,8 +83,7 @@ func (m *module) Components() []runtime.Component {
 	var components []runtime.Component
 	// base
 	components = append(components,
-		runtime.NewComponent(m, runtime.ComponentNoneScope),
-		runtime.NewLazyComponent(m.DB, runtime.ComponentInternalScope),
+		runtime.NewComponent[repositories.ComponentProvider](m, runtime.ComponentInternalScope),
 	)
 
 	// repositories

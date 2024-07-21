@@ -10,3 +10,4 @@ const (
 
 var ErrNotFound = errors.New("not found")
 var ErrUnavailable = errors.New("unavailable")
+var ErrInvalidNode = errors.New("invalid node")

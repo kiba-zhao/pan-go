@@ -1,8 +1,10 @@
 package impl
 
 import (
+	"pan/app"
 	"pan/extfs/errors"
 	"pan/extfs/models"
+	"pan/extfs/repositories"
 	"strings"
 
 	"gorm.io/gorm"
@@ -10,11 +12,14 @@ import (
 )
 
 type TargetRepository struct {
-	DB *gorm.DB
+	Provider repositories.ComponentProvider
 }
 
 func (repo *TargetRepository) Save(target models.Target, withVersion bool) (models.Target, error) {
-	db := repo.DB
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return models.Target{}, app.ErrUnavailable
+	}
 
 	if target.ID == 0 {
 		result := db.Create(&target)
@@ -43,7 +48,10 @@ func (repo *TargetRepository) Save(target models.Target, withVersion bool) (mode
 }
 
 func (repo *TargetRepository) Search(conditions models.TargetSearchCondition) (total int64, items []models.Target, err error) {
-	db := repo.DB
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return 0, nil, app.ErrUnavailable
+	}
 
 	if len(conditions.SortField) > 0 {
 		fields := strings.Split(conditions.SortField, ",")
@@ -61,7 +69,7 @@ func (repo *TargetRepository) Search(conditions models.TargetSearchCondition) (t
 	}
 
 	if len(conditions.Keyword) > 0 {
-		tx := repo.DB
+		tx := db
 		keywords := strings.Split(conditions.Keyword, ",")
 		for _, keyword := range keywords {
 			trimKeyword := strings.Trim(keyword, " ")
@@ -96,8 +104,13 @@ func (repo *TargetRepository) Search(conditions models.TargetSearchCondition) (t
 }
 
 func (repo *TargetRepository) Select(id uint, version *uint8) (models.Target, error) {
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return models.Target{}, app.ErrUnavailable
+	}
+
 	var target models.Target
-	results := repo.DB.Take(&target, id)
+	results := db.Take(&target, id)
 	if results.Error == gorm.ErrRecordNotFound {
 		return target, errors.ErrNotFound
 	}
@@ -108,7 +121,11 @@ func (repo *TargetRepository) Select(id uint, version *uint8) (models.Target, er
 }
 
 func (repo *TargetRepository) Delete(target models.Target) error {
-	results := repo.DB.Where("version = ?", target.Version).Delete(&target)
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return app.ErrUnavailable
+	}
+	results := db.Where("version = ?", target.Version).Delete(&target)
 	if results.Error == nil && results.RowsAffected != 1 {
 		return errors.ErrNotFound
 	}

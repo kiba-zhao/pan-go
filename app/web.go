@@ -46,7 +46,7 @@ type webServer struct {
 	app        WebApp
 	appLocker  sync.RWMutex
 	registry   runtime.Registry
-	locker     sync.Locker
+	locker     sync.RWMutex
 	addresses  []string
 	sigChan    chan bool
 	sigOnce    sync.Once
@@ -66,6 +66,12 @@ func (w *webServer) SetSig(sig bool) {
 	w.hasPending = true
 	w.sigChan <- sig
 
+}
+
+func (w *webServer) Addresses() []string {
+	w.locker.RLock()
+	defer w.locker.RUnlock()
+	return w.addresses
 }
 
 func (w *webServer) OnConfigUpdated(settings AppSettings) {
@@ -156,7 +162,6 @@ func (w *webServer) Ready() error {
 		sig := <-w.sigChan
 		w.locker.Lock()
 		w.hasPending = false
-		addresses := w.addresses
 		w.locker.Unlock()
 
 		if bucket != nil {
@@ -171,6 +176,7 @@ func (w *webServer) Ready() error {
 
 		bucket_ := cache.NewBucket[string, *webServerItem](cmp.Compare[string])
 		bucket = cache.WrapSyncBucket(bucket_)
+		addresses := w.Addresses()
 		for _, address := range addresses {
 			httpServer := &http.Server{
 				Addr:    address,

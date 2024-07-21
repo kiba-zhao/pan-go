@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	mockedRepo "pan/mocks/pan/extfs/repositories"
 )
 
 func TestTargetRepository(t *testing.T) {
@@ -29,7 +31,9 @@ func TestTargetRepository(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		repo = &impl.TargetRepository{DB: db}
+		provider := new(mockedRepo.MockComponentProvider)
+		provider.On("DB").Return(db)
+		repo = &impl.TargetRepository{Provider: provider}
 		return
 
 	}

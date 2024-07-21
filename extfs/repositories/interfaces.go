@@ -1,6 +1,23 @@
 package repositories
 
-import "pan/extfs/models"
+import (
+	"pan/extfs/models"
+
+	"gorm.io/gorm"
+)
+
+type RepositoryDB = *gorm.DB
+
+type ComponentProvider interface {
+	DB() RepositoryDB
+}
+
+func DBForProvider(provider ComponentProvider) RepositoryDB {
+	if provider == nil {
+		return nil
+	}
+	return provider.DB()
+}
 
 type TargetRepository interface {
 	Search(conditions models.TargetSearchCondition) (total int64, items []models.Target, err error)
