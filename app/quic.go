@@ -14,7 +14,6 @@ import (
 	"pan/app/cache"
 	"pan/runtime"
 	"slices"
-	"strconv"
 	"sync"
 	"time"
 
@@ -433,15 +432,15 @@ type quicNetwork struct {
 	routeBucket quicRouteBucket
 	quicModule  *quicModule
 
-	quicPorts []int
-	locker    sync.RWMutex
-	sigChan   chan bool
-	sigOnce   sync.Once
-	hasSig    bool
+	publicAddresses []string
+	locker          sync.RWMutex
+	sigChan         chan bool
+	sigOnce         sync.Once
+	hasSig          bool
 }
 
 func (qn *quicNetwork) ServeBroadcast(payload []byte, ip string) error {
-	// extract 1 byte version, 2 byte nodeIdLen, nodeId, 2 byte addrLen, address
+
 	if payload[0] != 1 || len(payload) <= 5 {
 		return nil
 	}
@@ -456,64 +455,75 @@ func (qn *quicNetwork) ServeBroadcast(payload []byte, ip string) error {
 	if nextOffset+2 > payloadLen {
 		return nil
 	}
-	if (payloadLen-nextOffset)%2 != 0 {
-		return nil
-	}
 	nodeId := NodeID(payload[offset:nextOffset])
 
-	for nextOffset < payloadLen {
-		offset = nextOffset
-		nextOffset += 2
+	offset = nextOffset
+	nextOffset += 2
+	addressLen := int(binary.BigEndian.Uint16(payload[offset:nextOffset]))
+	offset = nextOffset
+	nextOffset += addressLen
+	if nextOffset != payloadLen {
+		return nil
+	}
 
-		port := int(binary.BigEndian.Uint16(payload[offset:nextOffset]))
-		address := net.JoinHostPort(ip, strconv.Itoa(port))
+	address := string(payload[offset:nextOffset])
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
 
-		// check if route exists
-		bucket, ok := qn.routeBucket.Search(nodeId)
-		if ok {
-			_, ok := bucket.Search(address)
-			if ok {
-				continue
-			}
-		}
-
-		// add route
-		body := make([]byte, 128)
-		_, err := rand.Read(body)
-		if err != nil {
+	if host != ip {
+		ipAddr, err := net.ResolveIPAddr("ip", host)
+		if err != nil || !ipAddr.IP.IsUnspecified() {
 			return err
 		}
-
-		route := &quicRoute{
-			id:      nodeId,
-			address: address,
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer func(cancel context.CancelFunc) {
-			cancel()
-		}(cancel)
-		reader, err := qn.doRequest(route, bytes.NewReader(body), ctx, QuicGreetStream)
-		if err != nil {
-			continue
-		}
-
-		resBody, err := io.ReadAll(reader)
-		if err != nil || !bytes.Equal(resBody, body) {
-			continue
-		}
-
-		bucket, ok = qn.routeBucket.Search(nodeId)
-		if !ok {
-			bucket_ := &cache.NestBucket[NodeID, string, *quicRoute]{}
-			bucket_.Code = nodeId
-			simpleBucket_ := cache.NewBucket[string, *quicRoute](cmp.Compare[string])
-			bucket_.Bucket = cache.WrapSyncBucket(simpleBucket_)
-			bucket, _ = qn.routeBucket.SearchOrStore(bucket_)
-		}
-
-		bucket.SearchOrStore(route)
 	}
+
+	// check if route exists
+	bucket, ok := qn.routeBucket.Search(nodeId)
+	if ok {
+		_, ok := bucket.Search(address)
+		if ok {
+			return nil
+		}
+	}
+
+	// add route
+	body := make([]byte, 128)
+	_, err = rand.Read(body)
+	if err != nil {
+		return err
+	}
+
+	route := &quicRoute{
+		id:      nodeId,
+		address: address,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer func(cancel context.CancelFunc) {
+		cancel()
+	}(cancel)
+	reader, err := qn.doRequest(route, bytes.NewReader(body), ctx, QuicGreetStream)
+	if err != nil {
+		return nil
+	}
+
+	resBody, err := io.ReadAll(reader)
+	if err != nil || !bytes.Equal(resBody, body) {
+		return nil
+	}
+
+	bucket, ok = qn.routeBucket.Search(nodeId)
+	if !ok {
+		bucket_ := &cache.NestBucket[NodeID, string, *quicRoute]{}
+		bucket_.Code = nodeId
+		simpleBucket_ := cache.NewBucket[string, *quicRoute](cmp.Compare[string])
+		bucket_.Bucket = cache.WrapSyncBucket(simpleBucket_)
+		bucket, _ = qn.routeBucket.SearchOrStore(bucket_)
+	}
+
+	bucket.SearchOrStore(route)
 
 	return nil
 }
@@ -652,11 +662,11 @@ func (qn *quicNetwork) OnConfigUpdated(settings AppSettings) {
 	qn.locker.Lock()
 	defer qn.locker.Unlock()
 
-	if slices.Equal(qn.quicPorts, settings.BroadcasQuicPorts) {
+	if slices.Equal(qn.publicAddresses, settings.PublicAddress) {
 		return
 	}
 
-	qn.quicPorts = settings.BroadcasQuicPorts
+	qn.publicAddresses = settings.PublicAddress
 	qn.setSig(true)
 }
 
@@ -705,18 +715,18 @@ func (qn *quicNetwork) Ready() error {
 	return nil
 }
 
-func (qn *quicNetwork) QuicPorts() []int {
+func (qn *quicNetwork) PublicAddresses() []string {
 
 	qn.locker.RLock()
 	defer qn.locker.RUnlock()
 
-	return qn.quicPorts
+	return qn.publicAddresses
 }
 
 func (qn *quicNetwork) Deliver() error {
-	ports := qn.QuicPorts()
-	portCount := len(ports)
-	if portCount <= 0 {
+	addresses := qn.PublicAddresses()
+	addressesCount := len(addresses)
+	if addressesCount <= 0 {
 		return ErrUnavailable
 	}
 
@@ -731,16 +741,30 @@ func (qn *quicNetwork) Deliver() error {
 
 	nodeId := settings.NodeID()
 	nodeIdLen := len(nodeId)
-	buffer := make([]byte, nodeIdLen+2+2*portCount)
 
-	binary.BigEndian.PutUint16(buffer, uint16(len(nodeId)))
-	copy(buffer[2:], nodeId)
-	offset := 2 + nodeIdLen
-	for i := 0; i < portCount; i++ {
-		port := ports[i]
-		binary.BigEndian.PutUint16(buffer[offset:], uint16(port))
-		offset += 2
+	var buffer []byte
+	var offset int
+	errs := make([]error, 0)
+	for _, address := range addresses {
+		addressLen := len(address)
+		bufferSize := 4 + nodeIdLen + addressLen
+		if len(buffer) != bufferSize {
+			buffer = make([]byte, bufferSize)
+			binary.BigEndian.PutUint16(buffer, uint16(len(nodeId)))
+			copy(buffer[2:], nodeId)
+			offset = 2 + nodeIdLen
+			binary.BigEndian.PutUint16(buffer[offset:], uint16(addressLen))
+			offset += 2
+		}
+		copy(buffer[offset:], []byte(address))
+		err := qn.quicModule.Broadcast.Deliver(buffer)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
 
-	return qn.quicModule.Broadcast.Deliver(buffer)
+	if len(errs) <= 0 {
+		return nil
+	}
+	return errors.Join(errs...)
 }
