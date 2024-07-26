@@ -1,3 +1,4 @@
 {
+  "/api/app/settings": "/app-settings",
   "/api/extfs/*": "/$1"
 }

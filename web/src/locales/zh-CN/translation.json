@@ -44,7 +44,20 @@
       }
     }
   },
-  "others": {
+  "custom": {
+    "app/settings": {
+      "name": "应用设置",
+      "summary": "通用设置",
+      "network-address": "网络地址",
+      "web-address": "网页地址",
+      "node-address": "节点地址",
+      "broadcast-address": "广播地址",
+      "public-address": "公告地址",
+      "fields": { "rootPath": "根目录", "nodeId": "节点ID" }
+    },
+    "settings": {
+      "name": "设置"
+    },
     "table": {
       "actions": "操作"
     },
@@ -53,6 +66,19 @@
       "filepath": {
         "title": "磁盘文件选择"
       }
+    },
+    "button": {
+      "submit": "提交",
+      "cancel": "取消",
+      "remove": "移除",
+      "edit": "修改",
+      "new": "新增",
+      "reset": "重置",
+      "save": "保存",
+      "copy": "复制",
+      "renew": "重建",
+      "import": "导入",
+      "export": "导出"
     }
   }
 }

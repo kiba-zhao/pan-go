@@ -1,9 +1,16 @@
-import { Admin, RaThemeOptions, Resource, defaultTheme } from "react-admin";
+import {
+  Admin,
+  CustomRoutes,
+  RaThemeOptions,
+  Resource,
+  defaultTheme,
+} from "react-admin";
 import { QueryClient } from "react-query";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, Route } from "react-router-dom";
 import { dataProvider } from "./api";
 import { useI18nProvider } from "./i18n";
 
+import { AppSettings } from "./components/AppSettings";
 import Dashboard from "./components/Dashboard";
 import { AppLayout } from "./components/Layout";
 import NotFound from "./components/NotFound";
@@ -40,6 +47,9 @@ export const App = () => {
         queryClient={queryClient}
         layout={AppLayout}
       >
+        <CustomRoutes>
+          <Route path="/app/settings/*" element={<AppSettings />} />
+        </CustomRoutes>
         <Resource
           name="extfs/targets"
           list={Targets}

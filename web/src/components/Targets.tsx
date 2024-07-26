@@ -166,7 +166,7 @@ export const Targets = () => {
         <BooleanField source="enabled" />
         <BooleanField source="available" />
         <DateField source="createAt" showTime />
-        <WrapperField label="others.table.actions">
+        <WrapperField label="custom.table.actions">
           <EditButton />
           <ShowButton />
         </WrapperField>
@@ -336,7 +336,7 @@ const FilePathSelector = ({
             <CloseIcon />
           </IconButton>
           <Typography sx={{ ml: 2, flex: 1 }} variant="h6" component="div">
-            {t("others.input.filepath.title")}
+            {t("custom.input.filepath.title")}
           </Typography>
           <IconButton
             color="inherit"

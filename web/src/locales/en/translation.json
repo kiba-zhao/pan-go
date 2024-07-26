@@ -28,7 +28,20 @@
       }
     }
   },
-  "others": {
+  "custom": {
+    "app/settings": {
+      "name": "App Settings",
+      "summary": "SUMMARY",
+      "network-address": "NET ADDRESS",
+      "web-address": "Web Service Address",
+      "node-address": "Node Service Address",
+      "broadcast-address": "Broadcast Service Address",
+      "public-address": "Public Address",
+      "fields": { "rootPath": "Root Path", "nodeId": "Node ID" }
+    },
+    "settings": {
+      "name": "Settings"
+    },
     "table": {
       "actions": "Actions"
     },
@@ -37,6 +50,19 @@
       "filepath": {
         "title": "Disk File Selector"
       }
+    },
+    "button": {
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "remove": "Remove",
+      "edit": "Edit",
+      "new": "New",
+      "reset": "Reset",
+      "save": "Save",
+      "copy": "Copy",
+      "renew": "Renew",
+      "import": "Import",
+      "export": "Export"
     }
   }
 }

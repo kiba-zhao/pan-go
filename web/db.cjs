@@ -26,6 +26,7 @@ module.exports = () => {
     targets,
     "disk-files": diskFiles,
     "target-files": targetFiles,
+    "app-settings": generateAppSettings(),
   };
 };
 
@@ -85,4 +86,34 @@ function generateTargetFile(target) {
     createAt: faker.date.past(),
     updateAt: faker.date.past(),
   };
+}
+
+function generateAppSettings() {
+  const webAddress = faker.helpers.multiple(generateAddress, {
+    count: { min: 1, max: 3 },
+  });
+  const nodeAddress = faker.helpers.multiple(generateAddress, {
+    count: { min: 1, max: 3 },
+  });
+  const broadcastAddress = faker.helpers.multiple(generateAddress, {
+    count: { min: 1, max: 3 },
+  });
+  const broadcastQuicPorts = nodeAddress.map((_) =>
+    Number(_.split(":").at(-1))
+  );
+  return {
+    rootPath: faker.system.directoryPath(),
+    webAddress,
+    nodeAddress,
+    broadcastAddress,
+    broadcastQuicPorts,
+    nodeId: faker.helpers.arrayElement(["", faker.string.nanoid()]),
+  };
+}
+
+function generateAddress() {
+  return `${faker.helpers.arrayElement([
+    faker.internet.ip(),
+    "0.0.0.0",
+  ])}:${faker.internet.port()}`;
 }
