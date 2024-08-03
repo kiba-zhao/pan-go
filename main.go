@@ -9,7 +9,6 @@ import (
 )
 
 //go:generate npm --prefix ./web install
-//go:generate  npm --prefix ./web audit fix
 //go:generate npm --prefix ./web run build -- -m production
 //go:embed web/dist
 var embedFS embed.FS

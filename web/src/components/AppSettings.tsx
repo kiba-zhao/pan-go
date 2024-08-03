@@ -302,7 +302,7 @@ const AppAddressSettingsItem = ({
   address,
   children,
 }: AppAddressSettingsItemProps) => {
-  const t = useTranslate();
+  // const t = useTranslate();
 
   const [ip, port] = useMemo(() => {
     const parts = address.split(":");

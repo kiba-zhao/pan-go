@@ -1,12 +1,11 @@
 package app
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"io/fs"
 	"net/http"
-	"pan/app/cache"
+
 	"pan/runtime"
 	"reflect"
 	"slices"
@@ -32,14 +31,6 @@ type WebModule interface {
 
 type WebModuleProvider interface {
 	WebModules() []WebModule
-}
-
-type webServerItem struct {
-	server *http.Server
-}
-
-func (w *webServerItem) HashCode() string {
-	return w.server.Addr
 }
 
 type webServer struct {
@@ -152,7 +143,7 @@ func (w *webServer) ReloadModules() error {
 
 func (w *webServer) Ready() error {
 
-	var bucket cache.Bucket[string, *webServerItem]
+	var servers []*http.Server
 	w.sigOnce.Do(func() {
 		w.sigChan = make(chan bool, 1)
 	})
@@ -164,9 +155,9 @@ func (w *webServer) Ready() error {
 		w.hasPending = false
 		w.locker.Unlock()
 
-		if bucket != nil {
-			for _, item := range bucket.Items() {
-				item.server.Shutdown(context.Background())
+		if len(servers) > 0 {
+			for _, server := range servers {
+				server.Shutdown(context.Background())
 			}
 		}
 
@@ -174,16 +165,14 @@ func (w *webServer) Ready() error {
 			break
 		}
 
-		bucket_ := cache.NewBucket[string, *webServerItem](cmp.Compare[string])
-		bucket = cache.WrapSyncBucket(bucket_)
 		addresses := w.Addresses()
 		for _, address := range addresses {
 			httpServer := &http.Server{
 				Addr:    address,
 				Handler: w,
 			}
-			item := &webServerItem{server: httpServer}
-			bucket.Store(item)
+
+			servers = append(servers, httpServer)
 			go func(s *http.Server) {
 				for {
 					err := s.ListenAndServe()

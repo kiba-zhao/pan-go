@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
-	"pan/app/cache"
+	"slices"
 )
 
 type HeaderItem struct {
@@ -12,36 +12,40 @@ type HeaderItem struct {
 	value []byte
 }
 
-func (item *HeaderItem) HashCode() []byte {
-	return item.key
-}
-
 type Header struct {
-	bucket cache.Bucket[[]byte, *HeaderItem]
+	items []*HeaderItem
 }
 
 func (h *Header) Set(key, value []byte) {
-	h.bucket.Swap(&HeaderItem{key, value})
+	idx, ok := slices.BinarySearchFunc(h.items, key, compareHeaderItem)
+	if ok {
+		h.items[idx].value = value
+		return
+	}
+
+	h.items = slices.Insert(h.items, idx, &HeaderItem{key, value})
 }
 
 func (h *Header) Get(key []byte) ([]byte, bool) {
-	item, ok := h.bucket.Search(key)
+	idx, ok := slices.BinarySearchFunc(h.items, key, compareHeaderItem)
 	if !ok {
 		return nil, ok
 	}
+
+	item := h.items[idx]
 	return item.value, ok
 }
 
 func (h *Header) Del(key []byte) {
-	item, ok := h.bucket.Search(key)
+	idx, ok := slices.BinarySearchFunc(h.items, key, compareHeaderItem)
 	if ok {
-		h.bucket.Delete(item)
+		h.items = slices.Delete(h.items, idx, idx+1)
 	}
 }
 
 func MarshalHeader(header *Header) (io.Reader, int) {
 
-	items := header.bucket.Items()
+	items := header.items
 	if len(items) <= 0 {
 		return nil, 0
 	}
@@ -73,5 +77,9 @@ func UnmarshalHeader(reader io.Reader, header *Header) error {
 }
 
 func InitHeader(header *Header) {
-	header.bucket = cache.NewBucket[[]byte, *HeaderItem](bytes.Compare)
+	header.items = make([]*HeaderItem, 0)
+}
+
+func compareHeaderItem(item *HeaderItem, key []byte) int {
+	return bytes.Compare(item.key, key)
 }

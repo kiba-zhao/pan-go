@@ -5,8 +5,6 @@ import (
 	"cmp"
 	"slices"
 	"sync"
-
-	"pan/app/cache"
 )
 
 type AppContext = *Context
@@ -32,19 +30,17 @@ type AppHandleChainItem[T any] struct {
 	code    T
 }
 
-func (item *AppHandleChainItem[T]) HashCode() T {
-	return item.code
-}
-
 type AppSequence = uint16
 
 type App struct {
 	*AppRouter
-	routes    cache.Bucket[RequestName, *AppHandleChainItem[RequestName]]
-	defaults  AppHandleChain
-	defaults_ cache.Bucket[AppSequence, *AppHandleChainItem[AppSequence]]
-	rw        sync.RWMutex
-	seq_      AppSequence
+	routes          []*AppHandleChainItem[RequestName]
+	routesRW        sync.RWMutex
+	defaults        AppHandleChain
+	defaults_       []*AppHandleChainItem[AppSequence]
+	defaultsLocker_ sync.Mutex
+	rw              sync.RWMutex
+	seq_            AppSequence
 }
 
 func NewApp() *App {
@@ -53,37 +49,51 @@ func NewApp() *App {
 	app.AppRouter.app = app
 	app.AppRouter.seq = 0
 
-	routes := cache.NewBucket[RequestName, *AppHandleChainItem[RequestName]](bytes.Compare)
-	app.routes = cache.WrapSyncBucket(routes)
-
-	defaults_ := cache.NewBucket[AppSequence, *AppHandleChainItem[AppSequence]](cmp.Compare[AppSequence])
-	app.defaults_ = cache.WrapSyncBucket(defaults_)
+	app.routes = make([]*AppHandleChainItem[RequestName], 0)
+	app.defaults_ = make([]*AppHandleChainItem[AppSequence], 0)
 
 	return app
+}
+
+func (app *App) compareRoute(route *AppHandleChainItem[RequestName], name RequestName) int {
+	return bytes.Compare(route.code, name)
 }
 
 func (app *App) route(name RequestName, handles AppHandleChain) {
 	route := &AppHandleChainItem[RequestName]{}
 	route.code = name
 	route.handles = append(handles, app.dispatchDefaults)
-	err := app.routes.Store(route)
-	if err != nil {
-		panic(err)
+
+	app.routesRW.Lock()
+	defer app.routesRW.Unlock()
+	idx, ok := slices.BinarySearchFunc(app.routes, name, app.compareRoute)
+	if !ok {
+		app.routes = slices.Insert(app.routes, idx, route)
 	}
 }
 
+func (app *App) compareDefaults_(item *AppHandleChainItem[AppSequence], seq AppSequence) int {
+	return cmp.Compare(item.code, seq)
+}
+
 func (app *App) setDefaults(seq AppSequence, handles AppHandleChain) {
+	app.defaultsLocker_.Lock()
+	defer app.defaultsLocker_.Unlock()
+	idx, ok := slices.BinarySearchFunc(app.defaults_, seq, app.compareDefaults_)
 	if len(handles) > 0 {
 		defaultItem := &AppHandleChainItem[AppSequence]{}
 		defaultItem.handles = handles
 		defaultItem.code = seq
-		app.defaults_.Swap(defaultItem)
+		if ok {
+			app.defaults_[idx] = defaultItem
+		} else {
+			app.defaults_ = slices.Insert(app.defaults_, idx, defaultItem)
+		}
 		return
 	}
 
-	defaultItem, ok := app.defaults_.Search(seq)
 	if ok {
-		app.defaults_.Delete(defaultItem)
+		app.defaults_ = slices.Delete(app.defaults_, idx, idx+1)
 	}
 }
 
@@ -97,11 +107,14 @@ func (app *App) newGroup() AppHandleGroup {
 }
 
 func (app *App) Init(extreme bool) {
+
+	app.defaultsLocker_.Lock()
+	defer app.defaultsLocker_.Unlock()
+
 	app.rw.Lock()
 	defer app.rw.Unlock()
 
-	items := app.defaults_.Items()
-	for _, item := range items {
+	for _, item := range app.defaults_ {
 		app.defaults = slices.Concat(app.defaults, item.handles)
 	}
 
@@ -114,10 +127,14 @@ func (app *App) Init(extreme bool) {
 func (app *App) Run(ctx AppContext, next Next) error {
 
 	name := ctx.Name()
-	route, ok := app.routes.Search(name)
+	app.routesRW.RLock()
+	idx, ok := slices.BinarySearchFunc(app.routes, name, app.compareRoute)
 	if ok {
+		defer app.routesRW.RUnlock()
+		route := app.routes[idx]
 		return Dispatch(ctx, route.handles, 0, next)
 	}
+	app.routesRW.RUnlock()
 
 	return app.dispatchDefaults(ctx, next)
 }

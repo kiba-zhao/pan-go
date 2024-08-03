@@ -2,7 +2,8 @@ package impl
 
 import (
 	"cmp"
-	"pan/app/cache"
+	"slices"
+
 	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/services"
@@ -16,20 +17,16 @@ type TargetDispatcherItem struct {
 	sync.Mutex
 }
 
-func (t *TargetDispatcherItem) HashCode() uint {
-	return t.id
-}
-
-type TargetDispatcherBucket = cache.Bucket[uint, *TargetDispatcherItem]
-
-func NewTargetDispatcherBucket() TargetDispatcherBucket {
-	bucket := cache.NewBucket[uint, *TargetDispatcherItem](cmp.Compare[uint])
-	return cache.WrapSyncBucket(bucket)
-}
-
 type TargetDispatcher struct {
 	TargetService *services.TargetService
-	Bucket        TargetDispatcherBucket
+	items         []*TargetDispatcherItem
+	locker        sync.Mutex
+}
+
+func NewTargetDispatcher() *TargetDispatcher {
+	dispatcher := &TargetDispatcher{}
+	dispatcher.items = make([]*TargetDispatcherItem, 0)
+	return dispatcher
 }
 
 func (d *TargetDispatcher) Scan(target models.Target) error {
@@ -53,11 +50,23 @@ func (d *TargetDispatcher) Clean(target models.Target) error {
 	return handleTarget(d, target)
 }
 
-func handleTarget(dispatcher *TargetDispatcher, target models.Target) error {
+func compareTargetDispatcherItem(item *TargetDispatcherItem, key uint) int {
+	return cmp.Compare(item.id, key)
+}
 
-	item, _ := dispatcher.Bucket.SearchOrStore(&TargetDispatcherItem{
-		id: target.ID,
-	})
+func handleTarget(dispatcher *TargetDispatcher, target models.Target) error {
+	dispatcher.locker.Lock()
+	idx, ok := slices.BinarySearchFunc(dispatcher.items, target.ID, compareTargetDispatcherItem)
+	var item *TargetDispatcherItem
+	if ok {
+		item = dispatcher.items[idx]
+	} else {
+		item = &TargetDispatcherItem{
+			id: target.ID,
+		}
+		dispatcher.items = slices.Insert(dispatcher.items, idx, item)
+	}
+	dispatcher.locker.Unlock()
 
 	item.Lock()
 	defer item.Unlock()

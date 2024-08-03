@@ -7,7 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
-	"pan/app/cache"
+
 	"pan/runtime"
 	"reflect"
 	"slices"
@@ -72,8 +72,10 @@ func (bs *broadcastServer) ListenAndServe() error {
 	bs.locker.Unlock()
 	defer bs.Shutdown()
 
-	bucket_ := cache.NewBucket[string, *broadcastPacketBuffer](cmp.Compare[string])
-	bufferBucket := cache.WrapSyncBucket(bucket_)
+	// bucket_ := cache.NewBucket[string, *broadcastPacketBuffer](cmp.Compare[string])
+	// bufferBucket := cache.WrapSyncBucket(bucket_)
+	packetBuffers := make([]*broadcastPacketBuffer, 0)
+	var packetBuffersRW sync.RWMutex
 
 	for {
 		block := make([]byte, bs.mtu)
@@ -86,7 +88,15 @@ func (bs *broadcastServer) ListenAndServe() error {
 		}
 
 		buffer, size := parsePacketBuffer(block[:byteLen])
-		bufferItem, ok := bufferBucket.Search(addr.String())
+		packetBuffersRW.RLock()
+		// bufferItem, ok := bufferBucket.Search(addr.String())
+		idx, ok := slices.BinarySearchFunc(packetBuffers, addr.String(), compareBroadcastPacketBuffer)
+		var bufferItem *broadcastPacketBuffer
+		if ok {
+			bufferItem = packetBuffers[idx]
+		}
+		packetBuffersRW.RUnlock()
+
 		if size > 0 && ok {
 			bufferItem.cancel()
 			bufferItem.wg.Wait()
@@ -111,11 +121,21 @@ func (bs *broadcastServer) ListenAndServe() error {
 					cancel: cancel,
 				}
 				bufferItem.wg.Add(1)
-				bufferBucket.Store(bufferItem)
+				packetBuffersRW.Lock()
+				idx_, ok_ := slices.BinarySearchFunc(packetBuffers, addr.String(), compareBroadcastPacketBuffer)
+				if !ok_ {
+					packetBuffers = slices.Insert(packetBuffers, idx_, bufferItem)
+				}
+				packetBuffersRW.Unlock()
 				go func(item *broadcastPacketBuffer, ctx context.Context) {
 					defer item.wg.Done()
 					<-ctx.Done()
-					bufferBucket.Delete(item)
+					packetBuffersRW.Lock()
+					defer packetBuffersRW.Unlock()
+					idx_, ok_ := slices.BinarySearchFunc(packetBuffers, item.addr, compareBroadcastPacketBuffer)
+					if ok_ {
+						packetBuffers = slices.Delete(packetBuffers, idx_, idx_+1)
+					}
 				}(bufferItem, ctx)
 			}
 
@@ -135,6 +155,10 @@ func (bs *broadcastServer) ListenAndServe() error {
 
 func (b *broadcastServer) HashCode() string {
 	return b.address
+}
+
+func compareBroadcastPacketBuffer(item *broadcastPacketBuffer, key string) int {
+	return cmp.Compare(item.addr, key)
 }
 
 func parsePacketBuffer(block []byte) ([]byte, int) {
@@ -300,7 +324,7 @@ func (b *broadcast) Init(registry runtime.Registry) error {
 
 func (b *broadcast) Ready() error {
 
-	var serverMgr cache.Bucket[string, *broadcastServer]
+	var servers []*broadcastServer
 	b.sigOnce.Do(func() {
 		b.sigChan = make(chan bool, 1)
 		b.mtu = broadcastMTU()
@@ -313,8 +337,8 @@ func (b *broadcast) Ready() error {
 		addresses := b.addresses
 		b.locker.Unlock()
 
-		if serverMgr != nil {
-			for _, item := range serverMgr.Items() {
+		if len(servers) > 0 {
+			for _, item := range servers {
 				item.Shutdown()
 			}
 		}
@@ -323,7 +347,7 @@ func (b *broadcast) Ready() error {
 			break
 		}
 
-		serverMgr = cache.NewBucket[string, *broadcastServer](cmp.Compare[string])
+		servers = make([]*broadcastServer, 0)
 		mtu := b.mtu
 		for _, address := range addresses {
 			server := &broadcastServer{
@@ -332,7 +356,7 @@ func (b *broadcast) Ready() error {
 				mtu:       mtu,
 			}
 
-			serverMgr.Store(server)
+			servers = append(servers, server)
 			go func(bs *broadcastServer) {
 				for {
 					err := bs.ListenAndServe()

@@ -20,9 +20,8 @@ import (
 func TestTarget(t *testing.T) {
 
 	setup := func() (dispatcher *impl.TargetDispatcher) {
-		dispatcher = new(impl.TargetDispatcher)
+		dispatcher = impl.NewTargetDispatcher()
 
-		dispatcher.Bucket = impl.NewTargetDispatcherBucket()
 		dispatcher.TargetService = &services.TargetService{}
 		dispatcher.TargetService.TargetFileService = &services.TargetFileService{}
 		return

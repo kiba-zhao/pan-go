@@ -3,7 +3,9 @@ package node
 import (
 	"bytes"
 	"io"
-	"pan/app/cache"
+
+	"slices"
+
 	"strings"
 )
 
@@ -17,7 +19,7 @@ func (si *SessionItem) HashCode() SessionKey {
 	return si.key
 }
 
-type Session = cache.Bucket[SessionKey, *SessionItem]
+type Session = []*SessionItem
 
 type Context struct {
 	Response
@@ -50,17 +52,28 @@ func (c *Context) SetHeader(key, value []byte) {
 }
 
 func (c *Context) Session(key SessionKey) (interface{}, bool) {
-	return c.session.Search(key)
+	idx, ok := slices.BinarySearchFunc(c.session, key, compareSessionItem)
+	if !ok {
+		return nil, ok
+	}
+	item := c.session[idx]
+	return item.value, true
 }
 
 func (c *Context) Set(key SessionKey, value interface{}) {
-	c.session.Swap(&SessionItem{key, value})
+	idx, ok := slices.BinarySearchFunc(c.session, key, compareSessionItem)
+	if ok {
+		c.session[idx].value = value
+		return
+	}
+
+	c.session = slices.Insert(c.session, idx, &SessionItem{key, value})
 }
 
 func (c *Context) Del(key SessionKey) {
-	item, ok := c.session.Search(key)
+	idx, ok := slices.BinarySearchFunc(c.session, key, compareSessionItem)
 	if ok {
-		c.session.Delete(item)
+		c.session = slices.Delete(c.session, idx, idx+1)
 	}
 }
 
@@ -76,10 +89,14 @@ func (c *Context) ThrowError(code int, err error) {
 
 func InitContext(ctx *Context) {
 	ctx.code = -1
-	ctx.session = cache.NewBucket[SessionKey, *SessionItem](bytes.Compare)
+	ctx.session = make([]*SessionItem, 0)
 
 	ctx.request = &Request{}
 	InitRequest(ctx.request)
 
 	InitResponse(&ctx.Response)
+}
+
+func compareSessionItem(item *SessionItem, key SessionKey) int {
+	return bytes.Compare(item.key, key)
 }

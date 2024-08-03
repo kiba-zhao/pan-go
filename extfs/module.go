@@ -96,8 +96,7 @@ func (m *module) Components() []runtime.Component {
 	components = setupComponent(components, &services.TargetFileService{})
 
 	// dispatchers
-	components = setupComponent(components, dispatcherImpl.NewTargetDispatcherBucket())
-	components = setupComponent[dispatchers.TargetDispatcher](components, &dispatcherImpl.TargetDispatcher{})
+	components = setupComponent[dispatchers.TargetDispatcher](components, dispatcherImpl.NewTargetDispatcher())
 
 	// controllers
 	for _, ctrl := range m.Controllers() {

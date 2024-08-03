@@ -4,15 +4,25 @@ import (
 	"bytes"
 	"context"
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha512"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/binary"
+	"encoding/pem"
+	"errors"
 	"io"
+	"math/big"
 	"os"
 	"pan/app/node"
 	"pan/runtime"
+	"path"
 	"reflect"
+	"slices"
 	"sync"
+	"time"
 )
 
 type NodeApp = *node.App
@@ -35,88 +45,26 @@ type NodeStream interface {
 }
 
 type NodeID = []byte
+type NodeType = uint8
+type NodeResourceID = []byte
+
+const (
+	NodeTypeAlive NodeType = iota
+	NodeTypeReachable
+)
+
 type Node interface {
 	ID() NodeID
+	Type() NodeType
+	Do(context.Context, io.Reader) (io.Reader, error)
+	Greet(context.Context) error
 	Close() error
+	ResourceID() NodeResourceID
 }
 
 var (
 	ContextNode = []byte("NODE")
 )
-
-type NodeTransport interface {
-	Do(NodeID, io.Reader, context.Context) (io.Reader, error)
-}
-
-type NodeLookupTransport interface {
-	NodeTransport
-	Lookup(NodeID, context.Context) error
-}
-
-type NodeGreetTransport interface {
-	NodeTransport
-	Greet(NodeID, context.Context) error
-}
-
-type NodeTripper interface {
-	RoundTrip(NodeID, context.Context, []NodeLookupTransport, []NodeGreetTransport) (NodeTransport, error)
-}
-
-type nodeTripper struct {
-	module *nodeModule
-}
-
-func (nt *nodeTripper) RoundTrip(nodeId NodeID, ctx context.Context, lookUpTransports []NodeLookupTransport, greetTransports []NodeGreetTransport) (NodeTransport, error) {
-
-	for _, transport := range lookUpTransports {
-		err := transport.Lookup(nodeId, ctx)
-		if err == nil {
-			return transport, nil
-		}
-	}
-
-	var wg sync.WaitGroup
-
-	idx := -1
-	ctx_, cancel := context.WithCancelCause(ctx)
-	greetChan := make(chan int)
-	for idx_, transport := range greetTransports {
-		select {
-		case idx = <-greetChan:
-			cancel(nil)
-		default:
-			wg.Add(1)
-			go func(transport NodeGreetTransport, idx_ int) {
-				defer wg.Done()
-				err := transport.Greet(nodeId, ctx_)
-				if err == nil {
-					greetChan <- idx_
-				}
-
-			}(transport, idx_)
-		}
-		if idx >= 0 {
-			break
-		}
-	}
-
-	wg.Wait()
-	if idx < 0 {
-		return nil, ctx_.Err()
-	}
-	return greetTransports[idx], nil
-}
-
-type NodeDoContext struct {
-	ctx context.Context
-}
-type NodeDoContextUpdater = func(NodeDoContext)
-
-func WithNodeDoContext(ctx context.Context) NodeDoContextUpdater {
-	return func(doContext NodeDoContext) {
-		doContext.ctx = ctx
-	}
-}
 
 type NodeSettings interface {
 	NodeID() NodeID
@@ -144,8 +92,8 @@ type nodeSettings struct {
 
 func (ns *nodeSettings) Init(registry runtime.Registry) error {
 	ns.registryLocker.Lock()
-	defer ns.registryLocker.Unlock()
 	ns.registry = registry
+	ns.registryLocker.Unlock()
 
 	ns.locker.RLock()
 	defer ns.locker.RUnlock()
@@ -154,67 +102,83 @@ func (ns *nodeSettings) Init(registry runtime.Registry) error {
 }
 
 func (ns *nodeSettings) OnConfigUpdated(settings AppSettings) {
-	ns.locker.Lock()
-	defer ns.locker.Unlock()
 
 	var err error
-	v := ns.version
-	defer func() {
-		if err != nil {
-			ns.hashCode = nil
-		}
-		if v == ns.version {
+	keyPEMBlock, err := os.ReadFile(settings.PrivateKeyPath)
+	var certPEMBlock []byte
+	var cert tls.Certificate
+	var privKey crypto.PrivateKey
+	var hashCode []byte
+	var x509Cert *x509.Certificate
+	if err == nil {
+		certPEMBlock, err = os.ReadFile(settings.CertificatePath)
+	}
+
+	if err == nil {
+		ns.locker.RLock()
+		hash := sha512.New()
+		hash.Write(certPEMBlock)
+		hash.Write(keyPEMBlock)
+		hashCode = hash.Sum(nil)
+		if ns.hashCode != nil && bytes.Equal(ns.hashCode, hashCode) {
 			return
 		}
+		ns.locker.RUnlock()
 
-		ns.registryLocker.RLock()
-		defer ns.registryLocker.RUnlock()
-		if ns.registry != nil {
-			ns.onUpdated()
+		cert, err = tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+	}
+
+	if err == nil {
+		block, _ := pem.Decode(keyPEMBlock)
+		privKey, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+	}
+
+	if err == nil {
+		x509Cert, err = x509.ParseCertificate(cert.Certificate[0])
+	}
+
+	if err != nil {
+		err = ns.GenerateWithAppSettings(settings)
+		if err == nil {
+			return
 		}
-	}()
-
-	keyPEMBlock, err := os.ReadFile(settings.PrivateKeyPath)
-	if err != nil {
-		ns.version++
-		return
-	}
-	certPEMBlock, err := os.ReadFile(settings.CertificatePath)
-	if err != nil {
-		ns.version++
-		return
 	}
 
-	hash := sha512.New()
-	hash.Write(certPEMBlock)
-	hash.Write(keyPEMBlock)
-	hashCode := hash.Sum(nil)
-	if ns.hashCode != nil && bytes.Equal(ns.hashCode, hashCode) {
+	ns.locker.Lock()
+	defer ns.locker.Unlock()
+	v := ns.version
+	defer func(v uint8) {
+		if err != nil && ns.hashCode != nil {
+			ns.version++
+			ns.hashCode = nil
+		}
+		if v+1 != ns.version {
+			return
+		}
+		ns.onUpdated()
+	}(v)
+	if err != nil {
 		return
 	}
 
-	ns.version++
-	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-	if err != nil {
-		return
-	}
-	x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
-	if err != nil {
-		return
-	}
 	pubKeyBytes, err := x509.MarshalPKIXPublicKey(x509Cert.PublicKey)
 	if err == nil {
+		ns.version++
 		ns.nodeId = pubKeyBytes
 		ns.pubKey = x509Cert.PublicKey
-		ns.privKey = cert.PrivateKey
+		ns.privKey = privKey
 		ns.cert = cert
 		ns.hashCode = hashCode
 	}
 
-	return
 }
 
 func (ns *nodeSettings) onUpdated() {
+	ns.registryLocker.RLock()
+	defer ns.registryLocker.RUnlock()
+	if ns.registry == nil {
+		return
+	}
 	listeners := runtime.ModulesForType[NodeSettingsListener](ns.registry)
 	for _, listener := range listeners {
 		listener.OnNodeSettingsUpdated(ns)
@@ -258,6 +222,226 @@ func (ns *nodeSettings) EngineTypes() []reflect.Type {
 	}
 }
 
+func (ns *nodeSettings) GenerateWithAppSettings(settings AppSettings) error {
+
+	caPrivkey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	if err != nil {
+		return err
+	}
+	pubKeyBytes, err := x509.MarshalPKIXPublicKey(&caPrivkey.PublicKey)
+	if err != nil {
+		return err
+	}
+
+	// generate certificate
+	max := new(big.Int).Lsh(big.NewInt(1), 128)   //把 1 左移 128 位，返回给 big.Int
+	serialNumber, _ := rand.Int(rand.Reader, max) //返回在 [0, max) 区间均匀随机分布的一个随机值
+	template := &x509.Certificate{
+		SerialNumber:          serialNumber, // SerialNumber 是 CA 颁布的唯一序列号，在此使用一个大随机数来代表它
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(100, 0, 0),
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}, // 典型用法是指定叶子证书中的公钥的使用目的。它包括一系列的OID，每一个都指定一种用途。例如{id pkix 31}表示用于服务器端的TLS/SSL连接；{id pkix 34}表示密钥可以用于保护电子邮件。
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,                      // 指定了这份证书包含的公钥可以执行的密码操作，例如只能用于签名，但不能用来加密
+		IsCA:                  true,                                                                       // 指示证书是不是ca证书
+		BasicConstraintsValid: true,                                                                       // 指示证书是不是ca证书
+	}
+	certDer, err := x509.CreateCertificate(rand.Reader, template, template, &caPrivkey.PublicKey, caPrivkey)
+	if err != nil {
+		return err
+	}
+
+	privKeyPKCS8, err := x509.MarshalPKCS8PrivateKey(caPrivkey)
+	if err != nil {
+		return err
+	}
+
+	keyPEMBlock := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privKeyPKCS8})
+	certPEMBlock := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDer})
+
+	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+	if err != nil {
+		return err
+	}
+
+	ns.locker.Lock()
+	defer ns.locker.Unlock()
+
+	err = os.MkdirAll(path.Dir(settings.PrivateKeyPath), 0750)
+	if err != nil {
+		return err
+	}
+	keyFile, err := os.Create(settings.PrivateKeyPath)
+	if err != nil {
+		return err
+	}
+	defer keyFile.Close()
+	_, err = keyFile.Write(keyPEMBlock)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(path.Dir(settings.CertificatePath), 0750)
+	if err != nil {
+		return err
+	}
+	certFile, err := os.Create(settings.CertificatePath)
+	if err != nil {
+		return err
+	}
+	defer certFile.Close()
+	_, err = certFile.Write(certPEMBlock)
+	if err != nil {
+		return err
+	}
+
+	hash := sha512.New()
+	hash.Write(certPEMBlock)
+	hash.Write(keyPEMBlock)
+	hashCode := hash.Sum(nil)
+
+	ns.nodeId = pubKeyBytes
+	ns.pubKey = &caPrivkey.PublicKey
+	ns.privKey = caPrivkey
+	ns.cert = cert
+	ns.hashCode = hashCode
+
+	ns.onUpdated()
+	return err
+}
+
+type NodeManager interface {
+	TraverseNode(NodeID, func(Node) bool)
+	Search(NodeID) []Node
+	Delete(Node)
+	SearchOrStore(Node) (Node, bool)
+	Count(NodeID) int
+	NewResourceID(NodeType) NodeResourceID
+}
+
+type nodeManager struct {
+	locker    sync.RWMutex
+	matrix    [][]Node
+	seq       uint32
+	seqLocker sync.Mutex
+}
+
+func (mgr *nodeManager) compareWithNodeID(nodeArr []Node, nodeId NodeID) int {
+	return bytes.Compare(nodeArr[0].ID(), nodeId)
+}
+
+func (mgr *nodeManager) compareWithResourceID(node Node, resourceId []byte) int {
+	return bytes.Compare(node.ResourceID(), resourceId)
+}
+
+func (mgr *nodeManager) TraverseNode(nodeId NodeID, traverse func(Node) bool) {
+
+	nodeArr := mgr.Search(nodeId)
+	if len(nodeArr) <= 0 {
+		return
+	}
+
+	for _, node := range nodeArr {
+		if !traverse(node) {
+			break
+		}
+	}
+
+}
+
+func (mgr *nodeManager) Search(nodeId NodeID) []Node {
+	mgr.locker.RLock()
+	defer mgr.locker.RUnlock()
+	idx, ok := slices.BinarySearchFunc(mgr.matrix, nodeId, mgr.compareWithNodeID)
+	if ok {
+		return slices.Clone(mgr.matrix[idx])
+	}
+	return nil
+}
+
+func (mgr *nodeManager) Delete(node Node) {
+	mgr.locker.Lock()
+	defer mgr.locker.Unlock()
+
+	idx, ok := slices.BinarySearchFunc(mgr.matrix, node.ID(), mgr.compareWithNodeID)
+	if !ok {
+		return
+	}
+
+	idx_, ok := slices.BinarySearchFunc(mgr.matrix[idx], node.ResourceID(), mgr.compareWithResourceID)
+	if !ok {
+		return
+	}
+
+	if len(mgr.matrix[idx]) <= 1 {
+		mgr.matrix = slices.Delete(mgr.matrix, idx, idx+1)
+		return
+	}
+	mgr.matrix[idx] = slices.Delete(mgr.matrix[idx], idx_, idx_+1)
+}
+
+func (mgr *nodeManager) SearchOrStore(node Node) (Node, bool) {
+
+	mgr.locker.Lock()
+	defer mgr.locker.Unlock()
+
+	idx, ok := slices.BinarySearchFunc(mgr.matrix, node.ID(), mgr.compareWithNodeID)
+
+	if !ok {
+		mgr.matrix = slices.Insert(mgr.matrix, idx, []Node{node})
+		return node, false
+	}
+
+	idx_, ok := slices.BinarySearchFunc(mgr.matrix[idx], node.ResourceID(), mgr.compareWithResourceID)
+	if !ok {
+		mgr.matrix[idx] = slices.Insert(mgr.matrix[idx], idx_, node)
+		return node, false
+	}
+
+	return mgr.matrix[idx][idx_], true
+
+}
+
+func (mgr *nodeManager) Count(nodeId NodeID) int {
+
+	mgr.locker.RLock()
+	defer mgr.locker.RUnlock()
+	idx, ok := slices.BinarySearchFunc(mgr.matrix, nodeId, mgr.compareWithNodeID)
+	if ok {
+		return len(mgr.matrix[idx])
+	}
+	return 0
+}
+
+func (mgr *nodeManager) NewResourceID(nodeType NodeType) NodeResourceID {
+
+	mgr.seqLocker.Lock()
+	mgr.seq++
+	seq := mgr.seq
+	mgr.seqLocker.Unlock()
+
+	resourceId := make([]byte, 13)
+	resourceId[0] = byte(nodeType)
+	binary.BigEndian.PutUint64(resourceId[1:], uint64(time.Now().Unix()))
+	binary.BigEndian.PutUint32(resourceId[9:], seq)
+
+	return NodeResourceID(resourceId)
+}
+
+type NodeTripper interface {
+	RoundTrip(context.Context, NodeID, io.Reader) (io.Reader, error)
+}
+
+type NodeDoContext struct {
+	ctx context.Context
+}
+type NodeDoContextUpdater = func(NodeDoContext)
+
+func WithNodeDoContext(ctx context.Context) NodeDoContextUpdater {
+	return func(doContext NodeDoContext) {
+		doContext.ctx = ctx
+	}
+}
+
 type NodeModule interface {
 	Serve(NodeStream, Node) error
 	Do(NodeID, *node.Request, ...NodeDoContextUpdater) (*node.Response, error)
@@ -265,33 +449,28 @@ type NodeModule interface {
 	NodeTripper() NodeTripper
 	SetNodeTripper(NodeTripper)
 	NodeSettings() NodeSettings
+	NodeManager() NodeManager
 	ReloadModules() error
 }
 
 type nodeModule struct {
-	settings           NodeSettings
-	settingsOnce       sync.Once
-	tripper            NodeTripper
-	tripperLocker      sync.RWMutex
-	registry           runtime.Registry
-	registryLocker     sync.RWMutex
-	defaultTripper     NodeTripper
-	defaultTripperOnce sync.Once
-	app                NodeApp
-	appLocker          sync.RWMutex
+	mgr            NodeManager
+	mgrOnce        sync.Once
+	settings       NodeSettings
+	settingsOnce   sync.Once
+	tripper        NodeTripper
+	tripperLocker  sync.RWMutex
+	registry       runtime.Registry
+	registryLocker sync.RWMutex
+	app            NodeApp
+	appLocker      sync.RWMutex
 }
 
-func (nm *nodeModule) DefaultNodeTripper() NodeTripper {
-
-	nm.defaultTripperOnce.Do(func() {
-		nm.tripperLocker.Lock()
-		defer nm.tripperLocker.Unlock()
-		nm.defaultTripper = &nodeTripper{module: nm}
+func (nm *nodeModule) NodeManager() NodeManager {
+	nm.mgrOnce.Do(func() {
+		nm.mgr = &nodeManager{}
 	})
-
-	nm.tripperLocker.RLock()
-	defer nm.tripperLocker.RUnlock()
-	return nm.defaultTripper
+	return nm.mgr
 }
 
 func (nm *nodeModule) Init(registry runtime.Registry) error {
@@ -307,8 +486,6 @@ func (nm *nodeModule) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[NodeAppModule](),
 		reflect.TypeFor[NodeAppModuleProvider](),
-		reflect.TypeFor[NodeLookupTransport](),
-		reflect.TypeFor[NodeGreetTransport](),
 	}
 }
 
@@ -321,6 +498,7 @@ func (nm *nodeModule) Components() []runtime.Component {
 func (nm *nodeModule) Modules() []interface{} {
 	return []interface{}{
 		nm.NodeSettings(),
+		nm.NodeManager(),
 	}
 }
 
@@ -331,7 +509,7 @@ func (nm *nodeModule) NodeTripper() NodeTripper {
 		return nm.tripper
 	}
 	nm.tripperLocker.RUnlock()
-	return nm.DefaultNodeTripper()
+	return nm
 }
 
 func (nm *nodeModule) SetNodeTripper(tripper NodeTripper) {
@@ -390,30 +568,11 @@ func (nm *nodeModule) Do(nodeId NodeID, request *node.Request, updaters ...NodeD
 		doContext.ctx = context.Background()
 	}
 
-	nm.registryLocker.RLock()
-	lookUpTransports := runtime.ModulesForType[NodeLookupTransport](nm.registry)
-	greetTransports := runtime.ModulesForType[NodeGreetTransport](nm.registry)
-	nm.registryLocker.RUnlock()
-
 	ctx := doContext.ctx
 	tripper := nm.NodeTripper()
 	reqReader := node.MarshalRequest(request)
 
-	var err error
-	var transport NodeTransport
-	var resReader io.Reader
-	for {
-		transport, err = tripper.RoundTrip(nodeId, ctx, lookUpTransports, greetTransports)
-		if err != nil {
-			break
-		}
-
-		resReader, err = transport.Do(nodeId, reqReader, ctx)
-		if err == nil || ctx.Err() != nil {
-			break
-		}
-
-	}
+	resReader, err := tripper.RoundTrip(ctx, nodeId, reqReader)
 
 	if err != nil {
 		return nil, err
@@ -469,4 +628,21 @@ func (nm *nodeModule) ReloadModules() error {
 		nm.app = app
 	}
 	return err
+}
+
+func (nm *nodeModule) RoundTrip(ctx context.Context, nodeId NodeID, reqReader io.Reader) (reader io.Reader, err error) {
+
+	mgr := nm.NodeManager()
+	mgr.TraverseNode(nodeId, func(node Node) bool {
+		reader, err = node.Do(ctx, reqReader)
+		if errors.Is(err, ErrNodeClosed) {
+			mgr.Delete(node)
+		}
+		return err != nil && !errors.Is(err, ctx.Err())
+	})
+
+	if err == nil && reader == nil {
+		err = ErrNodeClosed
+	}
+	return
 }
