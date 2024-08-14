@@ -1,5 +1,16 @@
 {
   "resources": {
+    "app/nodes": {
+      "name": "Node of App",
+      "fields": {
+        "nodeId": "Node ID"
+      },
+      "filters": {
+        "stat": "Online / Blocked",
+        "online": "Online",
+        "blocked": "Blocked"
+      }
+    },
     "extfs/targets": {
       "name": "Target of ExtFS",
       "filters": {
@@ -52,6 +63,7 @@
       }
     },
     "button": {
+      "qrscan": "QR Scan",
       "submit": "Submit",
       "cancel": "Cancel",
       "remove": "Remove",

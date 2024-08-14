@@ -1,4 +1,4 @@
-package app
+package config
 
 import (
 	"os"
@@ -159,4 +159,14 @@ func onSettingsUpdated[T any](registry runtime.Registry, settings T) {
 	for _, listener := range listeners {
 		listener.OnConfigUpdated(settings)
 	}
+}
+
+func parseDefaultConfigPath(settings AppSettings) string {
+	return path.Join(settings.RootPath, "pan.toml")
+}
+
+func New() AppConfig {
+	settings := newDefaultSettings()
+	config := NewConfig(settings, parseDefaultConfigPath)
+	return config
 }

@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"net/http"
-	"pan/app"
+	"pan/app/net"
 	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/services"
@@ -13,12 +13,13 @@ type TargetFileController struct {
 	TargetFileService *services.TargetFileService
 }
 
-func (c *TargetFileController) Init(router app.WebRouter) {
+func (c *TargetFileController) SetupToWeb(router net.WebRouter) error {
 	router.GET("/target-files", c.Search)
 	router.GET("/target-files/:id", c.Select)
+	return nil
 }
 
-func (c *TargetFileController) Search(ctx app.WebContext) {
+func (c *TargetFileController) Search(ctx net.WebContext) {
 	var conditions models.TargetFileSearchCondition
 	if err := ctx.ShouldBind(&conditions); err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
@@ -29,11 +30,11 @@ func (c *TargetFileController) Search(ctx app.WebContext) {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	app.SetCountHeaderForWeb(ctx, total)
+	net.SetCountHeaderForWeb(ctx, total)
 	ctx.JSON(http.StatusOK, items)
 }
 
-func (c *TargetFileController) Select(ctx app.WebContext) {
+func (c *TargetFileController) Select(ctx net.WebContext) {
 	paramId := ctx.Param("id")
 	id, err := strconv.ParseUint(paramId, 10, 64)
 	if err != nil {

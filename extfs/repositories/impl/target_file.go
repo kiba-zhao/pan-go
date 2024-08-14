@@ -2,6 +2,7 @@ package impl
 
 import (
 	"pan/app"
+	"pan/app/constant"
 	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/repositories"
@@ -12,13 +13,13 @@ import (
 )
 
 type TargetFileRepository struct {
-	Provider repositories.ComponentProvider
+	Provider app.RepositoryDBProvider
 }
 
 func (repo *TargetFileRepository) Save(targetFile models.TargetFile) (models.TargetFile, error) {
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return targetFile, app.ErrUnavailable
+		return targetFile, constant.ErrUnavailable
 	}
 
 	results := db.Save(&targetFile)
@@ -29,9 +30,9 @@ func (repo *TargetFileRepository) Save(targetFile models.TargetFile) (models.Tar
 }
 
 func (repo *TargetFileRepository) Delete(targetFile models.TargetFile) error {
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return app.ErrUnavailable
+		return constant.ErrUnavailable
 	}
 	results := db.Delete(&targetFile)
 	if results.Error == nil && results.RowsAffected != 1 {
@@ -41,9 +42,9 @@ func (repo *TargetFileRepository) Delete(targetFile models.TargetFile) error {
 }
 
 func (repo *TargetFileRepository) DeleteByTargetId(targetId uint) error {
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return app.ErrUnavailable
+		return constant.ErrUnavailable
 	}
 	var targetFile models.TargetFile
 	targetFile.TargetID = targetId
@@ -53,9 +54,9 @@ func (repo *TargetFileRepository) DeleteByTargetId(targetId uint) error {
 }
 
 func (repo *TargetFileRepository) Select(id uint64, includeAssociated bool) (models.TargetFile, error) {
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return models.TargetFile{}, app.ErrUnavailable
+		return models.TargetFile{}, constant.ErrUnavailable
 	}
 	if includeAssociated {
 		db = db.Preload(clause.Associations)
@@ -71,9 +72,9 @@ func (repo *TargetFileRepository) Select(id uint64, includeAssociated bool) (mod
 
 func (repo *TargetFileRepository) SelectByFilePathAndTargetId(filepath string, targetId uint, hashCode string, includeAssociated bool) (models.TargetFile, error) {
 
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return models.TargetFile{}, app.ErrUnavailable
+		return models.TargetFile{}, constant.ErrUnavailable
 	}
 	if includeAssociated {
 		db = db.Preload(clause.Associations)
@@ -92,9 +93,9 @@ func (repo *TargetFileRepository) SelectByFilePathAndTargetId(filepath string, t
 }
 
 func (repo *TargetFileRepository) TraverseByTargetId(f repositories.TargetFileTraverse, targetId uint) error {
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return app.ErrUnavailable
+		return constant.ErrUnavailable
 	}
 
 	var targetFile models.TargetFile
@@ -124,9 +125,9 @@ func (repo *TargetFileRepository) TraverseByTargetId(f repositories.TargetFileTr
 
 func (repo *TargetFileRepository) Search(conditions models.TargetFileSearchCondition, includeAssociated bool) (total int64, items []models.TargetFile, err error) {
 
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return 0, nil, app.ErrUnavailable
+		return 0, nil, constant.ErrUnavailable
 	}
 
 	if len(conditions.SortField) > 0 {

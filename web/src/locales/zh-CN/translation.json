@@ -1,5 +1,22 @@
 {
   "resources": {
+    "app/nodes": {
+      "name": "应用节点",
+      "fields": {
+        "nodeId": "节点ID",
+        "name": "名称",
+        "online": "在线",
+        "offline": "离线",
+        "blocked": "封锁",
+        "createAt": "创建时间",
+        "updateAt": "更新时间"
+      },
+      "filters": {
+        "stat": "在线 / 封锁",
+        "online": "在线",
+        "blocked": "封锁"
+      }
+    },
     "extfs/targets": {
       "name": "目标文件",
       "fields": {
@@ -68,6 +85,7 @@
       }
     },
     "button": {
+      "qrscan": "扫一扫",
       "submit": "提交",
       "cancel": "取消",
       "remove": "移除",

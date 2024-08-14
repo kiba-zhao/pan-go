@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"net/http"
-	"pan/app"
+	"pan/app/net"
 	"pan/extfs/errors"
 	"pan/extfs/models"
 	"pan/extfs/services"
@@ -12,11 +12,12 @@ type DiskFileController struct {
 	DiskFileService *services.DiskFileService
 }
 
-func (c *DiskFileController) Init(router app.WebRouter) {
+func (c *DiskFileController) SetupToWeb(router net.WebRouter) error {
 	router.GET("/disk-files", c.Search)
+	return nil
 }
 
-func (c *DiskFileController) Search(ctx app.WebContext) {
+func (c *DiskFileController) Search(ctx net.WebContext) {
 	var conditions models.DiskFileSearchCondition
 	if err := ctx.ShouldBind(&conditions); err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
@@ -31,7 +32,7 @@ func (c *DiskFileController) Search(ctx app.WebContext) {
 		ctx.AbortWithError(http.StatusConflict, err)
 		return
 	}
-	app.SetCountHeaderForWeb(ctx, total)
+	net.SetCountHeaderForWeb(ctx, total)
 	if total == 0 {
 		items = []models.DiskFile{}
 	}

@@ -22,11 +22,13 @@ module.exports = () => {
       })
     );
   }, []);
+
   return {
     targets,
     "disk-files": diskFiles,
     "target-files": targetFiles,
     "app-settings": generateAppSettings(),
+    "app-nodes": generateNodes(),
   };
 };
 
@@ -103,6 +105,7 @@ function generateAppSettings() {
   );
   return {
     rootPath: faker.system.directoryPath(),
+    name: faker.internet.domainName(),
     webAddress,
     nodeAddress,
     broadcastAddress,
@@ -116,4 +119,24 @@ function generateAddress() {
     faker.internet.ip(),
     "0.0.0.0",
   ])}:${faker.internet.port()}`;
+}
+
+function generateNodes() {
+  return faker.helpers.multiple(
+    () => {
+      const blocked = faker.datatype.boolean();
+      return {
+        id: faker.number.int(),
+        nodeId: faker.string.nanoid(),
+        name: faker.internet.domainName(),
+        blocked,
+        online: blocked || faker.datatype.boolean(),
+        createAt: faker.date.past(),
+        updateAt: faker.date.past(),
+      };
+    },
+    {
+      count: { min: 1, max: 10 },
+    }
+  );
 }

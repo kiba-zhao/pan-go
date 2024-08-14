@@ -1,4 +1,4 @@
-package app
+package net
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"pan/app/config"
+	"pan/app/constant"
 
 	"pan/runtime"
 	"reflect"
@@ -44,7 +46,7 @@ func (bs *broadcastServer) Shutdown() error {
 	conn := bs.conn
 	bs.locker.RUnlock()
 	if conn == nil {
-		return ErrUnavailable
+		return constant.ErrUnavailable
 	}
 
 	bs.locker.Lock()
@@ -55,7 +57,7 @@ func (bs *broadcastServer) Shutdown() error {
 
 func (bs *broadcastServer) ListenAndServe() error {
 	if bs.broadcast == nil {
-		return ErrUnavailable
+		return constant.ErrUnavailable
 	}
 
 	addr, err := net.ResolveUDPAddr("udp", bs.address)
@@ -233,7 +235,7 @@ func (b *broadcast) Serve(payload []byte, ip string) error {
 	b.registryLocker.RUnlock()
 
 	if registry == nil {
-		return ErrUnavailable
+		return constant.ErrUnavailable
 	}
 
 	return runtime.TraverseRegistry(registry, func(module BroadcastModule) error {
@@ -303,7 +305,7 @@ func (b *broadcast) setSig(sig bool) {
 	b.sigChan <- sig
 }
 
-func (b *broadcast) OnConfigUpdated(settings AppSettings) {
+func (b *broadcast) OnConfigUpdated(settings config.AppSettings) {
 	b.locker.Lock()
 	defer b.locker.Unlock()
 

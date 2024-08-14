@@ -2,9 +2,9 @@ package impl
 
 import (
 	"pan/app"
+	"pan/app/constant"
 	"pan/extfs/errors"
 	"pan/extfs/models"
-	"pan/extfs/repositories"
 	"strings"
 
 	"gorm.io/gorm"
@@ -12,13 +12,13 @@ import (
 )
 
 type TargetRepository struct {
-	Provider repositories.ComponentProvider
+	Provider app.RepositoryDBProvider
 }
 
 func (repo *TargetRepository) Save(target models.Target, withVersion bool) (models.Target, error) {
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return models.Target{}, app.ErrUnavailable
+		return models.Target{}, constant.ErrUnavailable
 	}
 
 	if target.ID == 0 {
@@ -48,9 +48,9 @@ func (repo *TargetRepository) Save(target models.Target, withVersion bool) (mode
 }
 
 func (repo *TargetRepository) Search(conditions models.TargetSearchCondition) (total int64, items []models.Target, err error) {
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return 0, nil, app.ErrUnavailable
+		return 0, nil, constant.ErrUnavailable
 	}
 
 	if len(conditions.SortField) > 0 {
@@ -104,9 +104,9 @@ func (repo *TargetRepository) Search(conditions models.TargetSearchCondition) (t
 }
 
 func (repo *TargetRepository) Select(id uint, version *uint8) (models.Target, error) {
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return models.Target{}, app.ErrUnavailable
+		return models.Target{}, constant.ErrUnavailable
 	}
 
 	var target models.Target
@@ -121,9 +121,9 @@ func (repo *TargetRepository) Select(id uint, version *uint8) (models.Target, er
 }
 
 func (repo *TargetRepository) Delete(target models.Target) error {
-	db := repositories.DBForProvider(repo.Provider)
+	db := app.DBForProvider(repo.Provider)
 	if db == nil {
-		return app.ErrUnavailable
+		return constant.ErrUnavailable
 	}
 	results := db.Where("version = ?", target.Version).Delete(&target)
 	if results.Error == nil && results.RowsAffected != 1 {

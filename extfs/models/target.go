@@ -1,6 +1,7 @@
 package models
 
 import (
+	"pan/app/models"
 	"time"
 
 	"gorm.io/gorm"
@@ -29,13 +30,13 @@ type Target struct {
 	FilePath  string         `json:"filepath" form:"filepath"`
 	HashCode  string         `gorm:"size:28;index" json:"-" form:"-"`
 	Enabled   *bool          `gorm:"index" json:"enabled" form:"enabled"`
-	Available bool           `gorm:"-" json:"available" form:"available"`
+	Available bool           `gorm:"-:all" json:"available" form:"available"`
 	Version   uint8          `gorm:"index" json:"version" form:"version"`
 }
 
 type TargetSearchCondition struct {
-	RangeSearchCondition
-	SortSearchCondition
+	models.RangeSearchCondition
+	models.SortSearchCondition
 	Keyword   string `form:"q" binding:"omitempty"`
 	Enabled   *bool  `form:"enabled" binding:"omitempty"`
 	Available *bool  `form:"available" binding:"omitempty"`

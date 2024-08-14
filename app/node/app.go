@@ -208,7 +208,10 @@ func (router *AppRouter) Group() AppHandleGroup {
 }
 
 func (router *AppRouter) Route(name RequestName) AppHandleGroup {
-	return router.app.newRoute(name)
+	if len(name) > 0 {
+		return router.app.newRoute(name)
+	}
+	return router
 }
 
 func returnAppHandleGroup(router *AppRouter) AppHandleGroup {

@@ -1,6 +1,7 @@
 import { Title, useTranslate } from "react-admin";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import Autocomplete from "@mui/material/Autocomplete";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
@@ -22,7 +23,9 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMemo, useState } from "react";
 
-import { FilePathInput, QRCode } from "./Custom";
+import { FilePathInput } from "./custom/FilePathInput";
+import type { QRScanChangedEvent } from "./custom/QRCode";
+import { QRCode, QRScan } from "./custom/QRCode";
 import NotFound from "./NotFound";
 
 import type { ReactNode } from "react";
@@ -93,6 +96,68 @@ export const AppSettings = () => {
   );
 };
 
+type NodeQRCodeProps = {
+  name?: string;
+  nodeId?: string;
+  width?: number;
+};
+export const NodeQRCode = ({
+  name = "",
+  nodeId = "",
+  width = 200,
+}: NodeQRCodeProps) => {
+  const value = useMemo(() => {
+    if (!name || name.length <= 0 || !nodeId || nodeId.length <= 0) return null;
+    const query = new URLSearchParams({ nodeId, name });
+    return `pan-go://app/node?${query.toString()}`;
+  }, [name, nodeId]);
+
+  return <QRCode value={value} width={width} />;
+};
+
+export const NodeQRScan = () => {
+  const t = useTranslate();
+
+  const [open, setOpen] = useState(false);
+  const onOpen = () => setOpen(true);
+  const onClose = () => setOpen(false);
+  const onChanged = (event: QRScanChangedEvent) => {
+    if (!URL.canParse(event.value)) return;
+    const url = new URL(event.value);
+    if (url.protocol !== "pan-go:") return;
+    if (url.host !== "app") return;
+    if (url.pathname !== "/node") return;
+    const nodeId = url.searchParams.get("nodeId");
+    const name = url.searchParams.get("name");
+    if (!nodeId || nodeId.length <= 0 || !name || name.length <= 0) return;
+    event.invalid = false;
+    console.log(11111, nodeId, name);
+    setOpen(false);
+  };
+  return (
+    <>
+      <Button
+        variant="contained"
+        size="small"
+        startIcon={<QrCodeScannerIcon />}
+        onClick={onOpen}
+      >
+        {t("custom.button.qrscan")}
+      </Button>
+      <Dialog open={open} onClose={onClose}>
+        <DialogContent>
+          <QRScan onChanged={onChanged} width="400" height="300" />
+        </DialogContent>
+        <DialogActions>
+          <Button size="small" onClick={onClose}>
+            {t("custom.button.cancel")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
 const AppSummarySettings = () => {
   const t = useTranslate();
   return (
@@ -106,7 +171,7 @@ const AppSummarySettings = () => {
       flexWrap="wrap"
     >
       <Stack spacing={2} alignItems="center" justifyContent={"space-between"}>
-        <QRCode value="sample text" width={200} />
+        <NodeQRCode name={"localhost"} nodeId={"sample node id"} />
         <Stack
           direction="row"
           spacing={1}

@@ -1,4 +1,4 @@
-package app
+package node
 
 import (
 	"bytes"
@@ -16,7 +16,8 @@ import (
 	"io"
 	"math/big"
 	"os"
-	"pan/app/node"
+	"pan/app/config"
+	"pan/app/constant"
 	"pan/runtime"
 	"path"
 	"reflect"
@@ -25,16 +26,17 @@ import (
 	"time"
 )
 
-type NodeApp = *node.App
-type NodeRouter = node.AppHandleGroup
-type NodeContext = node.AppContext
-type NodeNext = node.Next
+type NodeApp = *App
+type NodeRouter = AppHandleGroup
+type NodeContext = AppContext
+type NodeNext = Next
 
 type NodeAppModule interface {
 	SetupToNode(NodeRouter) error
 }
 
 type NodeAppModuleProvider interface {
+	NodeProviderName() []byte
 	NodeAppModules() []NodeAppModule
 }
 
@@ -101,7 +103,7 @@ func (ns *nodeSettings) Init(registry runtime.Registry) error {
 	return nil
 }
 
-func (ns *nodeSettings) OnConfigUpdated(settings AppSettings) {
+func (ns *nodeSettings) OnConfigUpdated(settings config.AppSettings) {
 
 	var err error
 	keyPEMBlock, err := os.ReadFile(settings.PrivateKeyPath)
@@ -222,7 +224,7 @@ func (ns *nodeSettings) EngineTypes() []reflect.Type {
 	}
 }
 
-func (ns *nodeSettings) GenerateWithAppSettings(settings AppSettings) error {
+func (ns *nodeSettings) GenerateWithAppSettings(settings config.AppSettings) error {
 
 	caPrivkey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
@@ -444,8 +446,8 @@ func WithNodeDoContext(ctx context.Context) NodeDoContextUpdater {
 
 type NodeModule interface {
 	Serve(NodeStream, Node) error
-	Do(NodeID, *node.Request, ...NodeDoContextUpdater) (*node.Response, error)
-	Request(NodeID, node.RequestName, io.Reader, ...NodeDoContextUpdater) (*node.Response, error)
+	Do(NodeID, *Request, ...NodeDoContextUpdater) (*Response, error)
+	Request(NodeID, RequestName, io.Reader, ...NodeDoContextUpdater) (*Response, error)
 	NodeTripper() NodeTripper
 	SetNodeTripper(NodeTripper)
 	NodeSettings() NodeSettings
@@ -464,6 +466,10 @@ type nodeModule struct {
 	registryLocker sync.RWMutex
 	app            NodeApp
 	appLocker      sync.RWMutex
+}
+
+func New() interface{} {
+	return &nodeModule{}
 }
 
 func (nm *nodeModule) NodeManager() NodeManager {
@@ -527,26 +533,26 @@ func (nm *nodeModule) Serve(stream NodeStream, target Node) error {
 	}
 	nm.appLocker.RUnlock()
 
-	ctx := node.NewAppContext()
+	ctx := NewAppContext()
 	ctx.Set(ContextNode, target)
-	err := node.UnmarshalRequest(stream, ctx.Request())
+	err := UnmarshalRequest(stream, ctx.Request())
 	if err == nil {
 		if app == nil {
-			err = ErrUnavailable
+			err = constant.ErrUnavailable
 		} else {
 			err = app.Run(ctx, nil)
 		}
 	}
 
 	if err != nil {
-		ctx.ThrowError(CodeInternalError, err)
+		ctx.ThrowError(constant.CodeInternalError, err)
 	}
 
 	if ctx.Code() < 0 {
-		ctx.ThrowError(CodeNotFound, ErrNotFound)
+		ctx.ThrowError(constant.CodeNotFound, constant.ErrNotFound)
 	}
 
-	reader := node.MarshalResponse(&ctx.Response)
+	reader := MarshalResponse(&ctx.Response)
 	_, resErr := io.Copy(stream, reader)
 	if resErr == nil {
 		resErr = stream.Close()
@@ -558,7 +564,7 @@ func (nm *nodeModule) Serve(stream NodeStream, target Node) error {
 	return err
 }
 
-func (nm *nodeModule) Do(nodeId NodeID, request *node.Request, updaters ...NodeDoContextUpdater) (*node.Response, error) {
+func (nm *nodeModule) Do(nodeId NodeID, request *Request, updaters ...NodeDoContextUpdater) (*Response, error) {
 
 	doContext := NodeDoContext{}
 	for _, updater := range updaters {
@@ -570,7 +576,7 @@ func (nm *nodeModule) Do(nodeId NodeID, request *node.Request, updaters ...NodeD
 
 	ctx := doContext.ctx
 	tripper := nm.NodeTripper()
-	reqReader := node.MarshalRequest(request)
+	reqReader := MarshalRequest(request)
 
 	resReader, err := tripper.RoundTrip(ctx, nodeId, reqReader)
 
@@ -578,15 +584,15 @@ func (nm *nodeModule) Do(nodeId NodeID, request *node.Request, updaters ...NodeD
 		return nil, err
 	}
 
-	response := &node.Response{}
-	node.InitResponse(response)
-	err = node.UnmarshalResponse(resReader, response)
+	response := &Response{}
+	InitResponse(response)
+	err = UnmarshalResponse(resReader, response)
 
 	return response, err
 }
 
-func (nm *nodeModule) Request(nodeId NodeID, name node.RequestName, body io.Reader, updaters ...NodeDoContextUpdater) (*node.Response, error) {
-	request := node.NewRequest(name, body)
+func (nm *nodeModule) Request(nodeId NodeID, name RequestName, body io.Reader, updaters ...NodeDoContextUpdater) (*Response, error) {
+	request := NewRequest(name, body)
 	return nm.Do(nodeId, request, updaters...)
 }
 
@@ -604,10 +610,10 @@ func (nm *nodeModule) ReloadModules() error {
 
 	nm.appLocker.Lock()
 	defer nm.appLocker.Unlock()
-	app := node.NewApp()
+	app := NewApp()
 
 	err := runtime.TraverseRegistry(registry, func(module NodeAppModule) error {
-		return module.SetupToNode(nm.app)
+		return module.SetupToNode(app)
 	})
 	if err != nil {
 		return err
@@ -615,8 +621,10 @@ func (nm *nodeModule) ReloadModules() error {
 
 	err = runtime.TraverseRegistry(registry, func(module NodeAppModuleProvider) error {
 		var setupErr error
+		name := module.NodeProviderName()
+		router := app.Route(name)
 		for _, m := range module.NodeAppModules() {
-			setupErr = m.SetupToNode(nm.app)
+			setupErr = m.SetupToNode(router)
 			if err != nil {
 				break
 			}
@@ -635,14 +643,14 @@ func (nm *nodeModule) RoundTrip(ctx context.Context, nodeId NodeID, reqReader io
 	mgr := nm.NodeManager()
 	mgr.TraverseNode(nodeId, func(node Node) bool {
 		reader, err = node.Do(ctx, reqReader)
-		if errors.Is(err, ErrNodeClosed) {
+		if errors.Is(err, constant.ErrNodeClosed) {
 			mgr.Delete(node)
 		}
 		return err != nil && !errors.Is(err, ctx.Err())
 	})
 
 	if err == nil && reader == nil {
-		err = ErrNodeClosed
+		err = constant.ErrNodeClosed
 	}
 	return
 }

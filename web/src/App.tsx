@@ -10,6 +10,7 @@ import { BrowserRouter, Route } from "react-router-dom";
 import { dataProvider } from "./api";
 import { useI18nProvider } from "./i18n";
 
+import { AppNodeCreate, AppNodeIcon, AppNodes } from "./components/AppNodes";
 import { AppSettings } from "./components/AppSettings";
 import Dashboard from "./components/Dashboard";
 import { AppLayout } from "./components/Layout";
@@ -50,6 +51,12 @@ export const App = () => {
         <CustomRoutes>
           <Route path="/app/settings/*" element={<AppSettings />} />
         </CustomRoutes>
+        <Resource
+          name="app/nodes"
+          list={AppNodes}
+          icon={AppNodeIcon}
+          create={AppNodeCreate}
+        />
         <Resource
           name="extfs/targets"
           list={Targets}

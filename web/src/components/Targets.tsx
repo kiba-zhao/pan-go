@@ -70,7 +70,7 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import { FixedSizeList } from "react-window";
 
 import { basename, dirname, generateParents } from "../lib/path";
-import { InfinitePagination } from "./Custom";
+import { InfinitePagination } from "./custom/List";
 
 const TargetBulkActions = () => (
   <>

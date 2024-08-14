@@ -1,27 +1,48 @@
 package app
 
 import (
-	"os"
+	"pan/app/config"
+	"pan/app/controllers"
+	"pan/app/net"
+	"pan/app/node"
 	"pan/runtime"
-	"path"
+	"sync"
 )
 
 func New() interface{} {
-
-	settings := newDefaultSettings(getRootPath())
-	config := NewConfig(settings, parseConfigPath)
-
-	return runtime.NewModule(&runtime.Injector{}, config, &webServer{}, &nodeModule{}, &broadcast{}, &quicModule{})
+	return runtime.NewModule(&runtime.Injector{}, config.New(), node.New(), net.New(), NewSample(&module{}))
 }
 
-func getRootPath() string {
-	homePath, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
+const moduleName = "app"
+
+type module struct {
+	DBProvider  RepositoryDBProvider
+	controllers []interface{}
+	once        sync.Once
+}
+
+func (m *module) Name() string {
+	return moduleName
+}
+
+func (m *module) Controllers() []interface{} {
+	m.once.Do(func() {
+		// TODO: add web and node controllers
+		m.controllers = []interface{}{
+			&controllers.NodeController{},
+		}
+	})
+	return m.controllers
+}
+
+func (m *module) Models() []interface{} {
+	return nil
+}
+
+func (m *module) Components() []runtime.Component {
+	// base
+	components := []runtime.Component{
+		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
 	}
-	return path.Join(homePath, ".pan-go")
-}
-
-func parseConfigPath(settings AppSettings) string {
-	return path.Join(settings.RootPath, "pan.toml")
+	return components
 }

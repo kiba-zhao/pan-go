@@ -14,7 +14,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	mockedRepo "pan/mocks/pan/extfs/repositories"
+	mockedApp "pan/mocks/pan/app"
 )
 
 func TestTargetFile(t *testing.T) {
@@ -32,7 +32,7 @@ func TestTargetFile(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		provider := new(mockedRepo.MockComponentProvider)
+		provider := new(mockedApp.MockRepositoryDBProvider)
 		provider.On("DB").Return(db)
 		repo = &impl.TargetFileRepository{Provider: provider}
 

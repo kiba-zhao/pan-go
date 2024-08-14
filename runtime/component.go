@@ -16,7 +16,7 @@ type Component interface {
 }
 
 const (
-	ComponentNoneScope     = ""
+	ComponentNoneScope     = "none"
 	ComponentInternalScope = "internal"
 	ComponentExternalScope = "external"
 )

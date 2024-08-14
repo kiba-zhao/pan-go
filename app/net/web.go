@@ -1,11 +1,13 @@
-package app
+package net
 
 import (
 	"context"
 	"errors"
 	"io/fs"
 	"net/http"
+	"pan/app/constant"
 
+	"pan/app/config"
 	"pan/runtime"
 	"reflect"
 	"slices"
@@ -26,11 +28,20 @@ func NewWebApp() WebApp {
 }
 
 type WebModule interface {
-	SetupToWeb(app WebApp) error
+	SetupToWeb(WebApp) error
 }
 
 type WebModuleProvider interface {
 	WebModules() []WebModule
+}
+
+type WebController interface {
+	SetupToWeb(WebRouter) error
+}
+
+type WebControllerProvider interface {
+	WebProviderName() string
+	WebControllers() []WebController
 }
 
 type webServer struct {
@@ -65,7 +76,7 @@ func (w *webServer) Addresses() []string {
 	return w.addresses
 }
 
-func (w *webServer) OnConfigUpdated(settings AppSettings) {
+func (w *webServer) OnConfigUpdated(settings config.AppSettings) {
 	w.locker.Lock()
 	defer w.locker.Unlock()
 
@@ -90,6 +101,7 @@ func (w *webServer) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[WebModule](),
 		reflect.TypeFor[WebModuleProvider](),
+		reflect.TypeFor[WebControllerProvider](),
 	}
 }
 
@@ -102,7 +114,7 @@ func (w *webServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if app != nil {
 		app.ServeHTTP(rw, req)
 	} else {
-		http.Error(rw, ErrUnavailable.Error(), http.StatusInternalServerError)
+		http.Error(rw, constant.ErrUnavailable.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -111,7 +123,7 @@ func (w *webServer) ReloadModules() error {
 	registry := w.registry
 	w.locker.Unlock()
 	if registry == nil {
-		return ErrUnavailable
+		return constant.ErrUnavailable
 	}
 
 	w.appLocker.Lock()
@@ -126,6 +138,24 @@ func (w *webServer) ReloadModules() error {
 		err = runtime.TraverseRegistry(registry, func(module WebModuleProvider) error {
 			for _, wc := range module.WebModules() {
 				perr := wc.SetupToWeb(app)
+				if perr != nil {
+					return perr
+				}
+			}
+			return nil
+		})
+	}
+	if err == nil {
+		err = runtime.TraverseRegistry(registry, func(module WebControllerProvider) error {
+			name := module.WebProviderName()
+			var router WebRouter
+			if len(name) > 0 {
+				router = app.Group(name)
+			} else {
+				router = app
+			}
+			for _, wc := range module.WebControllers() {
+				perr := wc.SetupToWeb(router)
 				if perr != nil {
 					return perr
 				}

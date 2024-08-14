@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"pan/app"
+	"pan/app/net"
 	"pan/extfs/controllers"
 	"pan/extfs/models"
 	"pan/extfs/services"
@@ -21,10 +21,10 @@ import (
 
 func TestTargetFile(t *testing.T) {
 
-	setup := func() (web app.WebApp, ctrl *controllers.TargetFileController) {
+	setup := func() (web net.WebApp, ctrl *controllers.TargetFileController) {
 		ctrl = new(controllers.TargetFileController)
-		web = app.NewWebApp()
-		ctrl.Init(web)
+		web = net.NewWebApp()
+		ctrl.SetupToWeb(web)
 
 		ctrl.TargetFileService = &services.TargetFileService{}
 		return web, ctrl
@@ -62,7 +62,7 @@ func TestTargetFile(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(app.CountHeaderName))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(net.CountHeaderName))
 		var results []models.TargetFile
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
@@ -126,7 +126,7 @@ func TestTargetFile(t *testing.T) {
 		web.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(app.CountHeaderName))
+		assert.Equal(t, strconv.FormatInt(total, 10), w.Header().Get(net.CountHeaderName))
 		var results []models.TargetFile
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)

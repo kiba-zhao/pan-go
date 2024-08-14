@@ -28,7 +28,7 @@ import {
 
 import { formatBytes } from "../lib/byte";
 import { basename } from "../lib/path";
-import { InfinitePagination } from "./Custom";
+import { InfinitePagination } from "./custom/List";
 
 export const TargetFileIcon = InsertDriveFileIcon;
 

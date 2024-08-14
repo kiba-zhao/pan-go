@@ -1,8 +1,8 @@
 package extfs
 
 import (
-	"os"
 	"pan/app"
+
 	"pan/extfs/controllers"
 	"pan/extfs/dispatchers"
 	dispatcherImpl "pan/extfs/dispatchers/impl"
@@ -11,80 +11,50 @@ import (
 	repoImpl "pan/extfs/repositories/impl"
 	"pan/extfs/services"
 	"pan/runtime"
-	"path"
 	"reflect"
 	"sync"
-
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-type webController interface {
-	Init(router app.WebRouter)
+func New() interface{} {
+	return app.NewSample(&module{})
 }
+
+const moduleName = "extfs"
 
 type module struct {
-	rootPath    string
-	db          repositories.RepositoryDB
-	dbLocker    sync.RWMutex
-	controllers []webController
-	ctrlOnce    sync.Once
+	DBProvider  app.RepositoryDBProvider
+	controllers []interface{}
+	once        sync.Once
 }
 
-func New() interface{} {
-	return &module{}
+func (m *module) Name() string {
+	return moduleName
 }
 
-func (m *module) OnConfigUpdated(settings app.AppSettings) {
-
-	m.dbLocker.Lock()
-	defer m.dbLocker.Unlock()
-
-	if m.rootPath == settings.RootPath {
-		return
-	}
-
-	m.rootPath = settings.RootPath
-
-	var db repositories.RepositoryDB
-	_, err := os.Stat(m.rootPath)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(m.rootPath, 0755)
-	}
-	if err == nil {
-		dbPath := path.Join(m.rootPath, "extfs.db")
-		db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-	}
-	if err == nil {
-		err = db.AutoMigrate(&models.Target{}, &models.TargetFile{})
-	}
-	m.db = db
-}
-
-func (m *module) DB() repositories.RepositoryDB {
-	m.dbLocker.RLock()
-	defer m.dbLocker.RUnlock()
-	return m.db
-}
-
-func (m *module) Controllers() []webController {
-	m.ctrlOnce.Do(func() {
-		m.controllers = append(m.controllers,
+func (m *module) Controllers() []interface{} {
+	m.once.Do(func() {
+		// TODO: add web and node controllers
+		m.controllers = []interface{}{
 			&controllers.TargetController{},
 			&controllers.DiskFileController{},
 			&controllers.TargetFileController{},
-		)
+		}
 	})
 	return m.controllers
 }
 
+func (m *module) Models() []interface{} {
+	return []interface{}{
+		&models.Target{}, &models.TargetFile{},
+	}
+}
+
 func (m *module) Components() []runtime.Component {
 
-	var components []runtime.Component
 	// base
-	components = append(components,
-		runtime.NewComponent[repositories.ComponentProvider](m, runtime.ComponentInternalScope),
-	)
+	components := []runtime.Component{
+		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
+	}
 
 	// repositories
 	components = setupComponent[repositories.TargetRepository](components, &repoImpl.TargetRepository{})
@@ -104,17 +74,6 @@ func (m *module) Components() []runtime.Component {
 	}
 
 	return components
-}
-
-func (m *module) SetupToWeb(webApp app.WebApp) error {
-
-	router := webApp.Group("/api/extfs")
-
-	for _, ctrl := range m.Controllers() {
-		ctrl.Init(router)
-	}
-
-	return nil
 }
 
 func setupComponent[T any](components []runtime.Component, component T) []runtime.Component {
