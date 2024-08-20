@@ -3,23 +3,106 @@ import { useCallback, useEffect, useRef } from "react";
 import jsQR from "jsqr";
 import type { QRCodeRenderersOptions } from "qrcode";
 import { toCanvas } from "qrcode";
-import { useBrower } from "./Brower";
+import { useBrower } from "../Global/Brower";
+import {
+  DEFAULT_BASE,
+  TranslateProvider,
+  useTranslate,
+} from "../Global/Translation";
+
+import Button from "@mui/material/Button";
+import type { Dispatch, ReactNode } from "react";
+import { createContext, useContext, useReducer } from "react";
+
+import PhotoIcon from "@mui/icons-material/Photo";
+
+type QRState = {
+  download?: string;
+  value?: string;
+  url?: string;
+};
+type QRActionType = "SET";
+type QRAction = { type: QRActionType } & QRState;
+const QRReducer = (state: QRState, action: QRAction) => {
+  const { type, ...state_ } = action;
+  switch (type) {
+    case "SET":
+      return { ...state, ...state_ };
+    default:
+      return state;
+  }
+};
+
+const QRContext = createContext<QRState>(null!);
+const QRDispatchContext = createContext<Dispatch<QRAction>>(null!);
+
+export const useQR = () => useContext(QRContext);
+export const useQRDispatch = () => useContext(QRDispatchContext);
+export const QRProvider = ({
+  children,
+  base = DEFAULT_BASE,
+}: {
+  children: ReactNode;
+  base?: string;
+}) => {
+  const [state, dispatch] = useReducer(QRReducer, {} as QRState);
+  return (
+    <TranslateProvider base={base}>
+      <QRContext.Provider value={state}>
+        <QRDispatchContext.Provider value={dispatch}>
+          {children}
+        </QRDispatchContext.Provider>
+      </QRContext.Provider>
+    </TranslateProvider>
+  );
+};
 
 const QRCodeErrorColor = {
   light: "#ff0000",
 };
-export type QRCodeProps = { value: string | null } & QRCodeRenderersOptions;
-export const QRCode = ({ value, ...opts }: QRCodeProps) => {
+export type QRCodeProps = {
+  value?: string;
+  name?: string;
+} & QRCodeRenderersOptions;
+export const QRCode = ({ name, value, ...opts }: QRCodeProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const dispatch = useQRDispatch();
 
   useEffect(() => {
-    toCanvas(canvasRef.current, value || "null", {
+    const canvas = canvasRef.current;
+
+    toCanvas(canvas, value || "invalid", {
       ...opts,
-      color: value === null ? QRCodeErrorColor : opts.color,
+      color: !value ? QRCodeErrorColor : opts.color,
+    }).then(() => {
+      const url = canvas?.toDataURL();
+      dispatch({
+        type: "SET",
+        download: `${name}.png`,
+        value: value,
+        url,
+      });
     });
-  }, [value, opts]);
+  }, [name, value, opts]);
 
   return <canvas ref={canvasRef}></canvas>;
+};
+
+export const QRCodeDownloadButton = () => {
+  const t = useTranslate();
+  const { download, value, url } = useQR();
+  return (
+    <Button
+      variant="contained"
+      size="small"
+      href={url || ""}
+      download={download}
+      disabled={!value || value.length <= 0}
+      startIcon={<PhotoIcon />}
+    >
+      {t("button.save")}
+    </Button>
+  );
 };
 
 type CameraVideoProps = {

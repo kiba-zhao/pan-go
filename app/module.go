@@ -5,6 +5,7 @@ import (
 	"pan/app/controllers"
 	"pan/app/net"
 	"pan/app/node"
+	"pan/app/services"
 	"pan/runtime"
 	"sync"
 )
@@ -30,6 +31,7 @@ func (m *module) Controllers() []interface{} {
 		// TODO: add web and node controllers
 		m.controllers = []interface{}{
 			&controllers.NodeController{},
+			&controllers.DiskFileController{},
 		}
 	})
 	return m.controllers
@@ -43,6 +45,8 @@ func (m *module) Components() []runtime.Component {
 	// base
 	components := []runtime.Component{
 		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
+		// services
+		runtime.NewComponent(&services.DiskFileService{}, runtime.ComponentInternalScope),
 	}
 	return components
 }

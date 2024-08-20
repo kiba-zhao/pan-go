@@ -24,10 +24,12 @@ module.exports = () => {
   }, []);
 
   return {
-    targets,
-    "disk-files": diskFiles,
-    "target-files": targetFiles,
-    "app-settings": generateAppSettings(),
+    "extfs-targets": targets,
+    "extfs-target-files": targetFiles,
+    "app-disk-files": diskFiles,
+    "app-settings": generateAppSettings(
+      diskFiles.filter((_) => _.fileType === "D").map((_) => _.filepath)
+    ),
     "app-nodes": generateNodes(),
   };
 };
@@ -90,7 +92,7 @@ function generateTargetFile(target) {
   };
 }
 
-function generateAppSettings() {
+function generateAppSettings(rootPaths) {
   const webAddress = faker.helpers.multiple(generateAddress, {
     count: { min: 1, max: 3 },
   });
@@ -100,16 +102,16 @@ function generateAppSettings() {
   const broadcastAddress = faker.helpers.multiple(generateAddress, {
     count: { min: 1, max: 3 },
   });
-  const broadcastQuicPorts = nodeAddress.map((_) =>
-    Number(_.split(":").at(-1))
-  );
+  const publicAddress = faker.helpers.multiple(generateAddress, {
+    count: { min: 1, max: 3 },
+  });
   return {
-    rootPath: faker.system.directoryPath(),
+    rootPath: faker.helpers.arrayElement(rootPaths),
     name: faker.internet.domainName(),
     webAddress,
     nodeAddress,
     broadcastAddress,
-    broadcastQuicPorts,
+    publicAddress,
     nodeId: faker.helpers.arrayElement(["", faker.string.nanoid()]),
   };
 }

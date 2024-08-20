@@ -27,6 +27,9 @@
         "createAt": "创建时间",
         "updateAt": "更新时间"
       },
+      "input": {
+        "filepath": "文件路径选择"
+      },
       "filters": {
         "has_enabled": "启用/停用",
         "enabled": "启用",
@@ -70,7 +73,14 @@
       "node-address": "节点地址",
       "broadcast-address": "广播地址",
       "public-address": "公告地址",
-      "fields": { "rootPath": "根目录", "nodeId": "节点ID" }
+      "fields": {
+        "rootPath": "根目录",
+        "nodeId": "节点ID",
+        "name": "节点名称"
+      },
+      "input": {
+        "filepath": "磁盘目录选择"
+      }
     },
     "settings": {
       "name": "设置"
@@ -79,12 +89,10 @@
       "actions": "操作"
     },
     "pagination": "总共 {{total}} 项",
-    "input": {
-      "filepath": {
-        "title": "磁盘文件选择"
-      }
-    },
     "button": {
+      "confirm": "确认",
+      "refresh": "刷新",
+      "download": "下载",
       "qrscan": "扫一扫",
       "submit": "提交",
       "cancel": "取消",

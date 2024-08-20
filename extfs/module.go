@@ -36,7 +36,6 @@ func (m *module) Controllers() []interface{} {
 		// TODO: add web and node controllers
 		m.controllers = []interface{}{
 			&controllers.TargetController{},
-			&controllers.DiskFileController{},
 			&controllers.TargetFileController{},
 		}
 	})
@@ -62,7 +61,6 @@ func (m *module) Components() []runtime.Component {
 
 	// services
 	components = setupComponent(components, &services.TargetService{})
-	components = setupComponent(components, &services.DiskFileService{})
 	components = setupComponent(components, &services.TargetFileService{})
 
 	// dispatchers

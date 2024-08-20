@@ -19,4 +19,5 @@ type DiskFile struct {
 type DiskFileSearchCondition struct {
 	Parent   string `form:"parent" binding:"omitempty"`
 	FilePath string `form:"filepath" binding:"omitempty"`
+	FileType string `form:"fileType" binding:"omitempty"`
 }

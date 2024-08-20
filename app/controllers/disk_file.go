@@ -2,10 +2,10 @@ package controllers
 
 import (
 	"net/http"
+	"pan/app/constant"
+	"pan/app/models"
 	"pan/app/net"
-	"pan/extfs/errors"
-	"pan/extfs/models"
-	"pan/extfs/services"
+	"pan/app/services"
 )
 
 type DiskFileController struct {
@@ -28,7 +28,7 @@ func (c *DiskFileController) Search(ctx net.WebContext) {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	if err == errors.ErrConflict {
+	if err == constant.ErrConflict {
 		ctx.AbortWithError(http.StatusConflict, err)
 		return
 	}

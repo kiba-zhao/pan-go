@@ -13,6 +13,9 @@
     },
     "extfs/targets": {
       "name": "Target of ExtFS",
+      "input": {
+        "filepath": "File Path Select"
+      },
       "filters": {
         "has_enabled": "Enabled / Disabled",
         "enabled": "Enabled",
@@ -48,7 +51,14 @@
       "node-address": "Node Service Address",
       "broadcast-address": "Broadcast Service Address",
       "public-address": "Public Address",
-      "fields": { "rootPath": "Root Path", "nodeId": "Node ID" }
+      "fields": {
+        "rootPath": "Root Path",
+        "nodeId": "Node ID",
+        "name": "Node Name"
+      },
+      "input": {
+        "filepath": "Disk Path Selector"
+      }
     },
     "settings": {
       "name": "Settings"
@@ -57,12 +67,10 @@
       "actions": "Actions"
     },
     "pagination": "{{total}} results",
-    "input": {
-      "filepath": {
-        "title": "Disk File Selector"
-      }
-    },
     "button": {
+      "confirm": "Confirm",
+      "refresh": "Refresh",
+      "download": "Download",
       "qrscan": "QR Scan",
       "submit": "Submit",
       "cancel": "Cancel",

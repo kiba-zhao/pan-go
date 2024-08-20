@@ -26,9 +26,9 @@ import {
   useTranslate,
 } from "react-admin";
 
-import { formatBytes } from "../lib/byte";
-import { basename } from "../lib/path";
-import { InfinitePagination } from "./custom/List";
+import { formatBytes } from "./FilePath/byte";
+import { basename } from "./FilePath/path";
+import { InfinitePagination } from "./List/Infinite";
 
 export const TargetFileIcon = InsertDriveFileIcon;
 

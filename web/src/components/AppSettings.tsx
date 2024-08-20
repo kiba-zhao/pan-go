@@ -1,42 +1,53 @@
 import { Title, useTranslate } from "react-admin";
-import { useLocation, useNavigate } from "react-router-dom";
 
-import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
-import Autocomplete from "@mui/material/Autocomplete";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardActions from "@mui/material/CardActions";
 import CardContent from "@mui/material/CardContent";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
-import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { useMemo, useState } from "react";
 
-import { FilePathInput } from "./custom/FilePathInput";
-import type { QRScanChangedEvent } from "./custom/QRCode";
-import { QRCode, QRScan } from "./custom/QRCode";
-import NotFound from "./NotFound";
+import type { AppSettingsFields } from "../API";
+import { useAPI } from "../API";
+import {
+  Dialog,
+  DialogConfirmActions,
+  DialogSubmitActions,
+} from "./Feedback/Dialog";
+import { FilePathInput } from "./FilePath/Input";
+import { QRCodeDownloadButton } from "./QRCode/Base";
+import { NodeQRCode } from "./QRCode/Node";
 
-import type { ReactNode } from "react";
-
-const TabList = ["", "network-address"];
-const TabUrlList = TabList.map((_) =>
-  _.length > 0 ? `/app/settings/${_}` : `/app/settings`
-);
-const TabLabelList = TabList.map((_) =>
-  _.length > 0 ? `custom.app/settings.${_}` : "custom.app/settings.summary"
-);
+import {
+  useIsFetching,
+  useMutation,
+  usePrefetchQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import type { ChangeEvent, ReactNode } from "react";
+import {
+  Fragment,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  Controller,
+  FormProvider,
+  useFieldArray,
+  useForm,
+  useFormContext,
+} from "react-hook-form";
 
 const TabPanel = ({
   children,
@@ -50,296 +61,451 @@ const TabPanel = ({
   </Box>
 );
 
+const APP_SETTINGS_QUERY_KEY = ["app-settings"];
 export const AppSettings = () => {
-  const location = useLocation();
-  const value = useMemo(() => location.pathname, [location.pathname]);
-  if (!TabUrlList.includes(value)) {
-    return <NotFound />;
-  }
-
   const t = useTranslate();
-  const navigate = useNavigate();
+  const [tab, setTab] = useState("summary");
   const onChange = (_: React.SyntheticEvent, newValue: string) => {
-    navigate(newValue);
+    setTab(newValue);
   };
 
+  const api = useAPI();
+  usePrefetchQuery({
+    queryKey: APP_SETTINGS_QUERY_KEY,
+    queryFn: api?.getAppSettings,
+  });
+
   return (
-    <>
+    <Suspense fallback={<AppSettingsLoading />}>
       <Title title={t("custom.app/settings.name")} />
       <Paper>
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          justifyContent={"space-between"}
-        >
-          <Tabs value={value} onChange={onChange}>
-            {TabList.map((_, index) => (
-              <Tab
-                key={`custom.app/settings.${_}`}
-                label={t(TabLabelList[index])}
-                value={TabUrlList[index]}
-              />
-            ))}
-          </Tabs>
-          <Box></Box>
-        </Stack>
-
-        <TabPanel hidden={value !== TabUrlList[0]}>
+        <Tabs value={tab} onChange={onChange}>
+          <Tab label={t("custom.app/settings.summary")} value={"summary"} />
+          <Tab
+            label={t("custom.app/settings.web-address")}
+            value={"web-address"}
+          />
+          <Tab
+            label={t("custom.app/settings.node-address")}
+            value={"node-address"}
+          />
+          <Tab
+            label={t("custom.app/settings.broadcast-address")}
+            value={"broadcast-address"}
+          />
+          <Tab
+            label={t("custom.app/settings.public-address")}
+            value={"public-address"}
+          />
+        </Tabs>
+        <TabPanel hidden={tab !== "summary"}>
           <AppSummarySettings />
         </TabPanel>
-        <TabPanel hidden={value !== TabUrlList[1]}>
-          <AppNetworkAddressSettings />
+        <TabPanel hidden={tab !== "web-address"}>
+          <WebAddressSettings />
+        </TabPanel>
+        <TabPanel hidden={tab !== "node-address"}>
+          <NodeAddressSettings />
+        </TabPanel>
+        <TabPanel hidden={tab !== "broadcast-address"}>
+          <BroadcastAddressSettings />
+        </TabPanel>
+        <TabPanel hidden={tab !== "public-address"}>
+          <PublicAddressSettings />
         </TabPanel>
       </Paper>
-    </>
+    </Suspense>
   );
 };
 
-type NodeQRCodeProps = {
-  name?: string;
-  nodeId?: string;
-  width?: number;
-};
-export const NodeQRCode = ({
-  name = "",
-  nodeId = "",
-  width = 200,
-}: NodeQRCodeProps) => {
-  const value = useMemo(() => {
-    if (!name || name.length <= 0 || !nodeId || nodeId.length <= 0) return null;
-    const query = new URLSearchParams({ nodeId, name });
-    return `pan-go://app/node?${query.toString()}`;
-  }, [name, nodeId]);
-
-  return <QRCode value={value} width={width} />;
-};
-
-export const NodeQRScan = () => {
+const RefreshButton = () => {
   const t = useTranslate();
 
-  const [open, setOpen] = useState(false);
-  const onOpen = () => setOpen(true);
-  const onClose = () => setOpen(false);
-  const onChanged = (event: QRScanChangedEvent) => {
-    if (!URL.canParse(event.value)) return;
-    const url = new URL(event.value);
-    if (url.protocol !== "pan-go:") return;
-    if (url.host !== "app") return;
-    if (url.pathname !== "/node") return;
-    const nodeId = url.searchParams.get("nodeId");
-    const name = url.searchParams.get("name");
-    if (!nodeId || nodeId.length <= 0 || !name || name.length <= 0) return;
-    event.invalid = false;
-    console.log(11111, nodeId, name);
-    setOpen(false);
+  const isFetching = useIsFetching({
+    queryKey: APP_SETTINGS_QUERY_KEY,
+  });
+
+  const queryClient = useQueryClient();
+  const onClick = async () => {
+    if (isFetching) return;
+    await queryClient.refetchQueries({
+      queryKey: APP_SETTINGS_QUERY_KEY,
+      type: "active",
+    });
   };
   return (
-    <>
-      <Button
-        variant="contained"
-        size="small"
-        startIcon={<QrCodeScannerIcon />}
-        onClick={onOpen}
-      >
-        {t("custom.button.qrscan")}
-      </Button>
-      <Dialog open={open} onClose={onClose}>
-        <DialogContent>
-          <QRScan onChanged={onChanged} width="400" height="300" />
-        </DialogContent>
-        <DialogActions>
-          <Button size="small" onClick={onClose}>
-            {t("custom.button.cancel")}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+    <Button variant="contained" size="small" onClick={onClick}>
+      {t("custom.button.refresh")}
+    </Button>
   );
+};
+
+const SaveButton = () => {
+  const t = useTranslate();
+
+  const api = useAPI();
+  const { mutate } = useMutation({
+    mutationFn: api?.saveAppSettings,
+  });
+  const onSave = useCallback(
+    async (fields: AppSettingsFields) => {
+      return await mutate(fields);
+    },
+    [api]
+  );
+  const { handleSubmit } = useFormContext();
+
+  return (
+    <Button
+      variant="contained"
+      size="small"
+      color="error"
+      onClick={handleSubmit(onSave)}
+    >
+      {t("custom.button.save")}
+    </Button>
+  );
+};
+
+const AppSettingsLoading = () => {
+  return "App Settings Loading...";
 };
 
 const AppSummarySettings = () => {
   const t = useTranslate();
+
+  const api = useAPI();
+  const { data, isFetching, isError } = useSuspenseQuery({
+    queryKey: APP_SETTINGS_QUERY_KEY,
+    queryFn: api?.getAppSettings,
+  });
+  const defaultValues = useMemo(
+    () => ({ name: data?.name, rootPath: data?.rootPath }),
+    [data]
+  );
+  const methods = useForm({
+    defaultValues,
+  });
+  const { reset, control } = methods;
+
+  useEffect(() => {
+    if (isFetching) return;
+    if (isError) return;
+    reset(defaultValues);
+  }, [isFetching, isError]);
+
   return (
-    <Stack
-      padding={3}
-      direction="row"
-      spacing={5}
-      alignItems="flex-start"
-      justifyContent="flex-start"
-      useFlexGap
-      flexWrap="wrap"
-    >
-      <Stack spacing={2} alignItems="center" justifyContent={"space-between"}>
-        <NodeQRCode name={"localhost"} nodeId={"sample node id"} />
+    <Fragment>
+      <FormProvider {...methods}>
         <Stack
+          padding={3}
           direction="row"
-          spacing={1}
+          spacing={2}
           alignItems="center"
-          justifyContent={"space-between"}
+          justifyContent="flex-end"
         >
-          <Button variant="contained" size="small">
-            {t("custom.button.copy")}
-          </Button>
-          <Button variant="contained" color="error" size="small">
-            {t("custom.button.renew")}
-          </Button>
+          <SaveButton />
+          <RefreshButton />
+        </Stack>
+      </FormProvider>
+      <Stack
+        padding={3}
+        direction="row"
+        spacing={5}
+        alignItems="flex-start"
+        justifyContent="flex-start"
+        useFlexGap
+        flexWrap="wrap"
+      >
+        <NodeQRCode name={data?.name} nodeId={data?.nodeId}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            justifyContent={"space-between"}
+          >
+            <QRCodeDownloadButton />
+            <Button variant="contained" color="error" size="small">
+              {t("custom.button.renew")}
+            </Button>
+          </Stack>
+        </NodeQRCode>
+        <Stack spacing={2} minWidth={200} maxWidth={760} width={"70%"}>
+          <Controller
+            control={control}
+            name="rootPath"
+            render={({ field }) => (
+              <FilePathInput
+                title={t("custom.app/settings.input.filepath", {})}
+                label={t("custom.app/settings.fields.rootPath")}
+                fileType="D"
+                {...field}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="name"
+            render={({ field }) => (
+              <TextField
+                label={t("custom.app/settings.fields.name")}
+                fullWidth
+                variant="filled"
+                {...field}
+                disabled={isFetching}
+              />
+            )}
+          />
+
+          <TextField
+            label={t("custom.app/settings.fields.nodeId")}
+            fullWidth
+            multiline
+            rows={3}
+            variant="filled"
+            InputProps={{
+              readOnly: true,
+            }}
+            required
+            value={data?.nodeId}
+          />
         </Stack>
       </Stack>
-      <Stack spacing={2} minWidth={200} maxWidth={760} width={"70%"}>
-        <FilePathInput label={t("custom.app/settings.fields.rootPath")} />
-        <TextField
-          label={t("custom.app/settings.fields.nodeId")}
-          fullWidth
-          variant="filled"
-          InputProps={{
-            readOnly: true,
-          }}
-          defaultValue={"sample node id"}
-        />
-      </Stack>
-    </Stack>
+    </Fragment>
   );
 };
 
-type NewAddressButtonProps<T extends any> = {
-  options: T[];
+type AddressEditDialogProps = {
+  open: boolean;
+  onClose?: () => void;
+  onBlur?: () => void;
+  value?: string;
+  onChange?: (value: string) => void;
+};
+const AddressEditDialog = ({
+  open,
+  onClose,
+  value,
+  onChange,
+  onBlur,
+}: AddressEditDialogProps) => {
+  const t = useTranslate();
+  const initValue = useCallback(() => {
+    if (!value) return ["", 0];
+    const parts = value.split(":");
+    const port = Number(parts.at(-1));
+    const ip = parts.slice(0, -1).join(":");
+    return [ip, port];
+  }, [value]);
+
+  const [fields, setFields] = useState(initValue);
+
+  const onSubmit = () => {
+    if (onChange) onChange(fields.join(":"));
+    if (onClose) onClose();
+    setFields(initValue());
+  };
+
+  const onCancel = () => {
+    if (onBlur) onBlur();
+    if (onClose) onClose();
+    setFields(initValue());
+  };
+
+  const onIPChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setFields([e.target.value, fields[1]]);
+  };
+  const onPortChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setFields([fields[0], e.target.value]);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onCancel}
+      title={
+        <Stack direction="row" spacing={0.2} alignItems="flex-start">
+          <Typography variant="h6">
+            {t("custom.app/settings.network-address")}
+          </Typography>
+          <Typography
+            variant="caption"
+            bgcolor={"green"}
+            height={0.5}
+            paddingX={0.5}
+            borderRadius={0.5}
+          >
+            {t("custom.button.new")}
+          </Typography>
+        </Stack>
+      }
+      actions={<DialogSubmitActions onSubmit={onSubmit} onCancel={onCancel} />}
+    >
+      <TextField
+        label="地址"
+        value={fields[0]}
+        onChange={onIPChange}
+        variant="outlined"
+        focused
+      />
+      <TextField
+        label="端口"
+        value={fields[1]}
+        onChange={onPortChange}
+        variant="outlined"
+        focused
+      />
+    </Dialog>
+  );
 };
 
-const NewAddressButton = <T extends any>({
-  options,
-}: NewAddressButtonProps<T>) => {
+type AddressSource =
+  | "webAddress"
+  | "broadcastAddress"
+  | "nodeAddress"
+  | "publicAddress";
+
+const NewAddressButton = ({
+  source,
+  defaultValue,
+}: {
+  source: AddressSource;
+  defaultValue?: string;
+}) => {
   const t = useTranslate();
   const [open, setOpen] = useState(false);
   const onOpen = () => setOpen(true);
   const onClose = () => setOpen(false);
-  const onSubmit = () => {
-    onClose();
-  };
+
+  const { control } = useFormContext();
+  const { append } = useFieldArray({
+    control,
+    name: source,
+  });
   return (
-    <>
+    <Fragment>
       <Button variant="contained" color="success" size="small" onClick={onOpen}>
         {t("custom.button.new")}
       </Button>
-      <Dialog open={open} onClose={onClose}>
-        <DialogTitle>
-          <Stack direction="row" spacing={0.2} alignItems="flex-start">
-            <Typography variant="h6">
-              {t("custom.app/settings.network-address")}
-            </Typography>
-            <Typography
-              variant="caption"
-              bgcolor={"green"}
-              height={0.5}
-              paddingX={0.5}
-              borderRadius={0.5}
-            >
-              {t("custom.button.new")}
-            </Typography>
-          </Stack>
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            请选择需要增加的网络地址类型进行提交，提交后将在下面对应的分类末尾添加默认地址项。请根据需要进行修改。
-          </DialogContentText>
-          <Autocomplete
-            options={options}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={t("custom.app/settings.network-address")}
-                variant="standard"
-              />
-            )}
+      <Controller
+        control={control}
+        name={source}
+        render={({ field: { onChange, value, ...field_ } }) => (
+          <AddressEditDialog
+            open={open}
+            onClose={onClose}
+            value={defaultValue}
+            {...field_}
+            onChange={(value) => append(value)}
           />
-        </DialogContent>
-        <DialogActions>
-          <Button size="small" onClick={onClose}>
-            {t("custom.button.cancel")}
-          </Button>
-          <Button size="small" onClick={onSubmit}>
-            {t("custom.button.submit")}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+        )}
+      />
+    </Fragment>
   );
 };
 
-const EditAddressButton = () => {
+const EditAddressButton = ({ source }: { source: string }) => {
   const t = useTranslate();
+  const [open, setOpen] = useState(false);
+  const onOpen = () => setOpen(true);
+  const onClose = () => setOpen(false);
+
+  const { control } = useFormContext();
   return (
-    <Button variant="outlined" size="small">
-      {t("custom.button.edit")}
-    </Button>
+    <Fragment>
+      <Button variant="outlined" size="small" onClick={onOpen}>
+        {t("custom.button.edit")}
+      </Button>
+      <Controller
+        control={control}
+        name={source}
+        render={({ field }) => (
+          <AddressEditDialog open={open} onClose={onClose} {...field} />
+        )}
+      />
+    </Fragment>
   );
+  3;
 };
 
-const RemoveAddressButton = () => {
+const RemoveAddressButton = ({
+  source,
+  offset,
+}: {
+  source: AddressSource;
+  offset: number;
+}) => {
   const t = useTranslate();
-  return (
-    <Button variant="contained" color="error" size="small">
-      {t("custom.button.remove")}
-    </Button>
-  );
-};
+  const { control } = useFormContext();
+  const { remove } = useFieldArray({
+    control,
+    name: source,
+  });
 
-const APP_NETWORK_ADDRESS_TYPES = ["web", "node", "broadcast", "public"];
-const AppNetworkAddressSettings = () => {
-  const t = useTranslate();
-  const addressTypes = useMemo(() => {
-    return APP_NETWORK_ADDRESS_TYPES.map((_) => ({
-      label: t(`custom.app/settings.${_}-address`),
-      value: _,
-    }));
-  }, []);
+  const [open, setOpen] = useState(false);
+  const onOpen = () => setOpen(true);
+  const onClose = () => setOpen(false);
+
+  const onConfirm = (confirm: boolean) => {
+    if (confirm) remove(offset);
+    onClose();
+  };
 
   return (
-    <Stack spacing={2}>
-      <Stack
-        direction="row"
-        spacing={2}
-        alignItems="center"
-        justifyContent={"flex-end"}
+    <Fragment>
+      <Button variant="contained" color="error" size="small" onClick={onOpen}>
+        {t("custom.button.remove")}
+      </Button>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        title={"确定要删除吗?"}
+        actions={<DialogConfirmActions onConfirm={onConfirm} />}
       >
-        <NewAddressButton options={addressTypes} />
-        <Button variant="contained" color="error" size="small">
-          {t("custom.button.save")}
-        </Button>
-        <Button variant="contained" size="small">
-          {t("custom.button.reset")}
-        </Button>
-      </Stack>
-      {addressTypes.map(({ label, value }) => (
-        <AppAddressSettings
-          key={value}
-          avatar={value[0].toUpperCase()}
-          title={label}
-          addresses={["0.0.0.0:9000"]}
-        >
-          <EditAddressButton />
-          <RemoveAddressButton />
-        </AppAddressSettings>
-      ))}
-    </Stack>
+        <DialogContentText> 确定要删除吗?</DialogContentText>
+      </Dialog>
+    </Fragment>
   );
 };
 
 type AppAddressSettingsProps = {
-  title: string;
-  avatar: string;
-  addresses: string[];
+  source: AddressSource;
   children: ReactNode;
 };
-const AppAddressSettings = ({
-  title,
-  avatar,
-  addresses,
-  children,
-}: AppAddressSettingsProps) => {
+const AppAddressSettings = ({ source, children }: AppAddressSettingsProps) => {
+  const avatar = useMemo(() => source[0].toUpperCase(), [source]);
+
+  const api = useAPI();
+  const { data, isFetching, isError } = useSuspenseQuery({
+    queryKey: APP_SETTINGS_QUERY_KEY,
+    queryFn: api?.getAppSettings,
+  });
+  const defaultValues = useMemo(() => ({ [source]: data[source] }), [data]);
+  const methods = useForm({
+    defaultValues,
+  });
+  const { reset, watch } = methods;
+
+  useEffect(() => {
+    if (isFetching) return;
+    if (isError) return;
+    reset(defaultValues);
+  }, [isFetching, isError]);
+
+  const addresses = watch(source);
+
   return (
-    <Stack spacing={2}>
-      <Divider>{title}</Divider>
+    <FormProvider {...methods}>
+      <Stack
+        padding={3}
+        direction="row"
+        spacing={2}
+        alignItems="center"
+        justifyContent="flex-end"
+      >
+        {children}
+      </Stack>
+
       <Stack
         direction="row"
         spacing={3}
@@ -348,12 +514,17 @@ const AppAddressSettings = ({
         flexWrap="wrap"
       >
         {addresses.map((address, i) => (
-          <AppAddressSettingsItem key={i} avatar={avatar} address={address}>
-            {children}
+          <AppAddressSettingsItem
+            key={`${source}-${i}`}
+            avatar={avatar}
+            address={address}
+          >
+            <EditAddressButton source={`${source}.${i}`} />
+            <RemoveAddressButton source={source} offset={i} />
           </AppAddressSettingsItem>
         ))}
       </Stack>
-    </Stack>
+    </FormProvider>
   );
 };
 
@@ -419,5 +590,49 @@ const AppAddressSettingsItem = ({
         </Stack>
       </CardActions>
     </Card>
+  );
+};
+
+const WebAddressSettings = () => {
+  const source = "webAddress";
+  return (
+    <AppAddressSettings source={source}>
+      <NewAddressButton source={source} defaultValue="127.0.0.1:9002" />
+      <SaveButton />
+      <RefreshButton />
+    </AppAddressSettings>
+  );
+};
+
+const NodeAddressSettings = () => {
+  const source = "nodeAddress";
+  return (
+    <AppAddressSettings source={source}>
+      <NewAddressButton source={source} defaultValue="0.0.0.0:9000" />
+      <SaveButton />
+      <RefreshButton />
+    </AppAddressSettings>
+  );
+};
+
+const BroadcastAddressSettings = () => {
+  const source = "broadcastAddress";
+  return (
+    <AppAddressSettings source={source}>
+      <NewAddressButton source={source} defaultValue="224.0.0.120:9100" />
+      <SaveButton />
+      <RefreshButton />
+    </AppAddressSettings>
+  );
+};
+
+const PublicAddressSettings = () => {
+  const source = "publicAddress";
+  return (
+    <AppAddressSettings source={source}>
+      <NewAddressButton source={source} defaultValue="0.0.0.0:9000" />
+      <SaveButton />
+      <RefreshButton />
+    </AppAddressSettings>
   );
 };

@@ -3,8 +3,8 @@ package services
 import (
 	"encoding/base64"
 	"os"
-	"pan/extfs/errors"
-	"pan/extfs/models"
+	"pan/app/constant"
+	"pan/app/models"
 	"path"
 	"sync"
 )
@@ -31,8 +31,12 @@ func (s *DiskFileService) Search(conditions models.DiskFileSearchCondition) (tot
 			return
 		}
 
+		if conditions.FileType != "" && conditions.FileType != item.FileType {
+			return
+		}
+
 		if conditions.Parent != "" && conditions.Parent != item.Parent {
-			err = errors.ErrConflict
+			err = constant.ErrConflict
 			return
 		}
 
@@ -55,6 +59,9 @@ func (s *DiskFileService) Search(conditions models.DiskFileSearchCondition) (tot
 		info, err := dir.Info()
 		if err != nil {
 			break
+		}
+		if conditions.FileType != "" && conditions.FileType != getFileType(info.IsDir()) {
+			continue
 		}
 		filepath := path.Join(conditions.Parent, dir.Name())
 		items = append(items, models.DiskFile{

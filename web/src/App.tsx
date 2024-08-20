@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query";
 import {
   Admin,
   CustomRoutes,
@@ -5,9 +6,9 @@ import {
   Resource,
   defaultTheme,
 } from "react-admin";
-import { QueryClient } from "react-query";
 import { BrowserRouter, Route } from "react-router-dom";
 import { dataProvider } from "./api";
+import { APIProvider } from "./API";
 import { useI18nProvider } from "./i18n";
 
 import { AppNodeCreate, AppNodeIcon, AppNodes } from "./components/AppNodes";
@@ -37,42 +38,44 @@ export const App = () => {
   if (!i18nProvider) return null;
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <Admin
-        disableTelemetry
-        theme={defaultTheme}
-        darkTheme={darkTheme}
-        dataProvider={dataProvider}
-        i18nProvider={i18nProvider}
-        catchAll={NotFound}
-        dashboard={Dashboard}
-        queryClient={queryClient}
-        layout={AppLayout}
-      >
-        <CustomRoutes>
-          <Route path="/app/settings/*" element={<AppSettings />} />
-        </CustomRoutes>
-        <Resource
-          name="app/nodes"
-          list={AppNodes}
-          icon={AppNodeIcon}
-          create={AppNodeCreate}
-        />
-        <Resource
-          name="extfs/targets"
-          list={Targets}
-          edit={TargetEdit}
-          show={TargetShow}
-          create={TargetCreate}
-        />
-        <Resource
-          name="extfs/target-files"
-          icon={TargetFileIcon}
-          list={TargetFiles}
-          show={TargetFileShow}
-          hasEdit={false}
-          hasCreate={false}
-        />
-      </Admin>
+      <APIProvider>
+        <Admin
+          disableTelemetry
+          theme={defaultTheme}
+          darkTheme={darkTheme}
+          dataProvider={dataProvider}
+          i18nProvider={i18nProvider}
+          catchAll={NotFound}
+          dashboard={Dashboard}
+          queryClient={queryClient}
+          layout={AppLayout}
+        >
+          <CustomRoutes>
+            <Route path="/app/settings/*" element={<AppSettings />} />
+          </CustomRoutes>
+          <Resource
+            name="app/nodes"
+            list={AppNodes}
+            icon={AppNodeIcon}
+            create={AppNodeCreate}
+          />
+          <Resource
+            name="extfs/targets"
+            list={Targets}
+            edit={TargetEdit}
+            show={TargetShow}
+            create={TargetCreate}
+          />
+          <Resource
+            name="extfs/target-files"
+            icon={TargetFileIcon}
+            list={TargetFiles}
+            show={TargetFileShow}
+            hasEdit={false}
+            hasCreate={false}
+          />
+        </Admin>
+      </APIProvider>
     </BrowserRouter>
   );
 };
