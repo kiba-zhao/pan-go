@@ -19,6 +19,7 @@ type ConfigListener[T any] interface {
 }
 
 type Config[T any] interface {
+	Read() (settings T, err error)
 	Load() (settings T, err error)
 	Save(settings T) error
 }
@@ -66,7 +67,7 @@ func (c *configImpl[T]) Components() []runtime.Component {
 	}
 }
 
-func (c *configImpl[T]) read() (T, error) {
+func (c *configImpl[T]) Read() (T, error) {
 	var settings T
 	var err error
 	if c.isPtrType {
@@ -83,7 +84,7 @@ func (c *configImpl[T]) Load() (T, error) {
 	c.rw.RLock()
 	defer c.rw.RUnlock()
 
-	settings, err := c.read()
+	settings, err := c.Read()
 	if err == nil {
 		onSettingsUpdated(c.registry, settings)
 	}

@@ -7,9 +7,9 @@ import (
 )
 
 type AppNodeFields struct {
-	NodeID  string `gorm:"size:255;json:"nodeId" form:"nodeId"`
-	Name    string `gorm:"size:255;json:"name" form:"name"`
-	Blocked *bool  `gorm:"index" json:"blocked" form:"blocked"`
+	NodeID  string `json:"nodeId" form:"nodeId"`
+	Name    string `json:"name" form:"name"`
+	Blocked *bool  `json:"blocked" form:"blocked"`
 }
 
 type AppNode struct {

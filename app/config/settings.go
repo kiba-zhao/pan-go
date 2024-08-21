@@ -8,14 +8,12 @@ import (
 type AppSettings = *Settings
 
 type Settings struct {
-	RootPath         string
-	Name             string
-	WebAddress       []string
-	NodeAddress      []string
-	PrivateKeyPath   string
-	CertificatePath  string
-	BroadcastAddress []string
-	PublicAddress    []string
+	RootPath         string   `json:"rootPath" form:"rootPath"`
+	Name             string   `json:"name" form:"name"`
+	WebAddress       []string `json:"webAddress" form:"webAddress"`
+	NodeAddress      []string `json:"nodeAddress" form:"nodeAddress"`
+	BroadcastAddress []string `json:"broadcastAddress" form:"broadcastAddress"`
+	PublicAddress    []string `json:"publicAddress" form:"publicAddress"`
 }
 
 func newDefaultSettings() AppSettings {
@@ -25,8 +23,6 @@ func newDefaultSettings() AppSettings {
 	settings.WebAddress = []string{"127.0.0.1:9002"}
 	settings.NodeAddress = []string{"0.0.0.0:9000"}
 	settings.BroadcastAddress = []string{"224.0.0.120:9100"}
-	settings.PrivateKeyPath = path.Join(settings.RootPath, "key.pem")
-	settings.CertificatePath = path.Join(settings.RootPath, "cert.pem")
 	settings.PublicAddress = settings.NodeAddress
 
 	return settings

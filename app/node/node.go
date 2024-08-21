@@ -105,15 +105,17 @@ func (ns *nodeSettings) Init(registry runtime.Registry) error {
 
 func (ns *nodeSettings) OnConfigUpdated(settings config.AppSettings) {
 
+	privKeyPath, certificatePath := generatePrivKeyPathAndCertificatePath(settings.RootPath)
+
 	var err error
-	keyPEMBlock, err := os.ReadFile(settings.PrivateKeyPath)
+	keyPEMBlock, err := os.ReadFile(privKeyPath)
 	var certPEMBlock []byte
 	var cert tls.Certificate
 	var privKey crypto.PrivateKey
 	var hashCode []byte
 	var x509Cert *x509.Certificate
 	if err == nil {
-		certPEMBlock, err = os.ReadFile(settings.CertificatePath)
+		certPEMBlock, err = os.ReadFile(certificatePath)
 	}
 
 	if err == nil {
@@ -268,11 +270,12 @@ func (ns *nodeSettings) GenerateWithAppSettings(settings config.AppSettings) err
 	ns.locker.Lock()
 	defer ns.locker.Unlock()
 
-	err = os.MkdirAll(path.Dir(settings.PrivateKeyPath), 0750)
+	privKeyPath, certificatePath := generatePrivKeyPathAndCertificatePath(settings.RootPath)
+	err = os.MkdirAll(path.Dir(privKeyPath), 0750)
 	if err != nil {
 		return err
 	}
-	keyFile, err := os.Create(settings.PrivateKeyPath)
+	keyFile, err := os.Create(privKeyPath)
 	if err != nil {
 		return err
 	}
@@ -282,11 +285,11 @@ func (ns *nodeSettings) GenerateWithAppSettings(settings config.AppSettings) err
 		return err
 	}
 
-	err = os.MkdirAll(path.Dir(settings.CertificatePath), 0750)
+	err = os.MkdirAll(path.Dir(certificatePath), 0750)
 	if err != nil {
 		return err
 	}
-	certFile, err := os.Create(settings.CertificatePath)
+	certFile, err := os.Create(certificatePath)
 	if err != nil {
 		return err
 	}
@@ -309,6 +312,11 @@ func (ns *nodeSettings) GenerateWithAppSettings(settings config.AppSettings) err
 
 	ns.onUpdated()
 	return err
+}
+
+func generatePrivKeyPathAndCertificatePath(rootPath string) (string, string) {
+
+	return path.Join(rootPath, "key.pem"), path.Join(rootPath, "cert.pem")
 }
 
 type NodeManager interface {

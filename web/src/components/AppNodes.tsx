@@ -14,7 +14,6 @@ import {
   TextField,
   TextInput,
   TopToolbar,
-  useTranslate,
 } from "react-admin";
 
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -46,7 +45,7 @@ type AppNode = {
 };
 
 const AppNodeStatFilter = () => {
-  const t = useTranslate();
+  // const t = useTranslate();
   return (
     <FilterList
       label="resources.app/nodes.filters.stat"
@@ -100,7 +99,7 @@ const AppNodeSimpleFilters = [
 ];
 
 export const AppNodes = () => {
-  const t = useTranslate();
+  // const t = useTranslate();
   return (
     <InfiniteList
       pagination={<InfinitePagination />}
@@ -163,7 +162,7 @@ export const AppNodeCreate = () => (
 );
 
 const AppNodeQRCode = () => {
-  const t = useTranslate();
+  // const t = useTranslate();
 
   const name = useWatch({ name: "name" });
   const nodeId = useWatch({ name: "nodeId" });

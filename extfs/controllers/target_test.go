@@ -233,7 +233,7 @@ func TestTargetController(t *testing.T) {
 	})
 
 	t.Run("DELETE /targets/:id", func(t *testing.T) {
-		t.Skip("debug")
+
 		web, ctrl := setup()
 
 		targetRepo := new(mockedRepo.MockTargetRepository)
