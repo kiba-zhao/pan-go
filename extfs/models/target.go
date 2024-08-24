@@ -23,7 +23,7 @@ type TargetQueryOptions struct {
 
 type Target struct {
 	ID        uint           `gorm:"primarykey" json:"id" form:"id"`
-	CreatedAt time.Time      `json:"createAt" form:"createAt"`
+	CreatedAt time.Time      `json:"createdAt" form:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt" form:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt" form:"deletedAt"`
 	Name      string         `gorm:"size:255;index" json:"name" form:"name"`

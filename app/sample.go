@@ -5,26 +5,21 @@ import (
 	"pan/app/config"
 	"pan/app/net"
 	"pan/app/node"
+	"pan/app/repositories"
 	"pan/runtime"
 	"path"
+	"reflect"
 	"sync"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-type RepositoryDB = *gorm.DB
+type RepositoryDB = repositories.RepositoryDB
 
-type RepositoryDBProvider interface {
-	DB() RepositoryDB
-}
+type RepositoryDBProvider = repositories.RepositoryDBProvider
 
-func DBForProvider(provider RepositoryDBProvider) RepositoryDB {
-	if provider == nil {
-		return nil
-	}
-	return provider.DB()
-}
+var DBForProvider = repositories.DBForProvider
 
 type SampleProvider interface {
 	Name() string
@@ -60,6 +55,11 @@ func (s *sample[T]) OnConfigUpdated(settings config.AppSettings) {
 
 	s.rootPath = settings.RootPath
 
+	models := s.provider.Models()
+	if len(models) <= 0 {
+		return
+	}
+
 	var db RepositoryDB
 	_, err := os.Stat(s.rootPath)
 	if os.IsNotExist(err) {
@@ -70,7 +70,7 @@ func (s *sample[T]) OnConfigUpdated(settings config.AppSettings) {
 		db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	}
 	if err == nil {
-		_ = db.AutoMigrate(s.provider.Models()...)
+		_ = db.AutoMigrate(models...)
 	}
 	s.db = db
 }
@@ -118,4 +118,13 @@ func (s *sample[T]) Components() []runtime.Component {
 
 func (s *sample[T]) Modules() []interface{} {
 	return []interface{}{s.provider}
+}
+
+func AppendSampleComponent[T any](components []runtime.Component, component T) []runtime.Component {
+	t := reflect.TypeFor[T]()
+	if t.Kind() == reflect.Interface {
+		components = append(components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentNoneScope))
+	}
+	components = append(components, runtime.NewComponent(component, runtime.ComponentInternalScope))
+	return components
 }

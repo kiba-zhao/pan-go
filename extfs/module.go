@@ -11,7 +11,6 @@ import (
 	repoImpl "pan/extfs/repositories/impl"
 	"pan/extfs/services"
 	"pan/runtime"
-	"reflect"
 	"sync"
 )
 
@@ -53,32 +52,22 @@ func (m *module) Components() []runtime.Component {
 	// base
 	components := []runtime.Component{
 		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
+		// services
+		runtime.NewComponent(&services.TargetService{}, runtime.ComponentInternalScope),
+		runtime.NewComponent(&services.TargetFileService{}, runtime.ComponentInternalScope),
 	}
 
 	// repositories
-	components = setupComponent[repositories.TargetRepository](components, &repoImpl.TargetRepository{})
-	components = setupComponent[repositories.TargetFileRepository](components, &repoImpl.TargetFileRepository{})
-
-	// services
-	components = setupComponent(components, &services.TargetService{})
-	components = setupComponent(components, &services.TargetFileService{})
+	components = app.AppendSampleComponent[repositories.TargetRepository](components, &repoImpl.TargetRepository{})
+	components = app.AppendSampleComponent[repositories.TargetFileRepository](components, &repoImpl.TargetFileRepository{})
 
 	// dispatchers
-	components = setupComponent[dispatchers.TargetDispatcher](components, dispatcherImpl.NewTargetDispatcher())
+	components = app.AppendSampleComponent[dispatchers.TargetDispatcher](components, dispatcherImpl.NewTargetDispatcher())
 
 	// controllers
 	for _, ctrl := range m.Controllers() {
 		components = append(components, runtime.NewComponent(ctrl, runtime.ComponentNoneScope))
 	}
 
-	return components
-}
-
-func setupComponent[T any](components []runtime.Component, component T) []runtime.Component {
-	t := reflect.TypeFor[T]()
-	if t.Kind() == reflect.Interface {
-		components = append(components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentNoneScope))
-	}
-	components = append(components, runtime.NewComponent(component, runtime.ComponentInternalScope))
 	return components
 }

@@ -68,10 +68,12 @@
     },
     "pagination": "{{total}} results",
     "button": {
+      "close": "Close",
       "confirm": "Confirm",
       "refresh": "Refresh",
       "download": "Download",
-      "qrscan": "QR Scan",
+      "qrscan": "Scan",
+      "qrscan-file": "File Scan",
       "submit": "Submit",
       "cancel": "Cancel",
       "remove": "Remove",

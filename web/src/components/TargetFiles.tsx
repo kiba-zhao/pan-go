@@ -41,8 +41,8 @@ type TargetFile = {
   checkSum: string;
   modTime: Date;
   available: boolean;
-  createAt: Date;
-  updateAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 const TargetFileInvalidFilter = () => {
@@ -150,8 +150,8 @@ export const TargetFileShow = () => {
           <TextField source="checkSum" />
           <DateField source="modTime" showTime />
           <BooleanField source="available" />
-          <DateField source="createAt" showTime />
-          <DateField source="updateAt" showTime />
+          <DateField source="createdAt" showTime />
+          <DateField source="updatedAt" showTime />
         </TabbedShowLayout.Tab>
       </TabbedShowLayout>
     </Show>

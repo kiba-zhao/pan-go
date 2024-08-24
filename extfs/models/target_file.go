@@ -13,7 +13,7 @@ import (
  */
 type TargetFile struct {
 	ID             uint64         `gorm:"primaryKey" json:"id" form:"id"`
-	CreatedAt      time.Time      `json:"createAt" form:"createAt"`
+	CreatedAt      time.Time      `json:"createdAt" form:"createdAt"`
 	UpdatedAt      time.Time      `json:"updatedAt" form:"updatedAt"`
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"deletedAt" form:"deletedAt"`
 	TargetID       uint           `gorm:"index" json:"targetId" form:"targetId"`

@@ -78,7 +78,7 @@ func (repo *TargetRepository) Search(conditions models.TargetSearchCondition) (t
 				tx = tx.Or("file_path like ?", "%"+keyword+"%")
 			}
 		}
-		db.Where(tx)
+		db = db.Where(tx)
 	}
 
 	if conditions.Enabled != nil {

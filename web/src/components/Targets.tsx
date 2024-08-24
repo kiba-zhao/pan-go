@@ -136,7 +136,7 @@ export const Targets = () => {
         <TextField source="filepath" />
         <BooleanField source="enabled" />
         <BooleanField source="available" />
-        <DateField source="createAt" showTime />
+        <DateField source="createdAt" showTime />
         <WrapperField label="custom.table.actions">
           <EditButton />
           <ShowButton />
@@ -187,13 +187,13 @@ const TargetEditActions = () => (
 export const TargetEdit = () => (
   <Edit actions={<TargetEditActions />} mutationMode="pessimistic">
     <SimpleForm>
-      <TextInput source="id" readOnly={true} />
+      <TextInput source="id" readOnly />
       <TextInput source="name" />
       <RAFilePathInput source="filepath" />
       <BooleanInput source="enabled" />
-      <BooleanInput source="available" disabled={true} />
-      <DateTimeInput source="createAt" disabled={true} />
-      <DateTimeInput source="updatedAt" disabled={true} />
+      <BooleanInput source="available" readOnly />
+      <DateTimeInput source="createdAt" readOnly />
+      <DateTimeInput source="updatedAt" readOnly />
     </SimpleForm>
   </Edit>
 );
@@ -213,7 +213,7 @@ export const TargetShow = () => (
       <TextField source="filepath" />
       <BooleanField source="enabled" />
       <BooleanField source="available" />
-      <DateField source="createAt" showTime />
+      <DateField source="createdAt" showTime />
       <DateField source="updatedAt" showTime />
     </SimpleShowLayout>
   </Show>

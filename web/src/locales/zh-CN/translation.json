@@ -8,8 +8,8 @@
         "online": "在线",
         "offline": "离线",
         "blocked": "封锁",
-        "createAt": "创建时间",
-        "updateAt": "更新时间"
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间"
       },
       "filters": {
         "stat": "在线 / 封锁",
@@ -24,8 +24,8 @@
         "filepath": "文件路径",
         "enabled": "启用状态",
         "available": "可用状态",
-        "createAt": "创建时间",
-        "updateAt": "更新时间"
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间"
       },
       "input": {
         "filepath": "文件路径选择"
@@ -50,8 +50,8 @@
         "checkSum": "文件签名",
         "modTime": "修改时间",
         "available": "可用状态",
-        "createAt": "创建时间",
-        "updateAt": "更新时间"
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间"
       },
       "filters": {
         "help_available": "总数不受该过滤器影响",
@@ -90,10 +90,12 @@
     },
     "pagination": "总共 {{total}} 项",
     "button": {
+      "close": "关闭",
       "confirm": "确认",
       "refresh": "刷新",
       "download": "下载",
       "qrscan": "扫一扫",
+      "qrscan-file": "文件扫描",
       "submit": "提交",
       "cancel": "取消",
       "remove": "移除",

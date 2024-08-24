@@ -11,7 +11,12 @@ import { dataProvider } from "./api";
 import { APIProvider } from "./API";
 import { useI18nProvider } from "./i18n";
 
-import { AppNodeCreate, AppNodeIcon, AppNodes } from "./components/AppNodes";
+import {
+  APPNodeEdit,
+  AppNodeCreate,
+  AppNodeIcon,
+  AppNodes,
+} from "./components/AppNodes";
 import { AppSettings } from "./components/AppSettings";
 import Dashboard from "./components/Dashboard";
 import { AppLayout } from "./components/Layout";
@@ -58,6 +63,7 @@ export const App = () => {
             list={AppNodes}
             icon={AppNodeIcon}
             create={AppNodeCreate}
+            edit={APPNodeEdit}
           />
           <Resource
             name="extfs/targets"

@@ -4,8 +4,11 @@ import (
 	"encoding/base64"
 	"pan/app/config"
 	"pan/app/controllers"
+	"pan/app/models"
 	"pan/app/net"
 	"pan/app/node"
+	"pan/app/repositories"
+	repoImpl "pan/app/repositories/impl"
 	"pan/app/services"
 	"pan/runtime"
 	"sync"
@@ -44,7 +47,9 @@ func (m *module) Controllers() []interface{} {
 }
 
 func (m *module) Models() []interface{} {
-	return nil
+	return []interface{}{
+		&models.Node{},
+	}
 }
 
 func (m *module) Components() []runtime.Component {
@@ -54,7 +59,11 @@ func (m *module) Components() []runtime.Component {
 		// services
 		runtime.NewComponent(&services.DiskFileService{}, runtime.ComponentInternalScope),
 		runtime.NewComponent(&services.SettingsService{Provider: m}, runtime.ComponentInternalScope),
+		runtime.NewComponent(&services.NodeService{Provider: m}, runtime.ComponentInternalScope),
 	}
+
+	// repositories
+	components = AppendSampleComponent[repositories.NodeRepository](components, &repoImpl.NodeRepository{})
 
 	// controllers
 	for _, ctrl := range m.Controllers() {
@@ -92,4 +101,12 @@ func (m *module) NodeID() string {
 		return ""
 	}
 	return base64.StdEncoding.EncodeToString(nodeSettings.NodeID())
+}
+
+func (m *module) NodeManager() node.NodeManager {
+	if m.Node == nil {
+		return nil
+	}
+	mgr := m.Node.NodeManager()
+	return mgr
 }

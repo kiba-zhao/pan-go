@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
+import type { ChangeEvent, ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
+import type { QRCode as JSQRCode } from "jsqr";
 import jsQR from "jsqr";
 import type { QRCodeRenderersOptions } from "qrcode";
 import { toCanvas } from "qrcode";
@@ -11,7 +13,7 @@ import {
 } from "../Global/Translation";
 
 import Button from "@mui/material/Button";
-import type { Dispatch, ReactNode } from "react";
+import type { Dispatch } from "react";
 import { createContext, useContext, useReducer } from "react";
 
 import PhotoIcon from "@mui/icons-material/Photo";
@@ -183,12 +185,13 @@ export const QRScan = ({ onChanged, once, width, height }: QRScanProps) => {
     if (!canvasRef.current) return;
     if (video.paused) return;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const results = jsQR(imageData.data, imageData.width, imageData.height);
     if (!results) return true;
+    drawDetectionBox(ctx, results.location);
     if (valueRef.current === results.data) return;
     const event: QRScanChangedEvent = { value: results.data };
     onChanged(event);
@@ -205,3 +208,83 @@ export const QRScan = ({ onChanged, once, width, height }: QRScanProps) => {
     </>
   );
 };
+
+type QRFileScanProps = {
+  onChange: (value: string) => void;
+};
+export const QRFileScan = ({ onChange }: QRFileScanProps) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const [image, setImage] = useState<string | undefined>();
+
+  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImage(URL.createObjectURL(file));
+    e.target.value = "";
+  };
+
+  const onLoad = () => {
+    if (!canvasRef.current || !imageRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const img = imageRef.current;
+    canvas.width = img.width;
+    canvas.height = img.height;
+    if (!ctx) return;
+
+    ctx.reset();
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const results = jsQR(imageData.data, imageData.width, imageData.height);
+    onChange(results?.data || "");
+  };
+
+  return (
+    <Fragment>
+      <input type="file" hidden accept="image/*" onChange={onFileChange} />
+      <img
+        hidden
+        src={image}
+        alt="qr image decode"
+        onLoad={onLoad}
+        ref={imageRef}
+      />
+      <canvas ref={canvasRef} hidden />
+    </Fragment>
+  );
+};
+
+type QRCodeLocation = JSQRCode["location"];
+type QRCodePoint = QRCodeLocation["topLeftCorner"];
+
+function drawDetectionBox(
+  canvas: CanvasRenderingContext2D,
+  location: QRCodeLocation,
+  color?: CanvasFillStrokeStyles["strokeStyle"]
+) {
+  const color_ = color || "red";
+  drawLine(canvas, location.topLeftCorner, location.topRightCorner, color_);
+  drawLine(canvas, location.topRightCorner, location.bottomRightCorner, color_);
+  drawLine(
+    canvas,
+    location.bottomRightCorner,
+    location.bottomLeftCorner,
+    color_
+  );
+  drawLine(canvas, location.bottomLeftCorner, location.topLeftCorner, color_);
+}
+
+function drawLine(
+  canvas: CanvasRenderingContext2D,
+  begin: QRCodePoint,
+  end: QRCodePoint,
+  color: CanvasFillStrokeStyles["strokeStyle"]
+) {
+  canvas.beginPath();
+  canvas.moveTo(begin.x, begin.y);
+  canvas.lineTo(end.x, end.y);
+  canvas.lineWidth = 4;
+  canvas.strokeStyle = color;
+  canvas.stroke();
+}

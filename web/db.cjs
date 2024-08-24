@@ -42,8 +42,8 @@ function generateTarget() {
     enabled: faker.datatype.boolean(),
     version: faker.number.int(0, 255),
     available: faker.datatype.boolean(),
-    createAt: faker.date.past(),
-    updateAt: faker.date.past(),
+    createdAt: faker.date.past(),
+    updatedAt: faker.date.past(),
   };
 }
 
@@ -62,7 +62,7 @@ function generateDiskFile(folders) {
     filepath,
     parent: folder,
     fileType: isDir ? "D" : "F",
-    updateAt: faker.date.past(),
+    updatedAt: faker.date.past(),
   };
 }
 
@@ -73,7 +73,7 @@ function generateDiskRoot() {
     filepath: "/",
     fileType: "D",
     parent: "",
-    updateAt: faker.date.past(),
+    updatedAt: faker.date.past(),
   };
 }
 
@@ -87,8 +87,8 @@ function generateTargetFile(target) {
     modTime: faker.date.past(),
     checkSum: faker.string.alphanumeric(88),
     mimeType: faker.system.mimeType(),
-    createAt: faker.date.past(),
-    updateAt: faker.date.past(),
+    createdAt: faker.date.past(),
+    updatedAt: faker.date.past(),
   };
 }
 
@@ -133,8 +133,8 @@ function generateNodes() {
         name: faker.internet.domainName(),
         blocked,
         online: blocked || faker.datatype.boolean(),
-        createAt: faker.date.past(),
-        updateAt: faker.date.past(),
+        createdAt: faker.date.past(),
+        updatedAt: faker.date.past(),
       };
     },
     {

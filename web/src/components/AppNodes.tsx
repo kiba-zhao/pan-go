@@ -2,6 +2,8 @@ import {
   BooleanField,
   BooleanInput,
   Create,
+  DateTimeInput,
+  Edit,
   FilterList,
   FilterListItem,
   FilterLiveSearch,
@@ -21,7 +23,8 @@ import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Stack from "@mui/material/Stack";
-import { NodeQRCode, NodeQRScan } from "./QRCode/Node";
+import type { NodeQRCodeValue } from "./QRCode/Node";
+import { NodeFileQRScan, NodeQRCode, NodeQRScan } from "./QRCode/Node";
 
 import { InfinitePagination } from "./List/Infinite";
 
@@ -30,7 +33,7 @@ import DesktopAccessDisabledIcon from "@mui/icons-material/DesktopAccessDisabled
 
 import LanIcon from "@mui/icons-material/Lan";
 
-import { useWatch } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 export const AppNodeIcon = LanIcon;
 
@@ -40,8 +43,8 @@ type AppNode = {
   name: string;
   blocked: boolean;
   online: boolean;
-  createAt: Date;
-  updateAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 const AppNodeStatFilter = () => {
@@ -119,7 +122,7 @@ export const AppNodes = () => {
             valueLabelFalse="resources.app/nodes.fields.offline"
           />
         )}
-        tertiaryText={(record) => new Date(record.updateAt).toLocaleString()}
+        tertiaryText={(record) => new Date(record.updatedAt).toLocaleString()}
       />
     </InfiniteList>
   );
@@ -145,7 +148,7 @@ export const AppNodeCreate = () => (
         flexWrap="wrap"
         width={"100%"}
       >
-        <AppNodeQRCode />
+        <AppNodeQRScan />
         <Stack spacing={1} minWidth={200} maxWidth={760} width={"70%"}>
           <TextInput source="name" fullWidth />
           <TextInput source="nodeId" fullWidth rows={3} multiline />
@@ -162,10 +165,18 @@ export const AppNodeCreate = () => (
 );
 
 const AppNodeQRCode = () => {
-  // const t = useTranslate();
-
   const name = useWatch({ name: "name" });
   const nodeId = useWatch({ name: "nodeId" });
+  return <NodeQRCode name={name} nodeId={nodeId} />;
+};
+
+const AppNodeQRScan = () => {
+  const { setValue } = useFormContext();
+
+  const onQRScan = ({ nodeId, name }: NodeQRCodeValue) => {
+    setValue("nodeId", nodeId, { shouldValidate: true, shouldDirty: true });
+    setValue("name", name, { shouldValidate: true, shouldDirty: true });
+  };
 
   return (
     <Stack
@@ -174,15 +185,47 @@ const AppNodeQRCode = () => {
       alignItems="center"
       justifyContent={"space-between"}
     >
-      <NodeQRCode name={name} nodeId={nodeId} />
+      <AppNodeQRCode />
       <Stack
         direction="row"
         spacing={1}
         alignItems="center"
         justifyContent={"space-between"}
       >
-        <NodeQRScan />
+        <NodeQRScan onQRScan={onQRScan} />
+        <NodeFileQRScan onQRScan={onQRScan} />
       </Stack>
     </Stack>
   );
 };
+
+export const APPNodeEdit = () => (
+  <Edit mutationMode="pessimistic">
+    <SimpleForm>
+      <Stack
+        direction="row"
+        spacing={5}
+        alignItems="flex-start"
+        justifyContent="flex-start"
+        useFlexGap
+        flexWrap="wrap"
+        width={"100%"}
+      >
+        <AppNodeQRCode />
+        <Stack spacing={1} minWidth={200} maxWidth={760} width={"70%"}>
+          <TextInput source="name" fullWidth />
+          <TextInput source="nodeId" fullWidth rows={3} multiline readOnly />
+          <BooleanInput
+            source="blocked"
+            defaultValue={false}
+            fullWidth
+            margin="dense"
+          />
+          <BooleanInput source="online" readOnly />
+          <DateTimeInput source="createdAt" readOnly />
+          <DateTimeInput source="updatedAt" readOnly />
+        </Stack>
+      </Stack>
+    </SimpleForm>
+  </Edit>
+);

@@ -1,16 +1,22 @@
 import { TranslateProvider, useTranslate } from "../Global/Translation";
 import type { QRScanChangedEvent } from "./Base";
-import { QRCode, QRProvider, QRScan } from "./Base";
+import { QRCode, QRFileScan, QRProvider, QRScan } from "./Base";
 
 import type { ReactNode } from "react";
 import { Fragment, useMemo, useState } from "react";
 
+import ImageIcon from "@mui/icons-material/Image";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import Stack from "@mui/material/Stack";
+
+export type NodeQRCodeValue = {
+  name: string;
+  nodeId: string;
+};
 
 type NodeQRCodeProps = {
   name?: string;
@@ -27,8 +33,7 @@ export const NodeQRCode = ({
 }: NodeQRCodeProps) => {
   const value = useMemo(() => {
     if (!name || name.length <= 0 || !nodeId || nodeId.length <= 0) return;
-    const query = new URLSearchParams({ nodeId, name });
-    return `${import.meta.env.VITE_APP_NAME}://app/node?${query.toString()}`;
+    return toNodeQRCodeUrl({ name, nodeId });
   }, [name, nodeId]);
 
   return (
@@ -41,23 +46,17 @@ export const NodeQRCode = ({
   );
 };
 
-const InternalQRScan = () => {
+const InternalQRScan = ({ onQRScan }: NodeQRScanProps) => {
   const t = useTranslate();
 
   const [open, setOpen] = useState(false);
   const onOpen = () => setOpen(true);
   const onClose = () => setOpen(false);
   const onChanged = (event: QRScanChangedEvent) => {
-    if (!URL.canParse(event.value)) return;
-    const url = new URL(event.value);
-    if (url.protocol !== import.meta.env.VITE_APP_NAME) return;
-    if (url.host !== "app") return;
-    if (url.pathname !== "/node") return;
-    const nodeId = url.searchParams.get("nodeId");
-    const name = url.searchParams.get("name");
-    if (!nodeId || nodeId.length <= 0 || !name || name.length <= 0) return;
+    const v = parseNodeQRCodeValue(event.value);
+    if (!v) return;
+    onQRScan?.(v);
     event.invalid = false;
-    console.log(11111, nodeId, name);
     setOpen(false);
   };
   return (
@@ -71,20 +70,68 @@ const InternalQRScan = () => {
         {t("button.qrscan")}
       </Button>
       <Dialog open={open} onClose={onClose}>
+        <DialogActions>
+          <Button size="small" onClick={onClose}>
+            {t("button.close")}
+          </Button>
+        </DialogActions>
         <DialogContent>
           <QRScan onChanged={onChanged} width="400" height="300" />
         </DialogContent>
-        <DialogActions>
-          <Button size="small" onClick={onClose}>
-            {t("button.cancel")}
-          </Button>
-        </DialogActions>
       </Dialog>
     </Fragment>
   );
 };
-export const NodeQRScan = () => (
+export const NodeQRScan = (props: NodeQRScanProps) => (
   <TranslateProvider>
-    <InternalQRScan />
+    <InternalQRScan {...props} />
   </TranslateProvider>
 );
+
+type NodeQRScanProps = {
+  onQRScan?: (value: NodeQRCodeValue) => void;
+};
+const InternalQRFileScan = ({ onQRScan }: NodeQRScanProps) => {
+  const t = useTranslate();
+
+  const onFileScan = (value: string) => {
+    const nodeValue = parseNodeQRCodeValue(value);
+    if (!nodeValue) return;
+    onQRScan?.(nodeValue);
+  };
+  return (
+    <Fragment>
+      <Button
+        component="label"
+        variant="contained"
+        size="small"
+        startIcon={<ImageIcon />}
+      >
+        {t("button.qrscan-file")}
+        <QRFileScan onChange={onFileScan} />
+      </Button>
+    </Fragment>
+  );
+};
+
+export const NodeFileQRScan = (props: NodeQRScanProps) => (
+  <TranslateProvider>
+    <InternalQRFileScan {...props} />
+  </TranslateProvider>
+);
+
+function parseNodeQRCodeValue(value: string): NodeQRCodeValue | undefined {
+  if (!URL.canParse(value)) return;
+  const url = new URL(value);
+  if (url.protocol.slice(0, -1) !== import.meta.env.VITE_APP_NAME) return;
+  if (url.pathname !== "//app/node") return;
+  const nodeId = url.searchParams.get("nodeId");
+  const name = url.searchParams.get("name");
+  if (!nodeId || nodeId.length <= 0 || !name || name.length <= 0) return;
+  return { name, nodeId };
+}
+
+function toNodeQRCodeUrl({ name, nodeId }: NodeQRCodeValue): string {
+  const query = new URLSearchParams({ nodeId, name });
+  return `${import.meta.env.VITE_APP_NAME}://app/node?${query.toString()}`;
+}
