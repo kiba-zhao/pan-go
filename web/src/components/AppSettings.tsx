@@ -6,7 +6,9 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardActions from "@mui/material/CardActions";
 import CardContent from "@mui/material/CardContent";
-import DialogContentText from "@mui/material/DialogContentText";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
@@ -19,6 +21,7 @@ import { useAPI } from "../API";
 import {
   Dialog,
   DialogConfirmActions,
+  DialogConfirmContent,
   DialogSubmitActions,
 } from "./Feedback/Dialog";
 import { FilePathInput } from "./FilePath/Input";
@@ -143,6 +146,10 @@ const RefreshButton = () => {
 const SaveButton = () => {
   const t = useTranslate();
 
+  const [open, setOpen] = useState(false);
+  const onOpen = () => setOpen(true);
+  const onClose = () => setOpen(false);
+
   const api = useAPI();
   const { mutate } = useMutation({
     mutationFn: api?.saveAppSettings,
@@ -155,15 +162,28 @@ const SaveButton = () => {
   );
   const { handleSubmit } = useFormContext();
 
+  const onConfirm = async (confirm: boolean) => {
+    if (confirm) {
+      await handleSubmit(onSave)();
+    }
+    onClose();
+  };
+
   return (
-    <Button
-      variant="contained"
-      size="small"
-      color="error"
-      onClick={handleSubmit(onSave)}
-    >
-      {t("custom.button.save")}
-    </Button>
+    <Fragment>
+      <Button variant="contained" size="small" color="error" onClick={onOpen}>
+        {t("custom.button.save")}
+      </Button>
+      <Dialog open={open} onClose={onClose}>
+        <DialogConfirmContent label={t("custom.button.save")} />
+        <DialogActions>
+          <DialogConfirmActions
+            label={t("custom.button.save")}
+            onConfirm={onConfirm}
+          />
+        </DialogActions>
+      </Dialog>
+    </Fragment>
   );
 };
 
@@ -281,6 +301,7 @@ type AddressEditDialogProps = {
   onBlur?: () => void;
   value?: string;
   onChange?: (value: string) => void;
+  isNew?: boolean;
 };
 const AddressEditDialog = ({
   open,
@@ -288,6 +309,7 @@ const AddressEditDialog = ({
   value,
   onChange,
   onBlur,
+  isNew,
 }: AddressEditDialogProps) => {
   const t = useTranslate();
   const initValue = useCallback(() => {
@@ -320,41 +342,47 @@ const AddressEditDialog = ({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onCancel}
-      title={
+    <Dialog open={open} onClose={onCancel}>
+      <DialogTitle>
         <Stack direction="row" spacing={0.2} alignItems="flex-start">
           <Typography variant="h6">
             {t("custom.app/settings.network-address")}
           </Typography>
           <Typography
             variant="caption"
-            bgcolor={"green"}
+            bgcolor="green"
             height={0.5}
             paddingX={0.5}
             borderRadius={0.5}
+            hidden={!isNew}
           >
             {t("custom.button.new")}
           </Typography>
         </Stack>
-      }
-      actions={<DialogSubmitActions onSubmit={onSubmit} onCancel={onCancel} />}
-    >
-      <TextField
-        label="地址"
-        value={fields[0]}
-        onChange={onIPChange}
-        variant="outlined"
-        focused
-      />
-      <TextField
-        label="端口"
-        value={fields[1]}
-        onChange={onPortChange}
-        variant="outlined"
-        focused
-      />
+      </DialogTitle>
+      <DialogContent>
+        <TextField
+          label={t("custom.app/settings.ip")}
+          value={fields[0]}
+          onChange={onIPChange}
+          variant="outlined"
+          focused
+        />
+        <TextField
+          label={t("custom.app/settings.port")}
+          value={fields[1]}
+          onChange={onPortChange}
+          variant="outlined"
+          focused
+        />
+      </DialogContent>
+      <DialogActions>
+        <DialogSubmitActions
+          onSubmit={onSubmit}
+          onCancel={onCancel}
+          label={isNew ? t("custom.button.new") : t("custom.button.edit")}
+        />
+      </DialogActions>
     </Dialog>
   );
 };
@@ -390,8 +418,9 @@ const NewAddressButton = ({
       <Controller
         control={control}
         name={source}
-        render={({ field: { onChange, value, ...field_ } }) => (
+        render={({ field: { ref, onChange, value, ...field_ } }) => (
           <AddressEditDialog
+            isNew
             open={open}
             onClose={onClose}
             value={defaultValue}
@@ -419,7 +448,7 @@ const EditAddressButton = ({ source }: { source: string }) => {
       <Controller
         control={control}
         name={source}
-        render={({ field }) => (
+        render={({ field: { ref, ...field } }) => (
           <AddressEditDialog open={open} onClose={onClose} {...field} />
         )}
       />
@@ -436,11 +465,16 @@ const RemoveAddressButton = ({
   offset: number;
 }) => {
   const t = useTranslate();
-  const { control } = useFormContext();
+  const { control, getValues } = useFormContext();
   const { remove } = useFieldArray({
     control,
     name: source,
   });
+
+  const value: string = useMemo(
+    () => getValues(source).at(offset),
+    [getValues, source, offset]
+  );
 
   const [open, setOpen] = useState(false);
   const onOpen = () => setOpen(true);
@@ -456,13 +490,17 @@ const RemoveAddressButton = ({
       <Button variant="contained" color="error" size="small" onClick={onOpen}>
         {t("custom.button.remove")}
       </Button>
-      <Dialog
-        open={open}
-        onClose={onClose}
-        title={"确定要删除吗?"}
-        actions={<DialogConfirmActions onConfirm={onConfirm} />}
-      >
-        <DialogContentText> 确定要删除吗?</DialogContentText>
+      <Dialog open={open} onClose={onClose}>
+        <DialogConfirmContent
+          label={t("custom.button.remove")}
+          contentLabel={`${t("custom.button.remove").toLowerCase()} ${value}`}
+        />
+        <DialogActions>
+          <DialogConfirmActions
+            label={t("custom.button.remove")}
+            onConfirm={onConfirm}
+          />
+        </DialogActions>
       </Dialog>
     </Fragment>
   );
@@ -538,7 +576,7 @@ const AppAddressSettingsItem = ({
   address,
   children,
 }: AppAddressSettingsItemProps) => {
-  // const t = useTranslate();
+  const t = useTranslate();
 
   const [ip, port] = useMemo(() => {
     const parts = address.split(":");
@@ -564,13 +602,13 @@ const AppAddressSettingsItem = ({
           </Avatar>
           <Stack>
             <TextField
-              label="地址"
+              label={t("custom.app/settings.ip")}
               value={ip}
               variant="outlined"
               inputProps={{ readOnly: true }}
             />
             <TextField
-              label="端口"
+              label={t("custom.app/settings.port")}
               value={port}
               variant="outlined"
               inputProps={{ readOnly: true }}

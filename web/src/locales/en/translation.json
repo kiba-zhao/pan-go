@@ -51,6 +51,8 @@
       "node-address": "Node Service Address",
       "broadcast-address": "Broadcast Service Address",
       "public-address": "Public Address",
+      "ip": "IP",
+      "port": "Port",
       "fields": {
         "rootPath": "Root Path",
         "nodeId": "Node ID",
@@ -68,6 +70,8 @@
     },
     "pagination": "{{total}} results",
     "button": {
+      "add": "Add",
+      "revise": "Revise",
       "close": "Close",
       "confirm": "Confirm",
       "refresh": "Refresh",
@@ -85,6 +89,12 @@
       "renew": "Renew",
       "import": "Import",
       "export": "Export"
+    },
+    "dialog": {
+      "confirm": {
+        "title": "{{label}} Confirm ",
+        "content": "Are you sure to {{label}} ? "
+      }
     }
   }
 }

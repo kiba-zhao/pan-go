@@ -73,6 +73,8 @@
       "node-address": "节点地址",
       "broadcast-address": "广播地址",
       "public-address": "公告地址",
+      "ip": "IP 地址",
+      "port": "端口",
       "fields": {
         "rootPath": "根目录",
         "nodeId": "节点ID",
@@ -90,6 +92,8 @@
     },
     "pagination": "总共 {{total}} 项",
     "button": {
+      "add": "添加",
+      "revise": "修改",
       "close": "关闭",
       "confirm": "确认",
       "refresh": "刷新",
@@ -107,6 +111,12 @@
       "renew": "重建",
       "import": "导入",
       "export": "导出"
+    },
+    "dialog": {
+      "confirm": {
+        "title": "{{label}}确认",
+        "content": "确认要执行{{label}}吗?"
+      }
     }
   }
 }
