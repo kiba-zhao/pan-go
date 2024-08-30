@@ -24,6 +24,8 @@ export type AppSettings = {
   nodeAddress: string[];
   broadcastAddress: string[];
   publicAddress: string[];
+  guardEnabled: boolean;
+  guardAccess: boolean;
 };
 
 export type AppSettingsFields = Partial<Omit<AppSettings, "nodeId">>;

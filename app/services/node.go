@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/base64"
+	"pan/app/constant"
 	"pan/app/models"
 	"pan/app/node"
 	"pan/app/repositories"
@@ -124,6 +125,15 @@ func (s *NodeService) Update(id uint, fields models.NodeFields) (models.Node, er
 		}
 	}
 	return model, err
+}
+
+func (s *NodeService) AccessWithNodeID(nodeId node.NodeID) error {
+	nodeId_ := base64.StdEncoding.EncodeToString(nodeId)
+	node_, err := s.NodeRepo.SelectByNodeID(nodeId_)
+	if err == nil && node_.Blocked {
+		err = constant.ErrRefused
+	}
+	return err
 }
 
 func setNodeOnline(mgr node.NodeManager, model *models.Node) error {

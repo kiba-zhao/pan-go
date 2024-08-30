@@ -7,4 +7,5 @@ type NodeRepository interface {
 	Save(models.Node) (models.Node, error)
 	Select(uint) (models.Node, error)
 	Delete(models.Node) error
+	SelectByNodeID(string) (models.Node, error)
 }

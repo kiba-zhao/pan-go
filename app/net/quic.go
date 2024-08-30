@@ -138,7 +138,7 @@ func (qr *quicRoute) ResourceID() node.NodeResourceID {
 }
 
 const (
-	QuicNodeStream = uint8(iota)
+	QuicNodeStream byte = iota + 1
 	QuicGreetStream
 )
 
@@ -358,43 +358,46 @@ func (qm *quicModule) CreateNode(conn quic.Connection) (node.Node, error) {
 		return nil, err
 	}
 
-	nodeMgr := qm.NodeModule.NodeManager()
+	nodeModule := qm.NodeModule
 
 	qnode := &quicNode{
 		quicModule: qm,
 		conn:       conn,
 		nodeId:     nodeId,
-		mgr:        nodeMgr,
+		mgr:        nodeModule.NodeManager(),
 	}
 
 	for {
-		qnode.resourceId = nodeMgr.NewResourceID(node.NodeTypeAlive)
-		_, ok := nodeMgr.SearchOrStore(node.Node(qnode))
-		if !ok {
+		qnode.resourceId = nodeModule.NewResourceID(node.NodeTypeAlive)
+		err = nodeModule.Control(node.Node(qnode))
+		if err == nil || err != constant.ErrConflict {
 			break
 		}
 	}
 
-	return node.Node(qnode), nil
+	return node.Node(qnode), err
 }
 
 func (qm *quicModule) CreateRoute(nodeId node.NodeID, addr string) (node.Node, error) {
-	nodeMgr := qm.NodeModule.NodeManager()
+	nodeModule := qm.NodeModule
+
 	route := &quicRoute{
 		quicModule: qm,
 		nodeId:     nodeId,
 		address:    addr,
+		mgr:        nodeModule.NodeManager(),
 	}
 
+	var err error
 	for {
-		route.resourceId = nodeMgr.NewResourceID(node.NodeTypeReachable)
-		_, ok := nodeMgr.SearchOrStore(node.Node(route))
-		if !ok {
+		route.resourceId = nodeModule.NewResourceID(node.NodeTypeReachable)
+		err = nodeModule.Control(node.Node(route))
+		if err == nil || err != constant.ErrConflict {
 			break
 		}
 	}
 
-	return node.Node(route), nil
+	return node.Node(route), err
 }
 
 func (qm *quicModule) serve(stream quic.Stream, node node.Node) error {
@@ -413,6 +416,10 @@ func (qm *quicModule) serve(stream quic.Stream, node node.Node) error {
 
 func (qm *quicModule) Serve(conn quic.Connection) error {
 	node, err := qm.CreateNode(conn)
+	if err != nil {
+		conn.CloseWithError(quic.ApplicationErrorCode(quic.ConnectionRefused), "")
+		return err
+	}
 	defer node.Close()
 
 	for {
@@ -470,25 +477,35 @@ func (qm *quicModule) ServeBroadcast(payload []byte, ip string) error {
 	// TODO: check if route exists
 
 	// Try add route
+	route, err := qm.CreateRoute(nodeId, address)
+	if err == nil {
+		return err
+	}
 	ctx, _ := context.WithTimeoutCause(context.Background(), 3*time.Second, constant.ErrTimeout)
-	conn, err := qm.Dial(ctx, address)
-	if err == nil {
-		defer conn.CloseWithError(0, "")
-		err = qm.Greet(context.Background(), conn)
+	err = route.Greet(ctx)
+	if err != nil {
+		route.Close()
 	}
-
-	if err == nil {
-		nodeId_, err := qm.ParseNodeID(conn)
-		if err == nil && !bytes.Equal(nodeId, nodeId_) {
-			return constant.ErrInvalidNode
-		}
-	}
-
-	if err == nil {
-		_, err = qm.CreateRoute(nodeId, address)
-	}
-
 	return err
+
+	// conn, err := qm.Dial(ctx, address)
+	// if err == nil {
+	// 	defer conn.CloseWithError(0, "")
+	// 	err = qm.Greet(context.Background(), conn)
+	// }
+
+	// if err == nil {
+	// 	nodeId_, err := qm.ParseNodeID(conn)
+	// 	if err == nil && !bytes.Equal(nodeId, nodeId_) {
+	// 		return constant.ErrInvalidNode
+	// 	}
+	// }
+
+	// if err == nil {
+
+	// }
+
+	// return err
 }
 
 func (qm *quicModule) Components() []runtime.Component {

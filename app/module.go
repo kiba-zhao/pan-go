@@ -2,7 +2,9 @@ package app
 
 import (
 	"encoding/base64"
+
 	"pan/app/config"
+	"pan/app/constant"
 	"pan/app/controllers"
 	"pan/app/models"
 	"pan/app/net"
@@ -15,7 +17,9 @@ import (
 )
 
 func New() interface{} {
-	return runtime.NewModule(&runtime.Injector{}, config.New(), node.New(), net.New(), NewSample(&module{}))
+	m := &module{}
+	m.guard = &guardModule{}
+	return runtime.NewModule(&runtime.Injector{}, config.New(), node.New(), net.New(), NewSample(m))
 }
 
 const moduleName = "app"
@@ -28,6 +32,7 @@ type module struct {
 	settingsRW  sync.RWMutex
 	controllers []interface{}
 	once        sync.Once
+	guard       *guardModule
 }
 
 func (m *module) Name() string {
@@ -56,6 +61,8 @@ func (m *module) Components() []runtime.Component {
 	// base
 	components := []runtime.Component{
 		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
+		// submodules
+		runtime.NewComponent(m.guard, runtime.ComponentNoneScope),
 		// services
 		runtime.NewComponent(&services.DiskFileService{}, runtime.ComponentInternalScope),
 		runtime.NewComponent(&services.SettingsService{Provider: m}, runtime.ComponentInternalScope),
@@ -109,4 +116,31 @@ func (m *module) NodeManager() node.NodeManager {
 	}
 	mgr := m.Node.NodeManager()
 	return mgr
+}
+
+func (m *module) Modules() []interface{} {
+	return []interface{}{m.guard}
+}
+
+type guardModule struct {
+	NodeService     *services.NodeService
+	SettingsService *services.SettingsService
+}
+
+func (g *guardModule) Enabled() bool {
+	settings := g.SettingsService.Load()
+	return settings.GuardEnabled
+}
+
+func (g *guardModule) Access(nodeId node.NodeID) error {
+	err := g.NodeService.AccessWithNodeID(nodeId)
+	if err != nil {
+		return err
+	}
+
+	settings := g.SettingsService.Load()
+	if !settings.GuardAccess {
+		err = constant.ErrRefused
+	}
+	return err
 }

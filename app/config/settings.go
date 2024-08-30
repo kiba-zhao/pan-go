@@ -14,6 +14,8 @@ type Settings struct {
 	NodeAddress      []string `json:"nodeAddress" form:"nodeAddress"`
 	BroadcastAddress []string `json:"broadcastAddress" form:"broadcastAddress"`
 	PublicAddress    []string `json:"publicAddress" form:"publicAddress"`
+	GuardEnabled     bool     `json:"guardEnabled" form:"guardEnabled"`
+	GuardAccess      bool     `json:"guardAccess" form:"guardAccess"`
 }
 
 func newDefaultSettings() AppSettings {
@@ -24,6 +26,8 @@ func newDefaultSettings() AppSettings {
 	settings.NodeAddress = []string{"0.0.0.0:9000"}
 	settings.BroadcastAddress = []string{"224.0.0.120:9100"}
 	settings.PublicAddress = settings.NodeAddress
+	settings.GuardEnabled = true
+	settings.GuardAccess = true
 
 	return settings
 }

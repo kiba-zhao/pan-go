@@ -38,6 +38,25 @@ func TestNodeRepo(t *testing.T) {
 		return
 	}
 
+	t.Run("SelectByNodeID", func(t *testing.T) {
+		repo, mockDB, mock := setup()
+		defer mockDB.Close()
+
+		var node models.Node
+		node.ID = 123
+		node.Name = "node name"
+		node.NodeID = base64.StdEncoding.EncodeToString([]byte("node id"))
+		node.Blocked = true
+		node.CreatedAt = time.Now()
+		node.UpdatedAt = time.Now()
+
+		mock.ExpectQuery("SELECT .* FROM `nodes`").WithArgs(node.NodeID).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "node_id", "blocked", "created_at", "updated_at"}).AddRow(node.ID, node.Name, node.NodeID, node.Blocked, node.CreatedAt, node.UpdatedAt))
+
+		result, err := repo.SelectByNodeID(node.NodeID)
+		assert.Nil(t, err)
+		assert.Equal(t, node, result)
+	})
+
 	t.Run("Select", func(t *testing.T) {
 		repo, mockDB, mock := setup()
 		defer mockDB.Close()

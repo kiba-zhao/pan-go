@@ -39,6 +39,8 @@ func TestSettings(t *testing.T) {
 		settings.NodeAddress = []string{"127.0.0.1:9001"}
 		settings.BroadcastAddress = []string{"127.0.0.1:9000"}
 		settings.PublicAddress = []string{"127.0.0.1:9003"}
+		settings.GuardEnabled = true
+		settings.GuardAccess = true
 
 		provider := &mocked.MockSettingsProvider{}
 		provider.AssertExpectations(t)
@@ -69,6 +71,8 @@ func TestSettings(t *testing.T) {
 		settings.NodeAddress = []string{"127.0.0.1:9001"}
 		settings.BroadcastAddress = []string{"127.0.0.1:9000"}
 		settings.PublicAddress = []string{"127.0.0.1:9003"}
+		settings.GuardEnabled = true
+		settings.GuardAccess = true
 
 		fields := models.SettingsFields{}
 		fields.RootPath = "field root path"
@@ -77,6 +81,10 @@ func TestSettings(t *testing.T) {
 		fields.NodeAddress = []string{"0.0.0.0:9001"}
 		fields.BroadcastAddress = []string{"0.0.0.0:9000"}
 		fields.PublicAddress = []string{"0.0.0.0:9003"}
+		fields.GuardEnabled = new(bool)
+		*fields.GuardEnabled = false
+		fields.GuardAccess = new(bool)
+		*fields.GuardAccess = false
 
 		settings_ := settings
 		settings_.RootPath = fields.RootPath
@@ -85,6 +93,8 @@ func TestSettings(t *testing.T) {
 		settings_.NodeAddress = fields.NodeAddress
 		settings_.BroadcastAddress = fields.BroadcastAddress
 		settings_.PublicAddress = fields.PublicAddress
+		settings_.GuardEnabled = *fields.GuardEnabled
+		settings_.GuardAccess = *fields.GuardAccess
 
 		provider := &mocked.MockSettingsProvider{}
 		provider.AssertExpectations(t)

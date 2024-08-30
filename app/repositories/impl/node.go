@@ -113,3 +113,18 @@ func (repo *NodeRepository) Delete(node models.Node) error {
 	}
 	return results.Error
 }
+
+func (repo *NodeRepository) SelectByNodeID(nodeId string) (models.Node, error) {
+
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return models.Node{}, constant.ErrUnavailable
+	}
+	var node models.Node
+	node.NodeID = nodeId
+	results := db.Where(&node).Take(&node)
+	if results.Error == gorm.ErrRecordNotFound {
+		return node, constant.ErrNotFound
+	}
+	return node, results.Error
+}

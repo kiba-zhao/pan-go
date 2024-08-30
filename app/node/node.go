@@ -51,7 +51,7 @@ type NodeType = uint8
 type NodeResourceID = []byte
 
 const (
-	NodeTypeAlive NodeType = iota
+	NodeTypeAlive NodeType = iota + 1
 	NodeTypeReachable
 )
 
@@ -325,14 +325,11 @@ type NodeManager interface {
 	Delete(Node)
 	SearchOrStore(Node) (Node, bool)
 	Count(NodeID) int
-	NewResourceID(NodeType) NodeResourceID
 }
 
 type nodeManager struct {
-	locker    sync.RWMutex
-	matrix    [][]Node
-	seq       uint32
-	seqLocker sync.Mutex
+	locker sync.RWMutex
+	matrix [][]Node
 }
 
 func (mgr *nodeManager) compareWithNodeID(nodeArr []Node, nodeId NodeID) int {
@@ -422,21 +419,6 @@ func (mgr *nodeManager) Count(nodeId NodeID) int {
 	return 0
 }
 
-func (mgr *nodeManager) NewResourceID(nodeType NodeType) NodeResourceID {
-
-	mgr.seqLocker.Lock()
-	mgr.seq++
-	seq := mgr.seq
-	mgr.seqLocker.Unlock()
-
-	resourceId := make([]byte, 13)
-	resourceId[0] = byte(nodeType)
-	binary.BigEndian.PutUint64(resourceId[1:], uint64(time.Now().Unix()))
-	binary.BigEndian.PutUint32(resourceId[9:], seq)
-
-	return NodeResourceID(resourceId)
-}
-
 type NodeTripper interface {
 	RoundTrip(context.Context, NodeID, io.Reader) (io.Reader, error)
 }
@@ -452,6 +434,11 @@ func WithNodeDoContext(ctx context.Context) NodeDoContextUpdater {
 	}
 }
 
+type NodeGuard interface {
+	Enabled() bool
+	Access(NodeID) error
+}
+
 type NodeModule interface {
 	Serve(NodeStream, Node) error
 	Do(NodeID, *Request, ...NodeDoContextUpdater) (*Response, error)
@@ -461,6 +448,9 @@ type NodeModule interface {
 	NodeSettings() NodeSettings
 	NodeManager() NodeManager
 	ReloadModules() error
+	Access(NodeID) error
+	Control(Node) error
+	NewResourceID(NodeType) NodeResourceID
 }
 
 type nodeModule struct {
@@ -474,6 +464,8 @@ type nodeModule struct {
 	registryLocker sync.RWMutex
 	app            NodeApp
 	appLocker      sync.RWMutex
+	seq            uint32
+	seqLocker      sync.Mutex
 }
 
 func New() interface{} {
@@ -500,6 +492,7 @@ func (nm *nodeModule) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[NodeAppModule](),
 		reflect.TypeFor[NodeAppModuleProvider](),
+		reflect.TypeFor[NodeGuard](),
 	}
 }
 
@@ -661,4 +654,45 @@ func (nm *nodeModule) RoundTrip(ctx context.Context, nodeId NodeID, reqReader io
 		err = constant.ErrNodeClosed
 	}
 	return
+}
+
+func (nm *nodeModule) Access(nodeId NodeID) error {
+	nm.registryLocker.RLock()
+	defer nm.registryLocker.RUnlock()
+
+	return runtime.TraverseRegistry(nm.registry, func(module NodeGuard) error {
+		if !module.Enabled() {
+			return nil
+		}
+		return module.Access(nodeId)
+	})
+}
+
+func (nm *nodeModule) Control(node Node) error {
+	err := nm.Access(node.ID())
+
+	if err == nil {
+		mgr := nm.NodeManager()
+		_, ok := mgr.SearchOrStore(node)
+		if ok {
+			err = constant.ErrConflict
+		}
+	}
+
+	return err
+}
+
+func (nm *nodeModule) NewResourceID(nodeType NodeType) NodeResourceID {
+
+	nm.seqLocker.Lock()
+	nm.seq++
+	seq := nm.seq
+	nm.seqLocker.Unlock()
+
+	resourceId := make([]byte, 13)
+	resourceId[0] = byte(nodeType)
+	binary.BigEndian.PutUint64(resourceId[1:], uint64(time.Now().Unix()))
+	binary.BigEndian.PutUint32(resourceId[9:], seq)
+
+	return NodeResourceID(resourceId)
 }

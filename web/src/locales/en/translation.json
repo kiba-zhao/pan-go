@@ -56,7 +56,9 @@
       "fields": {
         "rootPath": "Root Path",
         "nodeId": "Node ID",
-        "name": "Node Name"
+        "name": "Node Name",
+        "guardEnabled": "Guard Enabled",
+        "guardAccess": "Default Access"
       },
       "input": {
         "filepath": "Disk Path Selector"
@@ -95,6 +97,12 @@
         "title": "{{label}} Confirm ",
         "content": "Are you sure to {{label}} ? "
       }
+    },
+    "label": {
+      "disabled": "Disabled",
+      "enabled": "Enabled",
+      "allowed": "Allowed",
+      "refused": "Refused"
     }
   }
 }

@@ -113,6 +113,8 @@ function generateAppSettings(rootPaths) {
     broadcastAddress,
     publicAddress,
     nodeId: faker.helpers.arrayElement(["", faker.string.nanoid()]),
+    guardEnabled: faker.datatype.boolean(),
+    guardAccess: faker.datatype.boolean(),
   };
 }
 

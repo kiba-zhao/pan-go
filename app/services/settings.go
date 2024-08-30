@@ -43,6 +43,13 @@ func (s *SettingsService) Save(fields models.SettingsFields) (models.Settings, e
 		settings.PublicAddress = fields.PublicAddress
 	}
 
+	if fields.GuardEnabled != nil {
+		settings.GuardEnabled = *fields.GuardEnabled
+	}
+	if fields.GuardAccess != nil {
+		settings.GuardAccess = *fields.GuardAccess
+	}
+
 	err := s.Provider.SetSettings(settings)
 	if err != nil {
 		return models.Settings{}, err

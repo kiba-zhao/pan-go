@@ -78,7 +78,9 @@
       "fields": {
         "rootPath": "根目录",
         "nodeId": "节点ID",
-        "name": "节点名称"
+        "name": "节点名称",
+        "guardEnabled": "节点防火墙",
+        "guardAccess": "默认访问"
       },
       "input": {
         "filepath": "磁盘目录选择"
@@ -117,6 +119,12 @@
         "title": "{{label}}确认",
         "content": "确认要执行{{label}}吗?"
       }
+    },
+    "label": {
+      "disabled": "禁用",
+      "enabled": "启用",
+      "allowed": "允许",
+      "refused": "拒绝"
     }
   }
 }

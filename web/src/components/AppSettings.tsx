@@ -9,8 +9,12 @@ import CardContent from "@mui/material/CardContent";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import FormControl from "@mui/material/FormControl";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import FormLabel from "@mui/material/FormLabel";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
+import Switch from "@mui/material/Switch";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
@@ -200,19 +204,27 @@ const AppSummarySettings = () => {
     queryFn: api?.getAppSettings,
   });
   const defaultValues = useMemo(
-    () => ({ name: data?.name, rootPath: data?.rootPath }),
+    () => ({
+      name: data?.name,
+      rootPath: data?.rootPath,
+      guardEnabled: data?.guardEnabled,
+      guardAccess: data?.guardAccess,
+    }),
     [data]
   );
   const methods = useForm({
     defaultValues,
   });
-  const { reset, control } = methods;
+  const { reset, control, watch } = methods;
 
   useEffect(() => {
     if (isFetching) return;
     if (isError) return;
     reset(defaultValues);
   }, [isFetching, isError]);
+
+  const guardEnabled = watch("guardEnabled");
+  const guardAccess = watch("guardAccess");
 
   return (
     <Fragment>
@@ -289,6 +301,54 @@ const AppSummarySettings = () => {
             required
             value={data?.nodeId}
           />
+          <FormControl component="fieldset">
+            <FormLabel component="legend">
+              {t("custom.app/settings.fields.guardEnabled")}
+            </FormLabel>
+            <Controller
+              control={control}
+              name="guardEnabled"
+              render={({ field }) => (
+                <FormControlLabel
+                  label={t(
+                    guardEnabled === false
+                      ? "custom.label.disabled"
+                      : "custom.label.enabled"
+                  )}
+                  labelPlacement="end"
+                  control={
+                    <Switch defaultChecked {...field} disabled={isFetching} />
+                  }
+                />
+              )}
+            />
+          </FormControl>
+          <FormControl component="fieldset">
+            <FormLabel component="legend">
+              {t("custom.app/settings.fields.guardAccess")}
+            </FormLabel>
+            <Controller
+              control={control}
+              name="guardAccess"
+              render={({ field }) => (
+                <FormControlLabel
+                  label={t(
+                    guardAccess === false
+                      ? "custom.label.refused"
+                      : "custom.label.allowed"
+                  )}
+                  labelPlacement="end"
+                  control={
+                    <Switch
+                      defaultChecked
+                      {...field}
+                      disabled={isFetching || guardEnabled === false}
+                    />
+                  }
+                />
+              )}
+            />
+          </FormControl>
         </Stack>
       </Stack>
     </Fragment>
