@@ -43,6 +43,9 @@
     }
   },
   "custom": {
+    "extfs": {
+      "name": "Extended File System"
+    },
     "app/settings": {
       "name": "App Settings",
       "summary": "SUMMARY",

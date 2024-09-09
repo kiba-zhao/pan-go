@@ -11,27 +11,27 @@ import { dataProvider } from "./api";
 import { APIProvider } from "./API";
 import { useI18nProvider } from "./i18n";
 
-import {
-  APPNodeEdit,
-  AppNodeCreate,
-  AppNodeIcon,
-  AppNodes,
-} from "./components/AppNodes";
+import { APPNodeEdit, AppNodeCreate, AppNodes } from "./components/AppNodes";
 import { AppSettings } from "./components/AppSettings";
 import Dashboard from "./components/Dashboard";
+import ExtFSHome from "./components/ExtFS";
+import {
+  ExtFSLocalFileCreate,
+  ExtFSLocalFileEdit,
+} from "./components/ExtFSLocalFile";
+import {
+  ExtFSLocalNodeSettings,
+  ExtFSRemoteNodeSettings,
+} from "./components/ExtFSNode";
+import { ExtFSRemoteFileEdit } from "./components/ExtFSRemoteFile";
+import {
+  ExtFSTagCreate,
+  ExtFSTagEdit,
+  ExtFSTagList,
+  ExtFSTagShow,
+} from "./components/ExtFSTag";
 import { AppLayout } from "./components/Layout";
 import NotFound from "./components/NotFound";
-import {
-  TargetFileIcon,
-  TargetFileShow,
-  TargetFiles,
-} from "./components/TargetFiles";
-import {
-  TargetCreate,
-  TargetEdit,
-  TargetShow,
-  Targets,
-} from "./components/Targets";
 
 const queryClient = new QueryClient();
 const darkTheme: RaThemeOptions = {
@@ -57,28 +57,40 @@ export const App = () => {
         >
           <CustomRoutes>
             <Route path="/app/settings/*" element={<AppSettings />} />
+            <Route path="/extfs" element={<ExtFSHome />} />
+            <Route
+              path="/extfs/local-node"
+              element={<ExtFSLocalNodeSettings />}
+            />
+            <Route
+              path="/extfs/remote-node/:id"
+              element={<ExtFSRemoteNodeSettings />}
+            />
+            <Route
+              path="/extfs/local-file/create"
+              element={<ExtFSLocalFileCreate />}
+            />
+            <Route
+              path="/extfs/local-file/:id"
+              element={<ExtFSLocalFileEdit />}
+            />
+            <Route
+              path="/extfs/remote-file/:id"
+              element={<ExtFSRemoteFileEdit />}
+            />
           </CustomRoutes>
           <Resource
             name="app/nodes"
             list={AppNodes}
-            icon={AppNodeIcon}
             create={AppNodeCreate}
             edit={APPNodeEdit}
           />
           <Resource
-            name="extfs/targets"
-            list={Targets}
-            edit={TargetEdit}
-            show={TargetShow}
-            create={TargetCreate}
-          />
-          <Resource
-            name="extfs/target-files"
-            icon={TargetFileIcon}
-            list={TargetFiles}
-            show={TargetFileShow}
-            hasEdit={false}
-            hasCreate={false}
+            name="extfs/tags"
+            list={ExtFSTagList}
+            create={ExtFSTagCreate}
+            edit={ExtFSTagEdit}
+            show={ExtFSTagShow}
           />
         </Admin>
       </APIProvider>

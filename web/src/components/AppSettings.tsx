@@ -1,5 +1,6 @@
 import { Title, useTranslate } from "react-admin";
 
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -55,6 +56,8 @@ import {
   useForm,
   useFormContext,
 } from "react-hook-form";
+
+export const AppSettingsIcon = AdminPanelSettingsIcon;
 
 const TabPanel = ({
   children,

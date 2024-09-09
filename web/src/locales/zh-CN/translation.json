@@ -65,6 +65,9 @@
     }
   },
   "custom": {
+    "extfs": {
+      "name": "扩展文件系统"
+    },
     "app/settings": {
       "name": "应用设置",
       "summary": "通用设置",
