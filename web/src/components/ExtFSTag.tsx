@@ -1,3 +1,5 @@
+export const ExtFSTagRoutePath = "/extfs/tags";
+
 export const ExtFSTagList = () => {
   return <>ExtFS Tag List</>;
 };

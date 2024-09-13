@@ -4,6 +4,7 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import ClearIcon from "@mui/icons-material/Clear";
 import CloudIcon from "@mui/icons-material/Cloud";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import FolderIcon from "@mui/icons-material/Folder";
 import HelpIcon from "@mui/icons-material/Help";
@@ -20,7 +21,7 @@ import Box from "@mui/material/Box";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import ButtonBase from "@mui/material/ButtonBase";
 import Chip from "@mui/material/Chip";
-import Dialog from "@mui/material/Dialog";
+import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import InputBase from "@mui/material/InputBase";
@@ -32,30 +33,79 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemSecondaryAction from "@mui/material/ListItemSecondaryAction";
 import ListItemText from "@mui/material/ListItemText";
+import type { MenuProps } from "@mui/material/Menu";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { styled, useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
-import type { MenuProps } from "@mui/material/Menu";
-
-import type { MouseEvent } from "react";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import type { ExtFSItem, ExtFSItemSearchCondition } from "../API";
+import { useAPI } from "../API";
 import { AppNodeIcon } from "./AppNodes";
+import {
+  createReducerContext,
+  ReducerStateProvider,
+  useReducerState,
+} from "./Context/ReducerState";
+import { ExtFSNodeItemRoutePath } from "./ExtFSNodeItem";
+import { ExtFSTagRoutePath } from "./ExtFSTag";
+import { Dialog } from "./Feedback/Dialog";
 
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+
+import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link as RouterLink } from "react-router-dom";
+import AutoSizer from "react-virtualized-auto-sizer";
+import { FixedSizeList } from "react-window";
 
-export const ExfFSIcon = StorageIcon;
+export const ExtFSIcon = StorageIcon;
+export const ExtFSRoutePath = "/extfs";
+
+type ExtFSState = {
+  queryKey: string[];
+  condition: ExtFSItemSearchCondition;
+  defaults: ExtFSItemSearchCondition;
+  parentItems: ExtFSItem[];
+};
+
+const ExtFSContext = createReducerContext<ExtFSState>();
+
+const useExtFS = () => useReducerState(ExtFSContext);
+
+export const ExtFSProvider = ({ children }: { children: ReactNode }) => {
+  const condition = { fileType: ["N", "RN"] } as ExtFSItemSearchCondition;
+  const initialState = {
+    queryKey: ["extfs-items"],
+    condition: condition,
+    defaults: condition,
+    parentItems: [],
+  } as ExtFSState;
+  return (
+    <ReducerStateProvider<ExtFSState>
+      initialState={initialState}
+      opts={ExtFSContext}
+    >
+      {children}
+    </ReducerStateProvider>
+  );
+};
 
 const Home = () => {
   const t = useTranslate();
+
   return (
-    <Paper>
+    <Paper
+      sx={{
+        height: "100%",
+        paddingBottom: "76px",
+        paddingTop: "56px",
+        marginTop: "-56px",
+      }}
+    >
       <Title title={t("custom.extfs.name")} />
       <TopBar />
       <FileItems />
@@ -185,6 +235,70 @@ const Search = () => {
   );
 };
 
+const MoreMenu = ({ onClose, ...props }: MenuProps) => {
+  const t = useTranslate();
+
+  const [extFS, _] = useExtFS();
+
+  const parentItem = useMemo(() => extFS.parentItems.at(-1), [extFS]);
+
+  const newUrl = useMemo(() => {
+    if (parentItem && parentItem.fileType === "N")
+      return `${ExtFSNodeItemRoutePath}/create`;
+  }, [parentItem]);
+
+  const settingsUrl = useMemo(() => {
+    if (parentItem && parentItem.fileType === "D") {
+      if (extFS.parentItems.at(-2)?.fileType === "N")
+        return `${ExtFSNodeItemRoutePath}/${parentItem.linkId}`;
+    }
+  }, [parentItem, parentItem?.fileType, parentItem?.linkId, extFS.parentItems]);
+  const handleItemClick = (event: React.MouseEvent<HTMLElement>) => {
+    onClose && onClose(event, "backdropClick");
+  };
+
+  return (
+    <Menu onClose={onClose} {...props}>
+      <MenuItem onClick={handleItemClick} sx={{ display: "none" }}>
+        <ListItemIcon>
+          <OpenInNewIcon />
+        </ListItemIcon>
+        <ListItemText>Open</ListItemText>
+      </MenuItem>
+      {newUrl !== void 0 ? (
+        <MenuItem onClick={handleItemClick} component={RouterLink} to={newUrl}>
+          <ListItemIcon>
+            <AddCircleIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("custom.button.new")}</ListItemText>
+        </MenuItem>
+      ) : (
+        void 0
+      )}
+      {settingsUrl !== void 0 ? (
+        <MenuItem
+          onClick={handleItemClick}
+          component={RouterLink}
+          to={settingsUrl}
+        >
+          <ListItemIcon>
+            <SettingsIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("custom.button.settings")}</ListItemText>
+        </MenuItem>
+      ) : (
+        void 0
+      )}
+      <MenuItem onClick={handleItemClick}>
+        <ListItemIcon>
+          <HelpIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>Help</ListItemText>
+      </MenuItem>
+    </Menu>
+  );
+};
+
 const More = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -197,57 +311,34 @@ const More = () => {
 
   return (
     <Fragment>
-      <IconButton
-        aria-label="more"
-        id="long-button"
-        aria-controls={open ? "long-menu" : undefined}
-        aria-expanded={open ? "true" : undefined}
-        aria-haspopup="true"
-        onClick={handleClick}
-      >
+      <IconButton onClick={handleClick}>
         <MoreVertIcon />
       </IconButton>
-      <Menu
-        id="long-menu"
-        MenuListProps={{
-          "aria-labelledby": "long-button",
-        }}
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-      >
-        <MenuItem onClick={handleClose}>
-          <ListItemIcon>
-            <OpenInNewIcon />
-          </ListItemIcon>
-          <ListItemText>Open</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={handleClose}>
-          <ListItemIcon>
-            <AddCircleIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>New</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={handleClose}>
-          <ListItemIcon>
-            <SettingsIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Settings</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={handleClose}>
-          <ListItemIcon>
-            <HelpIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Help</ListItemText>
-        </MenuItem>
-      </Menu>
+      <MoreMenu anchorEl={anchorEl} open={open} onClose={handleClose} />
     </Fragment>
   );
 };
 
 const Refresh = () => {
+  const [extFS, _] = useExtFS();
+  const { queryKey, condition } = extFS;
+  const queryKey_ = useMemo(
+    () => [...queryKey, condition],
+    [queryKey, condition]
+  );
+  const isFetching = useIsFetching({
+    queryKey: queryKey_,
+  });
+  const queryClient = useQueryClient();
+  const onClick = async () => {
+    if (isFetching) return;
+    await queryClient.refetchQueries({
+      queryKey: queryKey_,
+      type: "active",
+    });
+  };
   return (
-    <IconButton>
+    <IconButton onClick={onClick}>
       <RefreshIcon />
     </IconButton>
   );
@@ -261,6 +352,46 @@ const CustomNavButton = styled(ButtonBase)(({ theme }) => ({
   },
 }));
 
+const NavigationMoreItems = ({
+  items,
+  onParentClick,
+}: {
+  items: ExtFSItem[];
+  onParentClick: (items: ExtFSItem[]) => void;
+}) => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleMenuItemClick = (items: ExtFSItem[]) => {
+    handleClose();
+    onParentClick(items);
+  };
+
+  return (
+    <Fragment>
+      <Link underline="hover" color="inherit" onClick={handleClick}>
+        ...
+      </Link>
+      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+        {items.map((item, offset) => (
+          <MenuItem
+            key={`nav-more-menu-${item.id}`}
+            onClick={() => handleMenuItemClick(items.slice(0, offset + 1))}
+          >
+            {item.name}
+          </MenuItem>
+        ))}
+      </Menu>
+    </Fragment>
+  );
+};
+
 const NavigationBar = ({
   anchorElWidth,
   anchorEl,
@@ -268,6 +399,7 @@ const NavigationBar = ({
   anchorElWidth?: number;
   anchorEl: MenuProps["anchorEl"];
 }) => {
+  const t = useTranslate();
   const [expand, setExpand] = useState(false);
   const handleExpand = () => {
     setExpand(!expand);
@@ -276,10 +408,37 @@ const NavigationBar = ({
   const handleClose = () => {
     setExpand(false);
   };
+
+  const [extFS, setExtFS] = useExtFS();
+  const { parentItems, defaults } = extFS;
+  const onRootClick = () => {
+    setExtFS({ ...extFS, condition: defaults, parentItems: [] });
+    handleClose();
+  };
+
+  const onParentClick = (parentItems: ExtFSItem[]) => {
+    const { id } = parentItems.at(-1) as ExtFSItem;
+
+    setExtFS({ ...extFS, parentItems, condition: { parentId: id } });
+    handleClose();
+  };
+
   return (
     <Fragment>
+      <Typography
+        variant="h6"
+        sx={{
+          display:
+            parentItems.length > 0 ? "none" : { xs: "block", sm: "none" },
+        }}
+      >
+        ExtFS
+      </Typography>
       <CustomNavButton
-        sx={{ display: { xs: "block", sm: "none" } }}
+        sx={{
+          display:
+            parentItems.length > 0 ? { xs: "block", sm: "none" } : "none",
+        }}
         onClick={handleExpand}
       >
         <Stack
@@ -298,17 +457,21 @@ const NavigationBar = ({
             sx={!expand ? { display: "none" } : void 0}
             fontSize="small"
           />
-          <Typography variant="h6">Belts</Typography>
+          <Typography variant="h6">{parentItems.at(-1)?.name}</Typography>
         </Stack>
       </CustomNavButton>
       <Menu anchorEl={anchorEl} open={expand} onClose={handleClose}>
-        <MenuItem onClick={handleClose} sx={{ width: anchorElWidth }}>
-          Floder 1
-        </MenuItem>
-        <MenuItem onClick={handleClose} sx={{ width: anchorElWidth }}>
-          Node 1
-        </MenuItem>
-        <MenuItem onClick={handleClose} sx={{ width: anchorElWidth }}>
+        {parentItems.slice(0, -1).map((parentItem, parentOffset) => (
+          <MenuItem
+            key={`nav-menu-${parentItem.id}`}
+            onClick={() => onParentClick(parentItems.slice(0, parentOffset))}
+            sx={{ width: anchorElWidth }}
+          >
+            {parentItem.name}
+          </MenuItem>
+        ))}
+
+        <MenuItem onClick={onRootClick} sx={{ width: anchorElWidth }}>
           ExtFS
         </MenuItem>
       </Menu>
@@ -318,19 +481,42 @@ const NavigationBar = ({
       >
         <Link
           underline="hover"
-          sx={{ display: "flex", alignItems: "center" }}
+          sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
           color="inherit"
-          href="#"
+          onClick={onRootClick}
         >
-          <ExfFSIcon sx={{ mr: 0.5 }} fontSize="inherit" />
+          <ExtFSIcon sx={{ mr: 0.5 }} fontSize="inherit" />
         </Link>
-        <Link underline="hover" color="inherit" href="#">
-          Node 1
-        </Link>
-        <Link underline="hover" color="inherit" href="#">
-          ...
-        </Link>
-        <Typography sx={{ color: "text.primary" }}>Belts</Typography>
+        {parentItems.length > 1 ? (
+          <Link
+            underline="hover"
+            color="inherit"
+            onClick={() => onParentClick(parentItems.slice(0, 1))}
+          >
+            {parentItems.at(0)?.name}
+          </Link>
+        ) : (
+          void 0
+        )}
+        {parentItems.length > 2 ? (
+          <NavigationMoreItems
+            items={parentItems.slice(1, -1)}
+            onParentClick={(items) => onParentClick([parentItems[0], ...items])}
+          />
+        ) : (
+          void 0
+        )}
+        {parentItems.length > 0 ? (
+          <Typography
+            sx={{
+              color: "text.primary",
+            }}
+          >
+            {parentItems.at(-1)?.name}
+          </Typography>
+        ) : (
+          void 0
+        )}
       </Breadcrumbs>
     </Fragment>
   );
@@ -373,19 +559,15 @@ const TopBar = () => {
   );
 };
 
-type ExtFSFileItem = {
-  fileType: "E" | "S" | "D" | "F" | "N" | "RD" | "RF" | "RN";
-  name: string;
-  updatedAt: string;
-  tagQuantity: number;
-  pendingTagQuantity: number;
-  disabled?: boolean;
-  linkId?: string;
-};
 type FileItemProps = {
-  record: ExtFSFileItem;
+  record: ExtFSItem;
+  style?: CSSProperties;
 };
-const FileItem = ({ record }: FileItemProps) => {
+const FileItem = ({ record, style }: FileItemProps) => {
+  const [extFS, setExtFS] = useExtFS();
+  const { parentItems } = extFS;
+  const parentItem = useMemo(() => extFS.parentItems.at(-1), [extFS]);
+
   const [avatarIcon, extIcon] = useMemo(() => {
     const extIcon =
       record.fileType.at(0) === "R" ? (
@@ -423,16 +605,6 @@ const FileItem = ({ record }: FileItemProps) => {
     return [];
   }, [record.fileType, record.disabled]);
 
-  const settingsUrl = useMemo(() => {
-    if (record.fileType === "N") return "/extfs/local-node";
-    if (record.fileType === "RN") return `/extfs/remote-node/${record.linkId}`;
-    if (record.fileType === "F" || record.fileType === "D")
-      return `/extfs/local-file/${record.linkId}`;
-    if (record.fileType === "RF" || record.fileType === "RD")
-      return `/extfs/remote-file/${record.linkId}`;
-    return ".";
-  }, [record.fileType, record.linkId]);
-
   const tagUrl = useMemo(() => {
     const searchParams = new URLSearchParams({
       fileType: record.fileType,
@@ -443,14 +615,34 @@ const FileItem = ({ record }: FileItemProps) => {
       record.fileType === "F" ||
       record.fileType === "D"
     ) {
-      searchParams.set("linkId", record.linkId || "");
+      searchParams.set("itemId", record.id || "");
     }
-    return `/extfs/tags?${searchParams.toString()}`;
-  }, [record.fileType, record.linkId]);
+    return `${ExtFSTagRoutePath}?${searchParams.toString()}`;
+  }, [record.fileType, record.id]);
 
+  const settingsUrl = useMemo(() => {
+    if (record.fileType === "F" || record.fileType === "D") {
+      if (parentItem && parentItem.fileType === "N") {
+        return `${ExtFSNodeItemRoutePath}/${record.linkId}`;
+      }
+    }
+  }, [record.fileType, record.linkId, parentItem]);
+
+  const onItemClick = () => {
+    if (record.fileType === "F" || record.fileType === "RF") {
+      // TODO: open file
+      return;
+    }
+    // Comment: show sub items
+    setExtFS({
+      ...extFS,
+      condition: { parentId: record.id },
+      parentItems: [...parentItems, record],
+    });
+  };
   return (
-    <ListItem>
-      <ListItemButton>
+    <ListItem style={style}>
+      <ListItemButton onClick={onItemClick}>
         <ListItemAvatar>
           <Avatar variant="rounded" sx={{ bgcolor: "inherit" }}>
             {avatarIcon}
@@ -475,11 +667,14 @@ const FileItem = ({ record }: FileItemProps) => {
           }
         />
 
-        <ListItemSecondaryAction>
+        <ListItemSecondaryAction
+          sx={record.fileType === "N" ? { display: "none" } : void 0}
+        >
           <IconButton
             component={RouterLink}
             to={tagUrl}
             disabled={record.disabled}
+            onClick={(e) => e.stopPropagation()}
           >
             <Badge badgeContent={record.pendingTagQuantity}>
               <Badge
@@ -490,9 +685,17 @@ const FileItem = ({ record }: FileItemProps) => {
               </Badge>
             </Badge>
           </IconButton>
-          <IconButton component={RouterLink} to={settingsUrl}>
-            <SettingsIcon />
-          </IconButton>
+          {settingsUrl ? (
+            <IconButton
+              component={RouterLink}
+              to={settingsUrl}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SettingsIcon />
+            </IconButton>
+          ) : (
+            void 0
+          )}
         </ListItemSecondaryAction>
       </ListItemButton>
     </ListItem>
@@ -502,58 +705,46 @@ const FileItem = ({ record }: FileItemProps) => {
 const FileItems = () => {
   const t = useTranslate();
 
-  const records: ExtFSFileItem[] = [
-    {
-      name: "Local Node",
-      fileType: "N",
-      updatedAt: "Jan 9, 2014",
-      tagQuantity: 0,
-      pendingTagQuantity: 0,
-    },
-    {
-      name: "Folder",
-      fileType: "D",
-      updatedAt: "Jan 9, 2014",
-      tagQuantity: 2,
-      pendingTagQuantity: 3,
-    },
-    {
-      name: "File",
-      fileType: "RF",
-      updatedAt: "Jan 9, 2014",
-      tagQuantity: 0,
-      pendingTagQuantity: 0,
-    },
-    {
-      name: "Remote Node with offline",
-      fileType: "RN",
-      updatedAt: "Jan 1, 2014",
-      tagQuantity: 0,
-      pendingTagQuantity: 0,
-      disabled: true,
-    },
-    {
-      name: "Folder with Error",
-      fileType: "RD",
-      updatedAt: "Jan 1, 2014",
-      tagQuantity: 1,
-      pendingTagQuantity: 4,
-      disabled: true,
-    },
-    {
-      name: "File with Error",
-      fileType: "RF",
-      updatedAt: "Jan 1, 2014",
-      tagQuantity: 0,
-      pendingTagQuantity: 0,
-      disabled: true,
-    },
-  ];
+  const api = useAPI();
+  const [extFS, _setExtFS] = useExtFS();
+  const { queryKey, condition } = extFS;
+  const { data, isFetching, isError } = useQuery({
+    queryKey: [...queryKey, condition],
+    queryFn: async () => await api?.searchExtFSItems(condition),
+  });
+
+  const [_, items] = useMemo(() => data || [0, []], [data]);
+
   return (
-    <List>
-      {records.map((record) => (
-        <FileItem key={record.name} record={record} />
-      ))}
-    </List>
+    <Fragment>
+      <Box
+        height="100%"
+        sx={{
+          display: isFetching ? "flex" : "none",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+      <AutoSizer disableWidth={true} hidden={isFetching}>
+        {({ height }) => (
+          <FixedSizeList
+            height={height}
+            width="100%"
+            itemSize={68}
+            itemCount={items.length}
+          >
+            {({ index, style }) => (
+              <FileItem
+                key={`extfs-items-${items[index].id}`}
+                style={style}
+                record={items[index]}
+              />
+            )}
+          </FixedSizeList>
+        )}
+      </AutoSizer>
+    </Fragment>
   );
 };

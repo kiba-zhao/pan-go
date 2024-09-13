@@ -16,6 +16,28 @@ export const Dialog = ({ children, ...props }: DialogProps) => (
   </TranslateProvider>
 );
 
+export const DialogSaveActions = ({
+  onSave,
+  onCancel,
+  label,
+}: {
+  onSave: () => void;
+  onCancel: () => void;
+  label?: string;
+}) => {
+  const t = useTranslate();
+  return (
+    <Fragment>
+      <Button size="small" onClick={onCancel}>
+        {t("button.cancel")}
+      </Button>
+      <Button size="small" onClick={onSave} autoFocus>
+        {label ? label : t("button.save")}
+      </Button>
+    </Fragment>
+  );
+};
+
 export const DialogSubmitActions = ({
   onSubmit,
   onCancel,

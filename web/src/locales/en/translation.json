@@ -46,6 +46,16 @@
     "extfs": {
       "name": "Extended File System"
     },
+    "extfs/local-node-items": {
+      "createName": "Create Node Item",
+      "editName": "Edit Node Item",
+      "fields": {
+        "name": "Name",
+        "filepath": "File Path",
+        "enabled": "Enabled",
+        "available": "Available"
+      }
+    },
     "app/settings": {
       "name": "App Settings",
       "summary": "SUMMARY",
@@ -75,6 +85,7 @@
     },
     "pagination": "{{total}} results",
     "button": {
+      "settings": "Settings",
       "add": "Add",
       "revise": "Revise",
       "close": "Close",
@@ -102,6 +113,8 @@
       }
     },
     "label": {
+      "available": "Available",
+      "not_available": "Not Available",
       "disabled": "Disabled",
       "enabled": "Enabled",
       "allowed": "Allowed",

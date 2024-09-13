@@ -58,6 +58,7 @@ import {
 } from "react-hook-form";
 
 export const AppSettingsIcon = AdminPanelSettingsIcon;
+export const AppSettingsRoutePath = "/app/settings";
 
 const TabPanel = ({
   children,
@@ -320,7 +321,11 @@ const AppSummarySettings = () => {
                   )}
                   labelPlacement="end"
                   control={
-                    <Switch defaultChecked {...field} disabled={isFetching} />
+                    <Switch
+                      checked={guardEnabled}
+                      {...field}
+                      disabled={isFetching}
+                    />
                   }
                 />
               )}
@@ -343,7 +348,7 @@ const AppSummarySettings = () => {
                   labelPlacement="end"
                   control={
                     <Switch
-                      defaultChecked
+                      checked={guardAccess}
                       {...field}
                       disabled={isFetching || guardEnabled === false}
                     />

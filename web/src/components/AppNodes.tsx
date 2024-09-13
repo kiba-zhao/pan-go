@@ -36,6 +36,7 @@ import LanIcon from "@mui/icons-material/Lan";
 import { useFormContext, useWatch } from "react-hook-form";
 
 export const AppNodeIcon = LanIcon;
+export const AppNodeRoutePath = "/app/nodes";
 
 type AppNode = {
   id: number;

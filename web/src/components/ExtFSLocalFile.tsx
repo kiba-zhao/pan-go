@@ -1,7 +1,11 @@
+import Paper from "@mui/material/Paper";
+
+export const ExtFSLocalFileRoutePath = "/extfs/local-files";
+
 export const ExtFSLocalFileCreate = () => {
-  return <>ExtFS Local File Create</>;
+  return <Paper>ExtFS Local File Create</Paper>;
 };
 
 export const ExtFSLocalFileEdit = () => {
-  return <>ExtFS Local File Edit</>;
+  return <Paper>ExtFS Local File Edit</Paper>;
 };

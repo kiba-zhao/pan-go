@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactElement, Ref } from "react";
-import { forwardRef, useId, useMemo, useState } from "react";
+import { forwardRef, Fragment, useId, useMemo, useState } from "react";
 
 import CloseIcon from "@mui/icons-material/Close";
 import FolderIcon from "@mui/icons-material/Folder";
@@ -14,18 +14,17 @@ import Breadcrumbs from "@mui/material/Breadcrumbs";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
-import FilledInput from "@mui/material/FilledInput";
-import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
-import InputLabel from "@mui/material/InputLabel";
 import Link from "@mui/material/Link";
 import ListItem from "@mui/material/ListItem";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemButton from "@mui/material/ListItemButton";
+import ListItemSecondaryAction from "@mui/material/ListItemSecondaryAction";
 import ListItemText from "@mui/material/ListItemText";
 import Slide from "@mui/material/Slide";
 import { useTheme } from "@mui/material/styles";
+import TextField from "@mui/material/TextField";
 import Toolbar from "@mui/material/Toolbar";
 import { TransitionProps } from "@mui/material/transitions";
 import Typography from "@mui/material/Typography";
@@ -64,27 +63,27 @@ export const FilePathInput = forwardRef(
     { label, value, onBlur, onChange, fileType, title }: FilePathInputProps,
     ref: Ref<HTMLInputElement>
   ) => {
-    const id = useId();
-    const elementId = useMemo(() => `custom-filepath-input-${id}`, [id]);
     const [open, setOpen] = useState(false);
     const onOpen = () => setOpen(true);
     const onClose = () => setOpen(false);
     return (
-      <FormControl variant="filled" fullWidth>
-        <InputLabel htmlFor={elementId}>{label}</InputLabel>
-        <FilledInput
-          id={elementId}
+      <Fragment>
+        <TextField
+          variant="filled"
+          label={label}
+          value={value}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
-          value={value}
-          endAdornment={
-            <InputAdornment position="end">
-              <IconButton aria-label="directions" onClick={onOpen}>
-                <FolderIcon />
-              </IconButton>
-            </InputAdornment>
-          }
-          ref={ref}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton aria-label="directions" onClick={onOpen}>
+                  <FolderIcon />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+          inputRef={ref}
         />
         {open && (
           <FilePathSelect
@@ -96,7 +95,7 @@ export const FilePathInput = forwardRef(
             title={title}
           />
         )}
-      </FormControl>
+      </Fragment>
     );
   }
 );
@@ -121,7 +120,7 @@ const FilePathSelect = ({
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [parent, setParent] = useState<string>(() =>
-    value !== "" ? dirname(value) : ""
+    value !== "" && value !== void 0 ? dirname(value) : ""
   );
 
   const api = useAPI();
@@ -147,6 +146,8 @@ const FilePathSelect = ({
   };
 
   const [_, rows] = useMemo(() => data || [0, []], [data]);
+
+  const id = useId();
 
   return (
     <Dialog
@@ -200,30 +201,12 @@ const FilePathSelect = ({
             <FixedSizeList
               height={height}
               width="100%"
-              itemSize={68}
+              itemSize={72}
               itemCount={rows.length}
               overscanCount={20}
             >
               {({ index, style }) => (
-                <ListItem
-                  style={style}
-                  key={index}
-                  component="div"
-                  disablePadding
-                  secondaryAction={
-                    <IconButton
-                      edge="end"
-                      aria-label="enter"
-                      onClick={() => onEnter(rows[index])}
-                      sx={{
-                        visibility:
-                          rows[index].fileType === "D" ? "visible" : "hidden",
-                      }}
-                    >
-                      <NavigateNextIcon />
-                    </IconButton>
-                  }
-                >
+                <ListItem style={style} key={`${id}-${index}`} disablePadding>
                   <ListItemButton
                     selected={rows[index].filepath === value}
                     onClick={() => onSelected(rows[index])}
@@ -241,6 +224,22 @@ const FilePathSelect = ({
                       primary={rows[index].name}
                       secondary={rows[index].updatedAt}
                     />
+                    <ListItemSecondaryAction>
+                      <IconButton
+                        edge="end"
+                        aria-label="enter"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEnter(rows[index]);
+                        }}
+                        sx={{
+                          visibility:
+                            rows[index].fileType === "D" ? "visible" : "hidden",
+                        }}
+                      >
+                        <NavigateNextIcon />
+                      </IconButton>
+                    </ListItemSecondaryAction>
                   </ListItemButton>
                 </ListItem>
               )}

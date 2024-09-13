@@ -68,6 +68,16 @@
     "extfs": {
       "name": "扩展文件系统"
     },
+    "extfs/local-node-items": {
+      "createName": "新增本地项",
+      "editName": "编辑本地项",
+      "fields": {
+        "name": "名称",
+        "filepath": "文件路径",
+        "enabled": "启用状态",
+        "available": "可用状态"
+      }
+    },
     "app/settings": {
       "name": "应用设置",
       "summary": "通用设置",
@@ -97,6 +107,7 @@
     },
     "pagination": "总共 {{total}} 项",
     "button": {
+      "settings": "设置",
       "add": "添加",
       "revise": "修改",
       "close": "关闭",
@@ -124,6 +135,8 @@
       }
     },
     "label": {
+      "available": "可用",
+      "not_available": "不可用",
       "disabled": "禁用",
       "enabled": "启用",
       "allowed": "允许",

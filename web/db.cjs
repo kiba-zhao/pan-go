@@ -23,6 +23,10 @@ module.exports = () => {
     );
   }, []);
 
+  const nodeItems = faker.helpers.multiple(generateExtFSNodeItem, {
+    count: { min: 1, max: 10 },
+  });
+
   return {
     "extfs-targets": targets,
     "extfs-target-files": targetFiles,
@@ -31,6 +35,8 @@ module.exports = () => {
       diskFiles.filter((_) => _.fileType === "D").map((_) => _.filepath)
     ),
     "app-nodes": generateNodes(),
+    "extfs-items": generateExtFSItems(),
+    "extfs-node-items": nodeItems,
   };
 };
 
@@ -143,4 +149,104 @@ function generateNodes() {
       count: { min: 1, max: 10 },
     }
   );
+}
+
+function generateExtFSItems() {
+  let fileItems;
+  let parentItems = [];
+  let depth = 10;
+
+  for (;;) {
+    depth--;
+    if (depth <= 0) break;
+    if (parentItems.length <= 0) {
+      parentItems.push(generateExtFSItem("N"));
+      parentItems.push(
+        ...faker.helpers.multiple(generateExtFSItem.bind(this, "RN"), {
+          count: { min: 1, max: 3 },
+        })
+      );
+      parentItems.push(
+        ...faker.helpers.multiple(generateExtFSItem.bind(this, "S"), {
+          count: { min: 2, max: 6 },
+        })
+      );
+
+      fileItems = Array.from(parentItems);
+      continue;
+    }
+
+    const [_, parentItems_] = parentItems.reduce(
+      (ctx, parentItem) => {
+        const fileItems_ = faker.helpers.multiple(
+          generateExtFSItemByParent.bind(this, parentItem),
+          {
+            count: { min: 2, max: 5 },
+          }
+        );
+        if (fileItems_.length > 0) {
+          const [ctxFileItems, ctxParentItems] = ctx;
+          ctxFileItems.push(...fileItems_);
+          ctxParentItems.push(
+            ...fileItems_.filter((_) =>
+              ["S", "N", "RN", "D", "RD"].includes(_.fileType)
+            )
+          );
+        }
+        return ctx;
+      },
+      [fileItems, []]
+    );
+    if (parentItems_.length <= 0) break;
+
+    parentItems = parentItems_;
+  }
+
+  return fileItems;
+}
+
+function generateExtFSItemByParent(parentItem) {
+  const fileTypes = generateExtFSFileTypes(
+    parentItem ? parentItem.fileType : void 0
+  );
+  if (!fileTypes.length) return;
+  const fileType = faker.helpers.arrayElement(fileTypes);
+
+  const item = generateExtFSItem(fileType);
+  if (parentItem) {
+    item.parentId = parentItem.id;
+  }
+  return item;
+}
+
+function generateExtFSItem(fileType) {
+  return {
+    id: faker.string.nanoid(),
+    fileType,
+    name: faker.system.fileName(),
+    updatedAt: faker.date.past().toLocaleString(),
+    tagQuantity: fileType === "N" ? 0 : faker.number.int(5),
+    pendingTagQuantity: fileType === "N" ? 0 : faker.number.int(5),
+    disabled: fileType === "N" || faker.datatype.boolean(),
+    linkId: faker.number.int().toString(),
+  };
+}
+
+function generateExtFSFileTypes(parentFileType) {
+  if (parentFileType === "S") return ["S", "D", "F", "RD", "RF"];
+  if (parentFileType === "D" || parentFileType === "N") return ["F", "D"];
+  if (parentFileType === "RD" || parentFileType === "RN") return ["RF", "RD"];
+  return [];
+}
+
+function generateExtFSNodeItem() {
+  return {
+    id: faker.number.int({ min: 1, max: 999999 }),
+    name: faker.word.sample(),
+    filepath: faker.system.directoryPath(),
+    enabled: faker.datatype.boolean(),
+    available: faker.datatype.boolean(),
+    createdAt: faker.date.past(),
+    updatedAt: faker.date.past(),
+  };
 }

@@ -1,7 +1,5 @@
-export const ExtFSLocalNodeSettings = () => {
-  return <>ExtFS Local Node Settings</>;
-};
+export const ExtFSLocalNodeRoutePath = "/extfs/local-node";
 
-export const ExtFSRemoteNodeSettings = () => {
-  return <>ExtFS Remote Node Settings</>;
+export const ExtFSLocalNodeSettings = () => {
+  return <>ExtFS Local Node Settings 1</>;
 };

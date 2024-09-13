@@ -9,9 +9,9 @@ import {
   useTranslate,
 } from "react-admin";
 
-import { AppNodeIcon } from "./AppNodes";
-import { AppSettingsIcon } from "./AppSettings";
-import { ExfFSIcon } from "./ExtFS";
+import { AppNodeIcon, AppNodeRoutePath } from "./AppNodes";
+import { AppSettingsIcon, AppSettingsRoutePath } from "./AppSettings";
+import { ExtFSIcon, ExtFSRoutePath } from "./ExtFS";
 
 const AppMenu = () => {
   const t = useTranslate();
@@ -19,17 +19,17 @@ const AppMenu = () => {
     <Menu>
       <Menu.DashboardItem />
       <Menu.Item
-        to="/extfs"
+        to={ExtFSRoutePath}
         primaryText={t("custom.extfs.name")}
-        leftIcon={<ExfFSIcon />}
+        leftIcon={<ExtFSIcon />}
       />
       <Menu.Item
-        to="/app/nodes"
+        to={AppNodeRoutePath}
         primaryText={t("resources.app/nodes.name")}
         leftIcon={<AppNodeIcon />}
       />
       <Menu.Item
-        to="/app/settings"
+        to={AppSettingsRoutePath}
         primaryText={t("custom.app/settings.name")}
         leftIcon={<AppSettingsIcon />}
       />
