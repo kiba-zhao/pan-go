@@ -10,36 +10,6 @@
         "online": "Online",
         "blocked": "Blocked"
       }
-    },
-    "extfs/targets": {
-      "name": "Target of ExtFS",
-      "input": {
-        "filepath": "File Path Select"
-      },
-      "filters": {
-        "has_enabled": "Enabled / Disabled",
-        "enabled": "Enabled",
-        "disabled": "Disabled",
-        "help_available": "The total count is not affected by this filter",
-        "has_available": "Status",
-        "available": "Available",
-        "not_available": "Not available"
-      }
-    },
-    "extfs/target-files": {
-      "name": "Target File of ExtFS",
-      "fields": {
-        "target": "Target Name"
-      },
-      "filters": {
-        "help_available": "The total count is not affected by this filter",
-        "has_available": "Status",
-        "available": "Available",
-        "not_available": "Not available"
-      },
-      "show": {
-        "summary": "Summary"
-      }
     }
   },
   "custom": {

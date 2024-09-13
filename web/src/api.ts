@@ -129,8 +129,15 @@ export async function saveExtFSNodeItem(
   );
 }
 
-export async function getExtFSNodeItem(
+export async function selectExtFSNodeItem(
   id: ExtFSNodeItem["id"]
 ): Promise<ExtFSNodeItem> {
   return await fetchOne(withPath(`extfs/node-items/${id}`, "merge"));
+}
+
+export async function deleteExtFSNodeItem(id: ExtFSNodeItem["id"]) {
+  return await fetchOne(
+    withPath(`extfs/node-items/${id}`, "merge"),
+    withMethod("DELETE")
+  );
 }

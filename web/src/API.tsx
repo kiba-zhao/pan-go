@@ -34,7 +34,8 @@ export interface API {
     fields: ExtFSNodeItemFields,
     id?: ExtFSNodeItem["id"]
   ): Promise<ExtFSNodeItem>;
-  getExtFSNodeItem(id: ExtFSNodeItem["id"]): Promise<ExtFSNodeItem>;
+  selectExtFSNodeItem(id: ExtFSNodeItem["id"]): Promise<ExtFSNodeItem>;
+  deleteExtFSNodeItem(id: ExtFSNodeItem["id"]): Promise<void>;
 }
 
 const APIContext = createContext<API | null>(null);

@@ -16,52 +16,6 @@
         "online": "在线",
         "blocked": "封锁"
       }
-    },
-    "extfs/targets": {
-      "name": "目标文件",
-      "fields": {
-        "name": "命名",
-        "filepath": "文件路径",
-        "enabled": "启用状态",
-        "available": "可用状态",
-        "createdAt": "创建时间",
-        "updatedAt": "更新时间"
-      },
-      "input": {
-        "filepath": "文件路径选择"
-      },
-      "filters": {
-        "has_enabled": "启用/停用",
-        "enabled": "启用",
-        "disabled": "停用",
-        "help_available": "总数不受该过滤器影响",
-        "has_available": "状态",
-        "available": "可用",
-        "not_available": "不可用"
-      }
-    },
-    "extfs/target-files": {
-      "name": "目标文件项",
-      "fields": {
-        "target": "目标文件",
-        "filepath": "文件路径",
-        "mimeType": "MIME 类型",
-        "size": "文件大小",
-        "checkSum": "文件签名",
-        "modTime": "修改时间",
-        "available": "可用状态",
-        "createdAt": "创建时间",
-        "updatedAt": "更新时间"
-      },
-      "filters": {
-        "help_available": "总数不受该过滤器影响",
-        "has_available": "可用状态",
-        "available": "可用",
-        "not_available": "不可用"
-      },
-      "show": {
-        "summary": "概要"
-      }
     }
   },
   "custom": {

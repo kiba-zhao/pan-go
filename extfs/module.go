@@ -4,8 +4,6 @@ import (
 	"pan/app"
 
 	"pan/extfs/controllers"
-	"pan/extfs/dispatchers"
-	dispatcherImpl "pan/extfs/dispatchers/impl"
 	"pan/extfs/models"
 	"pan/extfs/repositories"
 	repoImpl "pan/extfs/repositories/impl"
@@ -34,8 +32,7 @@ func (m *module) Controllers() []interface{} {
 	m.once.Do(func() {
 		// TODO: add web and node controllers
 		m.controllers = []interface{}{
-			&controllers.TargetController{},
-			&controllers.TargetFileController{},
+			&controllers.NodeItemController{},
 		}
 	})
 	return m.controllers
@@ -43,7 +40,7 @@ func (m *module) Controllers() []interface{} {
 
 func (m *module) Models() []interface{} {
 	return []interface{}{
-		&models.Target{}, &models.TargetFile{},
+		&models.NodeItem{},
 	}
 }
 
@@ -53,16 +50,11 @@ func (m *module) Components() []runtime.Component {
 	components := []runtime.Component{
 		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
 		// services
-		runtime.NewComponent(&services.TargetService{}, runtime.ComponentInternalScope),
-		runtime.NewComponent(&services.TargetFileService{}, runtime.ComponentInternalScope),
+		runtime.NewComponent(&services.NodeItemService{}, runtime.ComponentInternalScope),
 	}
 
 	// repositories
-	components = app.AppendSampleComponent[repositories.TargetRepository](components, &repoImpl.TargetRepository{})
-	components = app.AppendSampleComponent[repositories.TargetFileRepository](components, &repoImpl.TargetFileRepository{})
-
-	// dispatchers
-	components = app.AppendSampleComponent[dispatchers.TargetDispatcher](components, dispatcherImpl.NewTargetDispatcher())
+	components = app.AppendSampleComponent[repositories.NodeItemRepository](components, &repoImpl.NodeItemRepository{})
 
 	// controllers
 	for _, ctrl := range m.Controllers() {

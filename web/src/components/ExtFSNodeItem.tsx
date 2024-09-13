@@ -30,9 +30,11 @@ export const ExtFSNodeItemCreate = () => <ExtFSNodeItemForm />;
 const SaveButton = ({
   onSave,
   needConfirm,
+  disabled,
 }: {
   onSave: () => void;
   needConfirm?: boolean;
+  disabled?: boolean;
 }) => {
   const t = useTranslate();
 
@@ -60,8 +62,8 @@ const SaveButton = ({
       <Button
         variant="contained"
         size="small"
-        color="error"
         onClick={handleClick}
+        disabled={disabled}
       >
         {t("custom.button.save")}
       </Button>
@@ -78,13 +80,61 @@ const SaveButton = ({
   );
 };
 
+const DeleteButton = ({
+  onDelete,
+  disabled,
+  hidden,
+}: {
+  onDelete: () => void;
+  disabled?: boolean;
+  hidden?: boolean;
+}) => {
+  const t = useTranslate();
+  const [open, setOpen] = useState(false);
+  const handleClick = () => {
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const handleConfirm = (confirm: boolean) => {
+    if (confirm) onDelete();
+    else handleClose();
+  };
+  return (
+    <Fragment>
+      <Button
+        variant="contained"
+        size="small"
+        color="error"
+        onClick={handleClick}
+        sx={{ display: hidden ? "none" : "block" }}
+        disabled={disabled}
+      >
+        {t("custom.button.remove")}
+      </Button>
+      <Dialog open={open} onClose={handleClose}>
+        <DialogConfirmContent label={t("custom.button.remove")} />
+        <DialogActions>
+          <DialogConfirmActions
+            label={t("custom.button.remove")}
+            onConfirm={handleConfirm}
+          />
+        </DialogActions>
+      </Dialog>
+    </Fragment>
+  );
+};
+
 const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
   const t = useTranslate();
   const navigate = useNavigate();
   const api = useAPI();
   const { data, refetch } = useQuery({
     queryKey: ["extfs-node-item", id],
-    queryFn: () => api?.getExtFSNodeItem(id as ExtFSNodeItem["id"]),
+    queryFn: () => api?.selectExtFSNodeItem(id as ExtFSNodeItem["id"]),
     enabled: !!id,
   });
 
@@ -101,7 +151,7 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
     reset(defaultValues);
   }, [defaultValues]);
 
-  const { mutate, isPending } = useMutation({
+  const { mutate: saveMutate, isPending: isSavePending } = useMutation({
     mutationFn: async (fields: ExtFSNodeItemFields) =>
       await api?.saveExtFSNodeItem(fields, id),
     onSuccess: (entity) => {
@@ -118,9 +168,28 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
 
   const handleSave = async () => {
     await handleSubmit(async (data) => {
-      await mutate(data);
+      await saveMutate(data);
     })();
   };
+
+  const handleReset = () => {
+    refetch();
+    reset(defaultValues);
+  };
+
+  const { mutate: deleteMutate, isPending: isDeletePending } = useMutation({
+    mutationFn: api?.deleteExtFSNodeItem,
+    onSuccess: () => {
+      navigate("/extfs");
+    },
+  });
+  const handleDelete = async () => {
+    deleteMutate(id as ExtFSNodeItem["id"]);
+  };
+
+  const isPending = useMemo(() => {
+    return isSavePending || isDeletePending;
+  }, [isSavePending, isDeletePending]);
 
   return (
     <Paper component={"form"} sx={{ padding: 3 }} onSubmit={handleSave}>
@@ -128,12 +197,30 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
         direction="row"
         spacing={1}
         alignItems={"flex-start"}
-        justifyContent={"space-between"}
+        justifyContent={"flex-end"}
       >
-        <Typography variant="h6">
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>
           {t(`custom.extfs/local-node-items.${id ? "editName" : "createName"}`)}
         </Typography>
-        <SaveButton onSave={handleSave} needConfirm={!!id} />
+        <Button
+          variant="contained"
+          size="small"
+          onClick={handleReset}
+          sx={{ display: id === void 0 ? "none" : "block" }}
+          disabled={isPending}
+        >
+          {t("custom.button.reset")}
+        </Button>
+        <SaveButton
+          onSave={handleSave}
+          needConfirm={!!id}
+          disabled={isPending}
+        />
+        <DeleteButton
+          onDelete={handleDelete}
+          disabled={isPending}
+          hidden={id === void 0}
+        />
       </Stack>
       <Stack spacing={2} marginTop={2}>
         <Controller
@@ -182,7 +269,10 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
             )}
           />
         </FormControl>
-        <FormControl component="fieldset">
+        <FormControl
+          component="fieldset"
+          sx={{ display: id === void 0 ? "none" : "block" }}
+        >
           <FormLabel component="legend">
             {t("custom.extfs/local-node-items.fields.available")}
           </FormLabel>
