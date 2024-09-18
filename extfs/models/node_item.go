@@ -19,6 +19,7 @@ type NodeItem struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt" form:"deletedAt"`
 	Name      string         `gorm:"size:255;index" json:"name" form:"name"`
 	FilePath  string         `json:"filepath" form:"filepath"`
+	FileType  string         `gorm:"size:1;index;" json:"filetype" form:"filetype"`
 	Enabled   *bool          `gorm:"index" json:"enabled" form:"enabled"`
 	Available bool           `gorm:"-:all" json:"available" form:"available"`
 }

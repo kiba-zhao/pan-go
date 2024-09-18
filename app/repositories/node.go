@@ -8,4 +8,5 @@ type NodeRepository interface {
 	Select(uint) (models.Node, error)
 	Delete(models.Node) error
 	SelectByNodeID(string) (models.Node, error)
+	TraverseWithNodeIDs(func(models.Node) error, []string) error
 }

@@ -320,6 +320,7 @@ func generatePrivKeyPathAndCertificatePath(rootPath string) (string, string) {
 }
 
 type NodeManager interface {
+	TraverseNodeID(func(NodeID) error) error
 	TraverseNode(NodeID, func(Node) bool)
 	Search(NodeID) []Node
 	Delete(Node)
@@ -330,6 +331,19 @@ type NodeManager interface {
 type nodeManager struct {
 	locker sync.RWMutex
 	matrix [][]Node
+}
+
+func (mgr *nodeManager) TraverseNodeID(traverse func(NodeID) error) error {
+	mgr.locker.RLock()
+	defer mgr.locker.RUnlock()
+	for _, nodeArr := range mgr.matrix {
+		if len(nodeArr) > 0 {
+			if err := traverse(nodeArr[0].ID()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (mgr *nodeManager) compareWithNodeID(nodeArr []Node, nodeId NodeID) int {

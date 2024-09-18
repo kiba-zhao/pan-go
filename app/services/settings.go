@@ -11,6 +11,10 @@ type SettingsProvider interface {
 	SetSettings(config.Settings) error
 }
 
+type SettingsExternalService interface {
+	Load() models.Settings
+}
+
 type SettingsService struct {
 	Provider SettingsProvider
 }

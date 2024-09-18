@@ -128,3 +128,21 @@ func AppendSampleComponent[T any](components []runtime.Component, component T) [
 	components = append(components, runtime.NewComponent(component, runtime.ComponentInternalScope))
 	return components
 }
+
+func AppendSampleExternalComponent[T any](components []runtime.Component, component T) []runtime.Component {
+	t := reflect.TypeFor[T]()
+	if t.Kind() == reflect.Interface {
+		components = append(components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentInternalScope))
+	}
+	components = append(components, runtime.NewComponent(component, runtime.ComponentExternalScope))
+	return components
+}
+
+func AppendSampleInternalComponent[T any](components []runtime.Component, component T) []runtime.Component {
+	t := reflect.TypeFor[T]()
+	if t.Kind() == reflect.Interface {
+		components = append(components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentInternalScope))
+	}
+	components = append(components, runtime.NewComponent(component, runtime.ComponentInternalScope))
+	return components
+}

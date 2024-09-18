@@ -49,3 +49,28 @@ func (repo *NodeItemRepository) Delete(item models.NodeItem) error {
 	}
 	return results.Error
 }
+
+func (repo *NodeItemRepository) TraverseAll(traverseFn func(models.NodeItem) error) error {
+	db := app.DBForProvider(repo.Provider)
+	if db == nil {
+		return constant.ErrUnavailable
+	}
+	rows, err := db.Model(&models.NodeItem{}).Rows()
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var model models.NodeItem
+		err = db.ScanRows(rows, &model)
+		if err == nil {
+			err = traverseFn(model)
+		}
+		if err != nil {
+			break
+		}
+	}
+	return err
+
+}

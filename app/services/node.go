@@ -13,6 +13,10 @@ type NodeManagerProvider interface {
 	NodeManager() node.NodeManager
 }
 
+type NodeExternalService interface {
+	TraverseWithNodeIDs(func(models.Node) error, []string) error
+}
+
 type NodeService struct {
 	NodeRepo repositories.NodeRepository
 	Provider NodeManagerProvider
@@ -134,6 +138,10 @@ func (s *NodeService) AccessWithNodeID(nodeId node.NodeID) error {
 		err = constant.ErrRefused
 	}
 	return err
+}
+
+func (s *NodeService) TraverseWithNodeIDs(traverseFn func(model models.Node) error, nodeIds []string) error {
+	return s.NodeRepo.TraverseWithNodeIDs(traverseFn, nodeIds)
 }
 
 func setNodeOnline(mgr node.NodeManager, model *models.Node) error {

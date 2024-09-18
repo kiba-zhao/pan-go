@@ -2,6 +2,7 @@ package extfs
 
 import (
 	"pan/app"
+	"pan/app/node"
 
 	"pan/extfs/controllers"
 	"pan/extfs/models"
@@ -19,6 +20,7 @@ func New() interface{} {
 const moduleName = "extfs"
 
 type module struct {
+	Node        node.NodeModule
 	DBProvider  app.RepositoryDBProvider
 	controllers []interface{}
 	once        sync.Once
@@ -30,8 +32,9 @@ func (m *module) Name() string {
 
 func (m *module) Controllers() []interface{} {
 	m.once.Do(func() {
-		// TODO: add web and node controllers
+
 		m.controllers = []interface{}{
+			&controllers.ItemController{},
 			&controllers.NodeItemController{},
 		}
 	})
@@ -49,9 +52,12 @@ func (m *module) Components() []runtime.Component {
 	// base
 	components := []runtime.Component{
 		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
-		// services
-		runtime.NewComponent(&services.NodeItemService{}, runtime.ComponentInternalScope),
 	}
+
+	// services
+	components = app.AppendSampleComponent(components, &services.ItemService{Provider: m})
+	components = app.AppendSampleInternalComponent[services.NodeItemInternalService](components, &services.NodeItemService{})
+	components = app.AppendSampleInternalComponent[services.RemoteNodeItemInternalService](components, &services.RemoteNodeItemService{})
 
 	// repositories
 	components = app.AppendSampleComponent[repositories.NodeItemRepository](components, &repoImpl.NodeItemRepository{})
@@ -62,4 +68,12 @@ func (m *module) Components() []runtime.Component {
 	}
 
 	return components
+}
+
+func (m *module) NodeManager() node.NodeManager {
+	if m.Node == nil {
+		return nil
+	}
+	mgr := m.Node.NodeManager()
+	return mgr
 }

@@ -128,3 +128,29 @@ func (repo *NodeRepository) SelectByNodeID(nodeId string) (models.Node, error) {
 	}
 	return node, results.Error
 }
+
+func (repo *NodeRepository) TraverseWithNodeIDs(traverse func(models.Node) error, nodeIds []string) error {
+
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return constant.ErrUnavailable
+	}
+
+	rows, err := db.Model(&models.Node{}).Where("node_id IN ?", nodeIds).Rows()
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var model models.Node
+		err = db.ScanRows(rows, &model)
+		if err == nil {
+			err = traverse(model)
+		}
+		if err != nil {
+			break
+		}
+	}
+	return err
+
+}

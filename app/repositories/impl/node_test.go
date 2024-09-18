@@ -14,7 +14,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	mockedApp "pan/mocks/pan/app"
+	mockedAppRepo "pan/mocks/pan/app/repositories"
 )
 
 func TestNodeRepo(t *testing.T) {
@@ -32,7 +32,7 @@ func TestNodeRepo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		provider := new(mockedApp.MockRepositoryDBProvider)
+		provider := new(mockedAppRepo.MockRepositoryDBProvider)
 		provider.On("DB").Return(db)
 		repo = &impl.NodeRepository{Provider: provider}
 		return

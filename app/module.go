@@ -63,11 +63,12 @@ func (m *module) Components() []runtime.Component {
 		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
 		// submodules
 		runtime.NewComponent(m.guard, runtime.ComponentNoneScope),
-		// services
-		runtime.NewComponent(&services.DiskFileService{}, runtime.ComponentInternalScope),
-		runtime.NewComponent(&services.SettingsService{Provider: m}, runtime.ComponentInternalScope),
-		runtime.NewComponent(&services.NodeService{Provider: m}, runtime.ComponentInternalScope),
 	}
+
+	// services
+	components = AppendSampleComponent(components, &services.DiskFileService{})
+	components = AppendSampleExternalComponent[services.SettingsExternalService](components, &services.SettingsService{Provider: m})
+	components = AppendSampleExternalComponent[services.NodeExternalService](components, &services.NodeService{Provider: m})
 
 	// repositories
 	components = AppendSampleComponent[repositories.NodeRepository](components, &repoImpl.NodeRepository{})
