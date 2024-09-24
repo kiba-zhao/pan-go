@@ -31,7 +31,7 @@ export type AppSettings = {
 
 export type AppSettingsFields = Partial<Omit<AppSettings, "nodeId">>;
 
-export async function getAppSettings(): Promise<AppSettings> {
+export async function selectAllAppSettings(): Promise<AppSettings> {
   return await fetchOne(withPath("app/settings", "merge"));
 }
 
@@ -70,53 +70,56 @@ export async function searchDiskFiles(
   );
 }
 
-export type ExtFSItem = {
+export type ExtFSRemoteNode = {
   id: string;
-  fileType: "S" | "D" | "F" | "N" | "RD" | "RF" | "RN";
+  nodeId: string;
   name: string;
+  available: boolean;
+  createdAt: string;
   updatedAt: string;
   tagQuantity: number;
   pendingTagQuantity: number;
-  disabled?: boolean;
-  parentId?: string;
-  linkId?: string;
 };
 
-export type ExtFSItemSearchCondition = Pick<ExtFSItem, "parentId"> & {
-  fileType?: Array<ExtFSItem["fileType"]> | ExtFSItem["fileType"];
-};
-
-export async function searchExtFSItems(
-  condition: ExtFSItemSearchCondition
-): Promise<[number, ExtFSItem[]]> {
-  const { fileType, ...params } = condition;
-  const query = new URLSearchParams(params);
-  if (Array.isArray(fileType)) {
-    fileType.reduce((q, t) => {
-      q.append("fileType", t);
-      return q;
-    }, query);
-  } else if (fileType !== void 0) {
-    query.append("fileType", fileType);
-  }
-  return await fetchMany(withPath("extfs/items", "merge"), withQuery(query));
+export async function selectAllExtFSRemoteNodes(): Promise<ExtFSRemoteNode[]> {
+  const [_, remoteNodes] = await fetchMany(
+    withPath("extfs/remote-nodes", "merge")
+  );
+  return remoteNodes;
 }
 
 export type ExtFSNodeItem = {
   id: number;
   name: string;
   filepath: string;
+  filetype: "F" | "D";
+  size: number;
   enabled: boolean;
   available: boolean;
   createdAt: string;
   updatedAt: string;
   deletedAt: string;
+  tagQuantity: number;
+  pendingTagQuantity: number;
 };
 
 export type ExtFSNodeItemFields = Omit<
   ExtFSNodeItem,
-  "id" | "createdAt" | "updatedAt" | "deletedAt" | "available"
+  | "id"
+  | "createdAt"
+  | "updatedAt"
+  | "deletedAt"
+  | "available"
+  | "filetype"
+  | "size"
+  | "tagQuantity"
+  | "pendingTagQuantity"
 >;
+
+export async function selectAllExtFSNodeItems(): Promise<ExtFSNodeItem[]> {
+  const [_, nodeItems] = await fetchMany(withPath("extfs/node-items", "merge"));
+  return nodeItems;
+}
 
 export async function saveExtFSNodeItem(
   fields: ExtFSNodeItemFields,
@@ -140,4 +143,100 @@ export async function deleteExtFSNodeItem(id: ExtFSNodeItem["id"]) {
     withPath(`extfs/node-items/${id}`, "merge"),
     withMethod("DELETE")
   );
+}
+
+export type ExtFSFileItemSearchCondition = {
+  itemId: ExtFSFileItem["itemId"];
+  parentPath?: string;
+};
+export type ExtFSFileItem = {
+  id: string;
+  itemId: ExtFSNodeItem["id"];
+  name: string;
+  filepath: string;
+  parentPath: string;
+  filetype: "F" | "D";
+  size: number;
+  available: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tagQuantity: number;
+  pendingTagQuantity: number;
+};
+export async function searchExtFSFileItems({
+  itemId,
+  parentPath,
+  ...opts
+}: ExtFSFileItemSearchCondition): Promise<ExtFSFileItem[]> {
+  const [_, nodeItems] = await fetchMany(
+    withPath("extfs/file-items", "merge"),
+    withQuery(
+      { itemId: itemId.toString(), parentPath: parentPath || "/", ...opts },
+      "merge"
+    )
+  );
+  return nodeItems;
+}
+
+export type ExtFSRemoteItemSearchCondition = {
+  nodeId: ExtFSRemoteNode["nodeId"];
+};
+export type ExtFSRemoteItem = {
+  id: string;
+  nodeId: ExtFSRemoteNode["nodeId"];
+  remoteItemId: number;
+  name: string;
+  filetype: "F" | "D";
+  size: number;
+  available: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tagQuantity: number;
+  pendingTagQuantity: number;
+};
+export async function searchExtFSRemoteItems(
+  condition: ExtFSRemoteItemSearchCondition
+): Promise<ExtFSRemoteItem[]> {
+  const [_, remoteItems] = await fetchMany(
+    withPath("extfs/remote-node-items", "merge"),
+    withQuery(condition, "merge")
+  );
+  return remoteItems;
+}
+
+export type ExtFSRemoteFileItemSearchCondition = {
+  nodeId: ExtFSRemoteNode["nodeId"];
+  itemId: ExtFSRemoteItem["remoteItemId"];
+  parentPath?: string;
+};
+
+export type ExtFSRemoteFileItem = {
+  id: string;
+  nodeId: ExtFSRemoteNode["nodeId"];
+  itemId: ExtFSRemoteItem["remoteItemId"];
+  name: string;
+  filepath: string;
+  parentPath: string;
+  filetype: "F" | "D";
+  size: number;
+  available: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tagQuantity: number;
+  pendingTagQuantity: number;
+};
+
+export async function searchExtFSRemoteFileItems({
+  itemId,
+  parentPath,
+  ...opts
+}: ExtFSRemoteFileItemSearchCondition): Promise<ExtFSRemoteFileItem[]> {
+  const [_, remotefiles] = await fetchMany(
+    withPath("extfs/remote-file-items", "merge"),
+    withQuery(
+      { itemId: itemId.toString(), parentPath: parentPath || "/", ...opts },
+      "merge"
+    )
+  );
+  return remotefiles;
 }

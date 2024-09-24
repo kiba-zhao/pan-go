@@ -72,7 +72,7 @@ const TabPanel = ({
   </Box>
 );
 
-const APP_SETTINGS_QUERY_KEY = ["app-settings"];
+export const APP_SETTINGS_QUERY_KEY = ["app-settings"];
 export const AppSettings = () => {
   const t = useTranslate();
   const [tab, setTab] = useState("summary");
@@ -83,7 +83,7 @@ export const AppSettings = () => {
   const api = useAPI();
   usePrefetchQuery({
     queryKey: APP_SETTINGS_QUERY_KEY,
-    queryFn: api?.getAppSettings,
+    queryFn: api?.selectAllAppSettings,
   });
 
   return (
@@ -205,7 +205,7 @@ const AppSummarySettings = () => {
   const api = useAPI();
   const { data, isFetching, isError } = useSuspenseQuery({
     queryKey: APP_SETTINGS_QUERY_KEY,
-    queryFn: api?.getAppSettings,
+    queryFn: api?.selectAllAppSettings,
   });
   const defaultValues = useMemo(
     () => ({
@@ -584,7 +584,7 @@ const AppAddressSettings = ({ source, children }: AppAddressSettingsProps) => {
   const api = useAPI();
   const { data, isFetching, isError } = useSuspenseQuery({
     queryKey: APP_SETTINGS_QUERY_KEY,
-    queryFn: api?.getAppSettings,
+    queryFn: api?.selectAllAppSettings,
   });
   const defaultValues = useMemo(() => ({ [source]: data[source] }), [data]);
   const methods = useForm({
