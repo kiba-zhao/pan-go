@@ -1,0 +1,26 @@
+syntax = "proto3";
+package models;
+
+option go_package = "extfs/models";
+
+message RemoteFileItemRecordList {
+    repeated RemoteFileItemRecord items = 1;
+}
+
+message RemoteFileItemRecord {
+    string ID = 1;
+    int64 CreatedAt = 2;
+    int64 UpdatedAt = 3;
+    int32 ItemID = 4;
+    string Name = 5;
+    string FileType = 6;
+    string FilePath = 7;
+    string ParentPath = 8;
+    int64 Size = 9;
+    bool Available = 10;
+}
+
+message RemoteFileItemRecordSearchCondition {
+    int32 ItemID = 1;
+    optional string ParentPath = 2;
+}

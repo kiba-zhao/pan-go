@@ -14,11 +14,23 @@ type NodeItemController struct {
 }
 
 func (c *NodeItemController) SetupToWeb(router net.WebRouter) error {
+	router.GET("/node-items", c.Search)
 	router.POST("/node-items", c.Create)
 	router.PATCH("/node-items/:id", c.Update)
 	router.GET("/node-items/:id", c.Select)
 	router.DELETE("/node-items/:id", c.Delete)
 	return nil
+}
+
+func (c *NodeItemController) Search(ctx net.WebContext) {
+
+	total, items, err := c.NodeItemService.SelectAll()
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	net.SetCountHeaderForWeb(ctx, total)
+	ctx.JSON(http.StatusOK, items)
 }
 
 func (c *NodeItemController) Create(ctx net.WebContext) {

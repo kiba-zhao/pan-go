@@ -9,6 +9,7 @@ import (
 
 type NodeItemInternalService interface {
 	TraverseAll(func(models.NodeItem) error) error
+	Select(uint) (models.NodeItem, error)
 }
 
 type NodeItemService struct {
@@ -19,6 +20,19 @@ const (
 	FileTypeFolder = "D"
 	FileTypeFile   = "F"
 )
+
+func (s *NodeItemService) SelectAll() (int64, []models.NodeItem, error) {
+	items := make([]models.NodeItem, 0)
+	err := s.TraverseAll(func(nodeItem models.NodeItem) error {
+		items = append(items, nodeItem)
+		return nil
+	})
+
+	if err != nil {
+		return 0, nil, err
+	}
+	return int64(len(items)), items, nil
+}
 
 func (s *NodeItemService) Create(fields models.NodeItemFields) (models.NodeItem, error) {
 	stat, err := os.Stat(fields.FilePath)
@@ -40,7 +54,7 @@ func (s *NodeItemService) Create(fields models.NodeItemFields) (models.NodeItem,
 
 	nodeItem_, err := s.NodeItemRepo.Save(nodeItem)
 	if err == nil {
-		setNodeItemAvailable(&nodeItem_)
+		setNodeItemFieldsWithFileStat(&nodeItem_)
 	}
 	return nodeItem_, err
 }
@@ -71,7 +85,7 @@ func (s *NodeItemService) Update(fields models.NodeItemFields, id uint) (models.
 		return nodeItem, constant.ErrConflict
 	}
 	if err == nil {
-		setNodeItemAvailable(&nodeItem)
+		setNodeItemFieldsWithFileStat(&nodeItem)
 	}
 	return nodeItem, err
 }
@@ -81,13 +95,13 @@ func (s *NodeItemService) Select(id uint) (models.NodeItem, error) {
 	if err != nil {
 		return nodeItem, err
 	}
-	setNodeItemAvailable(&nodeItem)
+	setNodeItemFieldsWithFileStat(&nodeItem)
 	return nodeItem, nil
 }
 
 func (s *NodeItemService) TraverseAll(traverseFn func(models.NodeItem) error) error {
 	return s.NodeItemRepo.TraverseAll(func(nodeItem models.NodeItem) error {
-		setNodeItemAvailable(&nodeItem)
+		setNodeItemFieldsWithFileStat(&nodeItem)
 		return traverseFn(nodeItem)
 	})
 }
@@ -104,7 +118,7 @@ func (s *NodeItemService) Delete(id uint) error {
 	return err
 }
 
-func setNodeItemAvailable(nodeItem *models.NodeItem) {
+func setNodeItemFieldsWithFileStat(nodeItem *models.NodeItem) {
 	nodeItem.Available = *nodeItem.Enabled
 	if !nodeItem.Available {
 		return
@@ -116,6 +130,7 @@ func setNodeItemAvailable(nodeItem *models.NodeItem) {
 		return
 	}
 
+	nodeItem.Size = stat.Size()
 	if stat.IsDir() {
 		nodeItem.Available = nodeItem.FileType == FileTypeFolder
 	} else {

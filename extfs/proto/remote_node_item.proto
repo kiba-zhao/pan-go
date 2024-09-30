@@ -3,16 +3,17 @@ package models;
 
 option go_package = "extfs/models";
 
-message RemoteNodeItemList {
-  repeated RemoteNodeItem items = 1;
+message RemoteNodeItemRecordList {
+  repeated RemoteNodeItemRecord items = 1;
 }
 
-message RemoteNodeItem{
+message RemoteNodeItemRecord{
     int32 ID = 1;
     int64 CreatedAt = 2;
     int64 UpdatedAt = 3;
     string Name = 4;
     string FileType = 5;
-    bool Available = 6;
+    int64 Size = 6;
+    bool Available = 7;
   }
   

@@ -53,7 +53,7 @@ module.exports = () => {
         generateExtFSRemoteFileItem.bind(
           this,
           item.nodeId,
-          item.remoteItemId,
+          item.itemId,
           folders
         ),
         {
@@ -193,7 +193,7 @@ function generateExtFSRemoteNodeItem(nodeId) {
   return {
     id: faker.string.nanoid(),
     nodeId,
-    remoteItemId: faker.number.int({ min: 1, max: 999999 }),
+    itemId: faker.number.int({ min: 1, max: 999999 }),
     name: faker.word.sample(),
     filetype: faker.helpers.arrayElement(["F", "D"]),
     size: faker.number.int({ min: 1, max: 999999 }),

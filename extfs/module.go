@@ -34,8 +34,11 @@ func (m *module) Controllers() []interface{} {
 	m.once.Do(func() {
 
 		m.controllers = []interface{}{
-			&controllers.ItemController{},
 			&controllers.NodeItemController{},
+			&controllers.RemoteNodeController{},
+			&controllers.FileItemController{},
+			&controllers.RemoteNodeItemController{},
+			&controllers.RemoteFileItemController{},
 		}
 	})
 	return m.controllers
@@ -55,9 +58,11 @@ func (m *module) Components() []runtime.Component {
 	}
 
 	// services
-	components = app.AppendSampleComponent(components, &services.ItemService{Provider: m})
 	components = app.AppendSampleInternalComponent[services.NodeItemInternalService](components, &services.NodeItemService{})
-	components = app.AppendSampleInternalComponent[services.RemoteNodeItemInternalService](components, &services.RemoteNodeItemService{})
+	components = app.AppendSampleComponent(components, &services.RemoteNodeItemService{})
+	components = app.AppendSampleComponent(components, &services.RemoteNodeService{Provider: m})
+	components = app.AppendSampleComponent(components, &services.FileItemService{})
+	components = app.AppendSampleComponent(components, &services.RemoteFileItemService{})
 
 	// repositories
 	components = app.AppendSampleComponent[repositories.NodeItemRepository](components, &repoImpl.NodeItemRepository{})
