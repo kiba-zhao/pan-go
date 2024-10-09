@@ -8,7 +8,7 @@ import (
 
 type NodeItemFields struct {
 	Name     string `form:"name" binding:"required" json:"name"`
-	FilePath string `form:"filepath" binding:"required" json:"filepath"`
+	FilePath string `form:"filePath" binding:"required" json:"filePath"`
 	Enabled  *bool  `form:"enabled" binding:"required" json:"enabled"`
 }
 
@@ -18,8 +18,8 @@ type NodeItem struct {
 	UpdatedAt          time.Time      `json:"updatedAt" form:"updatedAt"`
 	DeletedAt          gorm.DeletedAt `gorm:"index" json:"deletedAt" form:"deletedAt"`
 	Name               string         `gorm:"size:255;index" json:"name" form:"name"`
-	FilePath           string         `json:"filepath" form:"filepath"`
-	FileType           string         `gorm:"size:1;index;" json:"filetype" form:"filetype"`
+	FilePath           string         `json:"filePath" form:"filePath"`
+	FileType           string         `gorm:"size:1;index;" json:"fileType" form:"fileType"`
 	Enabled            *bool          `gorm:"index" json:"enabled" form:"enabled"`
 	Available          bool           `gorm:"-:all" json:"available" form:"available"`
 	Size               int64          `gorm:"-:all" json:"size" form:"size"`

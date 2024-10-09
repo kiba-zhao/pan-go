@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactElement, Ref } from "react";
-import { forwardRef, Fragment, useId, useMemo, useState } from "react";
+import {
+  forwardRef,
+  Fragment,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from "react";
 
 import CloseIcon from "@mui/icons-material/Close";
 import FolderIcon from "@mui/icons-material/Folder";
@@ -34,7 +41,7 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import { FixedSizeList } from "react-window";
 
 import { DiskFile, useAPI } from "../../API";
-import { basename, dirname, generateParents } from "./path";
+import { basename, generateParents } from "./path";
 
 const SlideUPTransition = forwardRef(
   (
@@ -119,17 +126,32 @@ const FilePathSelect = ({
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const [parent, setParent] = useState<string>(() =>
-    value !== "" && value !== void 0 ? dirname(value) : ""
-  );
-
   const api = useAPI();
 
-  const { isFetching, data, refetch } = useQuery({
-    queryKey: ["app-disk-files", parent],
-    queryFn: async () =>
-      await api?.searchDiskFiles(fileType ? { parent, fileType } : { parent }),
+  const { isFetching: isFileFetching, data: results } = useQuery({
+    queryKey: ["app-disk-files", { filePath: value }],
+    queryFn: async () => await api?.searchDiskFiles({ filePath: value }),
+    select: (data) => (data && data[1] ? data[1][0] : void 0),
     enabled: open && !!api,
+  });
+
+  const [parentPath, setParentPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isFileFetching) return;
+    setParentPath(results ? results.parentPath : "");
+  }, [isFileFetching, results]);
+
+  const { isFetching, data, refetch } = useQuery({
+    queryKey: ["app-disk-files", { parentPath }],
+
+    queryFn: async () =>
+      await api?.searchDiskFiles(
+        fileType
+          ? { parentPath: parentPath as string, fileType }
+          : { parentPath: parentPath as string }
+      ),
+    enabled: parentPath !== null && !isFileFetching,
   });
 
   const onRefresh = () => {
@@ -137,12 +159,12 @@ const FilePathSelect = ({
   };
 
   const onSelected = (item: DiskFile) => {
-    onChange(item.filepath);
+    onChange(item.filePath);
     onClose();
   };
 
   const onEnter = (item: DiskFile) => {
-    setParent(item.filepath);
+    setParentPath(item.filePath);
   };
 
   const [_, rows] = useMemo(() => data || [0, []], [data]);
@@ -179,11 +201,13 @@ const FilePathSelect = ({
           </IconButton>
         </Toolbar>
       </AppBar>
-      <FilePathBreadcrumbs
-        value={parent}
-        onSelect={setParent}
-        disabled={isFetching}
-      />
+      {parentPath !== null && (
+        <FilePathBreadcrumbs
+          value={parentPath}
+          onSelect={setParentPath}
+          disabled={isFetching}
+        />
+      )}
 
       <DialogContent sx={fullScreen ? void 0 : { height: 680, width: 552 }}>
         <Box
@@ -208,7 +232,7 @@ const FilePathSelect = ({
               {({ index, style }) => (
                 <ListItem style={style} key={`${id}-${index}`} disablePadding>
                   <ListItemButton
-                    selected={rows[index].filepath === value}
+                    selected={rows[index].filePath === value}
                     onClick={() => onSelected(rows[index])}
                   >
                     <ListItemAvatar>

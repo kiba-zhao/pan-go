@@ -71,11 +71,11 @@ func TestNodeItemController(t *testing.T) {
 	t.Run("PATCH /node-items/:id", func(t *testing.T) {
 
 		web, ctrl := setup()
-		filepath, err := setupTemp("extfs-node-items")
+		filePath, err := setupTemp("extfs-node-items")
 		assert.Nil(t, err)
-		defer teardownTemp(filepath)
+		defer teardownTemp(filePath)
 
-		stat, err := os.Stat(filepath)
+		stat, err := os.Stat(filePath)
 		assert.Nil(t, err)
 		assert.True(t, stat.IsDir())
 
@@ -87,7 +87,7 @@ func TestNodeItemController(t *testing.T) {
 		enabledField := false
 		fields := models.NodeItemFields{}
 		fields.Enabled = &enabledField
-		fields.FilePath = filepath
+		fields.FilePath = filePath
 		fields.Name = "Node Item Field Name"
 		enabled := !enabledField
 		entity := models.NodeItem{}
@@ -153,11 +153,11 @@ func TestNodeItemController(t *testing.T) {
 	t.Run("POST /node-items", func(t *testing.T) {
 
 		web, ctrl := setup()
-		filepath, err := setupTemp("extfs-node-items")
+		filePath, err := setupTemp("extfs-node-items")
 		assert.Nil(t, err)
-		defer teardownTemp(filepath)
+		defer teardownTemp(filePath)
 
-		stat, err := os.Stat(filepath)
+		stat, err := os.Stat(filePath)
 		assert.Nil(t, err)
 		assert.True(t, stat.IsDir())
 
@@ -168,7 +168,7 @@ func TestNodeItemController(t *testing.T) {
 		enabled := true
 		fields := models.NodeItemFields{}
 		fields.Enabled = &enabled
-		fields.FilePath = filepath
+		fields.FilePath = filePath
 		fields.Name = "Node Item Field Name"
 		entity := models.NodeItem{}
 		entity.ID = 1
@@ -206,11 +206,11 @@ func TestNodeItemController(t *testing.T) {
 
 		web, ctrl := setup()
 
-		filepath, err := setupTemp("extfs-node-items")
+		filePath, err := setupTemp("extfs-node-items")
 		assert.Nil(t, err)
-		defer teardownTemp(filepath)
+		defer teardownTemp(filePath)
 
-		stat, err := os.Stat(filepath)
+		stat, err := os.Stat(filePath)
 		assert.Nil(t, err)
 		assert.True(t, stat.IsDir())
 
@@ -222,7 +222,7 @@ func TestNodeItemController(t *testing.T) {
 		entity := models.NodeItem{}
 		entity.ID = 1
 		entity.Name = "Node Item Name"
-		entity.FilePath = filepath
+		entity.FilePath = filePath
 		entity.FileType = services.FileTypeFolder
 		entity.Enabled = &enabled
 		nodeItemRepo.On("TraverseAll", mock.AnythingOfType("func(models.NodeItem) error")).Once().Return(nil).Run(func(args mock.Arguments) {

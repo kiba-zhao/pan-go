@@ -139,7 +139,7 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
   });
 
   const defaultValues = useMemo(
-    () => data || { name: "", filepath: "", enabled: true },
+    () => data || { name: "", filePath: "", enabled: true },
     [data]
   );
 
@@ -238,11 +238,11 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
         />
         <Controller
           control={control}
-          name="filepath"
+          name="filePath"
           render={({ field }) => (
             <FilePathInput
-              title={t("custom.extfs/local-node-items.input.filepath", {})}
-              label={t("custom.extfs/local-node-items.fields.filepath")}
+              title={t("custom.extfs/local-node-items.input.filePath", {})}
+              label={t("custom.extfs/local-node-items.fields.filePath")}
               {...field}
             />
           )}
@@ -263,7 +263,7 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
                 )}
                 labelPlacement="end"
                 control={
-                  <Switch {...field} disabled={isPending} checked={enabled} />
+                  <Switch {...field} disabled={isPending} checked={!!enabled} />
                 }
               />
             )}
@@ -284,7 +284,7 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
             )}
             labelPlacement="end"
             control={
-              <Switch checked={available} inputProps={{ disabled: true }} />
+              <Switch checked={!!available} inputProps={{ disabled: true }} />
             }
           />
         </FormControl>

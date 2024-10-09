@@ -41,12 +41,12 @@ func TestFileItemController(t *testing.T) {
 
 		web, ctrl := setup()
 
-		filepath, err := setupTemp("extfs-file-items")
+		filePath, err := setupTemp("extfs-file-items")
 		assert.Nil(t, err)
-		defer teardownTemp(filepath)
+		defer teardownTemp(filePath)
 
 		filename := "test.txt"
-		fullpath := path.Join(filepath, filename)
+		fullpath := path.Join(filePath, filename)
 		err = os.WriteFile(fullpath, []byte("hello"), 0644)
 		assert.Nil(t, err)
 		fileStat, err := os.Stat(fullpath)
@@ -59,7 +59,7 @@ func TestFileItemController(t *testing.T) {
 		itemId := uint(1)
 		var nodeItem models.NodeItem
 		nodeItem.ID = itemId
-		nodeItem.FilePath = filepath
+		nodeItem.FilePath = filePath
 		nodeItem.FileType = services.FileTypeFolder
 		nodeItem.Available = true
 

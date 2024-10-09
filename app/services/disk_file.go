@@ -16,7 +16,7 @@ type DiskFileService struct {
 
 func (s *DiskFileService) Search(conditions models.DiskFileSearchCondition) (total int64, items []models.DiskFile, err error) {
 
-	if conditions.FilePath != "" || conditions.Parent == "" {
+	if conditions.FilePath != "" || conditions.ParentPath == "" {
 
 		var item models.DiskFile
 		var itemErr error
@@ -35,7 +35,7 @@ func (s *DiskFileService) Search(conditions models.DiskFileSearchCondition) (tot
 			return
 		}
 
-		if conditions.Parent != "" && conditions.Parent != item.Parent {
+		if conditions.ParentPath != "" && conditions.ParentPath != item.ParentPath {
 			err = constant.ErrConflict
 			return
 		}
@@ -45,7 +45,7 @@ func (s *DiskFileService) Search(conditions models.DiskFileSearchCondition) (tot
 		return
 	}
 
-	dirs, err := os.ReadDir(conditions.Parent)
+	dirs, err := os.ReadDir(conditions.ParentPath)
 	if err != nil {
 		return
 	}
@@ -63,14 +63,14 @@ func (s *DiskFileService) Search(conditions models.DiskFileSearchCondition) (tot
 		if conditions.FileType != "" && conditions.FileType != getFileType(info.IsDir()) {
 			continue
 		}
-		filepath := path.Join(conditions.Parent, dir.Name())
+		filePath := path.Join(conditions.ParentPath, dir.Name())
 		items = append(items, models.DiskFile{
-			ID:        encodeFilePath(filepath),
-			Name:      dir.Name(),
-			FilePath:  filepath,
-			Parent:    conditions.Parent,
-			FileType:  getFileType(info.IsDir()),
-			UpdatedAt: info.ModTime(),
+			ID:         encodeFilePath(filePath),
+			Name:       dir.Name(),
+			FilePath:   filePath,
+			ParentPath: conditions.ParentPath,
+			FileType:   getFileType(info.IsDir()),
+			UpdatedAt:  info.ModTime(),
 		})
 	}
 
@@ -100,19 +100,19 @@ func (s *DiskFileService) SelectRoot() (item models.DiskFile, err error) {
 	return
 }
 
-func (s *DiskFileService) SelectWithFilePath(filepath string) (item models.DiskFile, err error) {
-	stat, err := os.Stat(filepath)
+func (s *DiskFileService) SelectWithFilePath(filePath string) (item models.DiskFile, err error) {
+	stat, err := os.Stat(filePath)
 	if err != nil {
 		return
 	}
 
 	item = models.DiskFile{
-		ID:        encodeFilePath(filepath),
-		Name:      stat.Name(),
-		FilePath:  filepath,
-		Parent:    path.Dir(filepath),
-		FileType:  getFileType(stat.IsDir()),
-		UpdatedAt: stat.ModTime(),
+		ID:         encodeFilePath(filePath),
+		Name:       stat.Name(),
+		FilePath:   filePath,
+		ParentPath: path.Dir(filePath),
+		FileType:   getFileType(stat.IsDir()),
+		UpdatedAt:  stat.ModTime(),
 	}
 	return
 }
@@ -124,7 +124,7 @@ func getFileType(isDir bool) string {
 	return models.FILETYPE_FILE
 }
 
-func encodeFilePath(filepath string) string {
-	encoded := base64.StdEncoding.EncodeToString([]byte(filepath))
+func encodeFilePath(filePath string) string {
+	encoded := base64.StdEncoding.EncodeToString([]byte(filePath))
 	return encoded
 }

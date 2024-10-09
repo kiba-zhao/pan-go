@@ -33,7 +33,7 @@ module.exports = () => {
   }, []);
 
   const fileItems = nodeItems.reduce((arr, item) => {
-    if (!item.available || item.filetype !== "D") return arr;
+    if (!item.available || item.fileType !== "D") return arr;
     const folders = ["/"];
     return arr.concat(
       faker.helpers.multiple(
@@ -46,7 +46,7 @@ module.exports = () => {
   }, []);
 
   const remoteFileItems = remoteNodeItems.reduce((arr, item) => {
-    if (!item.available || item.filetype !== "D") return arr;
+    if (!item.available || item.fileType !== "D") return arr;
     const folders = ["/"];
     return arr.concat(
       faker.helpers.multiple(
@@ -66,7 +66,7 @@ module.exports = () => {
   return {
     "app-disk-files": diskFiles,
     "app-settings": generateAppSettings(
-      diskFiles.filter((_) => _.fileType === "D").map((_) => _.filepath)
+      diskFiles.filter((_) => _.fileType === "D").map((_) => _.filePath)
     ),
     "app-nodes": nodes,
     "extfs-remote-nodes": remoteNodes,
@@ -81,16 +81,16 @@ function generateDiskFile(folders) {
   const isDir = faker.datatype.boolean();
   const folder = faker.helpers.arrayElement(folders);
   const name = isDir ? faker.word.sample() : faker.system.fileName();
-  const filepath = path.join(folder, name);
+  const filePath = path.join(folder, name);
 
   if (isDir) {
-    folders.push(filepath);
+    folders.push(filePath);
   }
   return {
     id: faker.string.nanoid(),
     name,
-    filepath,
-    parent: folder,
+    filePath,
+    parentPath: folder,
     fileType: isDir ? "D" : "F",
     updatedAt: faker.date.past(),
   };
@@ -100,9 +100,9 @@ function generateDiskRoot() {
   return {
     id: faker.string.nanoid(),
     name: "/",
-    filepath: "/",
+    filePath: "/",
     fileType: "D",
-    parent: "",
+    parentPath: "",
     updatedAt: faker.date.past(),
   };
 }
@@ -177,8 +177,8 @@ function generateExtFSNodeItem() {
   return {
     id: faker.number.int({ min: 1, max: 999999 }),
     name: faker.word.sample(),
-    filepath: faker.system.directoryPath(),
-    filetype: faker.helpers.arrayElement(["F", "D"]),
+    filePath: faker.system.directoryPath(),
+    fileType: faker.helpers.arrayElement(["F", "D"]),
     size: faker.number.int({ min: 1, max: 999999 }),
     enabled: faker.datatype.boolean(),
     available: faker.datatype.boolean(),
@@ -195,7 +195,7 @@ function generateExtFSRemoteNodeItem(nodeId) {
     nodeId,
     itemId: faker.number.int({ min: 1, max: 999999 }),
     name: faker.word.sample(),
-    filetype: faker.helpers.arrayElement(["F", "D"]),
+    fileType: faker.helpers.arrayElement(["F", "D"]),
     size: faker.number.int({ min: 1, max: 999999 }),
     available: faker.datatype.boolean(),
     createdAt: faker.date.past(),
@@ -208,18 +208,18 @@ function generateExtFSRemoteNodeItem(nodeId) {
 function generateExtFSFileItem(itemId, folders = ["/"]) {
   const isDir = faker.datatype.boolean();
   const folder = faker.helpers.arrayElement(folders);
-  const filetype = isDir ? "D" : "F";
+  const fileType = isDir ? "D" : "F";
   const name = isDir ? faker.word.sample() : faker.system.fileName();
-  const filepath = path.join(folder, name);
+  const filePath = path.join(folder, name);
   if (isDir) {
-    folders.push(filepath);
+    folders.push(filePath);
   }
   return {
     id: faker.string.nanoid(),
     itemId,
     name,
-    filepath,
-    filetype,
+    filePath,
+    fileType,
     parentPath: folder,
     size: faker.number.int({ min: 1, max: 999999 }),
     available: true,
@@ -233,11 +233,11 @@ function generateExtFSFileItem(itemId, folders = ["/"]) {
 function generateExtFSRemoteFileItem(nodeId, itemId, folders = ["/"]) {
   const isDir = faker.datatype.boolean();
   const folder = faker.helpers.arrayElement(folders);
-  const filetype = isDir ? "D" : "F";
+  const fileType = isDir ? "D" : "F";
   const name = isDir ? faker.word.sample() : faker.system.fileName();
-  const filepath = path.join(folder, name);
+  const filePath = path.join(folder, name);
   if (isDir) {
-    folders.push(filepath);
+    folders.push(filePath);
   }
   return {
     id: faker.string.nanoid(),
@@ -245,8 +245,8 @@ function generateExtFSRemoteFileItem(nodeId, itemId, folders = ["/"]) {
     itemId,
     name,
     parentPath: folder,
-    filepath,
-    filetype,
+    filePath,
+    fileType,
     size: faker.number.int({ min: 1, max: 999999 }),
     available: true,
     createdAt: faker.date.past(),

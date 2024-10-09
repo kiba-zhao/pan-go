@@ -19,9 +19,12 @@
     "extfs/local-node-items": {
       "createName": "Create Node Item",
       "editName": "Edit Node Item",
+      "input": {
+        "filePath": "File Path Selector"
+      },
       "fields": {
         "name": "Name",
-        "filepath": "File Path",
+        "filePath": "File Path",
         "enabled": "Enabled",
         "available": "Available"
       }
@@ -44,7 +47,7 @@
         "guardAccess": "Default Access"
       },
       "input": {
-        "filepath": "Disk Path Selector"
+        "filePath": "Disk Path Selector"
       }
     },
     "settings": {

@@ -49,15 +49,15 @@ export async function saveAppSettings(
 export type DiskFile = {
   id: string;
   name: string;
-  filepath: string;
-  parent: string;
+  filePath: string;
+  parentPath: string;
   fileType: string;
   updatedAt: string;
 };
 
 export type DiskFileSearchCondition = {
-  parent?: string;
-  filepath?: string;
+  parentPath?: string;
+  filePath?: string;
   fileType?: string;
 };
 
@@ -91,8 +91,8 @@ export async function selectAllExtFSRemoteNodes(): Promise<ExtFSRemoteNode[]> {
 export type ExtFSNodeItem = {
   id: number;
   name: string;
-  filepath: string;
-  filetype: "F" | "D";
+  filePath: string;
+  fileType: "F" | "D";
   size: number;
   enabled: boolean;
   available: boolean;
@@ -110,7 +110,7 @@ export type ExtFSNodeItemFields = Omit<
   | "updatedAt"
   | "deletedAt"
   | "available"
-  | "filetype"
+  | "fileType"
   | "size"
   | "tagQuantity"
   | "pendingTagQuantity"
@@ -153,9 +153,9 @@ export type ExtFSFileItem = {
   id: string;
   itemId: ExtFSNodeItem["id"];
   name: string;
-  filepath: string;
+  filePath: string;
   parentPath: string;
-  filetype: "F" | "D";
+  fileType: "F" | "D";
   size: number;
   available: boolean;
   createdAt: string;
@@ -186,7 +186,7 @@ export type ExtFSRemoteItem = {
   nodeId: ExtFSRemoteNode["nodeId"];
   remoteItemId: number;
   name: string;
-  filetype: "F" | "D";
+  fileType: "F" | "D";
   size: number;
   available: boolean;
   createdAt: string;
@@ -215,9 +215,9 @@ export type ExtFSRemoteFileItem = {
   nodeId: ExtFSRemoteNode["nodeId"];
   itemId: ExtFSRemoteItem["remoteItemId"];
   name: string;
-  filepath: string;
+  filePath: string;
   parentPath: string;
-  filetype: "F" | "D";
+  fileType: "F" | "D";
   size: number;
   available: boolean;
   createdAt: string;

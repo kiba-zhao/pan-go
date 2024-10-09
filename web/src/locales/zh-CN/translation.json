@@ -25,9 +25,12 @@
     "extfs/local-node-items": {
       "createName": "新增本地项",
       "editName": "编辑本地项",
+      "input": {
+        "filePath": "文件选择"
+      },
       "fields": {
         "name": "名称",
-        "filepath": "文件路径",
+        "filePath": "文件路径",
         "enabled": "启用状态",
         "available": "可用状态"
       }
@@ -50,7 +53,7 @@
         "guardAccess": "默认访问"
       },
       "input": {
-        "filepath": "磁盘目录选择"
+        "filePath": "磁盘目录选择"
       }
     },
     "settings": {

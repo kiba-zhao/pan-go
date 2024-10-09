@@ -272,7 +272,7 @@ const AppSummarySettings = () => {
             name="rootPath"
             render={({ field }) => (
               <FilePathInput
-                title={t("custom.app/settings.input.filepath", {})}
+                title={t("custom.app/settings.input.filePath", {})}
                 label={t("custom.app/settings.fields.rootPath")}
                 fileType="D"
                 {...field}

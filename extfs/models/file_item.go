@@ -6,8 +6,8 @@ type FileItem struct {
 	ID                 string    `json:"id" form:"id"`
 	ItemID             uint      `json:"itemId" form:"itemId"`
 	Name               string    `json:"name" form:"name"`
-	FilePath           string    `json:"filepath" form:"filepath"`
-	FileType           string    `json:"filetype" form:"filetype"`
+	FilePath           string    `json:"filePath" form:"filePath"`
+	FileType           string    `json:"fileType" form:"fileType"`
 	ParentPath         string    `json:"parentPath" form:"parentPath"`
 	Size               int64     `json:"size" form:"size"`
 	Available          bool      `json:"available" form:"available"`

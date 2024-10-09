@@ -25,12 +25,12 @@ func (s *FileItemService) Search(conditions models.FileItemSearchCondition) (int
 		return 0, nil, appConstant.ErrUnavailable
 	}
 
-	filepath := nodeItem.FilePath
+	filePath := nodeItem.FilePath
 	if conditions.ParentPath != nil {
-		filepath = path.Join(filepath, *conditions.ParentPath)
+		filePath = path.Join(filePath, *conditions.ParentPath)
 	}
 
-	files, err := os.ReadDir(filepath)
+	files, err := os.ReadDir(filePath)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -71,7 +71,7 @@ func (s *FileItemService) Search(conditions models.FileItemSearchCondition) (int
 
 }
 
-func generateFileItemID(itemId uint, filepath string) string {
-	idStr := strings.Join([]string{strconv.FormatUint(uint64(itemId), 10), filepath}, constant.FileItemSep)
+func generateFileItemID(itemId uint, filePath string) string {
+	idStr := strings.Join([]string{strconv.FormatUint(uint64(itemId), 10), filePath}, constant.FileItemSep)
 	return base64.StdEncoding.EncodeToString([]byte(idStr))
 }

@@ -42,7 +42,7 @@ func TestDiskFileController(t *testing.T) {
 		var root models.DiskFile
 		root.Name = "root"
 		root.FilePath = "/"
-		root.Parent = "/parent"
+		root.ParentPath = "/parent"
 		root.FileType = models.FILETYPE_FOLDER
 		ctrl.DiskFileService.Root = &root
 
@@ -62,11 +62,11 @@ func TestDiskFileController(t *testing.T) {
 
 		assert.Equal(t, root.Name, rows[0].Name)
 		assert.Equal(t, root.FilePath, rows[0].FilePath)
-		assert.Equal(t, root.Parent, rows[0].Parent)
+		assert.Equal(t, root.ParentPath, rows[0].ParentPath)
 		assert.Equal(t, root.FileType, rows[0].FileType)
 	})
 
-	t.Run("GET /disk-files?parent=/path", func(t *testing.T) {
+	t.Run("GET /disk-files?parentPath=/path", func(t *testing.T) {
 		web, _ := setup()
 
 		parent, err := setupTemp("extfs-disk-files-test")
@@ -86,7 +86,7 @@ func TestDiskFileController(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/disk-files", nil)
 		q := req.URL.Query()
-		q.Add("parent", parent)
+		q.Add("parentPath", parent)
 		req.URL.RawQuery = q.Encode()
 		web.ServeHTTP(w, req)
 
@@ -101,18 +101,18 @@ func TestDiskFileController(t *testing.T) {
 		fileItem := rows[0]
 		assert.Equal(t, fileName, fileItem.Name)
 		assert.Equal(t, filePath, fileItem.FilePath)
-		assert.Equal(t, parent, fileItem.Parent)
+		assert.Equal(t, parent, fileItem.ParentPath)
 		assert.Equal(t, models.FILETYPE_FILE, fileItem.FileType)
 
 		dirItem := rows[1]
 		assert.Equal(t, folderName, dirItem.Name)
 		assert.Equal(t, folderPath, dirItem.FilePath)
-		assert.Equal(t, parent, dirItem.Parent)
+		assert.Equal(t, parent, dirItem.ParentPath)
 		assert.Equal(t, models.FILETYPE_FOLDER, dirItem.FileType)
 
 	})
 
-	t.Run("GET /disk-files?filepath=/path", func(t *testing.T) {
+	t.Run("GET /disk-files?filePath=/path", func(t *testing.T) {
 		web, _ := setup()
 
 		parent, err := setupTemp("extfs-disk-files-test")
@@ -129,7 +129,7 @@ func TestDiskFileController(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/disk-files", nil)
 		q := req.URL.Query()
-		q.Add("filepath", folderPath)
+		q.Add("filePath", folderPath)
 		req.URL.RawQuery = q.Encode()
 		web.ServeHTTP(w, req)
 
@@ -144,7 +144,7 @@ func TestDiskFileController(t *testing.T) {
 		dirItem := rows[0]
 		assert.Equal(t, folderName, dirItem.Name)
 		assert.Equal(t, folderPath, dirItem.FilePath)
-		assert.Equal(t, parent, dirItem.Parent)
+		assert.Equal(t, parent, dirItem.ParentPath)
 		assert.Equal(t, models.FILETYPE_FOLDER, dirItem.FileType)
 
 	})
