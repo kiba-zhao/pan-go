@@ -10,7 +10,7 @@ import {
   ExtFSItemTag,
   useExtFSItem,
 } from "./Item";
-import { More, MoreHelpItem } from "./More";
+import { More, MoreHelpItem, MoreNewItem } from "./More";
 import { useExtFS } from "./State";
 
 import { useQuery } from "@tanstack/react-query";
@@ -93,7 +93,12 @@ export const NodeItem = () => {
 export const NodeMore = () => {
   return (
     <More>
+      <NodeNewMore />
       <MoreHelpItem />
     </More>
   );
 };
+
+export const NodeNewMore = () => (
+  <MoreNewItem to={`${ExtFSNodeItemRoutePath}/create`} />
+);

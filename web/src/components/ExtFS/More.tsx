@@ -4,8 +4,6 @@ import {
   useReducerState,
 } from "../Context/ReducerState";
 
-import { useExtFS } from "./State";
-
 import type { MouseEvent, ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import type { To } from "react-router-dom";
@@ -124,30 +122,22 @@ export const MoreButtonItem = ({
   );
 };
 
-export const MoreNewItem = () => {
+export const MoreNewItem = ({ to }: { to: To }) => {
   const t = useTranslate();
-  const [state, _] = useExtFS();
 
-  if (state.parentItems.length <= 0) return void 0;
-  const url = state.parentItems.at(-1)?.newUrl;
-  if (!url) return void 0;
   return (
-    <MoreLinkItem icon={<AddCircleIcon fontSize="small" />} to={url}>
+    <MoreLinkItem icon={<AddCircleIcon fontSize="small" />} to={to}>
       {t("custom.button.new")}
     </MoreLinkItem>
   );
 };
 
-export const MoreSettingsItem = () => {
+export const MoreSettingsItem = ({ to }: { to: To }) => {
   const t = useTranslate();
-  const [state, _] = useExtFS();
 
-  if (state.parentItems.length <= 0) return void 0;
-  const url = state.parentItems.at(-1)?.settingsUrl;
-  if (!url) return void 0;
   return (
-    <MoreLinkItem icon={<SettingsIcon fontSize="small" />} to={url}>
-      {t("custom.button.new")}
+    <MoreLinkItem icon={<SettingsIcon fontSize="small" />} to={to}>
+      {t("custom.button.settings")}
     </MoreLinkItem>
   );
 };

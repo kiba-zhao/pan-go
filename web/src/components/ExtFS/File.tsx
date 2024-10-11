@@ -1,3 +1,4 @@
+import { ExtFSNodeItemRoutePath } from "../ExtFSNodeItem";
 import type { ExtFSItemRecord } from "./Item";
 import {
   ExtFSItem,
@@ -6,7 +7,7 @@ import {
   ExtFSItemTag,
   useExtFSItem,
 } from "./Item";
-import { More, MoreHelpItem } from "./More";
+import { More, MoreHelpItem, MoreSettingsItem } from "./More";
 import type { ExtFSSingleState } from "./State";
 import { useExtFS } from "./State";
 
@@ -20,7 +21,7 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
 import { useMemo } from "react";
 
-const ExtFSNodeItemRoutePath = "/extfs/file-items";
+const ExtFSFileItemRoutePath = "/extfs/file-items";
 const ExtFSFileItemTagRoutePath = "/extfs/file-item-tags";
 
 const ExtFSFileMode = "F";
@@ -96,7 +97,7 @@ export const FileItem = () => {
         quantity={data.tagQuantity}
         pendingQuantity={data.pendingTagQuantity}
       />
-      <ExtFSItemSettings to={`${ExtFSNodeItemRoutePath}/${data.id}`} />
+      <ExtFSItemSettings to={`${ExtFSFileItemRoutePath}/${data.id}`} />
     </ExtFSItem>
   );
 };
@@ -104,7 +105,15 @@ export const FileItem = () => {
 export const FileMore = () => {
   return (
     <More>
+      <FileSettingsMore />
       <MoreHelpItem />
     </More>
   );
+};
+
+const FileSettingsMore = () => {
+  const [{ parentItems, ...state }, _] = useExtFS();
+  const { itemId, parentPath } = state as ExtFSFileSingleState;
+  if (parentPath) return void 0;
+  return <MoreSettingsItem to={`${ExtFSNodeItemRoutePath}/${itemId}`} />;
 };

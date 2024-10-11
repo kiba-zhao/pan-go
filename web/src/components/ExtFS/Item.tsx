@@ -18,7 +18,6 @@ import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemButton from "@mui/material/ListItemButton";
-import ListItemSecondaryAction from "@mui/material/ListItemSecondaryAction";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -106,7 +105,7 @@ export const ExtFSItem = ({
   children,
 }: ExtFSItemProps) => {
   return (
-    <ListItem style={style}>
+    <ListItem style={style} secondaryAction={children} disablePadding>
       <ListItemButton onClick={() => onClick && onClick()} disabled={disabled}>
         <ListItemAvatar>
           <Avatar variant="rounded" sx={{ bgcolor: "inherit" }}>
@@ -114,7 +113,6 @@ export const ExtFSItem = ({
           </Avatar>
         </ListItemAvatar>
         <ListItemText
-          sx={{ paddingRight: 10 }}
           primary={primary}
           secondaryTypographyProps={{ component: "div" }}
           secondary={
@@ -131,11 +129,6 @@ export const ExtFSItem = ({
             </Stack>
           }
         />
-        {Children.count(children) ? (
-          <ListItemSecondaryAction>{children}</ListItemSecondaryAction>
-        ) : (
-          void 0
-        )}
       </ListItemButton>
     </ListItem>
   );

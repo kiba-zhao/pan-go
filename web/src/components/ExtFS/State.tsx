@@ -13,8 +13,6 @@ export type ExtFSSingleState = {
 export type ExtFSParentItem = {
   name: string;
   state: ExtFSSingleState;
-  newUrl?: string;
-  settingsUrl?: string;
 };
 export type ExtFSState = {
   parentItems: ExtFSParentItem[];
