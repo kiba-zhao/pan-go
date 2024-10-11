@@ -45,18 +45,18 @@ export const RemoteItems = () => {
 export const RemoteItem = () => {
   const { style, data }: ExtFSItemRecord<ExtFSRemoteItem> = useExtFSItem();
   const avatarIcon = useMemo(() => {
-    if (data?.filetype === "D")
+    if (data?.fileType === "D")
       return <FolderIcon color={data.available ? "primary" : "disabled"} />;
-    if (data?.filetype === "F")
+    if (data?.fileType === "F")
       return (
         <InsertDriveFileIcon color={data.available ? "action" : "disabled"} />
       );
-  }, [data?.filetype]);
+  }, [data?.fileType]);
 
   const [extfs, setExtFS] = useExtFS();
   const handleClick = () => {
     if (!data.available) return;
-    if (data.filetype === "D") {
+    if (data.fileType === "D") {
       const { parentItems } = extfs;
       const fileState = {
         ...ExtFSRemoteFileState,

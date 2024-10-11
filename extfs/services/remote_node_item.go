@@ -16,7 +16,8 @@ import (
 )
 
 type RemoteNodeItemService struct {
-	NodeModule appNode.NodeModule
+	NodeModule      appNode.NodeModule
+	NodeItemService NodeItemInternalService
 }
 
 func (s *RemoteNodeItemService) Search(condition models.RemoteNodeItemSearchCondition) (total int64, items []models.RemoteNodeItem, err error) {
@@ -48,6 +49,26 @@ func (s *RemoteNodeItemService) Search(condition models.RemoteNodeItemSearchCond
 
 	total = int64(len(items))
 	return
+}
+
+func (s *RemoteNodeItemService) SelectAllForNode() (models.RemoteNodeItemRecordList, error) {
+
+	var recordList models.RemoteNodeItemRecordList
+
+	err := s.NodeItemService.TraverseAll(func(nodeItem models.NodeItem) error {
+		var record models.RemoteNodeItemRecord
+		record.ID = int32(nodeItem.ID)
+		record.Name = nodeItem.Name
+		record.FileType = nodeItem.FileType
+		record.Size = nodeItem.Size
+		record.Available = nodeItem.Available
+		record.CreatedAt = nodeItem.CreatedAt.Unix()
+		record.UpdatedAt = nodeItem.UpdatedAt.Unix()
+
+		recordList.Items = append(recordList.Items, &record)
+		return nil
+	})
+	return recordList, err
 }
 
 var RequestAllRemoteItems = []byte("extfs/select_all_remote_items")

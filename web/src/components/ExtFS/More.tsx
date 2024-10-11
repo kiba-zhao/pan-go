@@ -153,7 +153,7 @@ export const MoreSettingsItem = () => {
 };
 
 export const MoreHelpItem = () => {
-  const t = useTranslate();
+  // const t = useTranslate();
   const handleClose = () => {
     // TODO: show help info
   };

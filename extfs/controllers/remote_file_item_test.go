@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http/httptest"
 	"pan/app/net"
 	"pan/extfs/constant"
@@ -16,6 +17,7 @@ import (
 
 	appNode "pan/app/node"
 	MockedAppNode "pan/mocks/pan/app/node"
+	MockedServices "pan/mocks/pan/extfs/services"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -28,6 +30,15 @@ func TestRemoteFileItemController(t *testing.T) {
 		ctrl := &controllers.RemoteFileItemController{}
 		app := net.NewWebApp()
 		ctrl.SetupToWeb(app)
+
+		ctrl.RemoteFileItemService = &services.RemoteFileItemService{}
+		return app, ctrl
+	}
+
+	setupForNode := func() (*appNode.App, *controllers.RemoteFileItemController) {
+		ctrl := &controllers.RemoteFileItemController{}
+		app := appNode.NewApp()
+		ctrl.SetupToNode(app)
 
 		ctrl.RemoteFileItemService = &services.RemoteFileItemService{}
 		return app, ctrl
@@ -93,5 +104,70 @@ func TestRemoteFileItemController(t *testing.T) {
 		assert.Equal(t, record.CreatedAt, results[0].CreatedAt.Unix())
 		assert.Equal(t, record.UpdatedAt, results[0].UpdatedAt.Unix())
 
+	})
+
+	t.Run("SearchForNode", func(t *testing.T) {
+
+		app, ctrl := setupForNode()
+
+		// mock FileItemService
+		fileItemService := MockedServices.MockFileItemInternalService{}
+		defer fileItemService.AssertExpectations(t)
+		ctrl.RemoteFileItemService.FileItemService = &fileItemService
+
+		var fileItem models.FileItem
+		fileItem.ID = "fileItemId"
+		fileItem.ItemID = 1
+		fileItem.Name = "test.txt"
+		fileItem.Size = 123
+		fileItem.FileType = constant.FileTypeFile
+		fileItem.ParentPath = "parentPath"
+		fileItem.FilePath = "filePath"
+		fileItem.Available = true
+		fileItem.CreatedAt = time.Now()
+		fileItem.UpdatedAt = time.Now()
+
+		var condition models.RemoteFileItemRecordSearchCondition
+		condition.ItemID = 1
+		condition.ParentPath = &fileItem.ParentPath
+
+		fileItemService.On("TraverseWithCondition", mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+			traverseFn := args.Get(0).(func(item models.FileItem) error)
+			traverseFn(fileItem)
+			condition_ := args.Get(1).(models.FileItemSearchCondition)
+			assert.Equal(t, condition.ItemID, int32(condition_.ItemID))
+			assert.Equal(t, *condition.ParentPath, *condition_.ParentPath)
+		})
+
+		// request and response
+		reqBytes, err := proto.Marshal(&condition)
+		assert.Nil(t, err)
+		req := appNode.NewRequest(services.RequestAllRemoteFileItems, bytes.NewReader(reqBytes))
+		reqReader := appNode.MarshalRequest(req)
+		var ctx appNode.Context
+		appNode.InitContext(&ctx)
+		err = appNode.UnmarshalRequest(reqReader, ctx.Request())
+		assert.Nil(t, err)
+
+		err = app.Run(&ctx, nil)
+		assert.Nil(t, err)
+
+		body, err := io.ReadAll(ctx.Body())
+		assert.Nil(t, err)
+
+		var results models.RemoteFileItemRecordList
+		err = proto.Unmarshal(body, &results)
+		assert.Nil(t, err)
+
+		assert.Equal(t, 1, len(results.Items))
+		assert.Equal(t, fileItem.ItemID, uint(results.Items[0].ItemID))
+		assert.Equal(t, fileItem.Name, results.Items[0].Name)
+		assert.Equal(t, fileItem.Size, results.Items[0].Size)
+		assert.Equal(t, fileItem.FileType, results.Items[0].FileType)
+		assert.Equal(t, fileItem.ParentPath, results.Items[0].ParentPath)
+		assert.Equal(t, fileItem.FilePath, results.Items[0].FilePath)
+		assert.Equal(t, fileItem.Available, results.Items[0].Available)
+		assert.Equal(t, fileItem.CreatedAt.Unix(), results.Items[0].CreatedAt)
+		assert.Equal(t, fileItem.UpdatedAt.Unix(), results.Items[0].UpdatedAt)
 	})
 }

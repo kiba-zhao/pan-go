@@ -306,7 +306,7 @@ const NavigationBar = ({
   anchorElWidth?: number;
   anchorEl: MenuProps["anchorEl"];
 }) => {
-  const t = useTranslate();
+  // const t = useTranslate();
   const [expand, setExpand] = useState(false);
   const handleExpand = () => {
     setExpand(!expand);

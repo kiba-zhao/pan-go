@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http/httptest"
 	"pan/app/net"
 	"pan/extfs/constant"
@@ -14,6 +15,7 @@ import (
 
 	appNode "pan/app/node"
 	MockedAppNode "pan/mocks/pan/app/node"
+	MockedServices "pan/mocks/pan/extfs/services"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,6 +29,15 @@ func TestRemoteNodeItemController(t *testing.T) {
 		ctrl := &controllers.RemoteNodeItemController{}
 		app := net.NewWebApp()
 		ctrl.SetupToWeb(app)
+
+		ctrl.RemoteNodeItemService = &services.RemoteNodeItemService{}
+		return app, ctrl
+	}
+
+	setupForNode := func() (*appNode.App, *controllers.RemoteNodeItemController) {
+		ctrl := &controllers.RemoteNodeItemController{}
+		app := appNode.NewApp()
+		ctrl.SetupToNode(app)
 
 		ctrl.RemoteNodeItemService = &services.RemoteNodeItemService{}
 		return app, ctrl
@@ -90,4 +101,54 @@ func TestRemoteNodeItemController(t *testing.T) {
 
 	})
 
+	t.Run("SearchForNode", func(t *testing.T) {
+
+		app, ctrl := setupForNode()
+
+		// mock NodeItemService
+		nodeItemService := MockedServices.MockNodeItemInternalService{}
+		defer nodeItemService.AssertExpectations(t)
+		ctrl.RemoteNodeItemService.NodeItemService = &nodeItemService
+
+		var nodeItem models.NodeItem
+		nodeItem.ID = 1
+		nodeItem.Name = "test.txt"
+		nodeItem.FileType = constant.FileTypeFile
+		nodeItem.Size = 123
+		nodeItem.Available = true
+		nodeItem.CreatedAt = time.Now()
+		nodeItem.UpdatedAt = time.Now()
+
+		nodeItemService.On("TraverseAll", mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+			traverseFn := args.Get(0).(func(models.NodeItem) error)
+			traverseFn(nodeItem)
+		})
+
+		// request and response
+		req := appNode.NewRequest(services.RequestAllRemoteItems, nil)
+		reqReader := appNode.MarshalRequest(req)
+		var ctx appNode.Context
+		appNode.InitContext(&ctx)
+		err := appNode.UnmarshalRequest(reqReader, ctx.Request())
+		assert.Nil(t, err)
+
+		err = app.Run(&ctx, nil)
+		assert.Nil(t, err)
+
+		body, err := io.ReadAll(ctx.Body())
+		assert.Nil(t, err)
+
+		var results models.RemoteNodeItemRecordList
+		err = proto.Unmarshal(body, &results)
+		assert.Nil(t, err)
+
+		assert.Equal(t, 1, len(results.Items))
+		assert.Equal(t, int32(nodeItem.ID), results.Items[0].ID)
+		assert.Equal(t, nodeItem.Name, results.Items[0].Name)
+		assert.Equal(t, nodeItem.FileType, results.Items[0].FileType)
+		assert.Equal(t, nodeItem.Size, results.Items[0].Size)
+		assert.Equal(t, nodeItem.Available, results.Items[0].Available)
+		assert.Equal(t, nodeItem.CreatedAt.Unix(), results.Items[0].CreatedAt)
+		assert.Equal(t, nodeItem.UpdatedAt.Unix(), results.Items[0].UpdatedAt)
+	})
 }

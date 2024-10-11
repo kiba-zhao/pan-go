@@ -25,6 +25,9 @@ func MarshalMessage(message *Message) io.Reader {
 	headerSizeBuffer := make([]byte, 0)
 	headerSizeBuffer = binary.BigEndian.AppendUint32(headerSizeBuffer, uint32(headerSize))
 	headerSizeReader := bytes.NewReader(headerSizeBuffer)
+	if headerSize == 0 {
+		return io.MultiReader(headerSizeReader, message.body)
+	}
 	return io.MultiReader(headerSizeReader, headerReader, message.body)
 }
 

@@ -13,10 +13,9 @@ import (
 )
 
 type RemoteFileItemService struct {
-	NodeModule appNode.NodeModule
+	NodeModule      appNode.NodeModule
+	FileItemService FileItemInternalService
 }
-
-var RequestAllRemoteFileItems = []byte("extfs/select_all_remote_file_items")
 
 func (s *RemoteFileItemService) Search(condition models.RemoteFileItemSearchCondition) (total int64, items []models.RemoteFileItem, err error) {
 
@@ -51,6 +50,34 @@ func (s *RemoteFileItemService) Search(condition models.RemoteFileItemSearchCond
 	total = int64(len(items))
 	return
 }
+
+func (s *RemoteFileItemService) SearchForNode(condition *models.RemoteFileItemRecordSearchCondition) (*models.RemoteFileItemRecordList, error) {
+	var condition_ models.FileItemSearchCondition
+	condition_.ItemID = uint(condition.ItemID)
+	condition_.ParentPath = condition.ParentPath
+
+	var recordList models.RemoteFileItemRecordList
+	err := s.FileItemService.TraverseWithCondition(func(item models.FileItem) error {
+		var record models.RemoteFileItemRecord
+
+		record.ID = item.ID
+		record.Name = item.Name
+		record.FilePath = item.FilePath
+		record.ParentPath = item.ParentPath
+		record.Size = item.Size
+		record.FileType = item.FileType
+		record.ItemID = int32(item.ItemID)
+		record.Available = item.Available
+		record.CreatedAt = item.CreatedAt.Unix()
+		record.UpdatedAt = item.UpdatedAt.Unix()
+		recordList.Items = append(recordList.Items, &record)
+		return nil
+	}, condition_)
+
+	return &recordList, err
+}
+
+var RequestAllRemoteFileItems = []byte("extfs/select_all_remote_file_items")
 
 func (s *RemoteFileItemService) TraverseRecordWithNodeID(traverseFn func(record *models.RemoteFileItemRecord) error, nodeId appNode.NodeID, condition *models.RemoteFileItemRecordSearchCondition) error {
 	requestBytes, err := proto.Marshal(condition)

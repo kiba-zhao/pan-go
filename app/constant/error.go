@@ -6,6 +6,7 @@ const (
 	CodeOK            = 0
 	CodeInternalError = 500
 	CodeNotFound      = 404
+	CodeBadRequest    = 400
 )
 
 var ErrNotFound = errors.New("not found")

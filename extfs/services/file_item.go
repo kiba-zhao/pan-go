@@ -11,18 +11,32 @@ import (
 	"strings"
 )
 
+type FileItemInternalService interface {
+	TraverseWithCondition(traverseFn func(item models.FileItem) error, conditions models.FileItemSearchCondition) error
+}
+
 type FileItemService struct {
 	NodeItemService NodeItemInternalService
 }
 
 func (s *FileItemService) Search(conditions models.FileItemSearchCondition) (int64, []models.FileItem, error) {
+
+	items := make([]models.FileItem, 0)
+	err := s.TraverseWithCondition(func(item models.FileItem) error {
+		items = append(items, item)
+		return nil
+	}, conditions)
+	return int64(len(items)), items, err
+}
+
+func (s *FileItemService) TraverseWithCondition(traverseFn func(item models.FileItem) error, conditions models.FileItemSearchCondition) error {
 	nodeItem, err := s.NodeItemService.Select(conditions.ItemID)
 	if err != nil {
-		return 0, nil, err
+		return err
 	}
 
 	if !nodeItem.Available || nodeItem.FileType != FileTypeFolder {
-		return 0, nil, appConstant.ErrUnavailable
+		return appConstant.ErrUnavailable
 	}
 
 	filePath := nodeItem.FilePath
@@ -32,10 +46,9 @@ func (s *FileItemService) Search(conditions models.FileItemSearchCondition) (int
 
 	files, err := os.ReadDir(filePath)
 	if err != nil {
-		return 0, nil, err
+		return err
 	}
 
-	items := make([]models.FileItem, 0)
 	for _, file := range files {
 		var item models.FileItem
 
@@ -65,10 +78,12 @@ func (s *FileItemService) Search(conditions models.FileItemSearchCondition) (int
 		} else {
 			item.Available = false
 		}
-		items = append(items, item)
+		err = traverseFn(item)
+		if err != nil {
+			return err
+		}
 	}
-	return int64(len(items)), items, nil
-
+	return err
 }
 
 func generateFileItemID(itemId uint, filePath string) string {
