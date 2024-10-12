@@ -72,5 +72,3 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace google.golang.org/protobuf v1.32.0 => github.com/protocolbuffers/protobuf-go v1.32.0
