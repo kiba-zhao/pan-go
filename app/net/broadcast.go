@@ -163,6 +163,8 @@ func compareBroadcastPacketBuffer(item *broadcastPacketBuffer, key string) int {
 	return cmp.Compare(item.addr, key)
 }
 
+const CHECKSUM_THRESHOLD = uint16(65535)
+
 func parsePacketBuffer(block []byte) ([]byte, int) {
 	if block[0] != 0 {
 		return block, 0
@@ -172,7 +174,7 @@ func parsePacketBuffer(block []byte) ([]byte, int) {
 	offset += 2
 	size16 := binary.BigEndian.Uint16(block[offset : offset+2])
 	offset += 2
-	if checksum^size16 != 0 {
+	if checksum^size16 != CHECKSUM_THRESHOLD {
 		return block, 0
 	}
 
@@ -185,7 +187,7 @@ func parsePacketBuffer(block []byte) ([]byte, int) {
 
 func packBuffer(buffer []byte) []byte {
 	size := len(buffer)
-	checksum := 65535 ^ uint16(size)
+	checksum := CHECKSUM_THRESHOLD ^ uint16(size)
 
 	return bytes.Join([][]byte{
 		binary.BigEndian.AppendUint16([]byte{0}, checksum),
