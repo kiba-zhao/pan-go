@@ -179,7 +179,7 @@ func parsePacketBuffer(block []byte) ([]byte, int) {
 	}
 
 	size := int(size16)
-	if size < len(block)-4 {
+	if size < len(block)-5 {
 		return block, 0
 	}
 	return block[offset:], size

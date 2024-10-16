@@ -58,10 +58,10 @@ type quicRoute struct {
 	resourceId    node.NodeResourceID
 	nodeId        node.NodeID
 	address       string
-	quicModule    QuicModule
-	mgr           node.NodeManager
+	quicModule    *quicModule
 	failures      uint8
 	failureLocker sync.RWMutex
+	routeId       []byte
 }
 
 func (qr *quicRoute) ID() node.NodeID {
@@ -129,7 +129,7 @@ func (qr *quicRoute) Greet(ctx context.Context) error {
 }
 
 func (qr *quicRoute) Close() error {
-	qr.mgr.Delete(qr)
+	qr.quicModule.destroyRoute(qr)
 	return nil
 }
 
@@ -221,6 +221,9 @@ type quicModule struct {
 	sigChan     chan []bool
 	sigOnce     sync.Once
 	hasSig      bool
+
+	routes      []*quicRoute
+	routeLocker sync.RWMutex
 }
 
 func (qm *quicModule) PublicAddrs() []string {
@@ -298,6 +301,7 @@ func (qm *quicModule) doRequest(ctx context.Context, conn quic.Connection, reade
 
 	select {
 	case err = <-errChan:
+		break
 	case <-ctx.Done():
 		err = ctx.Err()
 	}
@@ -381,11 +385,24 @@ func (qm *quicModule) CreateNode(conn quic.Connection) (node.Node, error) {
 func (qm *quicModule) CreateRoute(nodeId node.NodeID, addr string) (node.Node, error) {
 	nodeModule := qm.NodeModule
 
+	routeId := make([]byte, 0)
+	routeId = append(routeId, nodeId...)
+	routeId = append(routeId, []byte(addr)...)
+
+	// check conflict
+	qm.routeLocker.RLock()
+	_, ok := slices.BinarySearchFunc(qm.routes, routeId, qm.compareWithQuicRoute)
+	if ok {
+		qm.routeLocker.RUnlock()
+		return nil, constant.ErrConflict
+	}
+	qm.routeLocker.RUnlock()
+
 	route := &quicRoute{
 		quicModule: qm,
 		nodeId:     nodeId,
 		address:    addr,
-		mgr:        nodeModule.NodeManager(),
+		routeId:    routeId,
 	}
 
 	var err error
@@ -397,7 +414,44 @@ func (qm *quicModule) CreateRoute(nodeId node.NodeID, addr string) (node.Node, e
 		}
 	}
 
+	// add to routes
+	qm.routeLocker.Lock()
+	idx, _ := slices.BinarySearchFunc(qm.routes, routeId, qm.compareWithQuicRoute)
+	qm.routes = slices.Insert(qm.routes, idx, route)
+	qm.routeLocker.Unlock()
+
 	return node.Node(route), err
+}
+
+func (qm *quicModule) destroyRoute(route *quicRoute) {
+	nodeModule := qm.NodeModule
+	if nodeModule != nil {
+		mgr := nodeModule.NodeManager()
+		mgr.Delete(route)
+	}
+
+	qm.routeLocker.Lock()
+	defer qm.routeLocker.Unlock()
+	idx, ok := slices.BinarySearchFunc(qm.routes, route.routeId, qm.compareWithQuicRoute)
+	if !ok {
+		return
+	}
+
+	for i := idx; i < len(qm.routes); i++ {
+		routeItem := qm.routes[i]
+		if routeItem == route {
+			qm.routes = slices.Delete(qm.routes, i, i+1)
+			break
+		}
+		if !bytes.Equal(routeItem.routeId, route.routeId) {
+			break
+		}
+	}
+
+}
+
+func (qm *quicModule) compareWithQuicRoute(route *quicRoute, routeId []byte) int {
+	return bytes.Compare(route.routeId, routeId)
 }
 
 func (qm *quicModule) serve(stream quic.Stream, node node.Node) error {
@@ -436,11 +490,16 @@ func (qm *quicModule) Serve(conn quic.Connection) error {
 
 func (qm *quicModule) ServeBroadcast(payload []byte, ip string) error {
 
-	if payload[0] != 1 || len(payload) <= 5 {
-		return nil
+	var nodeSettings node.NodeSettings
+	if qm.NodeModule != nil {
+		nodeSettings = qm.NodeModule.NodeSettings()
 	}
+	if nodeSettings == nil {
+		return constant.ErrUnavailable
+	}
+
 	payloadLen := len(payload)
-	offset := 1
+	offset := 0
 	nextOffset := offset + 2
 
 	nodeIdLen := int(binary.BigEndian.Uint16(payload[offset:nextOffset]))
@@ -452,6 +511,11 @@ func (qm *quicModule) ServeBroadcast(payload []byte, ip string) error {
 	}
 	nodeId := node.NodeID(payload[offset:nextOffset])
 
+	// ingore self by node id
+	if bytes.Equal(nodeSettings.NodeID(), nodeId) {
+		return nil
+	}
+
 	offset = nextOffset
 	nextOffset += 2
 	addressLen := int(binary.BigEndian.Uint16(payload[offset:nextOffset]))
@@ -462,7 +526,7 @@ func (qm *quicModule) ServeBroadcast(payload []byte, ip string) error {
 	}
 
 	address := string(payload[offset:nextOffset])
-	host, _, err := net.SplitHostPort(address)
+	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return err
 	}
@@ -472,40 +536,20 @@ func (qm *quicModule) ServeBroadcast(payload []byte, ip string) error {
 		if err != nil || !ipAddr.IP.IsUnspecified() {
 			return err
 		}
+		address = net.JoinHostPort(ip, port)
 	}
-
-	// TODO: check if route exists
 
 	// Try add route
 	route, err := qm.CreateRoute(nodeId, address)
-	if err == nil {
+	if err != nil {
 		return err
 	}
-	ctx, _ := context.WithTimeoutCause(context.Background(), 3*time.Second, constant.ErrTimeout)
+	ctx, _ := context.WithTimeoutCause(context.Background(), 5*time.Second, constant.ErrTimeout)
 	err = route.Greet(ctx)
 	if err != nil {
 		route.Close()
 	}
 	return err
-
-	// conn, err := qm.Dial(ctx, address)
-	// if err == nil {
-	// 	defer conn.CloseWithError(0, "")
-	// 	err = qm.Greet(context.Background(), conn)
-	// }
-
-	// if err == nil {
-	// 	nodeId_, err := qm.ParseNodeID(conn)
-	// 	if err == nil && !bytes.Equal(nodeId, nodeId_) {
-	// 		return constant.ErrInvalidNode
-	// 	}
-	// }
-
-	// if err == nil {
-
-	// }
-
-	// return err
 }
 
 func (qm *quicModule) Components() []runtime.Component {
@@ -593,6 +637,7 @@ func (qm *quicModule) serveForBroadcast() context.CancelCauseFunc {
 
 	ctx, cancel := context.WithCancelCause(context.Background())
 	go func(ctx context.Context) {
+	broadcastLoop:
 		for {
 			err := qm.deliverForBroadcast()
 			if errors.Is(err, constant.ErrUnavailable) {
@@ -601,7 +646,7 @@ func (qm *quicModule) serveForBroadcast() context.CancelCauseFunc {
 
 			select {
 			case <-ctx.Done():
-				break
+				break broadcastLoop
 			case <-time.After(15 * time.Second):
 				continue
 			}
