@@ -114,7 +114,7 @@ func (qr *quicRoute) Do(ctx context.Context, reader io.Reader) (io.Reader, error
 	if err != nil {
 		return nil, err
 	}
-	defer conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "")
+
 	go qr.quicModule.Serve(conn)
 	return qr.quicModule.Do(ctx, conn, reader)
 }
@@ -455,6 +455,7 @@ func (qm *quicModule) compareWithQuicRoute(route *quicRoute, routeId []byte) int
 }
 
 func (qm *quicModule) serve(stream quic.Stream, node node.Node) error {
+	defer stream.Close()
 	flags := make([]byte, 1)
 	_, err := stream.Read(flags)
 	if err != nil {
@@ -465,6 +466,7 @@ func (qm *quicModule) serve(stream quic.Stream, node node.Node) error {
 		return qm.NodeModule.Serve(stream, node)
 	}
 	_, err = io.Copy(stream, stream)
+
 	return err
 }
 

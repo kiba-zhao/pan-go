@@ -25,10 +25,20 @@ func MarshalMessage(message *Message) io.Reader {
 	headerSizeBuffer := make([]byte, 0)
 	headerSizeBuffer = binary.BigEndian.AppendUint32(headerSizeBuffer, uint32(headerSize))
 	headerSizeReader := bytes.NewReader(headerSizeBuffer)
-	if headerSize == 0 {
-		return io.MultiReader(headerSizeReader, message.body)
+
+	var readers []io.Reader
+	readers = append(readers, headerSizeReader)
+	if headerSize > 0 {
+		readers = append(readers, headerReader)
 	}
-	return io.MultiReader(headerSizeReader, headerReader, message.body)
+	if message.body != nil {
+		readers = append(readers, message.body)
+	}
+
+	if len(readers) > 0 {
+		return io.MultiReader(readers...)
+	}
+	return readers[0]
 }
 
 func UnmarshalMessage(reader io.Reader, message *Message) error {
