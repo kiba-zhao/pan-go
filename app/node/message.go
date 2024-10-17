@@ -35,7 +35,7 @@ func MarshalMessage(message *Message) io.Reader {
 		readers = append(readers, message.body)
 	}
 
-	if len(readers) > 0 {
+	if len(readers) > 1 {
 		return io.MultiReader(readers...)
 	}
 	return readers[0]

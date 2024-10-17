@@ -142,14 +142,17 @@ func (app *App) Run(ctx AppContext, next Next) error {
 func (app *App) dispatchDefaults(ctx AppContext, next Next) error {
 
 	app.rw.RLock()
-	if len(app.defaults) <= 0 {
+	if len(app.defaults) > 0 {
+		handles := slices.Clone(app.defaults)
 		app.rw.RUnlock()
+		return Dispatch(ctx, handles, 0, next)
+	}
+	app.rw.RUnlock()
+	if next != nil {
 		return next()
 	}
-	handles := slices.Clone(app.defaults)
-	app.rw.RUnlock()
+	return nil
 
-	return Dispatch(ctx, handles, 0, next)
 }
 
 type AppRouter struct {
