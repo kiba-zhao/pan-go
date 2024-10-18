@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/base64"
 
+	"pan/app/bootstrap"
 	"pan/app/config"
 	"pan/app/constant"
 	"pan/app/controllers"
@@ -19,7 +20,11 @@ import (
 func New() interface{} {
 	m := &module{}
 	m.guard = &guardModule{}
-	return runtime.NewModule(&runtime.Injector{}, config.New(), node.New(), net.New(), NewSample(m))
+	return runtime.NewModule(bootstrap.New(), config.New(), node.New(), net.New(), NewSample(m))
+}
+
+func Bootstrap() interface{} {
+	return bootstrap.Bootstrap()
 }
 
 const moduleName = "app"
@@ -57,12 +62,12 @@ func (m *module) Models() []interface{} {
 	}
 }
 
-func (m *module) Components() []runtime.Component {
+func (m *module) Components() []bootstrap.Component {
 	// base
-	components := []runtime.Component{
-		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
+	components := []bootstrap.Component{
+		bootstrap.NewComponent(m.DBProvider, bootstrap.ComponentInternalScope),
 		// submodules
-		runtime.NewComponent(m.guard, runtime.ComponentNoneScope),
+		bootstrap.NewComponent(m.guard, bootstrap.ComponentNoneScope),
 	}
 
 	// services
@@ -75,7 +80,7 @@ func (m *module) Components() []runtime.Component {
 
 	// controllers
 	for _, ctrl := range m.Controllers() {
-		components = append(components, runtime.NewComponent(ctrl, runtime.ComponentNoneScope))
+		components = append(components, bootstrap.NewComponent(ctrl, bootstrap.ComponentNoneScope))
 	}
 
 	return components

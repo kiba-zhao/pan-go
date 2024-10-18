@@ -2,11 +2,11 @@ package app
 
 import (
 	"os"
+	"pan/app/bootstrap"
 	"pan/app/config"
 	"pan/app/net"
 	"pan/app/node"
 	"pan/app/repositories"
-	"pan/runtime"
 	"path"
 	"reflect"
 	"sync"
@@ -75,11 +75,11 @@ func (s *sample[T]) OnConfigUpdated(settings config.AppSettings) {
 	s.db = db
 }
 
-func (s *sample[T]) NodeProviderName() []byte {
+func (s *sample[T]) NodeScope() []byte {
 	return []byte(s.provider.Name() + ".")
 }
 
-func (s *sample[T]) NodeAppModule() []node.NodeAppModule {
+func (s *sample[T]) NodeAppModules() []node.NodeAppModule {
 	modules := make([]node.NodeAppModule, 0)
 	for _, c := range s.provider.Controllers() {
 		if m, ok := c.(node.NodeAppModule); ok {
@@ -89,7 +89,7 @@ func (s *sample[T]) NodeAppModule() []node.NodeAppModule {
 	return modules
 }
 
-func (s *sample[T]) WebProviderName() string {
+func (s *sample[T]) WebScope() string {
 	return "/api/" + s.provider.Name()
 }
 
@@ -109,10 +109,12 @@ func (s *sample[T]) Models() []interface{} {
 	}
 }
 
-func (s *sample[T]) Components() []runtime.Component {
-	return []runtime.Component{
-		runtime.NewComponent[RepositoryDBProvider](s, runtime.ComponentInternalScope),
-		runtime.NewComponent(s.provider, runtime.ComponentNoneScope),
+func (s *sample[T]) Components() []bootstrap.Component {
+	return []bootstrap.Component{
+		bootstrap.NewComponent[RepositoryDBProvider](s, bootstrap.ComponentInternalScope),
+		bootstrap.NewComponent[node.NodeScopeModule](s, bootstrap.ComponentInternalScope),
+		bootstrap.NewComponent[net.WebScopeModule](s, bootstrap.ComponentInternalScope),
+		bootstrap.NewComponent(s.provider, bootstrap.ComponentNoneScope),
 	}
 }
 
@@ -120,29 +122,29 @@ func (s *sample[T]) Modules() []interface{} {
 	return []interface{}{s.provider}
 }
 
-func AppendSampleComponent[T any](components []runtime.Component, component T) []runtime.Component {
+func AppendSampleComponent[T any](components []bootstrap.Component, component T) []bootstrap.Component {
 	t := reflect.TypeFor[T]()
 	if t.Kind() == reflect.Interface {
-		components = append(components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentNoneScope))
+		components = append(components, bootstrap.NewComponentByType(reflect.TypeOf(component), component, bootstrap.ComponentNoneScope))
 	}
-	components = append(components, runtime.NewComponent(component, runtime.ComponentInternalScope))
+	components = append(components, bootstrap.NewComponent(component, bootstrap.ComponentInternalScope))
 	return components
 }
 
-func AppendSampleExternalComponent[T any](components []runtime.Component, component T) []runtime.Component {
+func AppendSampleExternalComponent[T any](components []bootstrap.Component, component T) []bootstrap.Component {
 	t := reflect.TypeFor[T]()
 	if t.Kind() == reflect.Interface {
-		components = append(components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentInternalScope))
+		components = append(components, bootstrap.NewComponentByType(reflect.TypeOf(component), component, bootstrap.ComponentInternalScope))
 	}
-	components = append(components, runtime.NewComponent(component, runtime.ComponentExternalScope))
+	components = append(components, bootstrap.NewComponent(component, bootstrap.ComponentExternalScope))
 	return components
 }
 
-func AppendSampleInternalComponent[T any](components []runtime.Component, component T) []runtime.Component {
+func AppendSampleInternalComponent[T any](components []bootstrap.Component, component T) []bootstrap.Component {
 	t := reflect.TypeFor[T]()
 	if t.Kind() == reflect.Interface {
-		components = append(components, runtime.NewComponentByType(reflect.TypeOf(component), component, runtime.ComponentInternalScope))
+		components = append(components, bootstrap.NewComponentByType(reflect.TypeOf(component), component, bootstrap.ComponentInternalScope))
 	}
-	components = append(components, runtime.NewComponent(component, runtime.ComponentInternalScope))
+	components = append(components, bootstrap.NewComponent(component, bootstrap.ComponentInternalScope))
 	return components
 }

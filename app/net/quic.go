@@ -10,10 +10,10 @@ import (
 	"errors"
 	"io"
 	"net"
+	"pan/app/bootstrap"
 	"pan/app/config"
 	"pan/app/constant"
-	"pan/app/node"
-	"pan/runtime"
+	appNode "pan/app/node"
 	"slices"
 	"sync"
 	"time"
@@ -22,19 +22,19 @@ import (
 )
 
 type quicNode struct {
-	resourceId node.NodeResourceID
-	nodeId     node.NodeID
+	resourceId appNode.NodeResourceID
+	nodeId     appNode.NodeID
 	conn       quic.Connection
 	quicModule QuicModule
-	mgr        node.NodeManager
+	mgr        appNode.NodeManager
 }
 
-func (qn *quicNode) ID() node.NodeID {
+func (qn *quicNode) ID() appNode.NodeID {
 	return qn.nodeId
 }
 
-func (qn *quicNode) Type() node.NodeType {
-	return node.NodeTypeAlive
+func (qn *quicNode) Type() appNode.NodeType {
+	return appNode.NodeTypeAlive
 }
 
 func (qn *quicNode) Do(ctx context.Context, reader io.Reader) (io.Reader, error) {
@@ -50,13 +50,13 @@ func (qn *quicNode) Close() error {
 	return qn.conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "")
 }
 
-func (qn *quicNode) ResourceID() node.NodeResourceID {
+func (qn *quicNode) ResourceID() appNode.NodeResourceID {
 	return qn.resourceId
 }
 
 type quicRoute struct {
-	resourceId    node.NodeResourceID
-	nodeId        node.NodeID
+	resourceId    appNode.NodeResourceID
+	nodeId        appNode.NodeID
 	address       string
 	quicModule    *quicModule
 	failures      uint8
@@ -64,12 +64,12 @@ type quicRoute struct {
 	routeId       []byte
 }
 
-func (qr *quicRoute) ID() node.NodeID {
+func (qr *quicRoute) ID() appNode.NodeID {
 	return qr.nodeId
 }
 
-func (qr *quicRoute) Type() node.NodeType {
-	return node.NodeTypeReachable
+func (qr *quicRoute) Type() appNode.NodeType {
+	return appNode.NodeTypeReachable
 }
 
 func (qr *quicRoute) Dial(ctx context.Context) (quic.Connection, error) {
@@ -133,7 +133,7 @@ func (qr *quicRoute) Close() error {
 	return nil
 }
 
-func (qr *quicRoute) ResourceID() node.NodeResourceID {
+func (qr *quicRoute) ResourceID() appNode.NodeResourceID {
 	return qr.resourceId
 }
 
@@ -206,14 +206,14 @@ type QuicModule interface {
 	Do(context.Context, quic.Connection, io.Reader) (io.Reader, error)
 	Greet(context.Context, quic.Connection) error
 	Dial(context.Context, string) (quic.Connection, error)
-	ParseNodeID(quic.Connection) (node.NodeID, error)
-	CreateNode(quic.Connection) (node.Node, error)
-	CreateRoute(node.NodeID, string) (node.Node, error)
+	ParseNodeID(quic.Connection) (appNode.NodeID, error)
+	CreateNode(quic.Connection) (appNode.Node, error)
+	CreateRoute(appNode.NodeID, string) (appNode.Node, error)
 }
 
 type quicModule struct {
 	Broadcast  Broadcast
-	NodeModule node.NodeModule
+	NodeModule appNode.NodeModule
 
 	publicAddrs []string
 	addrs       []string
@@ -251,7 +251,7 @@ func (qm *quicModule) setSig(sig []bool) {
 	qm.sigChan <- sig
 }
 
-func (qm *quicModule) OnNodeSettingsUpdated(settings node.NodeSettings) {
+func (qm *quicModule) OnNodeSettingsUpdated(settings appNode.NodeSettings) {
 	qm.locker.Lock()
 	defer qm.locker.Unlock()
 
@@ -315,8 +315,8 @@ func (qm *quicModule) Do(ctx context.Context, conn quic.Connection, reader io.Re
 
 func (qm *quicModule) Greet(ctx context.Context, conn quic.Connection) error {
 	body := make([]byte, 128)
-	_, err := rand.Read(body)
-	if err != nil {
+	n, err := rand.Read(body)
+	if err != nil && n != 128 {
 		return err
 	}
 	reader, err := qm.doRequest(ctx, conn, bytes.NewReader(body), QuicGreetStream)
@@ -335,7 +335,7 @@ func (qm *quicModule) Greet(ctx context.Context, conn quic.Connection) error {
 
 }
 
-func (qm *quicModule) ParseNodeID(conn quic.Connection) (node.NodeID, error) {
+func (qm *quicModule) ParseNodeID(conn quic.Connection) (appNode.NodeID, error) {
 	state := conn.ConnectionState()
 	certificate := state.TLS.PeerCertificates[0]
 	return x509.MarshalPKIXPublicKey(certificate.PublicKey)
@@ -355,7 +355,7 @@ func (qm *quicModule) Dial(ctx context.Context, addr string) (quic.Connection, e
 	return quic.DialAddr(ctx, addr, tlsConf, quicConf)
 }
 
-func (qm *quicModule) CreateNode(conn quic.Connection) (node.Node, error) {
+func (qm *quicModule) CreateNode(conn quic.Connection) (appNode.Node, error) {
 
 	nodeId, err := qm.ParseNodeID(conn)
 	if err != nil {
@@ -372,17 +372,17 @@ func (qm *quicModule) CreateNode(conn quic.Connection) (node.Node, error) {
 	}
 
 	for {
-		qnode.resourceId = nodeModule.NewResourceID(node.NodeTypeAlive)
-		err = nodeModule.Control(node.Node(qnode))
+		qnode.resourceId = nodeModule.NewResourceID(appNode.NodeTypeAlive)
+		err = nodeModule.Control(appNode.Node(qnode))
 		if err == nil || err != constant.ErrConflict {
 			break
 		}
 	}
 
-	return node.Node(qnode), err
+	return appNode.Node(qnode), err
 }
 
-func (qm *quicModule) CreateRoute(nodeId node.NodeID, addr string) (node.Node, error) {
+func (qm *quicModule) CreateRoute(nodeId appNode.NodeID, addr string) (appNode.Node, error) {
 	nodeModule := qm.NodeModule
 
 	routeId := make([]byte, 0)
@@ -407,8 +407,8 @@ func (qm *quicModule) CreateRoute(nodeId node.NodeID, addr string) (node.Node, e
 
 	var err error
 	for {
-		route.resourceId = nodeModule.NewResourceID(node.NodeTypeReachable)
-		err = nodeModule.Control(node.Node(route))
+		route.resourceId = nodeModule.NewResourceID(appNode.NodeTypeReachable)
+		err = nodeModule.Control(appNode.Node(route))
 		if err == nil || err != constant.ErrConflict {
 			break
 		}
@@ -420,7 +420,7 @@ func (qm *quicModule) CreateRoute(nodeId node.NodeID, addr string) (node.Node, e
 	qm.routes = slices.Insert(qm.routes, idx, route)
 	qm.routeLocker.Unlock()
 
-	return node.Node(route), err
+	return appNode.Node(route), err
 }
 
 func (qm *quicModule) destroyRoute(route *quicRoute) {
@@ -454,11 +454,11 @@ func (qm *quicModule) compareWithQuicRoute(route *quicRoute, routeId []byte) int
 	return bytes.Compare(route.routeId, routeId)
 }
 
-func (qm *quicModule) serve(stream quic.Stream, node node.Node) error {
+func (qm *quicModule) serve(stream quic.Stream, node appNode.Node) error {
 	defer stream.Close()
 	flags := make([]byte, 1)
-	_, err := stream.Read(flags)
-	if err != nil {
+	n, err := stream.Read(flags)
+	if err != nil && n != 1 {
 		return err
 	}
 
@@ -492,7 +492,7 @@ func (qm *quicModule) Serve(conn quic.Connection) error {
 
 func (qm *quicModule) ServeBroadcast(payload []byte, ip string) error {
 
-	var nodeSettings node.NodeSettings
+	var nodeSettings appNode.NodeSettings
 	if qm.NodeModule != nil {
 		nodeSettings = qm.NodeModule.NodeSettings()
 	}
@@ -511,7 +511,7 @@ func (qm *quicModule) ServeBroadcast(payload []byte, ip string) error {
 	if nextOffset+2 > payloadLen {
 		return nil
 	}
-	nodeId := node.NodeID(payload[offset:nextOffset])
+	nodeId := appNode.NodeID(payload[offset:nextOffset])
 
 	// ingore self by node id
 	if bytes.Equal(nodeSettings.NodeID(), nodeId) {
@@ -554,10 +554,10 @@ func (qm *quicModule) ServeBroadcast(payload []byte, ip string) error {
 	return err
 }
 
-func (qm *quicModule) Components() []runtime.Component {
-	return []runtime.Component{
-		runtime.NewComponent(qm, runtime.ComponentNoneScope),
-		runtime.NewComponent[QuicModule](qm, runtime.ComponentExternalScope),
+func (qm *quicModule) Components() []bootstrap.Component {
+	return []bootstrap.Component{
+		bootstrap.NewComponent(qm, bootstrap.ComponentNoneScope),
+		bootstrap.NewComponent[QuicModule](qm, bootstrap.ComponentExternalScope),
 	}
 }
 

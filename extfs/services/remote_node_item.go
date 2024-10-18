@@ -18,6 +18,7 @@ import (
 type RemoteNodeItemService struct {
 	NodeModule      appNode.NodeModule
 	NodeItemService NodeItemInternalService
+	NodeScopeModule appNode.NodeScopeModule
 }
 
 func (s *RemoteNodeItemService) Search(condition models.RemoteNodeItemSearchCondition) (total int64, items []models.RemoteNodeItem, err error) {
@@ -71,10 +72,12 @@ func (s *RemoteNodeItemService) SelectAllForNode() (models.RemoteNodeItemRecordL
 	return recordList, err
 }
 
-var RequestAllRemoteItems = []byte("extfs/select_all_remote_items")
+var RequestAllRemoteItems = []byte("select_all_remote_items")
 
 func (s *RemoteNodeItemService) TraverseRecordWithNodeID(traverseFn func(record *models.RemoteNodeItemRecord) error, nodeId appNode.NodeID) error {
-	request := appNode.NewRequest(RequestAllRemoteItems, nil)
+	scope := s.NodeScopeModule.NodeScope()
+	requestName := appNode.GenerateRouteName(scope, RequestAllRemoteItems)
+	request := appNode.NewRequest(requestName, nil)
 
 	response, err := s.NodeModule.Do(nodeId, request)
 	if err != nil {

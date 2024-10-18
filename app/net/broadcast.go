@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"pan/app/bootstrap"
 	"pan/app/config"
 	"pan/app/constant"
 
@@ -219,9 +220,9 @@ func (b *broadcast) EngineTypes() []reflect.Type {
 	}
 }
 
-func (b *broadcast) Components() []runtime.Component {
-	return []runtime.Component{
-		runtime.NewComponent[Broadcast](b, runtime.ComponentExternalScope),
+func (b *broadcast) Components() []bootstrap.Component {
+	return []bootstrap.Component{
+		bootstrap.NewComponent[Broadcast](b, bootstrap.ComponentExternalScope),
 	}
 }
 

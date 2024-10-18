@@ -16,6 +16,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"pan/app/bootstrap"
 	"pan/app/config"
 	"pan/app/constant"
 	"pan/runtime"
@@ -35,8 +36,11 @@ type NodeAppModule interface {
 	SetupToNode(NodeRouter) error
 }
 
+type NodeScopeModule interface {
+	NodeScope() []byte
+}
+
 type NodeAppModuleProvider interface {
-	NodeProviderName() []byte
 	NodeAppModules() []NodeAppModule
 }
 
@@ -179,11 +183,12 @@ func (ns *nodeSettings) OnConfigUpdated(settings config.AppSettings) {
 
 func (ns *nodeSettings) onUpdated() {
 	ns.registryLocker.RLock()
-	defer ns.registryLocker.RUnlock()
-	if ns.registry == nil {
+	registry := ns.registry
+	ns.registryLocker.RUnlock()
+	if registry == nil {
 		return
 	}
-	listeners := runtime.ModulesForType[NodeSettingsListener](ns.registry)
+	listeners := runtime.ModulesForType[NodeSettingsListener](registry)
 	for _, listener := range listeners {
 		listener.OnNodeSettingsUpdated(ns)
 	}
@@ -499,6 +504,17 @@ func (nm *nodeModule) Init(registry runtime.Registry) error {
 	nm.registry = registry
 	nm.registryLocker.Unlock()
 
+	return nil
+}
+
+func (nm *nodeModule) Defer() error {
+	nm.registryLocker.RLock()
+	registry := nm.registry
+	nm.registryLocker.RUnlock()
+	if registry == nil {
+		return constant.ErrUnavailable
+	}
+
 	return nm.ReloadModules()
 }
 
@@ -510,9 +526,9 @@ func (nm *nodeModule) EngineTypes() []reflect.Type {
 	}
 }
 
-func (nm *nodeModule) Components() []runtime.Component {
-	return []runtime.Component{
-		runtime.NewComponent[NodeModule](nm, runtime.ComponentExternalScope),
+func (nm *nodeModule) Components() []bootstrap.Component {
+	return []bootstrap.Component{
+		bootstrap.NewComponent[NodeModule](nm, bootstrap.ComponentExternalScope),
 	}
 }
 
@@ -636,8 +652,14 @@ func (nm *nodeModule) ReloadModules() error {
 
 	err = runtime.TraverseRegistry(registry, func(module NodeAppModuleProvider) error {
 		var setupErr error
-		name := module.NodeProviderName()
-		router := app.Route(name)
+		var router NodeRouter
+		if scopeModule, ok := module.(NodeScopeModule); ok {
+			scope := scopeModule.NodeScope()
+			router = app.Route(scope)
+		} else {
+			router = app.Route(nil)
+		}
+
 		for _, m := range module.NodeAppModules() {
 			setupErr = m.SetupToNode(router)
 			if err != nil {

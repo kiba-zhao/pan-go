@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"pan/app/bootstrap"
 	"pan/runtime"
 	"path"
 	"reflect"
@@ -61,9 +62,9 @@ func (c *configImpl[T]) EngineTypes() []reflect.Type {
 	}
 }
 
-func (c *configImpl[T]) Components() []runtime.Component {
-	return []runtime.Component{
-		runtime.NewComponent[Config[T]](c, runtime.ComponentExternalScope),
+func (c *configImpl[T]) Components() []bootstrap.Component {
+	return []bootstrap.Component{
+		bootstrap.NewComponent[Config[T]](c, bootstrap.ComponentExternalScope),
 	}
 }
 

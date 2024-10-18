@@ -44,8 +44,8 @@ func MarshalMessage(message *Message) io.Reader {
 func UnmarshalMessage(reader io.Reader, message *Message) error {
 
 	headerSizeBuffer := make([]byte, 4)
-	_, err := reader.Read(headerSizeBuffer)
-	if err != nil {
+	headerSizeNum, err := reader.Read(headerSizeBuffer)
+	if err != nil && headerSizeNum != 4 {
 		return err
 	}
 

@@ -23,15 +23,10 @@ func main() {
 
 	engine := runtime.New()
 
-	err = engine.Mount(app.New(), extfs.New(), net.NewWebAssets("/", assetsFS))
-
-	var ctx runtime.Context
-	if err == nil {
-		ctx, err = engine.Bootstrap()
-	}
+	err = engine.Mount(app.New(), extfs.New(), net.NewWebAssets("/", assetsFS), app.Bootstrap())
 
 	if err == nil {
-		err = ctx.Wait()
+		err = engine.Bootstrap()
 	}
 
 	if err != nil {

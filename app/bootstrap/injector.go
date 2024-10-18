@@ -1,7 +1,8 @@
-package runtime
+package bootstrap
 
 import (
 	"errors"
+	"pan/runtime"
 	"reflect"
 	"strings"
 )
@@ -108,24 +109,24 @@ func (s *simpleComponentProvider) Components() []Component {
 	return s.components
 }
 
-var ErrComponentConflict = errors.New("[runtime:Component] Injector Error: dependency conflict")
-var ErrComponentScope = errors.New("[runtime:Component] Injector Error: invalid component scope")
+var ErrComponentConflict = errors.New("[app.bootstrap] Injector Error: dependency conflict")
+var ErrComponentScope = errors.New("[app.bootstrap] Injector Error: invalid component scope")
 
-type Injector struct {
+type injectEngine struct {
 }
 
-func (in *Injector) Init(registry Registry) error {
+func (ie *injectEngine) Init(registry runtime.Registry) error {
 	store := make(ComponentStore)
 	pendings := make(ComponentPendings)
 
 	// traverse component provider
-	err := TraverseRegistry(registry, func(provider ComponentProvider) error {
+	err := runtime.TraverseRegistry(registry, func(provider ComponentProvider) error {
 		internalStore := make(ComponentStore)
 		var componentErr error
 		components := provider.Components()
 		for _, component := range components {
 			// inject component
-			componentErr = injectComponent(component, pendings, internalStore, store)
+			componentErr = inject(component, pendings, internalStore, store)
 			if componentErr != nil {
 				break
 			}
@@ -135,13 +136,13 @@ func (in *Injector) Init(registry Registry) error {
 	return err
 }
 
-func (in *Injector) EngineTypes() []reflect.Type {
+func (in *injectEngine) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[ComponentProvider](),
 	}
 }
 
-func injectComponent(component Component, pendings ComponentPendings, internalStore ComponentStore, store ComponentStore) error {
+func inject(component Component, pendings ComponentPendings, internalStore ComponentStore, store ComponentStore) error {
 
 	t := component.Type()
 	target := component.Target()

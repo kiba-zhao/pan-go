@@ -47,6 +47,13 @@ func TestRemoteNodeItemController(t *testing.T) {
 
 		app, ctrl := setup()
 
+		// mock NodeScopeModule
+		nodeScopeModule := &MockedAppNode.MockNodeScopeModule{}
+		defer nodeScopeModule.AssertExpectations(t)
+		ctrl.RemoteNodeItemService.NodeScopeModule = nodeScopeModule
+		scope := []byte("scope")
+		nodeScopeModule.On("NodeScope").Once().Return(scope)
+
 		nodeModule := &MockedAppNode.MockNodeModule{}
 		defer nodeModule.AssertExpectations(t)
 		ctrl.RemoteNodeItemService.NodeModule = nodeModule
@@ -71,9 +78,10 @@ func TestRemoteNodeItemController(t *testing.T) {
 		var ctx appNode.Context
 		appNode.InitContext(&ctx)
 		ctx.Respond(bytes.NewReader(resBody))
+		requestName := appNode.GenerateRouteName(scope, services.RequestAllRemoteItems)
 		nodeModule.On("Do", nodeId, mock.Anything).Once().Return(&ctx.Response, nil).Run(func(args mock.Arguments) {
 			request := args.Get(1).(*appNode.Request)
-			assert.Equal(t, services.RequestAllRemoteItems, request.Name())
+			assert.Equal(t, requestName, request.Name())
 		})
 
 		base64NodeId := base64.StdEncoding.EncodeToString(nodeId)

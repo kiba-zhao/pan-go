@@ -16,7 +16,7 @@ func ParseSegment(reader io.Reader) (segment []byte, err error) {
 	buffer := segment
 	for {
 		num, err := reader.Read(buffer)
-		if err != nil {
+		if err != nil && num != size {
 			break
 		}
 		total += num

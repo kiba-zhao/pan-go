@@ -24,10 +24,6 @@ type InitializeModule interface {
 	Init(registry Registry) error
 }
 
-type ReadyModule interface {
-	Ready() error
-}
-
 type Context = *errgroup.Group
 
 var ErrDuplicateExtType = errors.New("[engine:Engine] Mount Error: duplicate extension type")
@@ -42,7 +38,6 @@ func New() *Engine {
 	engine.Registry = NewRegistry()
 	engine.extTypes = []reflect.Type{
 		reflect.TypeFor[InitializeModule](),
-		reflect.TypeFor[ReadyModule](),
 	}
 	return engine
 }
@@ -108,18 +103,9 @@ func (engine *Engine) Mount(modules ...interface{}) error {
 	return err
 }
 
-func (engine *Engine) Bootstrap() (Context, error) {
+func (engine *Engine) Bootstrap() error {
 	registry := engine.Registry
-	err := TraverseRegistry(registry, func(module InitializeModule) error {
+	return TraverseRegistry(registry, func(module InitializeModule) error {
 		return module.Init(registry)
 	})
-
-	var ctx errgroup.Group
-	if err == nil {
-		TraverseRegistry(registry, func(module ReadyModule) error {
-			ctx.Go(module.Ready)
-			return nil
-		})
-	}
-	return &ctx, err
 }

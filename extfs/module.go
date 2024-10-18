@@ -2,6 +2,7 @@ package extfs
 
 import (
 	"pan/app"
+	"pan/app/bootstrap"
 	"pan/app/node"
 
 	"pan/extfs/controllers"
@@ -9,7 +10,6 @@ import (
 	"pan/extfs/repositories"
 	repoImpl "pan/extfs/repositories/impl"
 	"pan/extfs/services"
-	"pan/runtime"
 	"sync"
 )
 
@@ -22,6 +22,7 @@ const moduleName = "extfs"
 type module struct {
 	Node        node.NodeModule
 	DBProvider  app.RepositoryDBProvider
+	NodeScope   node.NodeScopeModule
 	controllers []interface{}
 	once        sync.Once
 }
@@ -50,11 +51,12 @@ func (m *module) Models() []interface{} {
 	}
 }
 
-func (m *module) Components() []runtime.Component {
+func (m *module) Components() []bootstrap.Component {
 
 	// base
-	components := []runtime.Component{
-		runtime.NewComponent(m.DBProvider, runtime.ComponentInternalScope),
+	components := []bootstrap.Component{
+		bootstrap.NewComponent(m.DBProvider, bootstrap.ComponentInternalScope),
+		bootstrap.NewComponent(m.NodeScope, bootstrap.ComponentInternalScope),
 	}
 
 	// services
@@ -69,7 +71,7 @@ func (m *module) Components() []runtime.Component {
 
 	// controllers
 	for _, ctrl := range m.Controllers() {
-		components = append(components, runtime.NewComponent(ctrl, runtime.ComponentNoneScope))
+		components = append(components, bootstrap.NewComponent(ctrl, bootstrap.ComponentNoneScope))
 	}
 
 	return components

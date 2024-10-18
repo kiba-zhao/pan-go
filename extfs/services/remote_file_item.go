@@ -15,6 +15,7 @@ import (
 type RemoteFileItemService struct {
 	NodeModule      appNode.NodeModule
 	FileItemService FileItemInternalService
+	NodeScopeModule appNode.NodeScopeModule
 }
 
 func (s *RemoteFileItemService) Search(condition models.RemoteFileItemSearchCondition) (total int64, items []models.RemoteFileItem, err error) {
@@ -77,7 +78,7 @@ func (s *RemoteFileItemService) SearchForNode(condition *models.RemoteFileItemRe
 	return &recordList, err
 }
 
-var RequestAllRemoteFileItems = []byte("extfs/select_all_remote_file_items")
+var RequestAllRemoteFileItems = []byte("select_all_remote_file_items")
 
 func (s *RemoteFileItemService) TraverseRecordWithNodeID(traverseFn func(record *models.RemoteFileItemRecord) error, nodeId appNode.NodeID, condition *models.RemoteFileItemRecordSearchCondition) error {
 	requestBytes, err := proto.Marshal(condition)
@@ -85,7 +86,9 @@ func (s *RemoteFileItemService) TraverseRecordWithNodeID(traverseFn func(record 
 		return err
 	}
 
-	request := appNode.NewRequest(RequestAllRemoteFileItems, bytes.NewReader(requestBytes))
+	scope := s.NodeScopeModule.NodeScope()
+	requestName := appNode.GenerateRouteName(scope, RequestAllRemoteFileItems)
+	request := appNode.NewRequest(requestName, bytes.NewReader(requestBytes))
 	response, err := s.NodeModule.Do(nodeId, request)
 
 	if err != nil {

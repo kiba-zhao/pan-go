@@ -39,8 +39,11 @@ type WebController interface {
 	SetupToWeb(WebRouter) error
 }
 
+type WebScopeModule interface {
+	WebScope() string
+}
+
 type WebControllerProvider interface {
-	WebProviderName() string
 	WebControllers() []WebController
 }
 
@@ -91,9 +94,12 @@ func (w *webServer) OnConfigUpdated(settings config.AppSettings) {
 func (w *webServer) Init(registry runtime.Registry) error {
 	w.locker.Lock()
 	w.registry = registry
-	w.SetSig(true)
 	w.locker.Unlock()
 
+	return w.ReloadModules()
+}
+
+func (w *webServer) Defer() error {
 	return w.ReloadModules()
 }
 
@@ -147,10 +153,10 @@ func (w *webServer) ReloadModules() error {
 	}
 	if err == nil {
 		err = runtime.TraverseRegistry(registry, func(module WebControllerProvider) error {
-			name := module.WebProviderName()
 			var router WebRouter
-			if len(name) > 0 {
-				router = app.Group(name)
+			if scopeModule, ok := module.(WebScopeModule); ok {
+				scope := scopeModule.WebScope()
+				router = app.Group(scope)
 			} else {
 				router = app
 			}

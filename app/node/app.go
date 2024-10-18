@@ -177,10 +177,7 @@ func (router *AppRouter) Use(handles ...AppHandleFunc) AppHandleGroup {
 
 func (router *AppRouter) Handle(name RequestName, handles ...AppHandleFunc) AppHandleGroup {
 
-	name_ := name
-	if len(router.name) > 0 {
-		name_ = slices.Concat(router.name, name)
-	}
+	name_ := GenerateRouteName(router.name, name)
 	handles_ := slices.Concat(router.middlewares, handles)
 	app := router.app
 	app.route(name_, handles_)
@@ -231,4 +228,11 @@ func routeHandle(name RequestName, handles AppHandleChain) AppHandleFunc {
 		}
 		return next()
 	}
+}
+
+func GenerateRouteName(scope RequestName, name RequestName) RequestName {
+	if len(scope) > 0 {
+		return bytes.Join([][]byte{scope, name}, nil)
+	}
+	return name
 }
