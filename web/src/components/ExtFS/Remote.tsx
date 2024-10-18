@@ -61,7 +61,7 @@ export const RemoteItem = () => {
       const fileState = {
         ...ExtFSRemoteFileState,
         nodeId: data.nodeId,
-        itemId: data.remoteItemId,
+        itemId: data.itemId,
       };
       setExtFS({
         ...fileState,

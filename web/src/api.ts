@@ -184,7 +184,7 @@ export type ExtFSRemoteItemSearchCondition = {
 export type ExtFSRemoteItem = {
   id: string;
   nodeId: ExtFSRemoteNode["nodeId"];
-  remoteItemId: number;
+  itemId: number;
   name: string;
   fileType: "F" | "D";
   size: number;
@@ -206,14 +206,14 @@ export async function searchExtFSRemoteItems(
 
 export type ExtFSRemoteFileItemSearchCondition = {
   nodeId: ExtFSRemoteNode["nodeId"];
-  itemId: ExtFSRemoteItem["remoteItemId"];
+  itemId: ExtFSRemoteItem["itemId"];
   parentPath?: string;
 };
 
 export type ExtFSRemoteFileItem = {
   id: string;
   nodeId: ExtFSRemoteNode["nodeId"];
-  itemId: ExtFSRemoteItem["remoteItemId"];
+  itemId: ExtFSRemoteItem["itemId"];
   name: string;
   filePath: string;
   parentPath: string;
@@ -238,5 +238,6 @@ export async function searchExtFSRemoteFileItems({
       "merge"
     )
   );
+
   return remotefiles;
 }

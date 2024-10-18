@@ -35,8 +35,9 @@ export const RemoteFileItems = () => {
     queryKey: [...ExtFSRemoteFileQueryKey, { nodeId, itemId, parentPath }],
     queryFn: async () =>
       await api?.searchExtFSRemoteFileItems({ nodeId, itemId, parentPath }),
-    enabled: state.mode === ExtFSRemoteFileMode,
+    enabled: !!api && state.mode === ExtFSRemoteFileMode,
   });
+
   return (
     <ExtFSItems items={items || []} isFetching={isFetching}>
       <RemoteFileItem />
