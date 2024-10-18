@@ -61,9 +61,10 @@ func (m *module) Components() []bootstrap.Component {
 
 	// services
 	components = app.AppendSampleInternalComponent[services.NodeItemInternalService](components, &services.NodeItemService{})
+	components = app.AppendSampleInternalComponent[services.FileItemInternalService](components, &services.FileItemService{})
+
 	components = app.AppendSampleComponent(components, &services.RemoteNodeItemService{})
 	components = app.AppendSampleComponent(components, &services.RemoteNodeService{Provider: m})
-	components = app.AppendSampleComponent(components, &services.FileItemService{})
 	components = app.AppendSampleComponent(components, &services.RemoteFileItemService{})
 
 	// repositories
