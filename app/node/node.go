@@ -14,6 +14,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"io"
+	"io/fs"
 	"math/big"
 	"os"
 	"pan/app/bootstrap"
@@ -85,153 +86,58 @@ type NodeSettingsListener interface {
 }
 
 type nodeSettings struct {
-	registry       runtime.Registry
-	registryLocker sync.RWMutex
-	locker         sync.RWMutex
-	nodeId         NodeID
-	pubKey         any
-	privKey        crypto.PrivateKey
-	cert           tls.Certificate
-	hashCode       []byte
-	version        uint8
+	Config     config.AppConfig
+	registry   runtime.Registry
+	registryRW sync.RWMutex
+	locker     sync.RWMutex
+	nodeId     NodeID
+	pubKey     any
+	privKey    crypto.PrivateKey
+	cert       tls.Certificate
+	hashCode   []byte
 }
 
 func (ns *nodeSettings) Init(registry runtime.Registry) error {
-	ns.registryLocker.Lock()
-	ns.registry = registry
-	ns.registryLocker.Unlock()
 
-	ns.locker.RLock()
-	defer ns.locker.RUnlock()
-	ns.onUpdated()
-	return nil
+	ns.registryRW.Lock()
+	ns.registry = registry
+	ns.registryRW.Unlock()
+
+	return ns.Generate()
 }
 
-func (ns *nodeSettings) OnConfigUpdated(settings config.AppSettings) {
-
-	privKeyPath, certificatePath := generatePrivKeyPathAndCertificatePath(settings.RootPath)
-
-	var err error
-	keyPEMBlock, err := os.ReadFile(privKeyPath)
-	var certPEMBlock []byte
-	var cert tls.Certificate
-	var privKey crypto.PrivateKey
-	var hashCode []byte
-	var x509Cert *x509.Certificate
-	if err == nil {
-		certPEMBlock, err = os.ReadFile(certificatePath)
+func (ns *nodeSettings) Components() []bootstrap.Component {
+	return []bootstrap.Component{
+		bootstrap.NewComponent(ns, bootstrap.ComponentNoneScope),
 	}
+}
 
-	if err == nil {
-		ns.locker.RLock()
-		hash := sha512.New()
-		hash.Write(certPEMBlock)
-		hash.Write(keyPEMBlock)
-		hashCode = hash.Sum(nil)
-		if ns.hashCode != nil && bytes.Equal(ns.hashCode, hashCode) {
-			return
-		}
-		ns.locker.RUnlock()
-
-		cert, err = tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-	}
-
-	if err == nil {
-		block, _ := pem.Decode(keyPEMBlock)
-		privKey, err = x509.ParsePKCS8PrivateKey(block.Bytes)
-	}
-
-	if err == nil {
-		x509Cert, err = x509.ParseCertificate(cert.Certificate[0])
-	}
-
-	if err != nil {
-		err = ns.GenerateWithAppSettings(settings)
-		if err == nil {
-			return
-		}
+func (ns *nodeSettings) Generate() error {
+	ns.registryRW.RLock()
+	registry := ns.registry
+	ns.registryRW.RUnlock()
+	if registry == nil {
+		return constant.ErrUnavailable
 	}
 
 	ns.locker.Lock()
-	defer ns.locker.Unlock()
-	v := ns.version
-	defer func(v uint8) {
-		if err != nil && ns.hashCode != nil {
-			ns.version++
-			ns.hashCode = nil
-		}
-		if v+1 != ns.version {
-			return
-		}
-		ns.onUpdated()
-	}(v)
-	if err != nil {
-		return
+	configPath := path.Dir(ns.Config.ConfigFilePath())
+	err := ns.ParseFields(configPath)
+	if _, ok := err.(*fs.PathError); ok {
+		err = ns.GenerateFields(configPath)
 	}
+	ns.locker.Unlock()
 
-	pubKeyBytes, err := x509.MarshalPKIXPublicKey(x509Cert.PublicKey)
 	if err == nil {
-		ns.version++
-		ns.nodeId = pubKeyBytes
-		ns.pubKey = x509Cert.PublicKey
-		ns.privKey = privKey
-		ns.cert = cert
-		ns.hashCode = hashCode
+		listeners := runtime.ModulesForType[NodeSettingsListener](registry)
+		for _, listener := range listeners {
+			listener.OnNodeSettingsUpdated(ns)
+		}
 	}
 
+	return err
 }
-
-func (ns *nodeSettings) onUpdated() {
-	ns.registryLocker.RLock()
-	registry := ns.registry
-	ns.registryLocker.RUnlock()
-	if registry == nil {
-		return
-	}
-	listeners := runtime.ModulesForType[NodeSettingsListener](registry)
-	for _, listener := range listeners {
-		listener.OnNodeSettingsUpdated(ns)
-	}
-}
-
-func (ns *nodeSettings) NodeID() NodeID {
-	ns.locker.RLock()
-	defer ns.locker.RUnlock()
-	return ns.nodeId
-}
-
-func (ns *nodeSettings) PubKey() any {
-	ns.locker.RLock()
-	defer ns.locker.RUnlock()
-	return ns.pubKey
-}
-
-func (ns *nodeSettings) PrivKey() crypto.PrivateKey {
-	ns.locker.RLock()
-	defer ns.locker.RUnlock()
-	return ns.privKey
-}
-
-func (ns *nodeSettings) Certificate() tls.Certificate {
-
-	ns.locker.RLock()
-	defer ns.locker.RUnlock()
-	return ns.cert
-}
-
-func (ns *nodeSettings) Available() bool {
-	ns.locker.RLock()
-	defer ns.locker.RUnlock()
-	return ns.hashCode != nil
-}
-
-func (ns *nodeSettings) EngineTypes() []reflect.Type {
-	return []reflect.Type{
-		reflect.TypeFor[NodeSettingsListener](),
-	}
-}
-
-func (ns *nodeSettings) GenerateWithAppSettings(settings config.AppSettings) error {
+func (ns *nodeSettings) GenerateFields(configPath string) error {
 
 	caPrivkey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
@@ -272,10 +178,7 @@ func (ns *nodeSettings) GenerateWithAppSettings(settings config.AppSettings) err
 		return err
 	}
 
-	ns.locker.Lock()
-	defer ns.locker.Unlock()
-
-	privKeyPath, certificatePath := generatePrivKeyPathAndCertificatePath(settings.RootPath)
+	privKeyPath, certificatePath := generatePrivKeyPathAndCertificatePath(configPath)
 	err = os.MkdirAll(path.Dir(privKeyPath), 0750)
 	if err != nil {
 		return err
@@ -314,9 +217,98 @@ func (ns *nodeSettings) GenerateWithAppSettings(settings config.AppSettings) err
 	ns.privKey = caPrivkey
 	ns.cert = cert
 	ns.hashCode = hashCode
+	ns.locker.Unlock()
 
-	ns.onUpdated()
 	return err
+}
+
+func (ns *nodeSettings) ParseFields(configPath string) error {
+
+	privKeyPath, certificatePath := generatePrivKeyPathAndCertificatePath(configPath)
+
+	var err error
+	keyPEMBlock, err := os.ReadFile(privKeyPath)
+	var certPEMBlock []byte
+	var cert tls.Certificate
+	var privKey crypto.PrivateKey
+	var hashCode []byte
+	var x509Cert *x509.Certificate
+	if err == nil {
+		certPEMBlock, err = os.ReadFile(certificatePath)
+	}
+
+	if err == nil {
+		hash := sha512.New()
+		hash.Write(certPEMBlock)
+		hash.Write(keyPEMBlock)
+		hashCode = hash.Sum(nil)
+		if ns.hashCode != nil && bytes.Equal(ns.hashCode, hashCode) {
+			return nil
+		}
+
+		cert, err = tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+	}
+
+	if err == nil {
+		block, _ := pem.Decode(keyPEMBlock)
+		privKey, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+	}
+
+	if err == nil {
+		x509Cert, err = x509.ParseCertificate(cert.Certificate[0])
+	}
+
+	if err != nil {
+		return err
+	}
+
+	pubKeyBytes, err := x509.MarshalPKIXPublicKey(x509Cert.PublicKey)
+	if err == nil {
+		ns.nodeId = pubKeyBytes
+		ns.pubKey = x509Cert.PublicKey
+		ns.privKey = privKey
+		ns.cert = cert
+		ns.hashCode = hashCode
+	}
+
+	return err
+}
+
+func (ns *nodeSettings) NodeID() NodeID {
+	ns.locker.RLock()
+	defer ns.locker.RUnlock()
+	return ns.nodeId
+}
+
+func (ns *nodeSettings) PubKey() any {
+	ns.locker.RLock()
+	defer ns.locker.RUnlock()
+	return ns.pubKey
+}
+
+func (ns *nodeSettings) PrivKey() crypto.PrivateKey {
+	ns.locker.RLock()
+	defer ns.locker.RUnlock()
+	return ns.privKey
+}
+
+func (ns *nodeSettings) Certificate() tls.Certificate {
+
+	ns.locker.RLock()
+	defer ns.locker.RUnlock()
+	return ns.cert
+}
+
+func (ns *nodeSettings) Available() bool {
+	ns.locker.RLock()
+	defer ns.locker.RUnlock()
+	return ns.hashCode != nil
+}
+
+func (ns *nodeSettings) EngineTypes() []reflect.Type {
+	return []reflect.Type{
+		reflect.TypeFor[NodeSettingsListener](),
+	}
 }
 
 func generatePrivKeyPathAndCertificatePath(rootPath string) (string, string) {

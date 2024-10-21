@@ -32,8 +32,8 @@ func TestSettings(t *testing.T) {
 		web, ctrl := setup()
 
 		nodeId := "test node id"
+		rootPath := "test root path"
 		settings := config.Settings{}
-		settings.RootPath = "test root path"
 		settings.Name = "test name"
 		settings.WebAddress = []string{"127.0.0.1:9002"}
 		settings.NodeAddress = []string{"127.0.0.1:9001"}
@@ -47,6 +47,7 @@ func TestSettings(t *testing.T) {
 		ctrl.SettingsService.Provider = provider
 		provider.On("Settings").Once().Return(settings)
 		provider.On("NodeID").Once().Return(nodeId)
+		provider.On("RootPath").Once().Return(rootPath)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/settings", nil)
@@ -56,7 +57,7 @@ func TestSettings(t *testing.T) {
 		var results models.Settings
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
-		assert.Equal(t, models.Settings{Settings: settings, NodeID: nodeId}, results)
+		assert.Equal(t, models.Settings{Settings: settings, NodeID: nodeId, RootPath: rootPath}, results)
 
 	})
 
@@ -64,8 +65,8 @@ func TestSettings(t *testing.T) {
 		web, ctrl := setup()
 
 		nodeId := "test node id"
+		rootPath := "test root path"
 		settings := config.Settings{}
-		settings.RootPath = "test root path"
 		settings.Name = "test name"
 		settings.WebAddress = []string{"127.0.0.1:9002"}
 		settings.NodeAddress = []string{"127.0.0.1:9001"}
@@ -75,7 +76,6 @@ func TestSettings(t *testing.T) {
 		settings.GuardAccess = true
 
 		fields := models.SettingsFields{}
-		fields.RootPath = "field root path"
 		fields.Name = "field name"
 		fields.WebAddress = []string{"0.0.0.0:9002"}
 		fields.NodeAddress = []string{"0.0.0.0:9001"}
@@ -87,7 +87,6 @@ func TestSettings(t *testing.T) {
 		*fields.GuardAccess = false
 
 		settings_ := settings
-		settings_.RootPath = fields.RootPath
 		settings_.Name = fields.Name
 		settings_.WebAddress = fields.WebAddress
 		settings_.NodeAddress = fields.NodeAddress
@@ -103,6 +102,7 @@ func TestSettings(t *testing.T) {
 		provider.On("SetSettings", settings_).Once().Return(nil)
 		provider.On("Settings").Once().Return(settings_)
 		provider.On("NodeID").Once().Return(nodeId)
+		provider.On("RootPath").Once().Return(rootPath)
 
 		fieldsData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
@@ -114,6 +114,6 @@ func TestSettings(t *testing.T) {
 		var results models.Settings
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
-		assert.Equal(t, models.Settings{Settings: settings_, NodeID: nodeId}, results)
+		assert.Equal(t, models.Settings{Settings: settings_, NodeID: nodeId, RootPath: rootPath}, results)
 	})
 }

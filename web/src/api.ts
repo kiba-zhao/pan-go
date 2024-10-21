@@ -29,7 +29,9 @@ export type AppSettings = {
   guardAccess: boolean;
 };
 
-export type AppSettingsFields = Partial<Omit<AppSettings, "nodeId">>;
+export type AppSettingsFields = Partial<
+  Omit<AppSettings, "nodeId" | "rootPath">
+>;
 
 export async function selectAllAppSettings(): Promise<AppSettings> {
   return await fetchOne(withPath("app/settings", "merge"));

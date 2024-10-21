@@ -29,7 +29,6 @@ import {
   DialogConfirmContent,
   DialogSubmitActions,
 } from "./Feedback/Dialog";
-import { FilePathInput } from "./FilePath/Input";
 import { QRCodeDownloadButton } from "./QRCode/Base";
 import { NodeQRCode } from "./QRCode/Node";
 
@@ -210,7 +209,6 @@ const AppSummarySettings = () => {
   const defaultValues = useMemo(
     () => ({
       name: data?.name,
-      rootPath: data?.rootPath,
       guardEnabled: data?.guardEnabled,
       guardAccess: data?.guardAccess,
     }),
@@ -267,17 +265,11 @@ const AppSummarySettings = () => {
           </Stack>
         </NodeQRCode>
         <Stack spacing={2} minWidth={200} maxWidth={760} width={"70%"}>
-          <Controller
-            control={control}
-            name="rootPath"
-            render={({ field }) => (
-              <FilePathInput
-                title={t("custom.app/settings.input.filePath", {})}
-                label={t("custom.app/settings.fields.rootPath")}
-                fileType="D"
-                {...field}
-              />
-            )}
+          <TextField
+            label={t("custom.app/settings.fields.rootPath")}
+            fullWidth
+            variant="filled"
+            value={data?.rootPath}
           />
           <Controller
             control={control}

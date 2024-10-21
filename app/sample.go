@@ -28,10 +28,10 @@ type SampleProvider interface {
 }
 
 type sample[T SampleProvider] struct {
+	Config   config.AppConfig
 	provider T
-	rootPath string
 	db       RepositoryDB
-	dbLocker sync.RWMutex
+	once     sync.Once
 }
 
 func NewSample[T SampleProvider](provider T) interface{} {
@@ -39,40 +39,27 @@ func NewSample[T SampleProvider](provider T) interface{} {
 }
 
 func (s *sample[T]) DB() RepositoryDB {
-	s.dbLocker.RLock()
-	defer s.dbLocker.RUnlock()
+	s.once.Do(func() {
+		models := s.provider.Models()
+		if len(models) <= 0 {
+			return
+		}
+		configPath := path.Dir(s.Config.ConfigFilePath())
+		var db RepositoryDB
+		_, err := os.Stat(configPath)
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(configPath, 0755)
+		}
+		if err == nil {
+			dbPath := path.Join(configPath, s.provider.Name()+".db")
+			db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+		}
+		if err == nil {
+			_ = db.AutoMigrate(models...)
+		}
+		s.db = db
+	})
 	return s.db
-}
-
-func (s *sample[T]) OnConfigUpdated(settings config.AppSettings) {
-
-	s.dbLocker.Lock()
-	defer s.dbLocker.Unlock()
-
-	if s.rootPath == settings.RootPath {
-		return
-	}
-
-	s.rootPath = settings.RootPath
-
-	models := s.provider.Models()
-	if len(models) <= 0 {
-		return
-	}
-
-	var db RepositoryDB
-	_, err := os.Stat(s.rootPath)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(s.rootPath, 0755)
-	}
-	if err == nil {
-		dbPath := path.Join(s.rootPath, s.provider.Name()+".db")
-		db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-	}
-	if err == nil {
-		_ = db.AutoMigrate(models...)
-	}
-	s.db = db
 }
 
 func (s *sample[T]) NodeScope() []byte {
@@ -111,6 +98,7 @@ func (s *sample[T]) Models() []interface{} {
 
 func (s *sample[T]) Components() []bootstrap.Component {
 	return []bootstrap.Component{
+		bootstrap.NewComponent(s, bootstrap.ComponentNoneScope),
 		bootstrap.NewComponent[RepositoryDBProvider](s, bootstrap.ComponentInternalScope),
 		bootstrap.NewComponent[node.NodeScopeModule](s, bootstrap.ComponentInternalScope),
 		bootstrap.NewComponent[net.WebScopeModule](s, bootstrap.ComponentInternalScope),

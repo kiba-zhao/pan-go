@@ -1,8 +1,10 @@
 package config
 
 import (
+	"io/fs"
 	"os"
 	"pan/app/bootstrap"
+	"pan/app/constant"
 	"pan/runtime"
 	"path"
 	"reflect"
@@ -13,8 +15,6 @@ import (
 
 type AppConfig = Config[AppSettings]
 
-type ParseConfigPath[T any] func(settings T) string
-
 type ConfigListener[T any] interface {
 	OnConfigUpdated(settings T)
 }
@@ -23,16 +23,19 @@ type Config[T any] interface {
 	Read() (settings T, err error)
 	Load() (settings T, err error)
 	Save(settings T) error
+	ConfigFilePath() string
 }
 
 type configImpl[T any] struct {
-	rw        sync.RWMutex
-	registry  runtime.Registry
+	rw         sync.RWMutex
+	registry   runtime.Registry
+	registryRW sync.RWMutex
+
 	viper     *viper.Viper
 	isPtrType bool
 }
 
-func NewConfig[T any](settings T, parse ParseConfigPath[T]) Config[T] {
+func NewConfig[T any](settings T, name string) Config[T] {
 
 	// TODO: check T is a pointer
 
@@ -40,18 +43,38 @@ func NewConfig[T any](settings T, parse ParseConfigPath[T]) Config[T] {
 	isPtrType := t.Kind() == reflect.Ptr
 
 	viper := viper.New()
-	configPath := parse(settings)
-	viper.SetConfigFile(configPath)
 	setDefaultSettings(viper, settings)
+
+	rootPath, err := getConfigRootPath()
+	if err != nil {
+		panic(err)
+	}
+	viper.SetConfigFile(path.Join(rootPath, name))
 
 	return &configImpl[T]{viper: viper, isPtrType: isPtrType}
 }
 
 func (c *configImpl[T]) Init(registry runtime.Registry) error {
+	err := c.EnsureConfig()
+	if err != nil {
+		return err
+	}
+
+	err = c.viper.ReadInConfig()
+	if _, ok := err.(*fs.PathError); ok {
+		err = nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	c.registryRW.Lock()
 	c.registry = registry
+	c.registryRW.Unlock()
 
 	// init settings
-	_, err := c.Load()
+	_, err = c.Load()
 	return err
 
 }
@@ -87,7 +110,10 @@ func (c *configImpl[T]) Load() (T, error) {
 
 	settings, err := c.Read()
 	if err == nil {
-		onSettingsUpdated(c.registry, settings)
+		c.registryRW.RLock()
+		registry := c.registry
+		c.registryRW.RUnlock()
+		onSettingsUpdated(registry, settings)
 	}
 	return settings, err
 }
@@ -95,18 +121,6 @@ func (c *configImpl[T]) Load() (T, error) {
 func (c *configImpl[T]) Save(settings T) error {
 
 	c.rw.Lock()
-	defer c.rw.Unlock()
-
-	configFilePath := c.viper.ConfigFileUsed()
-	configDirPath := path.Dir(configFilePath)
-	_, err := os.Stat(configDirPath)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(configDirPath, 0755)
-	}
-	if err != nil {
-		return err
-	}
-
 	needSave := false
 	t := reflect.TypeOf(settings)
 	if t.Kind() == reflect.Ptr {
@@ -131,11 +145,42 @@ func (c *configImpl[T]) Save(settings T) error {
 		return nil
 	}
 
-	err = c.viper.WriteConfig()
+	err := c.viper.WriteConfig()
+	c.rw.Unlock()
+
 	if err == nil {
-		onSettingsUpdated(c.registry, settings)
+		_, err = c.Load()
 	}
 	return err
+}
+
+func (c *configImpl[T]) EnsureConfig() error {
+	configFilePath := c.ConfigFilePath()
+	configDirPath := path.Dir(configFilePath)
+	_, err := os.Stat(configDirPath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(configDirPath, 0755)
+	}
+
+	return err
+}
+
+func (c *configImpl[T]) ConfigFilePath() string {
+	return c.viper.ConfigFileUsed()
+}
+
+func getConfigRootPath() (string, error) {
+	rootPath, ok := os.LookupEnv(constant.RootPathName)
+	if !ok {
+		homePath, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		rootPath = path.Join(homePath, constant.DefaultRootName)
+	}
+
+	return rootPath, nil
+
 }
 
 func setDefaultSettings[T any](viper *viper.Viper, settings T) {
@@ -151,6 +196,7 @@ func setDefaultSettings[T any](viper *viper.Viper, settings T) {
 		if !field.IsExported() {
 			continue
 		}
+
 		fv := iv.FieldByName(field.Name)
 		viper.SetDefault(field.Name, fv.Interface())
 	}
@@ -163,12 +209,8 @@ func onSettingsUpdated[T any](registry runtime.Registry, settings T) {
 	}
 }
 
-func parseDefaultConfigPath(settings AppSettings) string {
-	return path.Join(settings.RootPath, "pan.toml")
-}
-
 func New() AppConfig {
 	settings := newDefaultSettings()
-	config := NewConfig(settings, parseDefaultConfigPath)
+	config := NewConfig(settings, "pan.toml")
 	return config
 }

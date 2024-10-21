@@ -6,6 +6,7 @@ import (
 )
 
 type SettingsProvider interface {
+	RootPath() string
 	NodeID() string
 	Settings() config.Settings
 	SetSettings(config.Settings) error
@@ -23,14 +24,12 @@ func (s *SettingsService) Load() models.Settings {
 	settings := models.Settings{}
 	settings.Settings = s.Provider.Settings()
 	settings.NodeID = s.Provider.NodeID()
+	settings.RootPath = s.Provider.RootPath()
 	return settings
 }
 
 func (s *SettingsService) Save(fields models.SettingsFields) (models.Settings, error) {
 	settings := s.Provider.Settings()
-	if fields.RootPath != "" {
-		settings.RootPath = fields.RootPath
-	}
 	if fields.Name != "" {
 		settings.Name = fields.Name
 	}

@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/base64"
+	"path"
 
 	"pan/app/bootstrap"
 	"pan/app/config"
@@ -31,7 +32,7 @@ const moduleName = "app"
 
 type module struct {
 	Node        node.NodeModule
-	Config      config.Config[config.AppSettings]
+	Config      config.AppConfig
 	DBProvider  RepositoryDBProvider
 	settings    config.AppSettings
 	settingsRW  sync.RWMutex
@@ -102,6 +103,10 @@ func (m *module) Settings() config.Settings {
 
 func (m *module) SetSettings(settings config.Settings) error {
 	return m.Config.Save(&settings)
+}
+
+func (m *module) RootPath() string {
+	return path.Dir(m.Config.ConfigFilePath())
 }
 
 func (m *module) NodeID() string {
