@@ -224,6 +224,8 @@ type quicModule struct {
 
 	routes      []*quicRoute
 	routeLocker sync.RWMutex
+
+	wg sync.WaitGroup
 }
 
 func (qm *quicModule) PublicAddrs() []string {
@@ -238,17 +240,20 @@ func (qm *quicModule) Addrs() []string {
 	return qm.addrs
 }
 
+func (qm *quicModule) SigChan() chan []bool {
+	qm.sigOnce.Do(func() {
+		qm.sigChan = make(chan []bool, 1)
+	})
+	return qm.sigChan
+}
+
 func (qm *quicModule) setSig(sig []bool) {
 	if qm.hasSig {
 		return
 	}
 
-	qm.sigOnce.Do(func() {
-		qm.sigChan = make(chan []bool, 1)
-	})
-
 	qm.hasSig = true
-	qm.sigChan <- sig
+	qm.SigChan() <- sig
 }
 
 func (qm *quicModule) OnNodeSettingsUpdated(settings appNode.NodeSettings) {
@@ -563,10 +568,6 @@ func (qm *quicModule) Components() []bootstrap.Component {
 
 func (qm *quicModule) Ready() error {
 
-	qm.sigOnce.Do(func() {
-		qm.sigChan = make(chan []bool, 1)
-	})
-
 	var servers []*quicServer
 	defer qm.shutdownForQuic(servers)
 
@@ -574,7 +575,7 @@ func (qm *quicModule) Ready() error {
 	defer qm.shutdownForBroadcast(cancel)
 
 	for {
-		sig := <-qm.sigChan
+		sig := <-qm.SigChan()
 
 		qm.locker.Lock()
 		qm.hasSig = false
@@ -602,6 +603,7 @@ func (qm *quicModule) shutdownForQuic(servers []*quicServer) {
 		for _, server := range servers {
 			server.Shutdown()
 		}
+		qm.wg.Wait()
 	}
 }
 
@@ -615,15 +617,11 @@ func (qm *quicModule) serveForQuic() []*quicServer {
 		}
 
 		servers = append(servers, server)
+		qm.wg.Add(1)
 		go func(s *quicServer) {
-			for {
-				err := s.ListenAndServe()
-				if errors.Is(err, quic.ErrServerClosed) {
-					break
-				}
-				time.Sleep(6 * time.Second)
-			}
-
+			defer qm.wg.Done()
+			_ = s.ListenAndServe()
+			// TODO: write error into log
 		}(server)
 	}
 	return servers

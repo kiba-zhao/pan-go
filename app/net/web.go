@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"errors"
 	"io/fs"
 	"net/http"
 	"pan/app/constant"
@@ -14,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -48,28 +46,33 @@ type WebControllerProvider interface {
 }
 
 type webServer struct {
-	app        WebApp
-	appLocker  sync.RWMutex
-	registry   runtime.Registry
-	locker     sync.RWMutex
-	addresses  []string
-	sigChan    chan bool
-	sigOnce    sync.Once
-	hasPending bool
+	app       WebApp
+	appLocker sync.RWMutex
+	registry  runtime.Registry
+	locker    sync.RWMutex
+	addresses []string
+	sigChan   chan bool
+	sigOnce   sync.Once
+	hasSig    bool
 }
 
-func (w *webServer) SetSig(sig bool) {
-
-	if w.hasPending {
-		return
-	}
+func (w *webServer) SigChan() chan bool {
 
 	w.sigOnce.Do(func() {
 		w.sigChan = make(chan bool, 1)
 	})
 
-	w.hasPending = true
-	w.sigChan <- sig
+	return w.sigChan
+}
+
+func (w *webServer) SetSig(sig bool) {
+
+	if w.hasSig {
+		return
+	}
+
+	w.hasSig = true
+	w.SigChan() <- sig
 
 }
 
@@ -179,22 +182,20 @@ func (w *webServer) ReloadModules() error {
 
 func (w *webServer) Ready() error {
 
+	var wg sync.WaitGroup
 	var servers []*http.Server
-	w.sigOnce.Do(func() {
-		w.sigChan = make(chan bool, 1)
-	})
-
 	for {
 
-		sig := <-w.sigChan
+		sig := <-w.SigChan()
 		w.locker.Lock()
-		w.hasPending = false
+		w.hasSig = false
 		w.locker.Unlock()
 
 		if len(servers) > 0 {
 			for _, server := range servers {
 				server.Shutdown(context.Background())
 			}
+			wg.Wait()
 		}
 
 		if !sig {
@@ -209,15 +210,11 @@ func (w *webServer) Ready() error {
 			}
 
 			servers = append(servers, httpServer)
+			wg.Add(1)
 			go func(s *http.Server) {
-				for {
-					err := s.ListenAndServe()
-					if errors.Is(err, http.ErrServerClosed) {
-						break
-					}
-					time.Sleep(6 * time.Second)
-				}
-
+				defer wg.Done()
+				_ = s.ListenAndServe()
+				// TODO: echo error into log
 			}(httpServer)
 		}
 

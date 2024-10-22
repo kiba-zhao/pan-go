@@ -294,18 +294,23 @@ func (b *broadcast) Deliver(payload []byte) error {
 	return nil
 }
 
-func (b *broadcast) setSig(sig bool) {
-	if b.hasSig {
-		return
-	}
+func (b *broadcast) SigChan() chan bool {
 
 	b.sigOnce.Do(func() {
 		b.sigChan = make(chan bool, 1)
 		b.mtu = broadcastMTU()
 	})
 
+	return b.sigChan
+}
+
+func (b *broadcast) setSig(sig bool) {
+	if b.hasSig {
+		return
+	}
+
 	b.hasSig = true
-	b.sigChan <- sig
+	b.SigChan() <- sig
 }
 
 func (b *broadcast) OnConfigUpdated(settings config.AppSettings) {
@@ -329,14 +334,10 @@ func (b *broadcast) Init(registry runtime.Registry) error {
 
 func (b *broadcast) Ready() error {
 
+	var wg sync.WaitGroup
 	var servers []*broadcastServer
-	b.sigOnce.Do(func() {
-		b.sigChan = make(chan bool, 1)
-		b.mtu = broadcastMTU()
-	})
-
 	for {
-		sig := <-b.sigChan
+		sig := <-b.SigChan()
 		b.locker.Lock()
 		b.hasSig = false
 		addresses := b.addresses
@@ -346,6 +347,7 @@ func (b *broadcast) Ready() error {
 			for _, item := range servers {
 				item.Shutdown()
 			}
+			wg.Wait()
 		}
 
 		if !sig {
@@ -362,14 +364,11 @@ func (b *broadcast) Ready() error {
 			}
 
 			servers = append(servers, server)
+			wg.Add(1)
 			go func(bs *broadcastServer) {
-				for {
-					err := bs.ListenAndServe()
-					if errors.Is(err, net.ErrClosed) {
-						break
-					}
-					time.Sleep(6 * time.Second)
-				}
+				defer wg.Done()
+				_ = bs.ListenAndServe()
+				// TODO: write error into log
 			}(server)
 		}
 	}
