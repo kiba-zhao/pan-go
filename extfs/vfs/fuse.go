@@ -160,7 +160,7 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 	inode := fuseni.NewInode(ctx, itemNode, fs.StableAttr{Ino: uint64(nodeItem.ID), Mode: mode})
 	// loopbackNode := inodeEmbedder.(*fs.LoopbackNode)
 
-	return inode, syscall.ENOENT
+	return inode, 0
 }
 
 type FUSERemoteNodeItem struct {
