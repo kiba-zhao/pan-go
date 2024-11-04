@@ -3,6 +3,7 @@ package models
 import "time"
 
 type RemoteNode struct {
+	ID                 uint      `json:"id" form:"id"`
 	NodeID             string    `json:"nodeId" form:"nodeId"`
 	Name               string    `json:"name" form:"name"`
 	Available          bool      `json:"available" form:"available"`

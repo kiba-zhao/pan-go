@@ -15,6 +15,7 @@ type NodeManagerProvider interface {
 
 type NodeExternalService interface {
 	TraverseWithNodeIDs(func(models.Node) error, []string) error
+	SelectByName(string) (models.Node, error)
 }
 
 type NodeService struct {
@@ -53,6 +54,17 @@ func (s *NodeService) Search(conditions models.NodeSearchCondition) (total int64
 func (s *NodeService) Select(id uint) (models.Node, error) {
 
 	model, err := s.NodeRepo.Select(id)
+	if err == nil && !model.Blocked {
+		mgr := s.Provider.NodeManager()
+		if mgr != nil {
+			err = setNodeOnline(mgr, &model)
+		}
+	}
+	return model, err
+}
+
+func (s *NodeService) SelectByName(name string) (models.Node, error) {
+	model, err := s.NodeRepo.SelectByName(name)
 	if err == nil && !model.Blocked {
 		mgr := s.Provider.NodeManager()
 		if mgr != nil {

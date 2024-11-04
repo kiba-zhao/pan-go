@@ -10,6 +10,7 @@ import (
 type NodeItemInternalService interface {
 	TraverseAll(func(models.NodeItem) error) error
 	Select(uint) (models.NodeItem, error)
+	SelectByName(string) (models.NodeItem, error)
 }
 
 type NodeItemService struct {
@@ -92,6 +93,15 @@ func (s *NodeItemService) Update(fields models.NodeItemFields, id uint) (models.
 
 func (s *NodeItemService) Select(id uint) (models.NodeItem, error) {
 	nodeItem, err := s.NodeItemRepo.Select(id)
+	if err != nil {
+		return nodeItem, err
+	}
+	setNodeItemFieldsWithFileStat(&nodeItem)
+	return nodeItem, nil
+}
+
+func (s *NodeItemService) SelectByName(name string) (models.NodeItem, error) {
+	nodeItem, err := s.NodeItemRepo.SelectByName(name)
 	if err != nil {
 		return nodeItem, err
 	}

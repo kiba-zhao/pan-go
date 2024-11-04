@@ -76,12 +76,6 @@ func (w *webServer) SetSig(sig bool) {
 
 }
 
-func (w *webServer) Addresses() []string {
-	w.locker.RLock()
-	defer w.locker.RUnlock()
-	return w.addresses
-}
-
 func (w *webServer) OnConfigUpdated(settings config.AppSettings) {
 	w.locker.Lock()
 	defer w.locker.Unlock()
@@ -189,6 +183,7 @@ func (w *webServer) Ready() error {
 		sig := <-w.SigChan()
 		w.locker.Lock()
 		w.hasSig = false
+		addresses := w.addresses
 		w.locker.Unlock()
 
 		if len(servers) > 0 {
@@ -202,7 +197,6 @@ func (w *webServer) Ready() error {
 			break
 		}
 
-		addresses := w.Addresses()
 		for _, address := range addresses {
 			httpServer := &http.Server{
 				Addr:    address,

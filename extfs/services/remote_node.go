@@ -42,6 +42,7 @@ func (s *RemoteNodeService) SelectAll() (int64, []models.RemoteNode, error) {
 		nodeIds = slices.Delete(nodeIds, idx, idx+1)
 
 		var remote models.RemoteNode
+		remote.ID = model.ID
 		remote.Name = model.Name
 		remote.NodeID = model.NodeID
 		remote.Available = true
@@ -57,19 +58,24 @@ func (s *RemoteNodeService) SelectAll() (int64, []models.RemoteNode, error) {
 		return nil
 	}, nodeIds)
 
-	if err == nil && len(nodeIds) > 0 {
-		for _, nodeId := range nodeIds {
-			var remote models.RemoteNode
-			remote.NodeID = nodeId
-			remote.Available = true
-			remote.TagQuantity = 0
-			remote.PendingTagQuantity = 0
-
-			// TODO: set tag quantity
-
-			remotes = append(remotes, remote)
-		}
-	}
-
 	return 0, remotes, err
+}
+
+func (s *RemoteNodeService) SelectByName(name string) (models.RemoteNode, error) {
+	model, err := s.NodeExternalService.SelectByName(name)
+	var remote models.RemoteNode
+	if err != nil {
+		return remote, err
+	}
+	remote.ID = model.ID
+	remote.Name = model.Name
+	remote.NodeID = model.NodeID
+	remote.Available = !model.Blocked && model.Online
+	remote.TagQuantity = 0
+	remote.PendingTagQuantity = 0
+	remote.CreatedAt = model.CreatedAt
+	remote.UpdatedAt = model.UpdatedAt
+
+	// TODO: set tag quantity
+	return remote, err
 }

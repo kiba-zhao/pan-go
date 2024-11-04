@@ -38,6 +38,19 @@ func (repo *NodeItemRepository) Select(id uint) (models.NodeItem, error) {
 	return item, results.Error
 }
 
+func (repo *NodeItemRepository) SelectByName(name string) (models.NodeItem, error) {
+	db := app.DBForProvider(repo.Provider)
+	if db == nil {
+		return models.NodeItem{}, constant.ErrUnavailable
+	}
+	var item models.NodeItem
+	results := db.Where("name = ?", name).Take(&item)
+	if results.Error == gorm.ErrRecordNotFound {
+		return item, constant.ErrNotFound
+	}
+	return item, results.Error
+}
+
 func (repo *NodeItemRepository) Delete(item models.NodeItem) error {
 	db := app.DBForProvider(repo.Provider)
 	if db == nil {

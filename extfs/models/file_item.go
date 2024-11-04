@@ -21,3 +21,9 @@ type FileItemSearchCondition struct {
 	ItemID     uint    `json:"itemId" form:"itemId" binding:"required"`
 	ParentPath *string `json:"parentPath" form:"parentPath" binding:"omitempty"`
 }
+
+type FileItemSelectCondition struct {
+	ItemID     uint
+	ParentPath string
+	Name       string
+}

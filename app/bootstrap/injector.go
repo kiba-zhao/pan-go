@@ -205,7 +205,7 @@ func inject(component Component, pendings ComponentPendings, internalStore Compo
 			}
 		}
 		fv := iv.FieldByName(field.Name)
-		if !fv.IsNil() && !volatile {
+		if !fv.IsZero() && !volatile {
 			continue
 		}
 		field_target, ok := internalStore[field.Type]

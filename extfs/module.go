@@ -10,11 +10,12 @@ import (
 	"pan/extfs/repositories"
 	repoImpl "pan/extfs/repositories/impl"
 	"pan/extfs/services"
+	"pan/extfs/vfs"
 	"sync"
 )
 
 func New() interface{} {
-	return app.NewSample(&module{})
+	return app.NewSample(&module{vfs: &vfs.VFS{}})
 }
 
 const moduleName = "extfs"
@@ -25,6 +26,7 @@ type module struct {
 	NodeScope   node.NodeScopeModule
 	controllers []interface{}
 	once        sync.Once
+	vfs         *vfs.VFS
 }
 
 func (m *module) Name() string {
@@ -40,6 +42,7 @@ func (m *module) Controllers() []interface{} {
 			&controllers.FileItemController{},
 			&controllers.RemoteNodeItemController{},
 			&controllers.RemoteFileItemController{},
+			&controllers.RemoteFileBlockController{},
 		}
 	})
 	return m.controllers
@@ -66,6 +69,7 @@ func (m *module) Components() []bootstrap.Component {
 	components = app.AppendSampleComponent(components, &services.RemoteNodeItemService{})
 	components = app.AppendSampleComponent(components, &services.RemoteNodeService{Provider: m})
 	components = app.AppendSampleComponent(components, &services.RemoteFileItemService{})
+	components = app.AppendSampleComponent(components, &services.RemoteFileBlockService{})
 
 	// repositories
 	components = app.AppendSampleComponent[repositories.NodeItemRepository](components, &repoImpl.NodeItemRepository{})
@@ -75,6 +79,9 @@ func (m *module) Components() []bootstrap.Component {
 		components = append(components, bootstrap.NewComponent(ctrl, bootstrap.ComponentNoneScope))
 	}
 
+	// vfs components
+	vfsComponents := m.vfs.VFSComponents()
+	components = append(components, vfsComponents...)
 	return components
 }
 
@@ -84,4 +91,10 @@ func (m *module) NodeManager() node.NodeManager {
 	}
 	mgr := m.Node.NodeManager()
 	return mgr
+}
+
+func (m *module) Modules() []interface{} {
+	return []interface{}{
+		m.vfs,
+	}
 }

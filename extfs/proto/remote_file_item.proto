@@ -24,3 +24,9 @@ message RemoteFileItemRecordSearchCondition {
     int32 ItemID = 1;
     optional string ParentPath = 2;
 }
+
+message RemoteFileItemRecordSelectCondition {
+    int32 ItemID = 1;
+    string ParentPath = 2;
+    string Name = 3;
+}

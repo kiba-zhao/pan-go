@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"bytes"
+	"io"
 	"net/http"
-	"pan/app/constant"
+
+	appConstant "pan/app/constant"
 	"pan/app/net"
 	appNode "pan/app/node"
 	"pan/extfs/models"
@@ -23,6 +25,7 @@ func (s *RemoteNodeItemController) SetupToWeb(router net.WebRouter) error {
 
 func (s *RemoteNodeItemController) SetupToNode(router appNode.NodeRouter) error {
 	router.Handle(services.RequestAllRemoteItems, s.SearchForNode)
+	router.Handle(services.RequestRemoteItem, s.SelectForNode)
 	return nil
 }
 
@@ -46,13 +49,44 @@ func (s *RemoteNodeItemController) SearchForNode(ctx *appNode.Context, next appN
 
 	recordList, err := s.RemoteNodeItemService.SelectAllForNode()
 	if err != nil {
-		ctx.ThrowError(constant.CodeInternalError, err)
+		ctx.ThrowError(appConstant.CodeInternalError, err)
 		return err
 	}
 
 	buffer, err := proto.Marshal(&recordList)
 	if err != nil {
-		ctx.ThrowError(constant.CodeInternalError, err)
+		ctx.ThrowError(appConstant.CodeInternalError, err)
+		return err
+	}
+
+	ctx.Respond(bytes.NewReader(buffer))
+	return err
+}
+
+func (s *RemoteNodeItemController) SelectForNode(ctx *appNode.Context, next appNode.Next) error {
+	req := ctx.Request()
+	body, err := io.ReadAll(req.Body())
+	if err != nil {
+		ctx.ThrowError(appConstant.CodeBadRequest, err)
+		return err
+	}
+
+	var condition models.RemoteNodeItemRecordSelectCondition
+	err = proto.Unmarshal(body, &condition)
+	if err != nil {
+		ctx.ThrowError(appConstant.CodeBadRequest, err)
+		return err
+	}
+
+	record, err := s.RemoteNodeItemService.SelectForNode(&condition)
+	if err != nil {
+		ctx.ThrowError(appConstant.CodeInternalError, err)
+		return err
+	}
+
+	buffer, err := proto.Marshal(record)
+	if err != nil {
+		ctx.ThrowError(appConstant.CodeInternalError, err)
 		return err
 	}
 

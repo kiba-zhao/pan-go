@@ -17,3 +17,7 @@ message RemoteNodeItemRecord{
     bool Available = 7;
   }
   
+  message RemoteNodeItemRecordSelectCondition {
+    optional int32 ID = 1;
+    optional string Name = 2;
+}

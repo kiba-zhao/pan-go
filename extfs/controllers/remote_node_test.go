@@ -81,7 +81,7 @@ func TestRemoteNodeController(t *testing.T) {
 		var results []models.RemoteNode
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
-		assert.Equal(t, 4, len(results))
+		assert.Equal(t, 2, len(results))
 
 		// assert 1st remote node
 		assert.Equal(t, secondNode.Name, results[0].Name)
@@ -96,17 +96,5 @@ func TestRemoteNodeController(t *testing.T) {
 		assert.Equal(t, firstNode.CreatedAt, results[1].CreatedAt)
 		assert.Equal(t, firstNode.UpdatedAt, results[1].UpdatedAt)
 		assert.True(t, results[1].Available)
-
-		// assert 3rd remote node
-		thirdNodeIdBase64 := base64.StdEncoding.EncodeToString(thirdNodeId)
-		assert.Equal(t, "", results[2].Name)
-		assert.Equal(t, thirdNodeIdBase64, results[2].NodeID)
-		assert.True(t, results[2].Available)
-
-		// assert 4th remote node
-		fourthNodeIdBase64 := base64.StdEncoding.EncodeToString(fourthNodeId)
-		assert.Equal(t, "", results[3].Name)
-		assert.Equal(t, fourthNodeIdBase64, results[3].NodeID)
-		assert.True(t, results[3].Available)
 	})
 }

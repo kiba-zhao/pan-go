@@ -101,6 +101,20 @@ func (repo *NodeRepository) Select(id uint) (models.Node, error) {
 	return node, results.Error
 }
 
+func (repo *NodeRepository) SelectByName(name string) (models.Node, error) {
+
+	db := repositories.DBForProvider(repo.Provider)
+	if db == nil {
+		return models.Node{}, constant.ErrUnavailable
+	}
+	var node models.Node
+	results := db.Where("name = ?", name).Take(&node)
+	if results.Error == gorm.ErrRecordNotFound {
+		return node, constant.ErrNotFound
+	}
+	return node, results.Error
+}
+
 func (repo *NodeRepository) Delete(node models.Node) error {
 
 	db := repositories.DBForProvider(repo.Provider)

@@ -20,6 +20,7 @@ type ConfigListener[T any] interface {
 }
 
 type Config[T any] interface {
+	SetDefaults(settings T)
 	Read() (settings T, err error)
 	Load() (settings T, err error)
 	Save(settings T) error
@@ -35,23 +36,22 @@ type configImpl[T any] struct {
 	isPtrType bool
 }
 
-func NewConfig[T any](settings T, name string) Config[T] {
+func NewConfig[T any](name string) Config[T] {
 
 	// TODO: check T is a pointer
+	cfg := &configImpl[T]{}
 
-	t := reflect.TypeOf(settings)
-	isPtrType := t.Kind() == reflect.Ptr
-
-	viper := viper.New()
-	setDefaultSettings(viper, settings)
+	t := reflect.TypeFor[T]()
+	cfg.isPtrType = t.Kind() == reflect.Ptr
+	cfg.viper = viper.New()
 
 	rootPath, err := getConfigRootPath()
 	if err != nil {
 		panic(err)
 	}
-	viper.SetConfigFile(path.Join(rootPath, name))
+	cfg.viper.SetConfigFile(path.Join(rootPath, name))
 
-	return &configImpl[T]{viper: viper, isPtrType: isPtrType}
+	return cfg
 }
 
 func (c *configImpl[T]) Init(registry runtime.Registry) error {
@@ -88,6 +88,26 @@ func (c *configImpl[T]) EngineTypes() []reflect.Type {
 func (c *configImpl[T]) Components() []bootstrap.Component {
 	return []bootstrap.Component{
 		bootstrap.NewComponent[Config[T]](c, bootstrap.ComponentExternalScope),
+	}
+}
+
+func (c *configImpl[T]) SetDefaults(settings T) {
+	c.rw.Lock()
+	defer c.rw.Unlock()
+	t := reflect.TypeOf(settings)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	fields := reflect.VisibleFields(t)
+	v := reflect.ValueOf(settings)
+	iv := reflect.Indirect(v)
+	for _, field := range fields {
+		if !field.IsExported() {
+			continue
+		}
+
+		fv := iv.FieldByName(field.Name)
+		c.viper.SetDefault(field.Name, fv.Interface())
 	}
 }
 
@@ -203,6 +223,9 @@ func setDefaultSettings[T any](viper *viper.Viper, settings T) {
 }
 
 func onSettingsUpdated[T any](registry runtime.Registry, settings T) {
+	if registry == nil {
+		return
+	}
 	listeners := runtime.ModulesForType[ConfigListener[T]](registry)
 	for _, listener := range listeners {
 		listener.OnConfigUpdated(settings)
@@ -211,6 +234,7 @@ func onSettingsUpdated[T any](registry runtime.Registry, settings T) {
 
 func New() AppConfig {
 	settings := newDefaultSettings()
-	config := NewConfig(settings, "pan.toml")
-	return config
+	cfg := NewConfig[AppSettings]("pan.toml")
+	cfg.SetDefaults(settings)
+	return cfg
 }

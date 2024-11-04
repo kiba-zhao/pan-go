@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"encoding/base64"
 	"io"
 	appConstant "pan/app/constant"
@@ -72,6 +73,27 @@ func (s *RemoteNodeItemService) SelectAllForNode() (models.RemoteNodeItemRecordL
 	return recordList, err
 }
 
+func (s *RemoteNodeItemService) SelectForNode(condition *models.RemoteNodeItemRecordSelectCondition) (*models.RemoteNodeItemRecord, error) {
+	var nodeItem models.NodeItem
+	var err error
+	if condition.ID != nil {
+		nodeItem, err = s.NodeItemService.Select(uint(*condition.ID))
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	var record models.RemoteNodeItemRecord
+	record.ID = int32(nodeItem.ID)
+	record.Name = nodeItem.Name
+	record.FileType = nodeItem.FileType
+	record.Size = nodeItem.Size
+	record.Available = nodeItem.Available
+	record.CreatedAt = nodeItem.CreatedAt.Unix()
+	record.UpdatedAt = nodeItem.UpdatedAt.Unix()
+	return &record, err
+}
+
 var RequestAllRemoteItems = []byte("select_all_remote_items")
 
 func (s *RemoteNodeItemService) TraverseRecordWithNodeID(traverseFn func(record *models.RemoteNodeItemRecord) error, nodeId appNode.NodeID) error {
@@ -104,6 +126,36 @@ func (s *RemoteNodeItemService) TraverseRecordWithNodeID(traverseFn func(record 
 		}
 	}
 	return err
+}
+
+var RequestRemoteItem = []byte("select_remote_item")
+
+func (s *RemoteNodeItemService) SelectWithCondition(nodeId appNode.NodeID, condition *models.RemoteNodeItemRecordSelectCondition) (*models.RemoteNodeItemRecord, error) {
+	requestBytes, err := proto.Marshal(condition)
+	if err != nil {
+		return nil, err
+	}
+
+	scope := s.NodeScopeModule.NodeScope()
+	requestName := appNode.GenerateRouteName(scope, RequestRemoteItem)
+	request := appNode.NewRequest(requestName, bytes.NewReader(requestBytes))
+	response, err := s.NodeModule.Do(nodeId, request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.Code() != appConstant.CodeOK {
+		return nil, appConstant.ErrInternalError
+	}
+	data, err := io.ReadAll(response.Body())
+	if err != nil {
+		return nil, err
+	}
+
+	var record models.RemoteNodeItemRecord
+	err = proto.Unmarshal(data, &record)
+
+	return &record, err
 }
 
 func generateRemoteNodeItemId(nodeId string, itemId uint) string {

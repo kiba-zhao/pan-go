@@ -71,11 +71,37 @@ func (s *RemoteFileItemService) SearchForNode(condition *models.RemoteFileItemRe
 		record.Available = item.Available
 		record.CreatedAt = item.CreatedAt.Unix()
 		record.UpdatedAt = item.UpdatedAt.Unix()
+
 		recordList.Items = append(recordList.Items, &record)
 		return nil
 	}, condition_)
 
 	return &recordList, err
+}
+
+func (s *RemoteFileItemService) SelectForNode(condition *models.RemoteFileItemRecordSelectCondition) (*models.RemoteFileItemRecord, error) {
+	var condition_ models.FileItemSelectCondition
+
+	condition_.ItemID = uint(condition.ItemID)
+	condition_.ParentPath = condition.ParentPath
+	condition_.Name = condition.Name
+	fileItem, err := s.FileItemService.SelectWithCondition(condition_)
+	if err != nil {
+		return nil, err
+	}
+
+	var record models.RemoteFileItemRecord
+	record.ID = fileItem.ID
+	record.Name = fileItem.Name
+	record.FilePath = fileItem.FilePath
+	record.ParentPath = fileItem.ParentPath
+	record.Size = fileItem.Size
+	record.FileType = fileItem.FileType
+	record.ItemID = int32(fileItem.ItemID)
+	record.Available = fileItem.Available
+	record.CreatedAt = fileItem.CreatedAt.Unix()
+	record.UpdatedAt = fileItem.UpdatedAt.Unix()
+	return &record, nil
 }
 
 var RequestAllRemoteFileItems = []byte("select_all_remote_file_items")
@@ -115,4 +141,33 @@ func (s *RemoteFileItemService) TraverseRecordWithNodeID(traverseFn func(record 
 		}
 	}
 	return err
+}
+
+var RequestRemoteFileItem = []byte("select_remote_file_item")
+
+func (s *RemoteFileItemService) SelectWithCondition(nodeId appNode.NodeID, condition *models.RemoteFileItemRecordSelectCondition) (*models.RemoteFileItemRecord, error) {
+	requestBytes, err := proto.Marshal(condition)
+	if err != nil {
+		return nil, err
+	}
+
+	scope := s.NodeScopeModule.NodeScope()
+	requestName := appNode.GenerateRouteName(scope, RequestRemoteItem)
+	request := appNode.NewRequest(requestName, bytes.NewReader(requestBytes))
+	response, err := s.NodeModule.Do(nodeId, request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.Code() != appConstant.CodeOK {
+		return nil, appConstant.ErrInternalError
+	}
+	data, err := io.ReadAll(response.Body())
+	if err != nil {
+		return nil, err
+	}
+
+	var record models.RemoteFileItemRecord
+	err = proto.Unmarshal(data, &record)
+	return &record, err
 }

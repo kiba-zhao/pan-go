@@ -12,7 +12,8 @@ import (
 )
 
 type FileItemInternalService interface {
-	TraverseWithCondition(traverseFn func(item models.FileItem) error, conditions models.FileItemSearchCondition) error
+	TraverseWithCondition(func(item models.FileItem) error, models.FileItemSearchCondition) error
+	SelectWithCondition(models.FileItemSelectCondition) (models.FileItem, error)
 }
 
 type FileItemService struct {
@@ -27,6 +28,52 @@ func (s *FileItemService) Search(conditions models.FileItemSearchCondition) (int
 		return nil
 	}, conditions)
 	return int64(len(items)), items, err
+}
+
+func (s *FileItemService) SelectWithCondition(condition models.FileItemSelectCondition) (models.FileItem, error) {
+	nodeItem, err := s.NodeItemService.Select(condition.ItemID)
+	if err != nil {
+		return models.FileItem{}, err
+	}
+
+	if !nodeItem.Available || nodeItem.FileType != FileTypeFolder {
+		return models.FileItem{}, appConstant.ErrUnavailable
+	}
+
+	filePath := nodeItem.FilePath
+	if len(condition.ParentPath) > 0 {
+		filePath = path.Join(filePath, condition.ParentPath)
+	}
+	filePath = path.Join(filePath, condition.Name)
+
+	fileStat, err := os.Stat(filePath)
+	if err != nil {
+		return models.FileItem{}, err
+	}
+
+	var fileItem models.FileItem
+
+	fileItem.ItemID = nodeItem.ID
+	fileItem.Name = fileStat.Name()
+	if fileStat.IsDir() {
+		fileItem.FileType = constant.FileTypeDir
+	} else {
+		fileItem.FileType = constant.FileTypeFile
+	}
+	fileItem.ParentPath = condition.ParentPath
+	if len(fileItem.ParentPath) > 0 {
+		fileItem.FilePath = path.Join(fileItem.ParentPath, fileStat.Name())
+	} else {
+		fileItem.FilePath = fileStat.Name()
+	}
+	fileItem.Size = fileStat.Size()
+	fileItem.Available = true
+	fileItem.CreatedAt = fileStat.ModTime()
+	fileItem.UpdatedAt = fileStat.ModTime()
+	fileItem.ID = generateFileItemID(fileItem.ItemID, fileItem.FilePath)
+
+	return fileItem, err
+
 }
 
 func (s *FileItemService) TraverseWithCondition(traverseFn func(item models.FileItem) error, conditions models.FileItemSearchCondition) error {
@@ -54,7 +101,6 @@ func (s *FileItemService) TraverseWithCondition(traverseFn func(item models.File
 
 		item.ItemID = nodeItem.ID
 		item.Name = file.Name()
-		item.ID = generateFileItemID(item.ItemID, item.Name)
 
 		if file.IsDir() {
 			item.FileType = constant.FileTypeDir
@@ -67,8 +113,8 @@ func (s *FileItemService) TraverseWithCondition(traverseFn func(item models.File
 		} else {
 			item.ParentPath = *conditions.ParentPath
 			item.FilePath = path.Join(*conditions.ParentPath, item.Name)
-
 		}
+		item.ID = generateFileItemID(item.ItemID, item.FilePath)
 
 		item.Available = true
 		info, infoErr := file.Info()

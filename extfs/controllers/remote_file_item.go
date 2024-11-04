@@ -24,6 +24,7 @@ func (c *RemoteFileItemController) SetupToWeb(router net.WebRouter) error {
 
 func (s *RemoteFileItemController) SetupToNode(router appNode.NodeRouter) error {
 	router.Handle(services.RequestAllRemoteFileItems, s.SearchForNode)
+	router.Handle(services.RequestRemoteFileItem, s.SelectForNode)
 	return nil
 }
 
@@ -67,6 +68,38 @@ func (c *RemoteFileItemController) SearchForNode(ctx *appNode.Context, next appN
 	}
 
 	buffer, err := proto.Marshal(fileItemList)
+	if err != nil {
+		ctx.ThrowError(appConstant.CodeInternalError, err)
+		return err
+	}
+
+	ctx.Respond(bytes.NewReader(buffer))
+	return err
+}
+
+func (c *RemoteFileItemController) SelectForNode(ctx *appNode.Context, next appNode.Next) error {
+
+	req := ctx.Request()
+	body, err := io.ReadAll(req.Body())
+	if err != nil {
+		ctx.ThrowError(appConstant.CodeBadRequest, err)
+		return err
+	}
+
+	var condition models.RemoteFileItemRecordSelectCondition
+	err = proto.Unmarshal(body, &condition)
+	if err != nil {
+		ctx.ThrowError(appConstant.CodeBadRequest, err)
+		return err
+	}
+
+	record, err := c.RemoteFileItemService.SelectForNode(&condition)
+	if err != nil {
+		ctx.ThrowError(appConstant.CodeInternalError, err)
+		return err
+	}
+
+	buffer, err := proto.Marshal(record)
 	if err != nil {
 		ctx.ThrowError(appConstant.CodeInternalError, err)
 		return err
