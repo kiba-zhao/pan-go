@@ -76,6 +76,9 @@ func (s *RemoteNodeItemService) SelectAllForNode() (models.RemoteNodeItemRecordL
 func (s *RemoteNodeItemService) SelectForNode(condition *models.RemoteNodeItemRecordSelectCondition) (*models.RemoteNodeItemRecord, error) {
 	var nodeItem models.NodeItem
 	var err error
+	if condition.Name != nil {
+		nodeItem, err = s.NodeItemService.SelectByName(*condition.Name)
+	}
 	if condition.ID != nil {
 		nodeItem, err = s.NodeItemService.Select(uint(*condition.ID))
 	}

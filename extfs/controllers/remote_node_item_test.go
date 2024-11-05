@@ -159,4 +159,55 @@ func TestRemoteNodeItemController(t *testing.T) {
 		assert.Equal(t, nodeItem.CreatedAt.Unix(), results.Items[0].CreatedAt)
 		assert.Equal(t, nodeItem.UpdatedAt.Unix(), results.Items[0].UpdatedAt)
 	})
+
+	t.Run("SelectForNode", func(t *testing.T) {
+		app, ctrl := setupForNode()
+
+		// mock NodeItemService
+		nodeItemService := MockedServices.MockNodeItemInternalService{}
+		defer nodeItemService.AssertExpectations(t)
+		ctrl.RemoteNodeItemService.NodeItemService = &nodeItemService
+
+		var nodeItem models.NodeItem
+		nodeItem.ID = 1
+		nodeItem.Name = "test.txt"
+		nodeItem.FileType = constant.FileTypeFile
+		nodeItem.Size = 123
+		nodeItem.Available = true
+		nodeItem.CreatedAt = time.Now()
+		nodeItem.UpdatedAt = time.Now()
+
+		nodeItemService.On("SelectByName", nodeItem.Name).Once().Return(nodeItem, nil)
+
+		// request and response
+		var condition models.RemoteNodeItemRecordSelectCondition
+		condition.Name = &nodeItem.Name
+		reqBody, err := proto.Marshal(&condition)
+		assert.Nil(t, err)
+		req := appNode.NewRequest(services.RequestRemoteItem, bytes.NewReader(reqBody))
+		reqReader := appNode.MarshalRequest(req)
+		var ctx appNode.Context
+		appNode.InitContext(&ctx)
+		err = appNode.UnmarshalRequest(reqReader, ctx.Request())
+		assert.Nil(t, err)
+
+		err = app.Run(&ctx, nil)
+		assert.Nil(t, err)
+
+		body, err := io.ReadAll(ctx.Body())
+		assert.Nil(t, err)
+
+		var result models.RemoteNodeItemRecord
+		err = proto.Unmarshal(body, &result)
+		assert.Nil(t, err)
+
+		assert.Equal(t, int32(nodeItem.ID), result.ID)
+		assert.Equal(t, nodeItem.Name, result.Name)
+		assert.Equal(t, nodeItem.FileType, result.FileType)
+		assert.Equal(t, nodeItem.Size, result.Size)
+		assert.Equal(t, nodeItem.Available, result.Available)
+		assert.Equal(t, nodeItem.CreatedAt.Unix(), result.CreatedAt)
+		assert.Equal(t, nodeItem.UpdatedAt.Unix(), result.UpdatedAt)
+
+	})
 }
