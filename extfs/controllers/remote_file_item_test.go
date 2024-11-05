@@ -178,4 +178,62 @@ func TestRemoteFileItemController(t *testing.T) {
 		assert.Equal(t, fileItem.CreatedAt.Unix(), results.Items[0].CreatedAt)
 		assert.Equal(t, fileItem.UpdatedAt.Unix(), results.Items[0].UpdatedAt)
 	})
+
+	t.Run("SelectForNode", func(t *testing.T) {
+		app, ctrl := setupForNode()
+
+		// mock FileItemService
+		fileItemService := MockedServices.MockFileItemInternalService{}
+		defer fileItemService.AssertExpectations(t)
+		ctrl.RemoteFileItemService.FileItemService = &fileItemService
+
+		var fileItem models.FileItem
+		fileItem.ID = "fileItemId"
+		fileItem.ItemID = 1
+		fileItem.Name = "test.txt"
+		fileItem.Size = 123
+		fileItem.FileType = constant.FileTypeFile
+		fileItem.ParentPath = "parentPath"
+		fileItem.FilePath = "filePath"
+		fileItem.Available = true
+		fileItem.CreatedAt = time.Now()
+		fileItem.UpdatedAt = time.Now()
+
+		fileItemService.On("SelectWithCondition", mock.Anything).Once().Return(fileItem, nil)
+
+		var condition models.RemoteFileItemRecordSelectCondition
+		condition.ItemID = int32(fileItem.ItemID)
+		condition.ParentPath = fileItem.ParentPath
+		condition.Name = fileItem.Name
+
+		// request and response
+		reqBytes, err := proto.Marshal(&condition)
+		assert.Nil(t, err)
+		req := appNode.NewRequest(services.RequestRemoteFileItem, bytes.NewReader(reqBytes))
+		reqReader := appNode.MarshalRequest(req)
+		var ctx appNode.Context
+		appNode.InitContext(&ctx)
+		err = appNode.UnmarshalRequest(reqReader, ctx.Request())
+		assert.Nil(t, err)
+
+		err = app.Run(&ctx, nil)
+		assert.Nil(t, err)
+
+		body, err := io.ReadAll(ctx.Body())
+		assert.Nil(t, err)
+
+		var results models.RemoteFileItemRecord
+		err = proto.Unmarshal(body, &results)
+		assert.Nil(t, err)
+
+		assert.Equal(t, fileItem.ItemID, uint(results.ItemID))
+		assert.Equal(t, fileItem.Name, results.Name)
+		assert.Equal(t, fileItem.Size, results.Size)
+		assert.Equal(t, fileItem.FileType, results.FileType)
+		assert.Equal(t, fileItem.ParentPath, results.ParentPath)
+		assert.Equal(t, fileItem.FilePath, results.FilePath)
+		assert.Equal(t, fileItem.Available, results.Available)
+		assert.Equal(t, fileItem.CreatedAt.Unix(), results.CreatedAt)
+		assert.Equal(t, fileItem.UpdatedAt.Unix(), results.UpdatedAt)
+	})
 }

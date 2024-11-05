@@ -81,13 +81,11 @@ func (vfs *VFS) Ready() error {
 		vfs.sigLocker.Unlock()
 
 		vfs.VFSFileSystem.Unmount()
-
 		if !sig {
 			break
 		}
 
 		vfs.VFSFileSystem.Mount(settings)
-
 	}
 	return nil
 }

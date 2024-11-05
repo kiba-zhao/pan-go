@@ -152,7 +152,7 @@ func (s *RemoteFileItemService) SelectWithCondition(nodeId appNode.NodeID, condi
 	}
 
 	scope := s.NodeScopeModule.NodeScope()
-	requestName := appNode.GenerateRouteName(scope, RequestRemoteItem)
+	requestName := appNode.GenerateRouteName(scope, RequestRemoteFileItem)
 	request := appNode.NewRequest(requestName, bytes.NewReader(requestBytes))
 	response, err := s.NodeModule.Do(nodeId, request)
 	if err != nil {

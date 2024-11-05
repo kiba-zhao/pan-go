@@ -42,12 +42,17 @@ func (fusefs *FUSEFileSystem) Mount(settings VFSSettings) error {
 	if err := os.MkdirAll(mountPath, 0755); err != nil {
 		return err
 	}
-	server, err := fs.Mount(mountPath, fusefs, opts)
-	if err == nil {
-		fusefs.server = server
-		fusefs.localName = settings.LocalName
+	rawFS := fs.NewNodeFS(fusefs, opts)
+	server, err := fuse.NewServer(rawFS, mountPath, &opts.MountOptions)
+	if err != nil {
+		return err
 	}
 
+	fusefs.server = server
+	fusefs.localName = settings.LocalName
+
+	go server.Serve()
+	err = server.WaitMount()
 	return err
 }
 
@@ -60,6 +65,7 @@ func (fusefs *FUSEFileSystem) Unmount() error {
 
 	err := fusefs.server.Unmount()
 	if err == nil {
+		fusefs.server.Wait()
 		fusefs.server = nil
 	}
 	return err
@@ -206,7 +212,7 @@ func (fuserni *FUSERemoteNodeItem) Lookup(ctx context.Context, name string, out 
 		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFDIR})
 	}
 	if record.FileType == services.FileTypeFolder {
-		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID, seq: 0}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFDIR})
+		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID, seq: 1}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFDIR})
 	}
 	// out.Mode = 0755
 	// out.Size = uint64(record.Size)
@@ -226,7 +232,7 @@ type FUSERemoteFolderItem struct {
 	ParentPath string
 	seq        uint64
 	fileInfos  []FUSERemoteFileInfo
-	locker     sync.Locker
+	locker     sync.Mutex
 }
 
 func (fuserfi *FUSERemoteFolderItem) CompareFileInfo(fileInfo FUSERemoteFileInfo, target FUSERemoteFileInfo) int {
@@ -266,7 +272,9 @@ func (fuserfi *FUSERemoteFolderItem) Readdir(ctx context.Context) (fs.DirStream,
 			dirEntry.Mode = fuse.S_IFREG
 		}
 
+		dirs = append(dirs, dirEntry)
 		return nil
+
 	}, fuserfi.NodeID, &condition)
 	fuserfi.fileInfos = fileInfos_
 	fuserfi.locker.Unlock()
@@ -304,7 +312,7 @@ func (fuserfi *FUSERemoteFolderItem) Lookup(ctx context.Context, name string, ou
 		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, Name: record.Name}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFREG})
 	}
 	if record.FileType == services.FileTypeFolder {
-		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, seq: 0}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFDIR})
+		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, seq: 1}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFDIR})
 	}
 	// out.Mode = 0755
 	out.Size = uint64(record.Size)
