@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
@@ -162,7 +163,7 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 		mode = fuse.S_IFDIR
 	}
 
-	out.Size = uint64(nodeItem.Size)
+	// out.Size = uint64(nodeItem.Size)
 	inode := fuseni.NewInode(ctx, itemNode, fs.StableAttr{Ino: uint64(nodeItem.ID), Mode: mode})
 	// loopbackNode := inodeEmbedder.(*fs.LoopbackNode)
 
@@ -207,15 +208,14 @@ func (fuserni *FUSERemoteNodeItem) Lookup(ctx context.Context, name string, out 
 		return nil, syscall.ENOENT
 	}
 
+	mtime := time.Unix(record.UpdatedAt, 0)
 	var remoteInode *fs.Inode
 	if record.FileType == services.FileTypeFile {
-		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFREG})
+		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID, Size: uint64(record.Size), MTime: mtime}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFREG})
 	}
 	if record.FileType == services.FileTypeFolder {
-		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID, seq: 1}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFDIR})
+		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID, seq: 1, Size: uint64(record.Size), MTime: mtime}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFDIR})
 	}
-	// out.Mode = 0755
-	// out.Size = uint64(record.Size)
 	return remoteInode, 0
 }
 
@@ -230,6 +230,8 @@ type FUSERemoteFolderItem struct {
 	NodeID     appNode.NodeID
 	ItemID     int32
 	ParentPath string
+	Size       uint64
+	MTime      time.Time
 	seq        uint64
 	fileInfos  []FUSERemoteFileInfo
 	locker     sync.Mutex
@@ -237,6 +239,13 @@ type FUSERemoteFolderItem struct {
 
 func (fuserfi *FUSERemoteFolderItem) CompareFileInfo(fileInfo FUSERemoteFileInfo, target FUSERemoteFileInfo) int {
 	return strings.Compare(target.Name, fileInfo.Name)
+}
+
+func (fuserfi *FUSERemoteFolderItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+	out.Size = fuserfi.Size
+	out.SetTimes(nil, &fuserfi.MTime, nil)
+	out.Nlink = 1
+	return 0
 }
 
 func (fuserfi *FUSERemoteFolderItem) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
@@ -308,15 +317,15 @@ func (fuserfi *FUSERemoteFolderItem) Lookup(ctx context.Context, name string, ou
 	}
 	fuserfi.locker.Unlock()
 
+	mtime := time.Unix(record.UpdatedAt, 0)
 	var remoteInode *fs.Inode
 	if record.FileType == services.FileTypeFile {
-		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, Name: record.Name}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFREG})
+		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, Name: record.Name, Size: uint64(record.Size), MTime: mtime}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFREG})
 	}
 	if record.FileType == services.FileTypeFolder {
-		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.FilePath, seq: 1}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFDIR})
+		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.FilePath, seq: 1, Size: uint64(record.Size), MTime: mtime}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFDIR})
 	}
-	// out.Mode = 0755
-	out.Size = uint64(record.Size)
+
 	return remoteInode, 0
 }
 
@@ -327,6 +336,24 @@ type FUSERemoteFileItem struct {
 	ItemID     int32
 	ParentPath string
 	Name       string
+	Size       uint64
+	MTime      time.Time
+}
+
+func (fuserfe *FUSERemoteFileItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+	out.Size = fuserfe.Size
+	out.SetTimes(nil, &fuserfe.MTime, nil)
+	out.Nlink = 1
+	return 0
+}
+
+func (fuserfe *FUSERemoteFileItem) Open(ctx context.Context, flags uint32) (fs.FileHandle, uint32, syscall.Errno) {
+	// TODO: support writing
+	if flags&(syscall.O_RDWR|syscall.O_WRONLY) != 0 {
+		return nil, 0, syscall.EROFS
+	}
+	//
+	return fuserfe, fuse.FOPEN_DIRECT_IO, 0
 }
 
 func (fuserfe *FUSERemoteFileItem) Read(ctx context.Context, fh fs.FileHandle, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
@@ -350,7 +377,7 @@ func (fuserfe *FUSERemoteFileItem) Read(ctx context.Context, fh fs.FileHandle, d
 
 	end := int64(len(buffer))
 	if end > limit {
-		return fuse.ReadResultData(buffer[:limit]), fs.OK
+		return fuse.ReadResultData(buffer[:limit]), 0
 	}
-	return fuse.ReadResultData(buffer), fs.OK
+	return fuse.ReadResultData(buffer), 0
 }

@@ -76,7 +76,7 @@ func (s *RemoteFileBlockService) SelectWithCondition(nodeId appNode.NodeID, cond
 	}
 
 	scope := s.NodeScopeModule.NodeScope()
-	requestName := appNode.GenerateRouteName(scope, RequestRemoteItem)
+	requestName := appNode.GenerateRouteName(scope, RequestRemoteFileBlock)
 	request := appNode.NewRequest(requestName, bytes.NewReader(requestBytes))
 	response, err := s.NodeModule.Do(nodeId, request)
 	if err != nil {
