@@ -313,7 +313,7 @@ func (fuserfi *FUSERemoteFolderItem) Lookup(ctx context.Context, name string, ou
 		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, Name: record.Name}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFREG})
 	}
 	if record.FileType == services.FileTypeFolder {
-		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, seq: 1}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFDIR})
+		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.FilePath, seq: 1}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFDIR})
 	}
 	// out.Mode = 0755
 	out.Size = uint64(record.Size)
