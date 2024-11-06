@@ -209,7 +209,7 @@ func (fuserni *FUSERemoteNodeItem) Lookup(ctx context.Context, name string, out 
 
 	var remoteInode *fs.Inode
 	if record.FileType == services.FileTypeFile {
-		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFDIR})
+		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFREG})
 	}
 	if record.FileType == services.FileTypeFolder {
 		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID, seq: 1}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFDIR})
@@ -288,6 +288,7 @@ func (fuserfi *FUSERemoteFolderItem) Readdir(ctx context.Context) (fs.DirStream,
 
 func (fuserfi *FUSERemoteFolderItem) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
 	var condition models.RemoteFileItemRecordSelectCondition
+	condition.ItemID = fuserfi.ItemID
 	condition.ParentPath = fuserfi.ParentPath
 	condition.Name = name
 	record, err := fuserfi.FileSystem.RemoteFileItemService.SelectWithCondition(fuserfi.NodeID, &condition)
