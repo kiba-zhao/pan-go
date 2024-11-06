@@ -36,16 +36,15 @@ func (s *RemoteFileBlockService) SelectForNode(condition *models.RemoteFileBlock
 	if err != nil {
 		return nil, err
 	}
-	if nodeItem.FileType != FileTypeFile {
-		return nil, appConstant.ErrRefused
-	}
 
 	filePath := nodeItem.FilePath
-	if len(condition.ParentPath) > 0 {
-		filePath = path.Join(filePath, condition.ParentPath)
-	}
-	if len(condition.Name) > 0 {
-		filePath = path.Join(filePath, condition.Name)
+	if nodeItem.FileType == FileTypeFolder {
+		if len(condition.ParentPath) > 0 {
+			filePath = path.Join(filePath, condition.ParentPath)
+		}
+		if len(condition.Name) > 0 {
+			filePath = path.Join(filePath, condition.Name)
+		}
 	}
 
 	file, err := os.Open(filePath)
