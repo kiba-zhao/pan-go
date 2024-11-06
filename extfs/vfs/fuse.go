@@ -92,7 +92,6 @@ func (fusefs *FUSEFileSystem) Readdir(ctx context.Context) (fs.DirStream, syscal
 
 func (fusefs *FUSEFileSystem) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
 	if name == fusefs.localName {
-		// out.Mode = 0755
 		localInode := fusefs.NewInode(ctx, &FUSENodeItem{FileSystem: fusefs}, fs.StableAttr{Mode: fuse.S_IFDIR})
 		return localInode, 0
 	}
@@ -106,7 +105,7 @@ func (fusefs *FUSEFileSystem) Lookup(ctx context.Context, name string, out *fuse
 	if err != nil {
 		return nil, syscall.ENOENT
 	}
-	// out.Mode = 0755
+
 	remoteInode := fusefs.NewInode(ctx, &FUSERemoteNodeItem{FileSystem: fusefs, NodeID: nodeId}, fs.StableAttr{Ino: uint64(remote.ID), Mode: fuse.S_IFDIR})
 	return remoteInode, 0
 
@@ -151,10 +150,6 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 	}
 	itemNode.RootData.RootNode = itemNode
 
-	// inodeEmbedder, err := fs.NewLoopbackRoot(nodeItem.FilePath)
-	// if err != nil {
-	// 	return nil, syscall.ENOENT
-	// }
 	var mode uint32
 	switch nodeItem.FileType {
 	case services.FileTypeFile:
@@ -163,9 +158,7 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 		mode = fuse.S_IFDIR
 	}
 
-	// out.Size = uint64(nodeItem.Size)
 	inode := fuseni.NewInode(ctx, itemNode, fs.StableAttr{Ino: uint64(nodeItem.ID), Mode: mode})
-	// loopbackNode := inodeEmbedder.(*fs.LoopbackNode)
 
 	return inode, 0
 }
@@ -338,6 +331,9 @@ type FUSERemoteFileItem struct {
 	Name       string
 	Size       uint64
 	MTime      time.Time
+	locker     sync.Mutex
+	reader     io.Reader
+	offset     int64
 }
 
 func (fuserfe *FUSERemoteFileItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
@@ -357,27 +353,35 @@ func (fuserfe *FUSERemoteFileItem) Open(ctx context.Context, flags uint32) (fs.F
 }
 
 func (fuserfe *FUSERemoteFileItem) Read(ctx context.Context, fh fs.FileHandle, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-	limit := off + int64(len(dest))
-	var condition models.RemoteFileBlockSelectCondition
-	condition.ItemID = fuserfe.ItemID
-	condition.ParentPath = fuserfe.ParentPath
-	condition.Name = fuserfe.Name
-	condition.Offset = off
-	condition.Limit = limit
+	fuserfe.locker.Lock()
+	defer fuserfe.locker.Unlock()
 
-	reader, err := fuserfe.FileSystem.RemoteFileBlockService.SelectWithCondition(fuserfe.NodeID, &condition)
-	if err != nil {
-		return nil, syscall.ENOENT
+	limit := int64(len(dest))
+	if fuserfe.reader == nil || off != fuserfe.offset {
+		var condition models.RemoteFileBlockSelectCondition
+		condition.ItemID = fuserfe.ItemID
+		condition.ParentPath = fuserfe.ParentPath
+		condition.Name = fuserfe.Name
+		condition.Offset = off
+		condition.Limit = limit
+
+		reader, err := fuserfe.FileSystem.RemoteFileBlockService.SelectWithCondition(fuserfe.NodeID, &condition)
+		if err != nil {
+			return nil, syscall.ENOENT
+		}
+		fuserfe.reader = reader
 	}
 
-	buffer, err := io.ReadAll(reader)
+	buffer, err := io.ReadAll(fuserfe.reader)
 	if err != nil {
 		return nil, syscall.ENOENT
 	}
 
 	end := int64(len(buffer))
 	if end > limit {
+		fuserfe.offset = off + limit
 		return fuse.ReadResultData(buffer[:limit]), 0
 	}
+	fuserfe.offset = off + end
 	return fuse.ReadResultData(buffer), 0
 }

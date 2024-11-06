@@ -8,16 +8,42 @@ import (
 	appNode "pan/app/node"
 	"pan/extfs/models"
 	"path"
+	"sync"
 
 	"google.golang.org/protobuf/proto"
 )
 
 type RemoteFileReader struct {
-	file   *os.File
-	reader io.Reader
+	filePath string
+	offset   int64
+	limit    int64
+	file     *os.File
+	reader   io.Reader
+	once     sync.Once
 }
 
 func (r *RemoteFileReader) Read(p []byte) (n int, err error) {
+
+	r.once.Do(func() {
+		file, openErr := os.Open(r.filePath)
+		if openErr != nil {
+			err = openErr
+			return
+		}
+		if r.offset > 0 {
+			file.Seek(r.offset, 0)
+		}
+		if r.limit > 0 {
+			r.reader = io.LimitReader(file, r.limit)
+		} else {
+			r.reader = file
+		}
+		r.file = file
+	})
+
+	if err != nil {
+		return
+	}
 	n, err = r.reader.Read(p)
 	if err == io.EOF || n < len(p) {
 		r.file.Close()
@@ -47,23 +73,12 @@ func (s *RemoteFileBlockService) SelectForNode(condition *models.RemoteFileBlock
 		}
 	}
 
-	file, err := os.Open(filePath)
+	_, err = os.Stat(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	if condition.Offset > 0 {
-		file.Seek(condition.Offset, 0)
-	}
-
-	var reader io.Reader
-	if condition.Limit > 0 {
-		reader = io.LimitReader(file, condition.Limit)
-	} else {
-		reader = file
-	}
-
-	return &RemoteFileReader{file: file, reader: reader}, nil
+	return &RemoteFileReader{filePath: filePath, offset: condition.Offset, limit: condition.Limit}, nil
 }
 
 var RequestRemoteFileBlock = []byte("select_remote_file_block")
