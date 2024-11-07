@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"context"
 	"pan/app/bootstrap"
 	appConfig "pan/app/config"
 	"sync"
@@ -13,12 +14,11 @@ type VFSFileSystem interface {
 
 type VFS struct {
 	VFSFileSystem VFSFileSystem
-	settingsRW    sync.RWMutex
+	locker        sync.Mutex
 	vfsSettings   *VFSSettings
-	hasSig        bool
-	sigLocker     sync.Mutex
-	sigChan       chan bool
-	sigOnce       sync.Once
+	needReload    bool
+	reloadChan    chan struct{}
+	reloadOnce    sync.Once
 	config        appConfig.Config[*VFSSettings]
 	modOnce       sync.Once
 }
@@ -48,8 +48,8 @@ func (vfs *VFS) Modules() []interface{} {
 }
 
 func (vfs *VFS) OnConfigUpdated(settings appConfig.AppSettings) {
-	vfs.settingsRW.Lock()
-	defer vfs.settingsRW.Unlock()
+	vfs.locker.Lock()
+	defer vfs.locker.Unlock()
 	defaultsSettings := newDefaultsVFSSettings(settings)
 	vfs.config.SetDefaults(defaultsSettings)
 	vfsSettings, err := vfs.config.Load()
@@ -57,35 +57,47 @@ func (vfs *VFS) OnConfigUpdated(settings appConfig.AppSettings) {
 		panic(err)
 	}
 	vfs.vfsSettings = vfsSettings
-	if vfs.hasSig {
+	// trigger to reload
+	if vfs.needReload {
 		return
 	}
-	vfs.hasSig = true
-	vfs.SigChan() <- true
+	vfs.needReload = true
+	vfs.ReloadChan() <- struct{}{}
 }
 
-func (vfs *VFS) SigChan() chan bool {
-	vfs.sigOnce.Do(func() {
-		vfs.sigChan = make(chan bool, 1)
+func (vfs *VFS) ReloadChan() chan struct{} {
+	vfs.reloadOnce.Do(func() {
+		vfs.reloadChan = make(chan struct{}, 1)
 	})
-	return vfs.sigChan
+	return vfs.reloadChan
 }
 
-func (vfs *VFS) Ready() error {
+func (vfs *VFS) Ready(ctx context.Context) error {
 
+	var err error
+	closed := false
 	for {
-		sig := <-vfs.SigChan()
-		vfs.sigLocker.Lock()
-		vfs.hasSig = false
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			closed = true
+		case <-vfs.ReloadChan():
+		}
+
+		vfs.locker.Lock()
+		vfs.needReload = false
 		settings := *vfs.vfsSettings
-		vfs.sigLocker.Unlock()
+		vfs.locker.Unlock()
 
 		vfs.VFSFileSystem.Unmount()
-		if !sig {
+		if closed {
 			break
+		}
+		if !settings.Enabled {
+			continue
 		}
 
 		vfs.VFSFileSystem.Mount(settings)
 	}
-	return nil
+	return err
 }

@@ -1,16 +1,15 @@
 package bootstrap
 
 import (
+	"context"
 	"pan/app/constant"
 	"pan/runtime"
 	"reflect"
 	"sync"
-
-	"golang.org/x/sync/errgroup"
 )
 
 type ReadyModule interface {
-	Ready() error
+	Ready(context.Context) error
 }
 
 type readyEngine struct {
@@ -37,7 +36,7 @@ func (re *readyEngine) Components() []Component {
 	}
 }
 
-func (re *readyEngine) bootstrap() error {
+func (re *readyEngine) bootstrap(ctx context.Context) error {
 	re.locker.RLock()
 	registry := re.registry
 	re.locker.RUnlock()
@@ -45,10 +44,31 @@ func (re *readyEngine) bootstrap() error {
 		return constant.ErrUnavailable
 	}
 
-	var ctx errgroup.Group
-	runtime.TraverseRegistry(registry, func(module ReadyModule) error {
-		ctx.Go(module.Ready)
-		return nil
+	var wg sync.WaitGroup
+	causeCtx, causeCancel := context.WithCancelCause(ctx)
+	err := runtime.TraverseRegistry(registry, func(module ReadyModule) error {
+		wg.Add(1)
+		go func(readyModule ReadyModule) {
+			defer wg.Done()
+			err := readyModule.Ready(causeCtx)
+			if err != nil {
+				causeCancel(err)
+			}
+		}(module)
+
+		select {
+		case <-causeCtx.Done():
+			return causeCtx.Err()
+		default:
+			return nil
+		}
 	})
-	return ctx.Wait()
+
+	if err == nil {
+		wg.Wait()
+		<-causeCtx.Done()
+		err = causeCtx.Err()
+	}
+
+	return err
 }

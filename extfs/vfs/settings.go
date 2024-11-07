@@ -9,12 +9,14 @@ import (
 type VFSSettings struct {
 	MountPath string
 	LocalName string
+	Enabled   bool
 }
 
 func newDefaultsVFSSettings(appSettings appConfig.AppSettings) *VFSSettings {
 	settings := &VFSSettings{}
 	settings.LocalName = appSettings.Name
 	settings.MountPath = path.Join(os.TempDir(), "extfs")
+	settings.Enabled = true
 
 	return settings
 }

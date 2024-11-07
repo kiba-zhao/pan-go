@@ -206,12 +206,12 @@ type broadcast struct {
 	registry       runtime.Registry
 	registryLocker sync.RWMutex
 
-	addresses []string
-	locker    sync.RWMutex
-	sigChan   chan bool
-	sigOnce   sync.Once
-	hasSig    bool
-	mtu       int
+	addresses  []string
+	locker     sync.RWMutex
+	reloadChan chan struct{}
+	reloadOnce sync.Once
+	needReload bool
+	mtu        int
 }
 
 func (b *broadcast) EngineTypes() []reflect.Type {
@@ -294,23 +294,14 @@ func (b *broadcast) Deliver(payload []byte) error {
 	return nil
 }
 
-func (b *broadcast) SigChan() chan bool {
+func (b *broadcast) ReloadChan() chan struct{} {
 
-	b.sigOnce.Do(func() {
-		b.sigChan = make(chan bool, 1)
+	b.reloadOnce.Do(func() {
+		b.reloadChan = make(chan struct{}, 1)
 		b.mtu = broadcastMTU()
 	})
 
-	return b.sigChan
-}
-
-func (b *broadcast) setSig(sig bool) {
-	if b.hasSig {
-		return
-	}
-
-	b.hasSig = true
-	b.SigChan() <- sig
+	return b.reloadChan
 }
 
 func (b *broadcast) OnConfigUpdated(settings config.AppSettings) {
@@ -322,7 +313,13 @@ func (b *broadcast) OnConfigUpdated(settings config.AppSettings) {
 	}
 
 	b.addresses = settings.BroadcastAddress
-	b.setSig(true)
+
+	// trigger to reload
+	if b.needReload {
+		return
+	}
+	b.needReload = true
+	b.ReloadChan() <- struct{}{}
 }
 
 func (b *broadcast) Init(registry runtime.Registry) error {
@@ -332,14 +329,22 @@ func (b *broadcast) Init(registry runtime.Registry) error {
 	return nil
 }
 
-func (b *broadcast) Ready() error {
+func (b *broadcast) Ready(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 	var servers []*broadcastServer
+	var err error
+	closed := false
 	for {
-		sig := <-b.SigChan()
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			closed = true
+		case <-b.ReloadChan():
+		}
+
 		b.locker.Lock()
-		b.hasSig = false
+		b.needReload = false
 		addresses := b.addresses
 		b.locker.Unlock()
 
@@ -350,7 +355,7 @@ func (b *broadcast) Ready() error {
 			wg.Wait()
 		}
 
-		if !sig {
+		if closed {
 			break
 		}
 
@@ -373,7 +378,7 @@ func (b *broadcast) Ready() error {
 		}
 	}
 
-	return nil
+	return err
 }
 
 func broadcastMTU() int {

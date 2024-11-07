@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"pan/app/constant"
 	"pan/runtime"
 	"reflect"
@@ -35,7 +36,7 @@ func (de *deferEngine) Components() []Component {
 	}
 }
 
-func (de *deferEngine) bootstrap() error {
+func (de *deferEngine) bootstrap(ctx context.Context) error {
 	de.locker.RLock()
 	registry := de.registry
 	de.locker.RUnlock()
@@ -44,6 +45,14 @@ func (de *deferEngine) bootstrap() error {
 	}
 
 	return runtime.TraverseRegistry(registry, func(module DeferModule) error {
-		return module.Defer()
+		err := module.Defer()
+		if err == nil {
+			select {
+			case <-ctx.Done():
+				err = ctx.Err()
+			default:
+			}
+		}
+		return err
 	})
 }

@@ -58,6 +58,7 @@ func (fusefs *FUSEFileSystem) Mount(settings VFSSettings) error {
 }
 
 func (fusefs *FUSEFileSystem) Unmount() error {
+
 	fusefs.rw.RLock()
 	defer fusefs.rw.RUnlock()
 	if fusefs.server == nil {

@@ -46,34 +46,23 @@ type WebControllerProvider interface {
 }
 
 type webServer struct {
-	app       WebApp
-	appLocker sync.RWMutex
-	registry  runtime.Registry
-	locker    sync.RWMutex
-	addresses []string
-	sigChan   chan bool
-	sigOnce   sync.Once
-	hasSig    bool
+	app        WebApp
+	appLocker  sync.RWMutex
+	registry   runtime.Registry
+	locker     sync.RWMutex
+	addresses  []string
+	reloadChan chan struct{}
+	reloadOnce sync.Once
+	needReload bool
 }
 
-func (w *webServer) SigChan() chan bool {
+func (w *webServer) ReloadChan() chan struct{} {
 
-	w.sigOnce.Do(func() {
-		w.sigChan = make(chan bool, 1)
+	w.reloadOnce.Do(func() {
+		w.reloadChan = make(chan struct{}, 1)
 	})
 
-	return w.sigChan
-}
-
-func (w *webServer) SetSig(sig bool) {
-
-	if w.hasSig {
-		return
-	}
-
-	w.hasSig = true
-	w.SigChan() <- sig
-
+	return w.reloadChan
 }
 
 func (w *webServer) OnConfigUpdated(settings config.AppSettings) {
@@ -85,7 +74,13 @@ func (w *webServer) OnConfigUpdated(settings config.AppSettings) {
 	}
 
 	w.addresses = settings.WebAddress
-	w.SetSig(true)
+
+	// trigger to reload
+	if w.needReload {
+		return
+	}
+	w.needReload = true
+	w.ReloadChan() <- struct{}{}
 }
 
 func (w *webServer) Init(registry runtime.Registry) error {
@@ -174,15 +169,22 @@ func (w *webServer) ReloadModules() error {
 	return err
 }
 
-func (w *webServer) Ready() error {
+func (w *webServer) Ready(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 	var servers []*http.Server
+	var err error
+	closed := false
 	for {
 
-		sig := <-w.SigChan()
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			closed = true
+		case <-w.ReloadChan():
+		}
 		w.locker.Lock()
-		w.hasSig = false
+		w.needReload = false
 		addresses := w.addresses
 		w.locker.Unlock()
 
@@ -193,7 +195,7 @@ func (w *webServer) Ready() error {
 			wg.Wait()
 		}
 
-		if !sig {
+		if closed {
 			break
 		}
 
@@ -208,13 +210,14 @@ func (w *webServer) Ready() error {
 			go func(s *http.Server) {
 				defer wg.Done()
 				_ = s.ListenAndServe()
+
 				// TODO: echo error into log
 			}(httpServer)
 		}
 
 	}
 
-	return nil
+	return err
 }
 
 type webAssets struct {

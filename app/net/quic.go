@@ -163,7 +163,7 @@ func (qs *quicServer) Shutdown() error {
 	return ln.Close()
 }
 
-func (qs *quicServer) ListenAndServe() error {
+func (qs *quicServer) ListenAndServe(ctx context.Context) error {
 
 	if qs.quicModule == nil || qs.quicModule.NodeModule == nil {
 		return constant.ErrUnavailable
@@ -187,15 +187,18 @@ func (qs *quicServer) ListenAndServe() error {
 	defer qs.Shutdown()
 
 	for {
-		conn, err := ln.Accept(context.Background())
-		if errors.Is(err, quic.ErrServerClosed) {
-			break
-		}
-		if err != nil {
-			go conn.CloseWithError(quic.ApplicationErrorCode(quic.InternalError), err.Error())
+		conn, err := ln.Accept(ctx)
+		if err == nil {
+			go qs.quicModule.Serve(conn)
 			continue
 		}
-		go qs.quicModule.Serve(conn)
+		if conn != nil {
+			conn.CloseWithError(quic.ApplicationErrorCode(quic.InternalError), err.Error())
+		}
+		if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) {
+			break
+		}
+
 	}
 
 	return err
@@ -215,12 +218,13 @@ type quicModule struct {
 	Broadcast  Broadcast
 	NodeModule appNode.NodeModule
 
-	publicAddrs []string
-	addrs       []string
-	locker      sync.RWMutex
-	sigChan     chan []bool
-	sigOnce     sync.Once
-	hasSig      bool
+	publicAddrs     []string
+	addrs           []string
+	locker          sync.RWMutex
+	reloadChan      chan struct{}
+	reloadOnce      sync.Once
+	reloadServe     bool
+	reloadBroadcast bool
 
 	routes      []*quicRoute
 	routeLocker sync.RWMutex
@@ -240,27 +244,22 @@ func (qm *quicModule) Addrs() []string {
 	return qm.addrs
 }
 
-func (qm *quicModule) SigChan() chan []bool {
-	qm.sigOnce.Do(func() {
-		qm.sigChan = make(chan []bool, 1)
+func (qm *quicModule) ReloadChan() chan struct{} {
+	qm.reloadOnce.Do(func() {
+		qm.reloadChan = make(chan struct{}, 1)
 	})
-	return qm.sigChan
-}
-
-func (qm *quicModule) setSig(sig []bool) {
-	if qm.hasSig {
-		return
-	}
-
-	qm.hasSig = true
-	qm.SigChan() <- sig
+	return qm.reloadChan
 }
 
 func (qm *quicModule) OnNodeSettingsUpdated(settings appNode.NodeSettings) {
 	qm.locker.Lock()
 	defer qm.locker.Unlock()
 
-	qm.setSig([]bool{true, false})
+	if qm.reloadServe {
+		return
+	}
+	qm.reloadServe = true
+	qm.ReloadChan() <- struct{}{}
 }
 
 func (qm *quicModule) OnConfigUpdated(settings config.AppSettings) {
@@ -268,21 +267,29 @@ func (qm *quicModule) OnConfigUpdated(settings config.AppSettings) {
 	qm.locker.Lock()
 	defer qm.locker.Unlock()
 
-	sigArr := make([]bool, 2)
-	if sigArr[0] = !slices.Equal(qm.addrs, settings.NodeAddress); sigArr[0] {
+	var reloadServe bool
+	if reloadServe = !slices.Equal(qm.addrs, settings.NodeAddress); reloadServe {
 		qm.addrs = settings.NodeAddress
 	}
 
-	if sigArr[1] = !slices.Equal(qm.publicAddrs, settings.PublicAddress); sigArr[1] {
+	if !qm.reloadServe && reloadServe {
+		qm.reloadServe = reloadServe
+	}
+
+	var reloadBroadcast bool
+	if reloadBroadcast = !slices.Equal(qm.publicAddrs, settings.PublicAddress); reloadBroadcast {
 		qm.publicAddrs = settings.PublicAddress
 	}
 
-	for _, sig := range sigArr {
-		if sig {
-			qm.setSig(sigArr)
-			break
-		}
+	if !qm.reloadBroadcast && reloadBroadcast {
+		qm.reloadBroadcast = reloadBroadcast
 	}
+
+	if !qm.reloadServe && !qm.reloadBroadcast {
+		return
+	}
+
+	qm.ReloadChan() <- struct{}{}
 }
 
 func (qm *quicModule) doRequest(ctx context.Context, conn quic.Connection, reader io.Reader, flag byte) (io.Reader, error) {
@@ -566,7 +573,7 @@ func (qm *quicModule) Components() []bootstrap.Component {
 	}
 }
 
-func (qm *quicModule) Ready() error {
+func (qm *quicModule) Ready(ctx context.Context) error {
 
 	var servers []*quicServer
 	defer qm.shutdownForQuic(servers)
@@ -574,29 +581,43 @@ func (qm *quicModule) Ready() error {
 	var cancel context.CancelCauseFunc
 	defer qm.shutdownForBroadcast(cancel)
 
+	var err error
+	closed := false
+
 	for {
-		sig := <-qm.SigChan()
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			closed = true
+		case <-qm.ReloadChan():
+		}
 
 		qm.locker.Lock()
-		qm.hasSig = false
+		reloadServe := qm.reloadServe
+		qm.reloadServe = false
+
+		reloadBroadcast := qm.reloadBroadcast
+		qm.reloadBroadcast = false
 		qm.locker.Unlock()
 
-		if len(sig) <= 0 {
+		if closed {
 			break
 		}
 
-		if sig[0] {
+		if reloadServe {
 			qm.shutdownForQuic(servers)
-			servers = qm.serveForQuic()
+			servers = qm.serveForQuic(ctx)
 		}
 
-		if sig[1] {
+		if reloadBroadcast {
 			qm.shutdownForBroadcast(cancel)
-			cancel = qm.serveForBroadcast()
+			causeCtx, causeCancel := context.WithCancelCause(ctx)
+			cancel = causeCancel
+			qm.serveForBroadcast(causeCtx)
 		}
 
 	}
-	return nil
+	return err
 }
 func (qm *quicModule) shutdownForQuic(servers []*quicServer) {
 	if len(servers) > 0 {
@@ -607,7 +628,7 @@ func (qm *quicModule) shutdownForQuic(servers []*quicServer) {
 	}
 }
 
-func (qm *quicModule) serveForQuic() []*quicServer {
+func (qm *quicModule) serveForQuic(ctx context.Context) []*quicServer {
 	servers := make([]*quicServer, 0)
 	addrs := qm.Addrs()
 	for _, addr := range addrs {
@@ -618,11 +639,11 @@ func (qm *quicModule) serveForQuic() []*quicServer {
 
 		servers = append(servers, server)
 		qm.wg.Add(1)
-		go func(s *quicServer) {
+		go func(s *quicServer, c context.Context) {
 			defer qm.wg.Done()
-			_ = s.ListenAndServe()
+			_ = s.ListenAndServe(c)
 			// TODO: write error into log
-		}(server)
+		}(server, ctx)
 	}
 	return servers
 }
@@ -633,9 +654,8 @@ func (qm *quicModule) shutdownForBroadcast(cancel context.CancelCauseFunc) {
 	}
 }
 
-func (qm *quicModule) serveForBroadcast() context.CancelCauseFunc {
+func (qm *quicModule) serveForBroadcast(ctx context.Context) {
 
-	ctx, cancel := context.WithCancelCause(context.Background())
 	go func(ctx context.Context) {
 	broadcastLoop:
 		for {
@@ -652,7 +672,6 @@ func (qm *quicModule) serveForBroadcast() context.CancelCauseFunc {
 			}
 		}
 	}(ctx)
-	return cancel
 }
 
 func (qm *quicModule) deliverForBroadcast() error {
