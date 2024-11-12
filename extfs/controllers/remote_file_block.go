@@ -21,7 +21,7 @@ func (c *RemoteFileBlockController) SetupToNode(router appNode.NodeRouter) error
 
 func (c *RemoteFileBlockController) SelectForNode(ctx *appNode.Context, next appNode.Next) error {
 	req := ctx.Request()
-	body, err := io.ReadAll(req.Body())
+	body, err := io.ReadAll(req)
 	if err != nil {
 		ctx.ThrowError(appConstant.CodeBadRequest, err)
 		return err

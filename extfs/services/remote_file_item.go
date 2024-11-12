@@ -115,15 +115,16 @@ func (s *RemoteFileItemService) TraverseRecordWithNodeID(traverseFn func(record 
 	scope := s.NodeScopeModule.NodeScope()
 	requestName := appNode.GenerateRouteName(scope, RequestAllRemoteFileItems)
 	request := appNode.NewRequest(requestName, bytes.NewReader(requestBytes))
-	response, err := s.NodeModule.Do(nodeId, request)
-
+	res, err := s.NodeModule.Do(nodeId, request)
 	if err != nil {
 		return err
 	}
-	if response.Code() != appConstant.CodeOK {
+	defer res.Close()
+
+	if res.Code() != appConstant.CodeOK {
 		return appConstant.ErrInternalError
 	}
-	data, err := io.ReadAll(response.Body())
+	data, err := io.ReadAll(res)
 	if err != nil {
 		return err
 	}
@@ -154,15 +155,16 @@ func (s *RemoteFileItemService) SelectWithCondition(nodeId appNode.NodeID, condi
 	scope := s.NodeScopeModule.NodeScope()
 	requestName := appNode.GenerateRouteName(scope, RequestRemoteFileItem)
 	request := appNode.NewRequest(requestName, bytes.NewReader(requestBytes))
-	response, err := s.NodeModule.Do(nodeId, request)
+	res, err := s.NodeModule.Do(nodeId, request)
 	if err != nil {
 		return nil, err
 	}
+	defer res.Close()
 
-	if response.Code() != appConstant.CodeOK {
+	if res.Code() != appConstant.CodeOK {
 		return nil, appConstant.ErrInternalError
 	}
-	data, err := io.ReadAll(response.Body())
+	data, err := io.ReadAll(res)
 	if err != nil {
 		return nil, err
 	}

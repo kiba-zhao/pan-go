@@ -9,8 +9,8 @@ import (
 	appNode "pan/app/node"
 	"pan/extfs/models"
 	"pan/extfs/services"
+	"path"
 	"slices"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -83,9 +83,34 @@ func (fusefs *FUSEFileSystem) Readdir(ctx context.Context) (fs.DirStream, syscal
 
 	_, remotes, err := fusefs.RemoteNodeService.SelectAll()
 	if err == nil {
+		names := make([]string, 0)
 		for _, remote := range remotes {
-			dirs = append(dirs, fuse.DirEntry{Name: remote.Name, Mode: fuse.S_IFDIR, Ino: uint64(remote.ID)})
+			idx, ok := slices.BinarySearch(names, remote.Name)
+			if ok {
+				err = constant.ErrInternalError
+				break
+			}
+			names = slices.Insert(names, idx, remote.Name)
+			dirs = append(dirs, fuse.DirEntry{Name: remote.Name, Mode: fuse.S_IFDIR})
 		}
+
+		releaseNames := make([]string, 0)
+		for n := range fusefs.Children() {
+			if n == fusefs.localName {
+				continue
+			}
+			if _, ok := slices.BinarySearch(names, n); ok {
+				continue
+			}
+			releaseNames = append(releaseNames, n)
+		}
+		if len(releaseNames) > 0 {
+			fusefs.RmChild(releaseNames...)
+		}
+	}
+
+	if err != nil {
+		return nil, syscall.ENOENT
 	}
 
 	return fs.NewListDirStream(dirs), 0
@@ -93,8 +118,11 @@ func (fusefs *FUSEFileSystem) Readdir(ctx context.Context) (fs.DirStream, syscal
 
 func (fusefs *FUSEFileSystem) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
 	if name == fusefs.localName {
-		localInode := fusefs.NewInode(ctx, &FUSENodeItem{FileSystem: fusefs}, fs.StableAttr{Mode: fuse.S_IFDIR})
-		return localInode, 0
+		inode := fusefs.GetChild(name)
+		if inode == nil {
+			inode = fusefs.NewInode(ctx, &FUSENodeItem{FileSystem: fusefs}, fs.StableAttr{Mode: fuse.S_IFDIR})
+		}
+		return inode, 0
 	}
 
 	remote, err := fusefs.RemoteNodeService.SelectByName(name)
@@ -102,12 +130,17 @@ func (fusefs *FUSEFileSystem) Lookup(ctx context.Context, name string, out *fuse
 		return nil, syscall.ENOENT
 	}
 
+	inode := fusefs.GetChild(name)
+	if inode != nil {
+		return inode, 0
+	}
+
 	nodeId, err := base64.StdEncoding.DecodeString(remote.NodeID)
 	if err != nil {
 		return nil, syscall.ENOENT
 	}
 
-	remoteInode := fusefs.NewInode(ctx, &FUSERemoteNodeItem{FileSystem: fusefs, NodeID: nodeId}, fs.StableAttr{Ino: uint64(remote.ID), Mode: fuse.S_IFDIR})
+	remoteInode := fusefs.NewInode(ctx, &FUSERemoteNodeItem{FileSystem: fusefs, NodeID: nodeId}, fs.StableAttr{Mode: fuse.S_IFDIR})
 	return remoteInode, 0
 
 }
@@ -119,9 +152,15 @@ type FUSENodeItem struct {
 
 func (fuseni *FUSENodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 	dirs := make([]fuse.DirEntry, 0)
+	names := make([]string, 0)
 	err := fuseni.FileSystem.NodeItemService.TraverseAll(func(nodeItem models.NodeItem) error {
+		idx, ok := slices.BinarySearch(names, nodeItem.Name)
+		if ok {
+			return constant.ErrInternalError
+		}
+		names = slices.Insert(names, idx, nodeItem.Name)
+
 		dirEntry := fuse.DirEntry{}
-		dirEntry.Ino = uint64(nodeItem.ID)
 		dirEntry.Name = nodeItem.Name
 		switch nodeItem.FileType {
 		case services.FileTypeFolder:
@@ -135,6 +174,17 @@ func (fuseni *FUSENodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.
 	if err != nil {
 		return nil, syscall.ENOENT
 	}
+
+	releaseNames := make([]string, 0)
+	for n := range fuseni.Children() {
+		if _, ok := slices.BinarySearch(names, n); ok {
+			continue
+		}
+		releaseNames = append(releaseNames, n)
+	}
+	if len(releaseNames) > 0 {
+		fuseni.RmChild(releaseNames...)
+	}
 	return fs.NewListDirStream(dirs), 0
 }
 
@@ -142,6 +192,17 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 	nodeItem, err := fuseni.FileSystem.NodeItemService.SelectByName(name)
 	if err != nil || !nodeItem.Available {
 		return nil, syscall.ENOENT
+	}
+
+	inode := fuseni.GetChild(name)
+	if inode != nil {
+		if nodeItem.FileType == services.FileTypeFolder && inode.Mode() == fuse.S_IFDIR {
+			return inode, 0
+		}
+		if nodeItem.FileType == services.FileTypeFile && inode.Mode() == fuse.S_IFREG {
+			return inode, 0
+		}
+		inode = nil
 	}
 
 	itemNode := &fs.LoopbackNode{
@@ -159,7 +220,7 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 		mode = fuse.S_IFDIR
 	}
 
-	inode := fuseni.NewInode(ctx, itemNode, fs.StableAttr{Ino: uint64(nodeItem.ID), Mode: mode})
+	inode = fuseni.NewInode(ctx, itemNode, fs.StableAttr{Mode: mode})
 
 	return inode, 0
 }
@@ -172,10 +233,16 @@ type FUSERemoteNodeItem struct {
 
 func (fuserni *FUSERemoteNodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 
+	names := make([]string, 0)
 	dirs := make([]fuse.DirEntry, 0)
 	err := fuserni.FileSystem.RemoteNodeItemService.TraverseRecordWithNodeID(func(record *models.RemoteNodeItemRecord) error {
+		idx, ok := slices.BinarySearch(names, record.Name)
+		if ok {
+			return constant.ErrInternalError
+		}
+		names = slices.Insert(names, idx, record.Name)
+
 		dirEntry := fuse.DirEntry{}
-		dirEntry.Ino = uint64(record.ID)
 		dirEntry.Name = record.Name
 		switch record.FileType {
 		case services.FileTypeFolder:
@@ -191,6 +258,16 @@ func (fuserni *FUSERemoteNodeItem) Readdir(ctx context.Context) (fs.DirStream, s
 		return nil, syscall.ENOENT
 	}
 
+	releaseNames := make([]string, 0)
+	for n := range fuserni.Children() {
+		if _, ok := slices.BinarySearch(names, n); ok {
+			continue
+		}
+		releaseNames = append(releaseNames, n)
+	}
+	if len(releaseNames) > 0 {
+		fuserni.RmChild(releaseNames...)
+	}
 	return fs.NewListDirStream(dirs), 0
 }
 
@@ -202,20 +279,26 @@ func (fuserni *FUSERemoteNodeItem) Lookup(ctx context.Context, name string, out 
 		return nil, syscall.ENOENT
 	}
 
-	mtime := time.Unix(record.UpdatedAt, 0)
-	var remoteInode *fs.Inode
+	inode := fuserni.GetChild(name)
 	if record.FileType == services.FileTypeFile {
-		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID, Size: uint64(record.Size), MTime: mtime}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFREG})
+		if inode != nil && inode.Mode() != fuse.S_IFREG {
+			fuserni.RmChild(name)
+			inode = nil
+		}
+		if inode == nil {
+			inode = fuserni.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID}, fs.StableAttr{Mode: fuse.S_IFREG})
+		}
 	}
 	if record.FileType == services.FileTypeFolder {
-		remoteInode = fuserni.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID, seq: 1, Size: uint64(record.Size), MTime: mtime}, fs.StableAttr{Ino: uint64(record.ID), Mode: fuse.S_IFDIR})
+		if inode != nil && inode.Mode() != fuse.S_IFDIR {
+			fuserni.RmChild(name)
+			inode = nil
+		}
+		if inode == nil {
+			inode = fuserni.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserni.FileSystem, NodeID: fuserni.NodeID, ItemID: record.ID}, fs.StableAttr{Mode: fuse.S_IFDIR})
+		}
 	}
-	return remoteInode, 0
-}
-
-type FUSERemoteFileInfo struct {
-	Name string
-	Ino  uint64
+	return inode, 0
 }
 
 type FUSERemoteFolderItem struct {
@@ -224,20 +307,38 @@ type FUSERemoteFolderItem struct {
 	NodeID     appNode.NodeID
 	ItemID     int32
 	ParentPath string
-	Size       uint64
-	MTime      time.Time
-	seq        uint64
-	fileInfos  []FUSERemoteFileInfo
-	locker     sync.Mutex
-}
-
-func (fuserfi *FUSERemoteFolderItem) CompareFileInfo(fileInfo FUSERemoteFileInfo, target FUSERemoteFileInfo) int {
-	return strings.Compare(target.Name, fileInfo.Name)
 }
 
 func (fuserfi *FUSERemoteFolderItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
-	out.Size = fuserfi.Size
-	out.SetTimes(nil, &fuserfi.MTime, nil)
+
+	var err error
+	if len(fuserfi.ParentPath) > 0 {
+		dir, filename := path.Split(fuserfi.ParentPath)
+		var condition models.RemoteFileItemRecordSelectCondition
+		condition.ItemID = fuserfi.ItemID
+		condition.ParentPath = dir
+		condition.Name = filename
+		fileItem, err := fuserfi.FileSystem.RemoteFileItemService.SelectWithCondition(fuserfi.NodeID, &condition)
+		if err == nil {
+			mtime := time.Unix(fileItem.UpdatedAt, 0)
+			out.SetTimes(nil, &mtime, nil)
+			out.Size = uint64(fileItem.Size)
+		}
+	} else {
+		var condition models.RemoteNodeItemRecordSelectCondition
+		condition.ID = &fuserfi.ItemID
+		nodeItem, err := fuserfi.FileSystem.RemoteNodeItemService.SelectWithCondition(fuserfi.NodeID, &condition)
+		if err == nil {
+			mtime := time.Unix(nodeItem.UpdatedAt, 0)
+			out.SetTimes(nil, &mtime, nil)
+			out.Size = uint64(nodeItem.Size)
+		}
+	}
+
+	if err != nil {
+		return syscall.ENOENT
+	}
+
 	out.Nlink = 1
 	return 0
 }
@@ -249,25 +350,16 @@ func (fuserfi *FUSERemoteFolderItem) Readdir(ctx context.Context) (fs.DirStream,
 	condition.ItemID = fuserfi.ItemID
 	condition.ParentPath = &fuserfi.ParentPath
 
-	fuserfi.locker.Lock()
-	fileInfos_ := make([]FUSERemoteFileInfo, 0)
+	names := make([]string, 0)
 	err := fuserfi.FileSystem.RemoteFileItemService.TraverseRecordWithNodeID(func(record *models.RemoteFileItemRecord) error {
-		var fileInfo FUSERemoteFileInfo
-		fileInfo.Name = record.Name
-
-		if idx, ok := slices.BinarySearchFunc(fuserfi.fileInfos, fileInfo, fuserfi.CompareFileInfo); ok {
-			fileInfo = fuserfi.fileInfos[idx]
-		} else {
-			fileInfo.Ino = fuserfi.seq
-			fuserfi.seq++
+		idx, ok := slices.BinarySearch(names, record.Name)
+		if ok {
+			return constant.ErrInternalError
 		}
-
-		idx, _ := slices.BinarySearchFunc(fileInfos_, fileInfo, fuserfi.CompareFileInfo)
-		fileInfos_ = slices.Insert(fileInfos_, idx, fileInfo)
+		names = slices.Insert(names, idx, record.Name)
 
 		dirEntry := fuse.DirEntry{}
 		dirEntry.Name = record.Name
-		dirEntry.Ino = fileInfo.Ino
 		switch record.FileType {
 		case services.FileTypeFolder:
 			dirEntry.Mode = fuse.S_IFDIR
@@ -279,13 +371,21 @@ func (fuserfi *FUSERemoteFolderItem) Readdir(ctx context.Context) (fs.DirStream,
 		return nil
 
 	}, fuserfi.NodeID, &condition)
-	fuserfi.fileInfos = fileInfos_
-	fuserfi.locker.Unlock()
 
 	if err != nil {
 		return nil, syscall.ENOENT
 	}
 
+	releaseNames := make([]string, 0)
+	for n := range fuserfi.Children() {
+		if _, ok := slices.BinarySearch(names, n); ok {
+			continue
+		}
+		releaseNames = append(releaseNames, n)
+	}
+	if len(releaseNames) > 0 {
+		fuserfi.RmChild(releaseNames...)
+	}
 	return fs.NewListDirStream(dirs), 0
 }
 
@@ -299,28 +399,77 @@ func (fuserfi *FUSERemoteFolderItem) Lookup(ctx context.Context, name string, ou
 		return nil, syscall.ENOENT
 	}
 
-	fuserfi.locker.Lock()
-	var fileInfo FUSERemoteFileInfo
-	fileInfo.Name = record.Name
-	if idx, ok := slices.BinarySearchFunc(fuserfi.fileInfos, fileInfo, fuserfi.CompareFileInfo); !ok {
-		fileInfo.Ino = fuserfi.seq
-		fuserfi.seq++
-		fuserfi.fileInfos = slices.Insert(fuserfi.fileInfos, idx, fileInfo)
-	} else {
-		fileInfo = fuserfi.fileInfos[idx]
-	}
-	fuserfi.locker.Unlock()
-
-	mtime := time.Unix(record.UpdatedAt, 0)
-	var remoteInode *fs.Inode
+	inode := fuserfi.GetChild(name)
 	if record.FileType == services.FileTypeFile {
-		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, Name: record.Name, Size: uint64(record.Size), MTime: mtime}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFREG})
+		if inode != nil && inode.Mode() != fuse.S_IFREG {
+			fuserfi.RmChild(name)
+			inode = nil
+		}
+		inode = fuserfi.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, Name: record.Name}, fs.StableAttr{Mode: fuse.S_IFREG})
 	}
 	if record.FileType == services.FileTypeFolder {
-		remoteInode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.FilePath, seq: 1, Size: uint64(record.Size), MTime: mtime}, fs.StableAttr{Ino: fileInfo.Ino, Mode: fuse.S_IFDIR})
+		if inode != nil && inode.Mode() != fuse.S_IFDIR {
+			fuserfi.RmChild(name)
+			inode = nil
+		}
+		inode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.FilePath}, fs.StableAttr{Mode: fuse.S_IFDIR})
 	}
 
-	return remoteInode, 0
+	return inode, 0
+}
+
+type FUSERemoteFileReader struct {
+	fileItem *FUSERemoteFileItem
+	locker   sync.Mutex
+	reader   io.ReadCloser
+	offset   int64
+}
+
+func (fuserfr *FUSERemoteFileReader) Read(dest []byte, off int64) ([]byte, error) {
+	fuserfr.locker.Lock()
+	defer fuserfr.locker.Unlock()
+	if fuserfr.offset < 0 {
+		return nil, os.ErrClosed
+	}
+
+	limit := int64(len(dest))
+	if fuserfr.reader == nil || off != fuserfr.offset {
+		var condition models.RemoteFileBlockSelectCondition
+		condition.ItemID = fuserfr.fileItem.ItemID
+		condition.ParentPath = fuserfr.fileItem.ParentPath
+		condition.Name = fuserfr.fileItem.Name
+		condition.Offset = off
+		condition.Limit = limit
+
+		reader, err := fuserfr.fileItem.FileSystem.RemoteFileBlockService.SelectWithCondition(fuserfr.fileItem.NodeID, &condition)
+		if err != nil {
+			return nil, err
+		}
+		fuserfr.reader = reader
+	}
+
+	n, err := fuserfr.reader.Read(dest)
+	if err != nil {
+		return nil, err
+	}
+
+	var buffer []byte
+	if int64(n) >= limit {
+		fuserfr.offset = off + limit
+		buffer = dest
+	} else {
+		fuserfr.offset = off + int64(n)
+		buffer = dest[:limit]
+	}
+	return buffer, err
+}
+
+func (fuserfr *FUSERemoteFileReader) Release() error {
+	fuserfr.locker.Lock()
+	defer fuserfr.locker.Unlock()
+	// TODO: close reader
+	fuserfr.offset = -1
+	return fuserfr.reader.Close()
 }
 
 type FUSERemoteFileItem struct {
@@ -330,16 +479,37 @@ type FUSERemoteFileItem struct {
 	ItemID     int32
 	ParentPath string
 	Name       string
-	Size       uint64
-	MTime      time.Time
-	locker     sync.Mutex
-	reader     io.Reader
-	offset     int64
 }
 
 func (fuserfe *FUSERemoteFileItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
-	out.Size = fuserfe.Size
-	out.SetTimes(nil, &fuserfe.MTime, nil)
+	var err error
+	if len(fuserfe.ParentPath) > 0 {
+		dir, filename := path.Split(fuserfe.ParentPath)
+		var condition models.RemoteFileItemRecordSelectCondition
+		condition.ItemID = fuserfe.ItemID
+		condition.ParentPath = dir
+		condition.Name = filename
+		fileItem, err := fuserfe.FileSystem.RemoteFileItemService.SelectWithCondition(fuserfe.NodeID, &condition)
+		if err == nil {
+			mtime := time.Unix(fileItem.UpdatedAt, 0)
+			out.SetTimes(nil, &mtime, nil)
+			out.Size = uint64(fileItem.Size)
+		}
+	} else {
+		var condition models.RemoteNodeItemRecordSelectCondition
+		condition.ID = &fuserfe.ItemID
+		nodeItem, err := fuserfe.FileSystem.RemoteNodeItemService.SelectWithCondition(fuserfe.NodeID, &condition)
+		if err == nil {
+			mtime := time.Unix(nodeItem.UpdatedAt, 0)
+			out.SetTimes(nil, &mtime, nil)
+			out.Size = uint64(nodeItem.Size)
+		}
+	}
+
+	if err != nil {
+		return syscall.ENOENT
+	}
+
 	out.Nlink = 1
 	return 0
 }
@@ -350,39 +520,25 @@ func (fuserfe *FUSERemoteFileItem) Open(ctx context.Context, flags uint32) (fs.F
 		return nil, 0, syscall.EROFS
 	}
 	//
-	return fuserfe, fuse.FOPEN_DIRECT_IO, 0
+	return &FUSERemoteFileReader{fileItem: fuserfe}, fuse.FOPEN_DIRECT_IO, 0
 }
 
 func (fuserfe *FUSERemoteFileItem) Read(ctx context.Context, fh fs.FileHandle, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-	fuserfe.locker.Lock()
-	defer fuserfe.locker.Unlock()
 
-	limit := int64(len(dest))
-	if fuserfe.reader == nil || off != fuserfe.offset {
-		var condition models.RemoteFileBlockSelectCondition
-		condition.ItemID = fuserfe.ItemID
-		condition.ParentPath = fuserfe.ParentPath
-		condition.Name = fuserfe.Name
-		condition.Offset = off
-		condition.Limit = limit
-
-		reader, err := fuserfe.FileSystem.RemoteFileBlockService.SelectWithCondition(fuserfe.NodeID, &condition)
-		if err != nil {
-			return nil, syscall.ENOENT
-		}
-		fuserfe.reader = reader
-	}
-
-	buffer, err := io.ReadAll(fuserfe.reader)
+	fileReader := fh.(*FUSERemoteFileReader)
+	buffer, err := fileReader.Read(dest, off)
 	if err != nil {
-		return nil, syscall.ENOENT
+		return nil, syscall.EIO
 	}
 
-	end := int64(len(buffer))
-	if end > limit {
-		fuserfe.offset = off + limit
-		return fuse.ReadResultData(buffer[:limit]), 0
-	}
-	fuserfe.offset = off + end
 	return fuse.ReadResultData(buffer), 0
+}
+
+func (fuserfe *FUSERemoteFileItem) Release(ctx context.Context, fh fs.FileHandle, flags uint32) syscall.Errno {
+	fileReader := fh.(*FUSERemoteFileReader)
+	err := fileReader.Release()
+	if err != nil {
+		return syscall.EIO
+	}
+	return 0
 }

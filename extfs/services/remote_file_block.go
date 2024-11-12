@@ -19,36 +19,50 @@ type RemoteFileReader struct {
 	limit    int64
 	file     *os.File
 	reader   io.Reader
-	once     sync.Once
+	locker   sync.Mutex
+}
+
+func (r *RemoteFileReader) open() error {
+	file, err := os.Open(r.filePath)
+	if err != nil {
+		return err
+	}
+	if r.offset > 0 {
+		file.Seek(r.offset, 0)
+	}
+	if r.limit > 0 {
+		r.reader = io.LimitReader(file, r.limit)
+	} else {
+		r.reader = file
+	}
+	r.file = file
+	return nil
 }
 
 func (r *RemoteFileReader) Read(p []byte) (n int, err error) {
-
-	r.once.Do(func() {
-		file, openErr := os.Open(r.filePath)
-		if openErr != nil {
-			err = openErr
-			return
-		}
-		if r.offset > 0 {
-			file.Seek(r.offset, 0)
-		}
-		if r.limit > 0 {
-			r.reader = io.LimitReader(file, r.limit)
-		} else {
-			r.reader = file
-		}
-		r.file = file
-	})
+	r.locker.Lock()
+	defer r.locker.Unlock()
+	if r.file == nil {
+		err = r.open()
+	}
 
 	if err != nil {
 		return
 	}
 	n, err = r.reader.Read(p)
-	if err == io.EOF || n < len(p) {
-		r.file.Close()
+	if err == nil && n < len(p) {
+		err = io.EOF
 	}
 	return
+}
+
+func (r *RemoteFileReader) Close() error {
+	r.locker.Lock()
+	defer r.locker.Unlock()
+	if r.file == nil {
+		return nil
+	}
+	return r.file.Close()
 }
 
 type RemoteFileBlockService struct {
@@ -83,7 +97,7 @@ func (s *RemoteFileBlockService) SelectForNode(condition *models.RemoteFileBlock
 
 var RequestRemoteFileBlock = []byte("select_remote_file_block")
 
-func (s *RemoteFileBlockService) SelectWithCondition(nodeId appNode.NodeID, condition *models.RemoteFileBlockSelectCondition) (io.Reader, error) {
+func (s *RemoteFileBlockService) SelectWithCondition(nodeId appNode.NodeID, condition *models.RemoteFileBlockSelectCondition) (io.ReadCloser, error) {
 	requestBytes, err := proto.Marshal(condition)
 	if err != nil {
 		return nil, err
@@ -92,14 +106,14 @@ func (s *RemoteFileBlockService) SelectWithCondition(nodeId appNode.NodeID, cond
 	scope := s.NodeScopeModule.NodeScope()
 	requestName := appNode.GenerateRouteName(scope, RequestRemoteFileBlock)
 	request := appNode.NewRequest(requestName, bytes.NewReader(requestBytes))
-	response, err := s.NodeModule.Do(nodeId, request)
+	res, err := s.NodeModule.Do(nodeId, request)
 	if err != nil {
 		return nil, err
 	}
 
-	if response.Code() != appConstant.CodeOK {
+	if res.Code() != appConstant.CodeOK {
 		return nil, appConstant.ErrInternalError
 	}
 
-	return response.Body(), nil
+	return res, nil
 }

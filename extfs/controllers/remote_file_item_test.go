@@ -160,7 +160,7 @@ func TestRemoteFileItemController(t *testing.T) {
 		err = app.Run(&ctx, nil)
 		assert.Nil(t, err)
 
-		body, err := io.ReadAll(ctx.Body())
+		body, err := io.ReadAll(ctx)
 		assert.Nil(t, err)
 
 		var results models.RemoteFileItemRecordList
@@ -219,7 +219,7 @@ func TestRemoteFileItemController(t *testing.T) {
 		err = app.Run(&ctx, nil)
 		assert.Nil(t, err)
 
-		body, err := io.ReadAll(ctx.Body())
+		body, err := io.ReadAll(ctx)
 		assert.Nil(t, err)
 
 		var results models.RemoteFileItemRecord

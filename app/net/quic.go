@@ -37,7 +37,7 @@ func (qn *quicNode) Type() appNode.NodeType {
 	return appNode.NodeTypeAlive
 }
 
-func (qn *quicNode) Do(ctx context.Context, reader io.Reader) (io.Reader, error) {
+func (qn *quicNode) Do(ctx context.Context, reader io.Reader) (io.ReadCloser, error) {
 	return qn.quicModule.Do(ctx, qn.conn, reader)
 }
 
@@ -109,7 +109,7 @@ func (qr *quicRoute) Dial(ctx context.Context) (quic.Connection, error) {
 	return conn, err
 }
 
-func (qr *quicRoute) Do(ctx context.Context, reader io.Reader) (io.Reader, error) {
+func (qr *quicRoute) Do(ctx context.Context, reader io.Reader) (io.ReadCloser, error) {
 	conn, err := qr.Dial(ctx)
 	if err != nil {
 		return nil, err
@@ -204,9 +204,18 @@ func (qs *quicServer) ListenAndServe(ctx context.Context) error {
 	return err
 }
 
+type QuicResponseStream struct {
+	quic.Stream
+}
+
+func (qs *QuicResponseStream) Close() error {
+	qs.CancelRead(quic.StreamErrorCode(quic.NoError))
+	return nil
+}
+
 type QuicModule interface {
 	Serve(quic.Connection) error
-	Do(context.Context, quic.Connection, io.Reader) (io.Reader, error)
+	Do(context.Context, quic.Connection, io.Reader) (io.ReadCloser, error)
 	Greet(context.Context, quic.Connection) error
 	Dial(context.Context, string) (quic.Connection, error)
 	ParseNodeID(quic.Connection) (appNode.NodeID, error)
@@ -292,7 +301,7 @@ func (qm *quicModule) OnConfigUpdated(settings config.AppSettings) {
 	qm.ReloadChan() <- struct{}{}
 }
 
-func (qm *quicModule) doRequest(ctx context.Context, conn quic.Connection, reader io.Reader, flag byte) (io.Reader, error) {
+func (qm *quicModule) doRequest(ctx context.Context, conn quic.Connection, reader io.Reader, flag byte) (io.ReadCloser, error) {
 	stream, err := conn.OpenStream()
 	if err != nil {
 		return nil, err
@@ -318,10 +327,12 @@ func (qm *quicModule) doRequest(ctx context.Context, conn quic.Connection, reade
 		err = ctx.Err()
 	}
 
-	return stream, err
+	var quicStream QuicResponseStream
+	quicStream.Stream = stream
+	return &quicStream, err
 }
 
-func (qm *quicModule) Do(ctx context.Context, conn quic.Connection, reader io.Reader) (io.Reader, error) {
+func (qm *quicModule) Do(ctx context.Context, conn quic.Connection, reader io.Reader) (io.ReadCloser, error) {
 	return qm.doRequest(ctx, conn, reader, QuicNodeStream)
 }
 

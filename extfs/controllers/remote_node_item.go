@@ -65,7 +65,7 @@ func (s *RemoteNodeItemController) SearchForNode(ctx *appNode.Context, next appN
 
 func (s *RemoteNodeItemController) SelectForNode(ctx *appNode.Context, next appNode.Next) error {
 	req := ctx.Request()
-	body, err := io.ReadAll(req.Body())
+	body, err := io.ReadAll(req)
 	if err != nil {
 		ctx.ThrowError(appConstant.CodeBadRequest, err)
 		return err

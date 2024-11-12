@@ -143,7 +143,7 @@ func TestRemoteNodeItemController(t *testing.T) {
 		err = app.Run(&ctx, nil)
 		assert.Nil(t, err)
 
-		body, err := io.ReadAll(ctx.Body())
+		body, err := io.ReadAll(ctx)
 		assert.Nil(t, err)
 
 		var results models.RemoteNodeItemRecordList
@@ -194,7 +194,7 @@ func TestRemoteNodeItemController(t *testing.T) {
 		err = app.Run(&ctx, nil)
 		assert.Nil(t, err)
 
-		body, err := io.ReadAll(ctx.Body())
+		body, err := io.ReadAll(ctx)
 		assert.Nil(t, err)
 
 		var result models.RemoteNodeItemRecord

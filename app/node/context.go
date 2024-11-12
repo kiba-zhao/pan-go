@@ -36,7 +36,7 @@ func (c *Context) Name() RequestName {
 }
 
 func (c *Context) RequestBody() io.Reader {
-	return c.request.Body()
+	return c.request
 }
 
 func (c *Context) RequestHeader(key []byte) ([]byte, bool) {
@@ -78,13 +78,16 @@ func (c *Context) Del(key SessionKey) {
 }
 
 func (c *Context) Respond(body io.Reader) {
-	c.body = body
+	c.Reader = body
 	c.code = 0
+	if closer, ok := body.(io.Closer); ok {
+		c.Closer = closer
+	}
 }
 
 func (c *Context) ThrowError(code int, err error) {
 	c.code = code
-	c.body = strings.NewReader(err.Error())
+	c.Reader = strings.NewReader(err.Error())
 }
 
 func InitContext(ctx *Context) {

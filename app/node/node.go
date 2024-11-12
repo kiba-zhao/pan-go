@@ -63,7 +63,7 @@ const (
 type Node interface {
 	ID() NodeID
 	Type() NodeType
-	Do(context.Context, io.Reader) (io.Reader, error)
+	Do(context.Context, io.Reader) (io.ReadCloser, error)
 	Greet(context.Context) error
 	Close() error
 	ResourceID() NodeResourceID
@@ -431,7 +431,7 @@ func (mgr *nodeManager) Count(nodeId NodeID) int {
 }
 
 type NodeTripper interface {
-	RoundTrip(context.Context, NodeID, io.Reader) (io.Reader, error)
+	RoundTrip(context.Context, NodeID, io.Reader) (io.ReadCloser, error)
 }
 
 type NodeDoContext struct {
@@ -564,6 +564,7 @@ func (nm *nodeModule) Serve(stream NodeStream, target Node) error {
 			err = constant.ErrUnavailable
 		} else {
 			err = app.Run(ctx, nil)
+			defer ctx.Close()
 		}
 	}
 
@@ -584,6 +585,7 @@ func (nm *nodeModule) Serve(stream NodeStream, target Node) error {
 	if err == nil && resErr != nil {
 		err = resErr
 	}
+
 	return err
 }
 
@@ -667,7 +669,7 @@ func (nm *nodeModule) ReloadModules() error {
 	return err
 }
 
-func (nm *nodeModule) RoundTrip(ctx context.Context, nodeId NodeID, reqReader io.Reader) (reader io.Reader, err error) {
+func (nm *nodeModule) RoundTrip(ctx context.Context, nodeId NodeID, reqReader io.Reader) (reader io.ReadCloser, err error) {
 
 	mgr := nm.NodeManager()
 	mgr.TraverseNode(nodeId, func(node Node) bool {

@@ -17,7 +17,7 @@ type Request struct {
 func NewRequest(name RequestName, body io.Reader) *Request {
 	request := &Request{}
 	request.name = name
-	request.body = body
+	request.Reader = body
 	InitRequest(request)
 	return request
 }

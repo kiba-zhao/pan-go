@@ -48,7 +48,7 @@ func (c *RemoteFileItemController) Search(ctx net.WebContext) {
 func (c *RemoteFileItemController) SearchForNode(ctx *appNode.Context, next appNode.Next) error {
 
 	req := ctx.Request()
-	body, err := io.ReadAll(req.Body())
+	body, err := io.ReadAll(req)
 	if err != nil {
 		ctx.ThrowError(appConstant.CodeBadRequest, err)
 		return err
@@ -80,7 +80,7 @@ func (c *RemoteFileItemController) SearchForNode(ctx *appNode.Context, next appN
 func (c *RemoteFileItemController) SelectForNode(ctx *appNode.Context, next appNode.Next) error {
 
 	req := ctx.Request()
-	body, err := io.ReadAll(req.Body())
+	body, err := io.ReadAll(req)
 	if err != nil {
 		ctx.ThrowError(appConstant.CodeBadRequest, err)
 		return err

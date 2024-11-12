@@ -8,15 +8,11 @@ import (
 
 type Message struct {
 	header *Header
-	body   io.Reader
+	io.Reader
 }
 
 func (r *Message) Header(key []byte) ([]byte, bool) {
 	return r.header.Get(key)
-}
-
-func (r *Message) Body() io.Reader {
-	return r.body
 }
 
 func MarshalMessage(message *Message) io.Reader {
@@ -31,8 +27,8 @@ func MarshalMessage(message *Message) io.Reader {
 	if headerSize > 0 {
 		readers = append(readers, headerReader)
 	}
-	if message.body != nil {
-		readers = append(readers, message.body)
+	if message.Reader != nil {
+		readers = append(readers, message.Reader)
 	}
 
 	if len(readers) > 1 {
@@ -62,6 +58,6 @@ func UnmarshalMessage(reader io.Reader, message *Message) error {
 	}
 
 	message.header = header
-	message.body = reader
+	message.Reader = reader
 	return nil
 }
