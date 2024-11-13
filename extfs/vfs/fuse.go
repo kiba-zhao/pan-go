@@ -405,14 +405,18 @@ func (fuserfi *FUSERemoteFolderItem) Lookup(ctx context.Context, name string, ou
 			fuserfi.RmChild(name)
 			inode = nil
 		}
-		inode = fuserfi.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, Name: record.Name}, fs.StableAttr{Mode: fuse.S_IFREG})
+		if inode == nil {
+			inode = fuserfi.NewInode(ctx, &FUSERemoteFileItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.ParentPath, Name: record.Name}, fs.StableAttr{Mode: fuse.S_IFREG})
+		}
 	}
 	if record.FileType == services.FileTypeFolder {
 		if inode != nil && inode.Mode() != fuse.S_IFDIR {
 			fuserfi.RmChild(name)
 			inode = nil
 		}
-		inode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.FilePath}, fs.StableAttr{Mode: fuse.S_IFDIR})
+		if inode == nil {
+			inode = fuserfi.NewInode(ctx, &FUSERemoteFolderItem{FileSystem: fuserfi.FileSystem, NodeID: fuserfi.NodeID, ItemID: record.ItemID, ParentPath: record.FilePath}, fs.StableAttr{Mode: fuse.S_IFDIR})
+		}
 	}
 
 	return inode, 0
@@ -425,51 +429,57 @@ type FUSERemoteFileReader struct {
 	offset   int64
 }
 
-func (fuserfr *FUSERemoteFileReader) Read(dest []byte, off int64) ([]byte, error) {
+func (fuserfr *FUSERemoteFileReader) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
 	fuserfr.locker.Lock()
 	defer fuserfr.locker.Unlock()
 	if fuserfr.offset < 0 {
-		return nil, os.ErrClosed
+		return nil, syscall.ENOENT
 	}
 
-	limit := int64(len(dest))
 	if fuserfr.reader == nil || off != fuserfr.offset {
 		var condition models.RemoteFileBlockSelectCondition
 		condition.ItemID = fuserfr.fileItem.ItemID
 		condition.ParentPath = fuserfr.fileItem.ParentPath
 		condition.Name = fuserfr.fileItem.Name
 		condition.Offset = off
-		condition.Limit = limit
 
 		reader, err := fuserfr.fileItem.FileSystem.RemoteFileBlockService.SelectWithCondition(fuserfr.fileItem.NodeID, &condition)
 		if err != nil {
-			return nil, err
+			return nil, syscall.ENOENT
 		}
 		fuserfr.reader = reader
 	}
 
 	n, err := fuserfr.reader.Read(dest)
-	if err != nil {
-		return nil, err
+	if err != nil && err != io.EOF {
+		return nil, syscall.ENOENT
 	}
 
+	limit := int64(len(dest))
 	var buffer []byte
 	if int64(n) >= limit {
 		fuserfr.offset = off + limit
 		buffer = dest
 	} else {
 		fuserfr.offset = off + int64(n)
-		buffer = dest[:limit]
+		buffer = dest[:n]
 	}
-	return buffer, err
+	return fuse.ReadResultData(buffer), fs.OK
 }
 
-func (fuserfr *FUSERemoteFileReader) Release() error {
+func (fuserfr *FUSERemoteFileReader) Release(ctx context.Context) syscall.Errno {
 	fuserfr.locker.Lock()
 	defer fuserfr.locker.Unlock()
 	// TODO: close reader
 	fuserfr.offset = -1
-	return fuserfr.reader.Close()
+	if fuserfr.reader == nil {
+		return 0
+	}
+	err := fuserfr.reader.Close()
+	if err != nil {
+		return syscall.ENOENT
+	}
+	return 0
 }
 
 type FUSERemoteFileItem struct {
@@ -482,13 +492,13 @@ type FUSERemoteFileItem struct {
 }
 
 func (fuserfe *FUSERemoteFileItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+
 	var err error
-	if len(fuserfe.ParentPath) > 0 {
-		dir, filename := path.Split(fuserfe.ParentPath)
+	if len(fuserfe.ParentPath) > 0 || len(fuserfe.Name) > 0 {
 		var condition models.RemoteFileItemRecordSelectCondition
 		condition.ItemID = fuserfe.ItemID
-		condition.ParentPath = dir
-		condition.Name = filename
+		condition.ParentPath = fuserfe.ParentPath
+		condition.Name = fuserfe.Name
 		fileItem, err := fuserfe.FileSystem.RemoteFileItemService.SelectWithCondition(fuserfe.NodeID, &condition)
 		if err == nil {
 			mtime := time.Unix(fileItem.UpdatedAt, 0)
@@ -521,24 +531,5 @@ func (fuserfe *FUSERemoteFileItem) Open(ctx context.Context, flags uint32) (fs.F
 	}
 	//
 	return &FUSERemoteFileReader{fileItem: fuserfe}, fuse.FOPEN_DIRECT_IO, 0
-}
 
-func (fuserfe *FUSERemoteFileItem) Read(ctx context.Context, fh fs.FileHandle, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-
-	fileReader := fh.(*FUSERemoteFileReader)
-	buffer, err := fileReader.Read(dest, off)
-	if err != nil {
-		return nil, syscall.EIO
-	}
-
-	return fuse.ReadResultData(buffer), 0
-}
-
-func (fuserfe *FUSERemoteFileItem) Release(ctx context.Context, fh fs.FileHandle, flags uint32) syscall.Errno {
-	fileReader := fh.(*FUSERemoteFileReader)
-	err := fileReader.Release()
-	if err != nil {
-		return syscall.EIO
-	}
-	return 0
 }
