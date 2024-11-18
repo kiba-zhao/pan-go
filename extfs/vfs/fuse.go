@@ -466,7 +466,7 @@ func (fuserfr *FUSERemoteFileReader) Read(ctx context.Context, dest []byte, off 
 	}
 
 	n, err := fuserfr.reader.Read(dest)
-	if err != nil {
+	if err != nil || n == 0 {
 		fuserfr.closeReader()
 		return nil, syscall.ENOENT
 	}

@@ -29,7 +29,7 @@ type quicNodeStream struct {
 
 func (qs *quicNodeStream) Read(p []byte) (n int, err error) {
 	n, err = qs.Stream.Read(p)
-	if err != nil || n == 0 {
+	if (err != nil || n == 0) && !qs.isServe {
 		qs.Close()
 	}
 	return
@@ -44,8 +44,10 @@ func (qs *quicNodeStream) Close() error {
 	var err error
 	if qs.isServe {
 		err = qs.Stream.Close()
+	} else {
+		qs.CancelRead(quic.StreamErrorCode(quic.NoError))
 	}
-	qs.CancelRead(quic.StreamErrorCode(quic.NoError))
+
 	return err
 }
 
