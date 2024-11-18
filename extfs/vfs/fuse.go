@@ -3,6 +3,7 @@ package vfs
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"io"
 	"os"
 	"pan/app/constant"
@@ -427,6 +428,7 @@ type FUSERemoteFileReader struct {
 	locker   sync.Mutex
 	reader   io.ReadCloser
 	offset   int64
+	eof      bool
 }
 
 func (fuserfr *FUSERemoteFileReader) closeReader() error {
@@ -435,6 +437,7 @@ func (fuserfr *FUSERemoteFileReader) closeReader() error {
 	if reader != nil {
 		err = reader.Close()
 		fuserfr.reader = nil
+		fuserfr.eof = true
 	}
 
 	return err
@@ -445,6 +448,10 @@ func (fuserfr *FUSERemoteFileReader) Read(ctx context.Context, dest []byte, off 
 	defer fuserfr.locker.Unlock()
 	if fuserfr.offset < 0 {
 		return nil, syscall.ENOENT
+	}
+
+	if fuserfr.eof && off == fuserfr.offset {
+		return fuse.ReadResultData(nil), fs.OK
 	}
 
 	if fuserfr.reader != nil && off != fuserfr.offset {
@@ -466,9 +473,11 @@ func (fuserfr *FUSERemoteFileReader) Read(ctx context.Context, dest []byte, off 
 	}
 
 	n, err := fuserfr.reader.Read(dest)
-	if err != nil || n == 0 {
+	if err != nil {
 		fuserfr.closeReader()
-		return nil, syscall.ENOENT
+		if !errors.Is(err, io.EOF) {
+			return nil, syscall.ENOENT
+		}
 	}
 
 	limit := int64(len(dest))
@@ -544,4 +553,14 @@ func (fuserfe *FUSERemoteFileItem) Open(ctx context.Context, flags uint32) (fs.F
 	//
 	return &FUSERemoteFileReader{fileItem: fuserfe}, fuse.FOPEN_DIRECT_IO, 0
 
+}
+
+func (fuserfe *FUSERemoteFileItem) Statfs(ctx context.Context, out *fuse.StatfsOut) syscall.Errno {
+	// s := syscall.Statfs_t{}
+	// err := syscall.Statfs(n.path(), &s)
+	// if err != nil {
+	// 	return ToErrno(err)
+	// }
+	// out.FromStatfsT(&s)
+	return fs.OK
 }

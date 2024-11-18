@@ -64,7 +64,7 @@ func (r *RemoteFileReader) Read(p []byte) (n int, err error) {
 	}
 
 	n, err = r.reader.Read(p)
-	if err != nil || n == 0 {
+	if err != nil {
 		r.closeFile()
 	}
 	return

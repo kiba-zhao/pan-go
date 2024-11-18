@@ -29,7 +29,7 @@ type quicNodeStream struct {
 
 func (qs *quicNodeStream) Read(p []byte) (n int, err error) {
 	n, err = qs.Stream.Read(p)
-	if (err != nil || n == 0) && !qs.isServe {
+	if err != nil && !qs.isServe {
 		qs.Close()
 	}
 	return
@@ -107,7 +107,7 @@ func (qn *quicNode) increaseStream() {
 func (qn *quicNode) decreaseStream() {
 	qn.rw.Lock()
 	defer qn.rw.Unlock()
-	if qn.streamCount < 0 {
+	if qn.streamCount <= 0 {
 		return
 	}
 	qn.streamCount--
