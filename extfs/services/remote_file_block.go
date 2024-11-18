@@ -20,9 +20,13 @@ type RemoteFileReader struct {
 	file     *os.File
 	reader   io.Reader
 	locker   sync.Mutex
+	closed   bool
 }
 
-func (r *RemoteFileReader) open() error {
+func (r *RemoteFileReader) openFile() error {
+	if r.closed {
+		return io.ErrClosedPipe
+	}
 	file, err := os.Open(r.filePath)
 	if err != nil {
 		return err
@@ -39,19 +43,29 @@ func (r *RemoteFileReader) open() error {
 	return nil
 }
 
+func (r *RemoteFileReader) closeFile() error {
+	file := r.file
+	if r.closed || file == nil {
+		return nil
+	}
+	r.closed = true
+	r.file = nil
+	return file.Close()
+}
+
 func (r *RemoteFileReader) Read(p []byte) (n int, err error) {
 	r.locker.Lock()
 	defer r.locker.Unlock()
 	if r.file == nil {
-		err = r.open()
+		err = r.openFile()
 	}
-
 	if err != nil {
 		return
 	}
+
 	n, err = r.reader.Read(p)
-	if err == nil && n < len(p) {
-		err = io.EOF
+	if err != nil || n == 0 {
+		r.closeFile()
 	}
 	return
 }
@@ -59,10 +73,7 @@ func (r *RemoteFileReader) Read(p []byte) (n int, err error) {
 func (r *RemoteFileReader) Close() error {
 	r.locker.Lock()
 	defer r.locker.Unlock()
-	if r.file == nil {
-		return nil
-	}
-	return r.file.Close()
+	return r.closeFile()
 }
 
 type RemoteFileBlockService struct {

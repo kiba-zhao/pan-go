@@ -105,10 +105,10 @@ func (s *RemoteNodeItemService) TraverseRecordWithNodeID(traverseFn func(record 
 	request := appNode.NewRequest(requestName, nil)
 
 	res, err := s.NodeModule.Do(nodeId, request)
+	defer res.Close()
 	if err != nil {
 		return err
 	}
-	defer res.Close()
 
 	if res.Code() != appConstant.CodeOK {
 		return appConstant.ErrInternalError
@@ -145,10 +145,10 @@ func (s *RemoteNodeItemService) SelectWithCondition(nodeId appNode.NodeID, condi
 	requestName := appNode.GenerateRouteName(scope, RequestRemoteItem)
 	request := appNode.NewRequest(requestName, bytes.NewReader(requestBytes))
 	res, err := s.NodeModule.Do(nodeId, request)
+	defer res.Close()
 	if err != nil {
 		return nil, err
 	}
-	defer res.Close()
 
 	if res.Code() != appConstant.CodeOK {
 		return nil, appConstant.ErrInternalError

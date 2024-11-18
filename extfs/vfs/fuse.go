@@ -429,6 +429,17 @@ type FUSERemoteFileReader struct {
 	offset   int64
 }
 
+func (fuserfr *FUSERemoteFileReader) closeReader() error {
+	reader := fuserfr.reader
+	var err error
+	if reader != nil {
+		err = reader.Close()
+		fuserfr.reader = nil
+	}
+
+	return err
+}
+
 func (fuserfr *FUSERemoteFileReader) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
 	fuserfr.locker.Lock()
 	defer fuserfr.locker.Unlock()
@@ -436,7 +447,11 @@ func (fuserfr *FUSERemoteFileReader) Read(ctx context.Context, dest []byte, off 
 		return nil, syscall.ENOENT
 	}
 
-	if fuserfr.reader == nil || off != fuserfr.offset {
+	if fuserfr.reader != nil && off != fuserfr.offset {
+		fuserfr.closeReader()
+	}
+
+	if fuserfr.reader == nil {
 		var condition models.RemoteFileBlockSelectCondition
 		condition.ItemID = fuserfr.fileItem.ItemID
 		condition.ParentPath = fuserfr.fileItem.ParentPath
@@ -451,7 +466,8 @@ func (fuserfr *FUSERemoteFileReader) Read(ctx context.Context, dest []byte, off 
 	}
 
 	n, err := fuserfr.reader.Read(dest)
-	if err != nil && err != io.EOF {
+	if err != nil {
+		fuserfr.closeReader()
 		return nil, syscall.ENOENT
 	}
 
@@ -470,12 +486,8 @@ func (fuserfr *FUSERemoteFileReader) Read(ctx context.Context, dest []byte, off 
 func (fuserfr *FUSERemoteFileReader) Release(ctx context.Context) syscall.Errno {
 	fuserfr.locker.Lock()
 	defer fuserfr.locker.Unlock()
-	// TODO: close reader
 	fuserfr.offset = -1
-	if fuserfr.reader == nil {
-		return 0
-	}
-	err := fuserfr.reader.Close()
+	err := fuserfr.closeReader()
 	if err != nil {
 		return syscall.ENOENT
 	}

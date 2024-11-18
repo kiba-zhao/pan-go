@@ -64,9 +64,9 @@ type Node interface {
 	ID() NodeID
 	Type() NodeType
 	Do(context.Context, io.Reader) (io.ReadCloser, error)
-	Greet(context.Context) error
 	Close() error
 	ResourceID() NodeResourceID
+	IsIdle() bool
 }
 
 var (
@@ -556,16 +556,18 @@ func (nm *nodeModule) Serve(stream NodeStream, target Node) error {
 	}
 	nm.appLocker.RUnlock()
 
+	var err error
 	ctx := NewAppContext()
-	ctx.Set(ContextNode, target)
-	err := UnmarshalRequest(stream, ctx.Request())
+	if app == nil {
+		err = constant.ErrUnavailable
+	} else {
+		err = UnmarshalRequest(stream, ctx.Request())
+	}
+
 	if err == nil {
-		if app == nil {
-			err = constant.ErrUnavailable
-		} else {
-			err = app.Run(ctx, nil)
-			defer ctx.Close()
-		}
+		ctx.Set(ContextNode, target)
+		err = app.Run(ctx, nil)
+		defer ctx.Close()
 	}
 
 	if err != nil {
@@ -673,11 +675,17 @@ func (nm *nodeModule) RoundTrip(ctx context.Context, nodeId NodeID, reqReader io
 
 	mgr := nm.NodeManager()
 	mgr.TraverseNode(nodeId, func(node Node) bool {
-		reader, err = node.Do(ctx, reqReader)
-		if errors.Is(err, constant.ErrNodeClosed) {
-			mgr.Delete(node)
+		if !node.IsIdle() {
+			return true
 		}
-		return err != nil && !errors.Is(err, ctx.Err())
+		reader, err = node.Do(ctx, reqReader)
+		if err != nil && !errors.Is(err, ctx.Err()) {
+			return true
+		}
+		if err != nil {
+			node.Close()
+		}
+		return false
 	})
 
 	if err == nil && reader == nil {
