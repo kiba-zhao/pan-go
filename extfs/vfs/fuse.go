@@ -431,15 +431,30 @@ type FUSERemoteFileReader struct {
 	eof      bool
 }
 
-func (fuserfr *FUSERemoteFileReader) closeReader() error {
+func (fuserfr *FUSERemoteFileReader) closeReader(eof bool) error {
 	reader := fuserfr.reader
 	var err error
 	if reader != nil {
 		err = reader.Close()
 		fuserfr.reader = nil
-		fuserfr.eof = true
 	}
 
+	fuserfr.eof = eof
+	return err
+}
+
+func (fuserfr *FUSERemoteFileReader) initReader(off int64) error {
+	var condition models.RemoteFileBlockSelectCondition
+	condition.ItemID = fuserfr.fileItem.ItemID
+	condition.ParentPath = fuserfr.fileItem.ParentPath
+	condition.Name = fuserfr.fileItem.Name
+	condition.Offset = off
+
+	reader, err := fuserfr.fileItem.FileSystem.RemoteFileBlockService.SelectWithCondition(fuserfr.fileItem.NodeID, &condition)
+	if err == nil {
+		fuserfr.reader = reader
+		fuserfr.eof = false
+	}
 	return err
 }
 
@@ -455,27 +470,19 @@ func (fuserfr *FUSERemoteFileReader) Read(ctx context.Context, dest []byte, off 
 	}
 
 	if fuserfr.reader != nil && off != fuserfr.offset {
-		fuserfr.closeReader()
+		fuserfr.closeReader(false)
 	}
 
 	if fuserfr.reader == nil {
-		var condition models.RemoteFileBlockSelectCondition
-		condition.ItemID = fuserfr.fileItem.ItemID
-		condition.ParentPath = fuserfr.fileItem.ParentPath
-		condition.Name = fuserfr.fileItem.Name
-		condition.Offset = off
-
-		reader, err := fuserfr.fileItem.FileSystem.RemoteFileBlockService.SelectWithCondition(fuserfr.fileItem.NodeID, &condition)
+		err := fuserfr.initReader(off)
 		if err != nil {
 			return nil, syscall.ENOENT
 		}
-		fuserfr.reader = reader
-		fuserfr.eof = false
 	}
 
 	n, err := fuserfr.reader.Read(dest)
 	if err != nil {
-		fuserfr.closeReader()
+		fuserfr.closeReader(true)
 		if !errors.Is(err, io.EOF) {
 			return nil, syscall.ENOENT
 		}
@@ -497,7 +504,7 @@ func (fuserfr *FUSERemoteFileReader) Release(ctx context.Context) syscall.Errno 
 	fuserfr.locker.Lock()
 	defer fuserfr.locker.Unlock()
 	fuserfr.offset = -1
-	err := fuserfr.closeReader()
+	err := fuserfr.closeReader(true)
 	if err != nil {
 		return syscall.ENOENT
 	}
