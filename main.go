@@ -4,7 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"pan/app"
-	"pan/app/net"
+	"pan/app/web"
 	"pan/extfs"
 
 	"pan/runtime"
@@ -24,7 +24,7 @@ func main() {
 
 	engine := runtime.New()
 
-	err = engine.Mount(app.New(), extfs.New(), net.NewWebAssets("/", assetsFS), app.Bootstrap())
+	err = engine.Mount(app.New(), extfs.New(), web.NewWebAssets("/", assetsFS), app.Bootstrap())
 
 	if err == nil {
 		err = engine.Bootstrap()

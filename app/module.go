@@ -4,24 +4,26 @@ import (
 	"encoding/base64"
 	"path"
 
+	appnode "pan/app/app_node"
+	appsettings "pan/app/app_settings"
 	"pan/app/bootstrap"
+	"pan/app/broadcast"
 	"pan/app/config"
-	"pan/app/constant"
-	"pan/app/controllers"
-	"pan/app/models"
-	"pan/app/net"
-	"pan/app/node"
-	"pan/app/repositories"
-	repoImpl "pan/app/repositories/impl"
-	"pan/app/services"
+	diskfile "pan/app/disk_file"
+
+	"pan/app/guard"
+	"pan/app/peer"
+	"pan/app/quic"
+	"pan/app/sample"
+	"pan/app/web"
 	"pan/runtime"
 	"sync"
 )
 
 func New() interface{} {
 	m := &module{}
-	m.guard = &guardModule{}
-	return runtime.NewModule(bootstrap.New(), config.New(), node.New(), net.New(), NewSample(m))
+	m.peerGuard = &guard.PeerGuard{}
+	return runtime.NewModule(bootstrap.New(), config.New(), peer.New(), broadcast.New(), quic.New(), web.New(), sample.New(m))
 }
 
 func Bootstrap() interface{} {
@@ -31,14 +33,14 @@ func Bootstrap() interface{} {
 const moduleName = "app"
 
 type module struct {
-	Node        node.NodeModule
+	PeerModule  peer.PeerModule
 	Config      config.AppConfig
-	DBProvider  RepositoryDBProvider
+	DBProvider  sample.RepositoryDBProvider
 	settings    config.AppSettings
 	settingsRW  sync.RWMutex
 	controllers []interface{}
 	once        sync.Once
-	guard       *guardModule
+	peerGuard   *guard.PeerGuard
 }
 
 func (m *module) Name() string {
@@ -49,9 +51,9 @@ func (m *module) Controllers() []interface{} {
 	m.once.Do(func() {
 		// TODO: add web and node controllers
 		m.controllers = []interface{}{
-			&controllers.NodeController{},
-			&controllers.DiskFileController{},
-			&controllers.SettingsController{},
+			&appnode.AppNodeController{},
+			&diskfile.DiskFileController{},
+			&appsettings.AppSettingsController{},
 		}
 	})
 	return m.controllers
@@ -59,25 +61,24 @@ func (m *module) Controllers() []interface{} {
 
 func (m *module) Models() []interface{} {
 	return []interface{}{
-		&models.Node{},
+		&appnode.AppNode{},
 	}
 }
 
 func (m *module) Components() []bootstrap.Component {
 	// base
 	components := []bootstrap.Component{
-		bootstrap.NewComponent(m.DBProvider, bootstrap.ComponentInternalScope),
 		// submodules
-		bootstrap.NewComponent(m.guard, bootstrap.ComponentNoneScope),
+		bootstrap.NewComponent(m.peerGuard, bootstrap.ComponentNoneScope),
 	}
 
 	// services
-	components = AppendSampleComponent(components, &services.DiskFileService{})
-	components = AppendSampleExternalComponent[services.SettingsExternalService](components, &services.SettingsService{Provider: m})
-	components = AppendSampleExternalComponent[services.NodeExternalService](components, &services.NodeService{Provider: m})
+	components = sample.AppendSampleComponent(components, &diskfile.DiskFileService{})
+	components = sample.AppendSampleExternalComponent[appsettings.AppSettingsExternalService](components, &appsettings.AppSettingsService{Provider: m})
+	components = sample.AppendSampleExternalComponent[appnode.AppNodeExternalService](components, &appnode.AppNodeService{Provider: m})
 
 	// repositories
-	components = AppendSampleComponent[repositories.NodeRepository](components, &repoImpl.NodeRepository{})
+	components = sample.AppendSampleComponent[appnode.AppNodeRepository](components, appnode.NewAppNodeRepository(m.DBProvider))
 
 	// controllers
 	for _, ctrl := range m.Controllers() {
@@ -109,49 +110,26 @@ func (m *module) RootPath() string {
 	return path.Dir(m.Config.ConfigFilePath())
 }
 
-func (m *module) NodeID() string {
-	if m.Node == nil {
+func (m *module) PeerID() string {
+	if m.PeerModule == nil {
 		return ""
 	}
 
-	nodeSettings := m.Node.NodeSettings()
-	if nodeSettings == nil || !nodeSettings.Available() {
+	settings := m.PeerModule.PeerSettings()
+	if settings == nil || !settings.Available() {
 		return ""
 	}
-	return base64.StdEncoding.EncodeToString(nodeSettings.NodeID())
+	return base64.StdEncoding.EncodeToString(settings.PeerID())
 }
 
-func (m *module) NodeManager() node.NodeManager {
-	if m.Node == nil {
+func (m *module) PeerManager() peer.PeerManager {
+	if m.PeerModule == nil {
 		return nil
 	}
-	mgr := m.Node.NodeManager()
+	mgr := m.PeerModule.PeerManager()
 	return mgr
 }
 
 func (m *module) Modules() []interface{} {
-	return []interface{}{m.guard}
-}
-
-type guardModule struct {
-	NodeService     *services.NodeService
-	SettingsService *services.SettingsService
-}
-
-func (g *guardModule) Enabled() bool {
-	settings := g.SettingsService.Load()
-	return settings.GuardEnabled
-}
-
-func (g *guardModule) Access(nodeId node.NodeID) error {
-	err := g.NodeService.AccessWithNodeID(nodeId)
-	if err != nil {
-		return err
-	}
-
-	settings := g.SettingsService.Load()
-	if !settings.GuardAccess {
-		err = constant.ErrRefused
-	}
-	return err
+	return []interface{}{m.peerGuard}
 }

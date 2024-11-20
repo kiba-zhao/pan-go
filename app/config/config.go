@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"os"
 	"pan/app/bootstrap"
-	"pan/app/constant"
 	"pan/runtime"
 	"path"
 	"reflect"
@@ -12,6 +11,10 @@ import (
 
 	"github.com/spf13/viper"
 )
+
+const PackageName = "pan-go"
+const RootPathName = "rootPath"
+const DefaultRootName = "." + PackageName
 
 type AppConfig = Config[AppSettings]
 
@@ -190,13 +193,13 @@ func (c *configImpl[T]) ConfigFilePath() string {
 }
 
 func getConfigRootPath() (string, error) {
-	rootPath, ok := os.LookupEnv(constant.RootPathName)
+	rootPath, ok := os.LookupEnv(RootPathName)
 	if !ok {
 		homePath, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
 		}
-		rootPath = path.Join(homePath, constant.DefaultRootName)
+		rootPath = path.Join(homePath, DefaultRootName)
 	}
 
 	return rootPath, nil

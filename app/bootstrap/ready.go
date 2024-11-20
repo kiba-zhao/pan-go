@@ -2,11 +2,13 @@ package bootstrap
 
 import (
 	"context"
-	"pan/app/constant"
+	"errors"
 	"pan/runtime"
 	"reflect"
 	"sync"
 )
+
+var ErrBootstrapReadyModuleUnavailable = errors.New("bootstrap.ReadyModule Error: Unavailable")
 
 type ReadyModule interface {
 	Ready(context.Context) error
@@ -41,7 +43,7 @@ func (re *readyEngine) bootstrap(ctx context.Context) error {
 	registry := re.registry
 	re.locker.RUnlock()
 	if registry == nil {
-		return constant.ErrUnavailable
+		return ErrBootstrapReadyModuleUnavailable
 	}
 
 	var wg sync.WaitGroup

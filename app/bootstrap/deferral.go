@@ -2,11 +2,13 @@ package bootstrap
 
 import (
 	"context"
-	"pan/app/constant"
+	"errors"
 	"pan/runtime"
 	"reflect"
 	"sync"
 )
+
+var ErrBootstrapDeferModuleUnavailable = errors.New("bootstrap.DeferModule Error: Unavailable")
 
 type DeferModule interface {
 	Defer() error
@@ -41,7 +43,7 @@ func (de *deferEngine) bootstrap(ctx context.Context) error {
 	registry := de.registry
 	de.locker.RUnlock()
 	if registry == nil {
-		return constant.ErrUnavailable
+		return ErrBootstrapDeferModuleUnavailable
 	}
 
 	return runtime.TraverseRegistry(registry, func(module DeferModule) error {

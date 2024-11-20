@@ -2,12 +2,14 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/signal"
-	"pan/app/constant"
 	"pan/runtime"
 	"syscall"
 )
+
+var ErrBootstrapExit = errors.New("bootstrap.engine Error: bootstrap exit")
 
 func New() interface{} {
 	return runtime.NewModule(&injectEngine{}, &readyEngine{}, &deferEngine{})
@@ -29,7 +31,7 @@ func (e *engine) Init(registry runtime.Registry) error {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	go func() {
 		<-signals
-		cancel(constant.ErrExit)
+		cancel(ErrBootstrapExit)
 	}()
 
 	err := e.DeferEngine.bootstrap(ctx)
