@@ -15,6 +15,14 @@ func (r *Message) Header(key []byte) ([]byte, bool) {
 	return r.header.Get(key)
 }
 
+func (r *Message) SetHeader(key, value []byte) {
+	if value == nil {
+		r.header.Del(key)
+		return
+	}
+	r.header.Set(key, value)
+}
+
 func MarshalMessage(message *Message) io.Reader {
 	headerReader, headerSize := MarshalHeader(message.header)
 

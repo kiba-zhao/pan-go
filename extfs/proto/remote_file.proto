@@ -1,0 +1,32 @@
+syntax = "proto3";
+package remotefile;
+
+option go_package = "extfs/remote_file;remotefile";
+
+message RemoteFileRecordList {
+    repeated RemoteFileRecord items = 1;
+}
+
+message RemoteFileRecord {
+    string ID = 1;
+    int64 CreatedAt = 2;
+    int64 UpdatedAt = 3;
+    int32 ItemID = 4;
+    string Name = 5;
+    string FileType = 6;
+    string FilePath = 7;
+    string ParentPath = 8;
+    int64 Size = 9;
+    bool Available = 10;
+}
+
+message RemoteFileRecordSearchCondition {
+    int32 ItemID = 1;
+    optional string ParentPath = 2;
+}
+
+message RemoteFileRecordSelectCondition {
+    int32 ItemID = 1;
+    string ParentPath = 2;
+    string Name = 3;
+}

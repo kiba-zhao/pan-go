@@ -15,15 +15,15 @@ import (
 
 type SampleProvider interface {
 	Name() string
-	Controllers() []interface{}
 	Models() []interface{}
 }
 
 type sample[T SampleProvider] struct {
-	Config   config.AppConfig
-	provider T
-	db       RepositoryDB
-	once     sync.Once
+	Config     config.AppConfig
+	PeerModule peer.PeerModule
+	provider   T
+	db         RepositoryDB
+	once       sync.Once
 }
 
 func New[T SampleProvider](provider T) interface{} {
@@ -59,13 +59,11 @@ func (s *sample[T]) PeerScope() []byte {
 }
 
 func (s *sample[T]) PeerAppModules() []peer.PeerAppModule {
-	modules := make([]peer.PeerAppModule, 0)
-	for _, c := range s.provider.Controllers() {
-		if m, ok := c.(peer.PeerAppModule); ok {
-			modules = append(modules, m)
-		}
+	provider, ok := any(s.provider).(peer.PeerAppModuleProvider)
+	if !ok {
+		return nil
 	}
-	return modules
+	return provider.PeerAppModules()
 }
 
 func (s *sample[T]) WebScope() string {
@@ -73,13 +71,11 @@ func (s *sample[T]) WebScope() string {
 }
 
 func (s *sample[T]) WebControllers() []web.WebController {
-	controllers := make([]web.WebController, 0)
-	for _, c := range s.provider.Controllers() {
-		if m, ok := c.(web.WebController); ok {
-			controllers = append(controllers, m)
-		}
+	provider, ok := any(s.provider).(web.WebControllerProvider)
+	if !ok {
+		return nil
 	}
-	return controllers
+	return provider.WebControllers()
 }
 
 func (s *sample[T]) Models() []interface{} {
@@ -91,9 +87,8 @@ func (s *sample[T]) Models() []interface{} {
 func (s *sample[T]) Components() []bootstrap.Component {
 	return []bootstrap.Component{
 		bootstrap.NewComponent(s, bootstrap.ComponentNoneScope),
-		bootstrap.NewComponent[RepositoryDBProvider](s, bootstrap.ComponentInternalScope),
-		bootstrap.NewComponent[peer.PeerScopeModule](s, bootstrap.ComponentInternalScope),
-		bootstrap.NewComponent[web.WebScopeModule](s, bootstrap.ComponentInternalScope),
+		bootstrap.NewComponent[SamplePeer](s, bootstrap.ComponentInternalScope),
+		bootstrap.NewLazyComponent(s.DB, bootstrap.ComponentInternalScope),
 		bootstrap.NewComponent(s.provider, bootstrap.ComponentNoneScope),
 	}
 }

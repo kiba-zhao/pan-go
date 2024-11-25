@@ -9,10 +9,6 @@ import (
 
 var ErrAppNodeBlocked = errors.New("appnode.AppNodeService Error: App Node Blocked")
 
-type PeerManagerProvider interface {
-	PeerManager() peer.PeerManager
-}
-
 type AppNodeExternalService interface {
 	TraverseWithPeerIDs(func(AppNode) error, []string) error
 	SelectByName(string) (AppNode, error)
@@ -20,7 +16,7 @@ type AppNodeExternalService interface {
 
 type AppNodeService struct {
 	AppNodeRepo AppNodeRepository
-	Provider    PeerManagerProvider
+	PeerManager peer.PeerManager
 }
 
 func (s *AppNodeService) Search(conditions AppNodeSearchCondition) (total int64, items []AppNode, err error) {
@@ -33,7 +29,7 @@ func (s *AppNodeService) Search(conditions AppNodeSearchCondition) (total int64,
 		return
 	}
 
-	mgr := s.Provider.PeerManager()
+	mgr := s.PeerManager
 	if mgr == nil {
 		return
 	}
@@ -55,7 +51,7 @@ func (s *AppNodeService) Select(id uint) (AppNode, error) {
 
 	model, err := s.AppNodeRepo.Select(id)
 	if err == nil && !model.Blocked {
-		mgr := s.Provider.PeerManager()
+		mgr := s.PeerManager
 		if mgr != nil {
 			err = setNodeOnline(mgr, &model)
 		}
@@ -66,7 +62,7 @@ func (s *AppNodeService) Select(id uint) (AppNode, error) {
 func (s *AppNodeService) SelectByName(name string) (AppNode, error) {
 	model, err := s.AppNodeRepo.SelectByName(name)
 	if err == nil && !model.Blocked {
-		mgr := s.Provider.PeerManager()
+		mgr := s.PeerManager
 		if mgr != nil {
 			err = setNodeOnline(mgr, &model)
 		}
@@ -84,7 +80,7 @@ func (s *AppNodeService) Delete(id uint) error {
 		return err
 	}
 	if !model.Blocked {
-		mgr := s.Provider.PeerManager()
+		mgr := s.PeerManager
 		if mgr != nil {
 			err = closeNode(mgr, &model)
 		}
@@ -126,7 +122,7 @@ func (s *AppNodeService) Update(id uint, fields AppNodeFields) (AppNode, error) 
 	if dirty {
 		model, err = s.AppNodeRepo.Save(model)
 		if err == nil && needClosed {
-			mgr := s.Provider.PeerManager()
+			mgr := s.PeerManager
 			if mgr != nil {
 				err = closeNode(mgr, &model)
 			}
@@ -134,7 +130,7 @@ func (s *AppNodeService) Update(id uint, fields AppNodeFields) (AppNode, error) 
 	}
 
 	if err == nil && !model.Blocked {
-		mgr := s.Provider.PeerManager()
+		mgr := s.PeerManager
 
 		if mgr != nil {
 			err = setNodeOnline(mgr, &model)

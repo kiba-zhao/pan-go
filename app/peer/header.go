@@ -8,8 +8,8 @@ import (
 )
 
 type HeaderItem struct {
-	key   []byte
-	value []byte
+	Key   []byte
+	Value []byte
 }
 
 type Header struct {
@@ -19,7 +19,7 @@ type Header struct {
 func (h *Header) Set(key, value []byte) {
 	idx, ok := slices.BinarySearchFunc(h.items, key, compareHeaderItem)
 	if ok {
-		h.items[idx].value = value
+		h.items[idx].Value = value
 		return
 	}
 
@@ -33,7 +33,7 @@ func (h *Header) Get(key []byte) ([]byte, bool) {
 	}
 
 	item := h.items[idx]
-	return item.value, ok
+	return item.Value, ok
 }
 
 func (h *Header) Del(key []byte) {
@@ -52,12 +52,12 @@ func MarshalHeader(header *Header) (io.Reader, int) {
 
 	buffer := make([]byte, 0)
 	for _, item := range items {
-		keySize := len(item.key)
-		valueSize := len(item.value)
+		keySize := len(item.Key)
+		valueSize := len(item.Value)
 		buffer = binary.BigEndian.AppendUint32(buffer, uint32(keySize))
-		buffer = append(buffer, item.key...)
+		buffer = append(buffer, item.Key...)
 		buffer = binary.BigEndian.AppendUint32(buffer, uint32(valueSize))
-		buffer = append(buffer, item.value...)
+		buffer = append(buffer, item.Value...)
 	}
 	return bytes.NewReader(buffer), len(buffer)
 }
@@ -81,5 +81,5 @@ func InitHeader(header *Header) {
 }
 
 func compareHeaderItem(item *HeaderItem, key []byte) int {
-	return bytes.Compare(item.key, key)
+	return bytes.Compare(item.Key, key)
 }

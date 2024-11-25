@@ -47,13 +47,10 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo.On("Search", appnode.AppNodeSearchCondition{}).Once().Return(total, items, nil)
 
 		mgr := &mockedPeer.MockPeerManager{}
+		ctrl.AppNodeService.PeerManager = mgr
 		defer mgr.AssertExpectations(t)
 		mgr.On("Count", peerIds[0]).Once().Return(3)
 		mgr.On("Count", peerIds[1]).Once().Return(0)
-		provider := &mocked.MockPeerManagerProvider{}
-		defer provider.AssertExpectations(t)
-		ctrl.AppNodeService.Provider = provider
-		provider.On("NodeManager").Once().Return(mgr)
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/nodes", nil)
@@ -98,12 +95,9 @@ func TestAppNodeController(t *testing.T) {
 
 		mgr := &mockedPeer.MockPeerManager{}
 		defer mgr.AssertExpectations(t)
+		ctrl.AppNodeService.PeerManager = mgr
 		mgr.On("Count", peerIds[0]).Once().Return(3)
 		mgr.On("Count", peerIds[1]).Once().Return(0)
-		provider := &mocked.MockPeerManagerProvider{}
-		defer provider.AssertExpectations(t)
-		ctrl.AppNodeService.Provider = provider
-		provider.On("NodeManager").Once().Return(mgr)
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/nodes", nil)
@@ -180,17 +174,14 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo := &mocked.MockAppNodeRepository{}
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
-		nodeId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(nodeId), Blocked: false}
+		peerId := []byte("peer id 1")
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: false}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 
 		mgr := &mockedPeer.MockPeerManager{}
 		defer mgr.AssertExpectations(t)
-		mgr.On("Count", nodeId).Once().Return(1)
-		provider := &mocked.MockPeerManagerProvider{}
-		defer provider.AssertExpectations(t)
-		ctrl.AppNodeService.Provider = provider
-		provider.On("NodeManager").Once().Return(mgr)
+		ctrl.AppNodeService.PeerManager = mgr
+		mgr.On("Count", peerId).Once().Return(1)
 
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/nodes/%d", item.ID)
@@ -213,8 +204,8 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo := &mocked.MockAppNodeRepository{}
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
-		nodeId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(nodeId), Blocked: true}
+		peerId := []byte("peer id 1")
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: true}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 
 		w := httptest.NewRecorder()
@@ -235,19 +226,15 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo := &mocked.MockAppNodeRepository{}
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
-		nodeId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(nodeId), Blocked: false}
+		peerId := []byte("peer id 1")
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: false}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Delete", item).Once().Return(nil)
 
 		mgr := &mockedPeer.MockPeerManager{}
 		defer mgr.AssertExpectations(t)
-		mgr.On("TraverseNode", nodeId, mock.Anything).Once().Return(nil)
-
-		provider := &mocked.MockPeerManagerProvider{}
-		defer provider.AssertExpectations(t)
-		ctrl.AppNodeService.Provider = provider
-		provider.On("NodeManager").Once().Return(mgr)
+		ctrl.AppNodeService.PeerManager = mgr
+		mgr.On("TraversePeerNode", peerId, mock.Anything).Once().Return(nil)
 
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/nodes/%d", item.ID)
@@ -263,8 +250,8 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo := &mocked.MockAppNodeRepository{}
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
-		nodeId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(nodeId), Blocked: true}
+		peerId := []byte("peer id 1")
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: true}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Delete", item).Once().Return(nil)
 
@@ -315,13 +302,13 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		blocked := true
-		nodeId := []byte("peer id")
+		peerId := []byte("peer id")
 		fields := appnode.AppNodeFields{
 			Name:    "peer node1",
 			PeerID:  base64.StdEncoding.EncodeToString([]byte("peer id 1")),
 			Blocked: &blocked,
 		}
-		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: base64.StdEncoding.EncodeToString(nodeId), Blocked: false}
+		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: false}
 		newItem := item
 		newItem.Name = fields.Name
 		newItem.Blocked = blocked
@@ -330,12 +317,8 @@ func TestAppNodeController(t *testing.T) {
 
 		mgr := &mockedPeer.MockPeerManager{}
 		defer mgr.AssertExpectations(t)
-		mgr.On("TraverseNode", nodeId, mock.Anything).Once().Return(nil)
-
-		provider := &mocked.MockPeerManagerProvider{}
-		defer provider.AssertExpectations(t)
-		ctrl.AppNodeService.Provider = provider
-		provider.On("NodeManager").Once().Return(mgr)
+		ctrl.AppNodeService.PeerManager = mgr
+		mgr.On("TraversePeerNode", peerId, mock.Anything).Once().Return(nil)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
@@ -360,13 +343,13 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		blocked := false
-		nodeId := []byte("peer id")
+		peerId := []byte("peer id")
 		fields := appnode.AppNodeFields{
 			Name:    "peer node1",
 			PeerID:  base64.StdEncoding.EncodeToString([]byte("peer id 1")),
 			Blocked: &blocked,
 		}
-		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: base64.StdEncoding.EncodeToString(nodeId), Blocked: false}
+		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: false}
 		newItem := item
 		newItem.Name = fields.Name
 		newItem.Blocked = blocked
@@ -375,11 +358,8 @@ func TestAppNodeController(t *testing.T) {
 
 		mgr := &mockedPeer.MockPeerManager{}
 		defer mgr.AssertExpectations(t)
-		mgr.On("Count", nodeId).Once().Return(4)
-		provider := &mocked.MockPeerManagerProvider{}
-		defer provider.AssertExpectations(t)
-		ctrl.AppNodeService.Provider = provider
-		provider.On("NodeManager").Once().Return(mgr)
+		ctrl.AppNodeService.PeerManager = mgr
+		mgr.On("Count", peerId).Once().Return(4)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()

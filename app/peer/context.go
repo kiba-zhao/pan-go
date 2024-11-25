@@ -43,14 +43,6 @@ func (c *Context) RequestHeader(key []byte) ([]byte, bool) {
 	return c.request.Header(key)
 }
 
-func (c *Context) SetHeader(key, value []byte) {
-	if value == nil {
-		c.header.Del(key)
-		return
-	}
-	c.header.Set(key, value)
-}
-
 func (c *Context) Session(key SessionKey) (interface{}, bool) {
 	idx, ok := slices.BinarySearchFunc(c.session, key, compareSessionItem)
 	if !ok {
@@ -79,7 +71,7 @@ func (c *Context) Del(key SessionKey) {
 
 func (c *Context) Respond(body io.Reader) {
 	c.Reader = body
-	c.code = 0
+	c.code = CodeOK
 	if closer, ok := body.(io.Closer); ok {
 		c.Closer = closer
 	}

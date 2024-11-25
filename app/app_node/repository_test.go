@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
-	mockedSample "pan/mocks/pan/app/sample"
 )
 
 func TestAppNodeRepo(t *testing.T) {
@@ -30,9 +28,7 @@ func TestAppNodeRepo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		provider := new(mockedSample.MockRepositoryDBProvider)
-		provider.On("DB").Return(db)
-		repo = appnode.NewAppNodeRepository(provider)
+		repo = appnode.NewAppNodeRepository(db)
 		return
 	}
 

@@ -37,7 +37,6 @@ func UnmarshalResponse(reader io.ReadCloser, response *Response) error {
 	code := uint32(0)
 	err := binary.Read(reader, binary.BigEndian, &code)
 	if err != nil {
-		reader.Close()
 		return err
 	}
 	response.code = int(code)

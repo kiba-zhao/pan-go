@@ -22,16 +22,16 @@ type AppNodeRepository interface {
 }
 
 type peerNodeRepository struct {
-	Provider sample.RepositoryDBProvider
+	db *gorm.DB
 }
 
-func NewAppNodeRepository(provider sample.RepositoryDBProvider) AppNodeRepository {
-	return &peerNodeRepository{Provider: provider}
+func NewAppNodeRepository(db *gorm.DB) AppNodeRepository {
+	return &peerNodeRepository{db: db}
 }
 
 func (repo *peerNodeRepository) Search(conditions AppNodeSearchCondition) (int64, []AppNode, error) {
 
-	db := sample.DBForProvider(repo.Provider)
+	db := repo.db
 	if db == nil {
 		return 0, nil, sample.ErrSampleDBUnavailable
 	}
@@ -90,7 +90,7 @@ func (repo *peerNodeRepository) Search(conditions AppNodeSearchCondition) (int64
 }
 
 func (repo *peerNodeRepository) Save(node AppNode) (AppNode, error) {
-	db := sample.DBForProvider(repo.Provider)
+	db := repo.db
 	if db == nil {
 		return node, sample.ErrSampleDBUnavailable
 	}
@@ -104,7 +104,7 @@ func (repo *peerNodeRepository) Save(node AppNode) (AppNode, error) {
 
 func (repo *peerNodeRepository) Select(id uint) (AppNode, error) {
 
-	db := sample.DBForProvider(repo.Provider)
+	db := repo.db
 	if db == nil {
 		return AppNode{}, sample.ErrSampleDBUnavailable
 	}
@@ -118,7 +118,7 @@ func (repo *peerNodeRepository) Select(id uint) (AppNode, error) {
 
 func (repo *peerNodeRepository) SelectByName(name string) (AppNode, error) {
 
-	db := sample.DBForProvider(repo.Provider)
+	db := repo.db
 	if db == nil {
 		return AppNode{}, sample.ErrSampleDBUnavailable
 	}
@@ -132,7 +132,7 @@ func (repo *peerNodeRepository) SelectByName(name string) (AppNode, error) {
 
 func (repo *peerNodeRepository) Delete(node AppNode) error {
 
-	db := sample.DBForProvider(repo.Provider)
+	db := repo.db
 	if db == nil {
 		return sample.ErrSampleDBUnavailable
 	}
@@ -145,7 +145,7 @@ func (repo *peerNodeRepository) Delete(node AppNode) error {
 
 func (repo *peerNodeRepository) SelectByPeerID(peerId string) (AppNode, error) {
 
-	db := sample.DBForProvider(repo.Provider)
+	db := repo.db
 	if db == nil {
 		return AppNode{}, sample.ErrSampleDBUnavailable
 	}
@@ -160,7 +160,7 @@ func (repo *peerNodeRepository) SelectByPeerID(peerId string) (AppNode, error) {
 
 func (repo *peerNodeRepository) TraverseWithPeerIDs(traverse func(AppNode) error, peerIds []string) error {
 
-	db := sample.DBForProvider(repo.Provider)
+	db := repo.db
 	if db == nil {
 		return sample.ErrSampleDBUnavailable
 	}

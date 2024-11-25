@@ -7,16 +7,18 @@ import (
 )
 
 type VFSSettings struct {
-	MountPath string
-	LocalName string
-	Enabled   bool
+	MountPath     string
+	Enabled       bool
+	LocalDirName  string
+	RemoteDirName string
 }
 
 func newDefaultsVFSSettings(appSettings appConfig.AppSettings) *VFSSettings {
 	settings := &VFSSettings{}
-	settings.LocalName = appSettings.Name
 	settings.MountPath = path.Join(os.TempDir(), "extfs")
 	settings.Enabled = true
+	settings.LocalDirName = "Local"
+	settings.RemoteDirName = "Remote"
 
 	return settings
 }

@@ -33,24 +33,24 @@ func Bootstrap() interface{} {
 const moduleName = "app"
 
 type module struct {
-	PeerModule  peer.PeerModule
-	Config      config.AppConfig
-	DBProvider  sample.RepositoryDBProvider
-	settings    config.AppSettings
-	settingsRW  sync.RWMutex
-	controllers []interface{}
-	once        sync.Once
-	peerGuard   *guard.PeerGuard
+	PeerModule      peer.PeerModule
+	Config          config.AppConfig
+	DB              sample.RepositoryDB
+	settings        config.AppSettings
+	settingsRW      sync.RWMutex
+	controllers     []web.WebController
+	controllersOnce sync.Once
+	peerGuard       *guard.PeerGuard
 }
 
 func (m *module) Name() string {
 	return moduleName
 }
 
-func (m *module) Controllers() []interface{} {
-	m.once.Do(func() {
+func (m *module) WebControllers() []web.WebController {
+	m.controllersOnce.Do(func() {
 		// TODO: add web and node controllers
-		m.controllers = []interface{}{
+		m.controllers = []web.WebController{
 			&appnode.AppNodeController{},
 			&diskfile.DiskFileController{},
 			&appsettings.AppSettingsController{},
@@ -75,13 +75,13 @@ func (m *module) Components() []bootstrap.Component {
 	// services
 	components = sample.AppendSampleComponent(components, &diskfile.DiskFileService{})
 	components = sample.AppendSampleExternalComponent[appsettings.AppSettingsExternalService](components, &appsettings.AppSettingsService{Provider: m})
-	components = sample.AppendSampleExternalComponent[appnode.AppNodeExternalService](components, &appnode.AppNodeService{Provider: m})
+	components = sample.AppendSampleExternalComponent[appnode.AppNodeExternalService](components, &appnode.AppNodeService{})
 
 	// repositories
-	components = sample.AppendSampleComponent[appnode.AppNodeRepository](components, appnode.NewAppNodeRepository(m.DBProvider))
+	components = sample.AppendSampleComponent(components, appnode.NewAppNodeRepository(m.DB))
 
 	// controllers
-	for _, ctrl := range m.Controllers() {
+	for _, ctrl := range m.WebControllers() {
 		components = append(components, bootstrap.NewComponent(ctrl, bootstrap.ComponentNoneScope))
 	}
 
@@ -120,14 +120,6 @@ func (m *module) PeerID() string {
 		return ""
 	}
 	return base64.StdEncoding.EncodeToString(settings.PeerID())
-}
-
-func (m *module) PeerManager() peer.PeerManager {
-	if m.PeerModule == nil {
-		return nil
-	}
-	mgr := m.PeerModule.PeerManager()
-	return mgr
 }
 
 func (m *module) Modules() []interface{} {

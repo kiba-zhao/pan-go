@@ -135,6 +135,7 @@ func (pn *peerModule) EngineTypes() []reflect.Type {
 func (pn *peerModule) Components() []bootstrap.Component {
 	return []bootstrap.Component{
 		bootstrap.NewComponent[PeerModule](pn, bootstrap.ComponentExternalScope),
+		bootstrap.NewLazyComponent(pn.PeerManager, bootstrap.ComponentExternalScope),
 	}
 }
 
@@ -211,6 +212,19 @@ func (pn *peerModule) Do(peerId PeerID, request *Request, updaters ...PeerDoCont
 	response := &Response{}
 	InitResponse(response)
 	err = UnmarshalResponse(resReader, response)
+
+	if err == nil && response.Code() != CodeOK {
+		var content []byte
+		content, err = io.ReadAll(response)
+		if err == nil {
+			err = errors.New(string(content))
+		}
+	}
+
+	if err != nil {
+		resReader.Close()
+		return nil, err
+	}
 
 	return response, err
 }

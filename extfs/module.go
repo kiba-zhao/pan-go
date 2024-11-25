@@ -1,56 +1,70 @@
 package extfs
 
 import (
-	"pan/app"
 	"pan/app/bootstrap"
-	"pan/app/node"
+	"pan/app/peer"
+	"pan/app/sample"
+	"pan/app/web"
 
-	"pan/extfs/controllers"
-	"pan/extfs/models"
-	"pan/extfs/repositories"
-	repoImpl "pan/extfs/repositories/impl"
-	"pan/extfs/services"
 	"pan/extfs/vfs"
 	"sync"
+
+	nodefile "pan/extfs/node_file"
+	nodeitem "pan/extfs/node_item"
+	remoteblock "pan/extfs/remote_block"
+	remotefile "pan/extfs/remote_file"
+	remoteitem "pan/extfs/remote_item"
+	remotenode "pan/extfs/remote_node"
 )
 
 func New() interface{} {
-	return app.NewSample(&module{vfs: &vfs.VFS{}})
+	return sample.New(&module{vfs: &vfs.VFS{}})
 }
 
 const moduleName = "extfs"
 
 type module struct {
-	Node        node.NodeModule
-	DBProvider  app.RepositoryDBProvider
-	NodeScope   node.NodeScopeModule
-	controllers []interface{}
-	once        sync.Once
-	vfs         *vfs.VFS
+	DB                 sample.RepositoryDB
+	SamplePeer         sample.SamplePeer
+	controllers        []web.WebController
+	controllersOnce    sync.Once
+	peerAppModules     []peer.PeerAppModule
+	peerAppModulesOnce sync.Once
+	vfs                *vfs.VFS
 }
 
 func (m *module) Name() string {
 	return moduleName
 }
 
-func (m *module) Controllers() []interface{} {
-	m.once.Do(func() {
+func (m *module) WebControllers() []web.WebController {
+	m.controllersOnce.Do(func() {
 
-		m.controllers = []interface{}{
-			&controllers.NodeItemController{},
-			&controllers.RemoteNodeController{},
-			&controllers.FileItemController{},
-			&controllers.RemoteNodeItemController{},
-			&controllers.RemoteFileItemController{},
-			&controllers.RemoteFileBlockController{},
+		m.controllers = []web.WebController{
+			&nodeitem.NodeItemController{},
+			&nodefile.NodeFileController{},
+			&remotenode.RemoteNodeController{},
+			&remoteitem.RemoteItemController{},
+			&remotefile.RemoteFileController{},
 		}
 	})
 	return m.controllers
 }
 
+func (m *module) PeerAppModules() []peer.PeerAppModule {
+	m.peerAppModulesOnce.Do(func() {
+		m.peerAppModules = []peer.PeerAppModule{
+			&remoteitem.RemoteItemTopic{},
+			&remotefile.RemoteFileTopic{},
+			&remoteblock.RemoteBlockTopic{},
+		}
+	})
+	return m.peerAppModules
+}
+
 func (m *module) Models() []interface{} {
 	return []interface{}{
-		&models.NodeItem{},
+		&nodeitem.NodeItem{},
 	}
 }
 
@@ -58,39 +72,35 @@ func (m *module) Components() []bootstrap.Component {
 
 	// base
 	components := []bootstrap.Component{
-		bootstrap.NewComponent(m.DBProvider, bootstrap.ComponentInternalScope),
-		bootstrap.NewComponent(m.NodeScope, bootstrap.ComponentInternalScope),
+		bootstrap.NewComponent(m.SamplePeer, bootstrap.ComponentInternalScope),
 	}
 
 	// services
-	components = app.AppendSampleInternalComponent[services.NodeItemInternalService](components, &services.NodeItemService{})
-	components = app.AppendSampleInternalComponent[services.FileItemInternalService](components, &services.FileItemService{})
+	components = sample.AppendSampleInternalComponent[nodeitem.NodeItemInternalService](components, &nodeitem.NodeItemService{})
+	components = sample.AppendSampleInternalComponent[nodefile.NodeFileInternalService](components, &nodefile.NodeFileService{})
 
-	components = app.AppendSampleComponent(components, &services.RemoteNodeItemService{})
-	components = app.AppendSampleComponent(components, &services.RemoteNodeService{Provider: m})
-	components = app.AppendSampleComponent(components, &services.RemoteFileItemService{})
-	components = app.AppendSampleComponent(components, &services.RemoteFileBlockService{})
+	components = sample.AppendSampleComponent(components, &remotenode.RemoteNodeService{})
+	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemService{})
+	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileService{})
+	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockService{})
 
 	// repositories
-	components = app.AppendSampleComponent[repositories.NodeItemRepository](components, &repoImpl.NodeItemRepository{})
+	components = sample.AppendSampleComponent(components, nodeitem.NewNodeItemRepository(m.DB))
 
 	// controllers
-	for _, ctrl := range m.Controllers() {
+	for _, ctrl := range m.WebControllers() {
 		components = append(components, bootstrap.NewComponent(ctrl, bootstrap.ComponentNoneScope))
+	}
+
+	// peer app modules
+	for _, peerAppModule := range m.PeerAppModules() {
+		components = append(components, bootstrap.NewComponent(peerAppModule, bootstrap.ComponentNoneScope))
 	}
 
 	// vfs components
 	vfsComponents := m.vfs.VFSComponents()
 	components = append(components, vfsComponents...)
 	return components
-}
-
-func (m *module) NodeManager() node.NodeManager {
-	if m.Node == nil {
-		return nil
-	}
-	mgr := m.Node.NodeManager()
-	return mgr
 }
 
 func (m *module) Modules() []interface{} {

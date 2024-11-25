@@ -51,3 +51,7 @@ func InitRequest(request *Request) {
 	request.header = &Header{}
 	InitHeader(request.header)
 }
+
+func SetRequestScope(request *Request, scope RequestName) {
+	request.name = GenerateRouteName(scope, request.Name())
+}
