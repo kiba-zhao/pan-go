@@ -1,9 +1,9 @@
 {
   "resources": {
     "app/nodes": {
-      "name": "Node of App",
+      "name": "Peer of App",
       "fields": {
-        "nodeId": "Node ID"
+        "peerId": "Peer ID"
       },
       "filters": {
         "stat": "Online / Blocked",
@@ -34,15 +34,15 @@
       "summary": "SUMMARY",
       "network-address": "NET ADDRESS",
       "web-address": "Web Service Address",
-      "node-address": "Node Service Address",
+      "peer-address": "Peer Service Address",
       "broadcast-address": "Broadcast Service Address",
       "public-address": "Public Address",
       "ip": "IP",
       "port": "Port",
       "fields": {
         "rootPath": "Root Path",
-        "nodeId": "Node ID",
-        "name": "Node Name",
+        "peerId": "Peer ID",
+        "name": "Peer Name",
         "guardEnabled": "Guard Enabled",
         "guardAccess": "Default Access"
       },

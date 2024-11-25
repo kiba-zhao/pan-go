@@ -35,7 +35,7 @@ func TestAppSettingsController(t *testing.T) {
 		settings := config.Settings{}
 		settings.Name = "test name"
 		settings.WebAddress = []string{"127.0.0.1:9002"}
-		settings.NodeAddress = []string{"127.0.0.1:9001"}
+		settings.PeerAddress = []string{"127.0.0.1:9001"}
 		settings.BroadcastAddress = []string{"127.0.0.1:9000"}
 		settings.PublicAddress = []string{"127.0.0.1:9003"}
 		settings.GuardEnabled = true
@@ -68,7 +68,7 @@ func TestAppSettingsController(t *testing.T) {
 		settings := config.Settings{}
 		settings.Name = "test name"
 		settings.WebAddress = []string{"127.0.0.1:9002"}
-		settings.NodeAddress = []string{"127.0.0.1:9001"}
+		settings.PeerAddress = []string{"127.0.0.1:9001"}
 		settings.BroadcastAddress = []string{"127.0.0.1:9000"}
 		settings.PublicAddress = []string{"127.0.0.1:9003"}
 		settings.GuardEnabled = true
@@ -77,7 +77,7 @@ func TestAppSettingsController(t *testing.T) {
 		fields := appsettings.AppSettingsFields{}
 		fields.Name = "field name"
 		fields.WebAddress = []string{"0.0.0.0:9002"}
-		fields.NodeAddress = []string{"0.0.0.0:9001"}
+		fields.PeerAddress = []string{"0.0.0.0:9001"}
 		fields.BroadcastAddress = []string{"0.0.0.0:9000"}
 		fields.PublicAddress = []string{"0.0.0.0:9003"}
 		fields.GuardEnabled = new(bool)
@@ -88,7 +88,7 @@ func TestAppSettingsController(t *testing.T) {
 		settings_ := settings
 		settings_.Name = fields.Name
 		settings_.WebAddress = fields.WebAddress
-		settings_.NodeAddress = fields.NodeAddress
+		settings_.PeerAddress = fields.PeerAddress
 		settings_.BroadcastAddress = fields.BroadcastAddress
 		settings_.PublicAddress = fields.PublicAddress
 		settings_.GuardEnabled = *fields.GuardEnabled

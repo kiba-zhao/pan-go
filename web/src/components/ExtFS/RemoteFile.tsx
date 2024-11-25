@@ -5,7 +5,7 @@ import type { ExtFSSingleState } from "./State";
 import { useExtFS } from "./State";
 
 import { useQuery } from "@tanstack/react-query";
-import type { ExtFSRemoteFileItem } from "../../API";
+import type { ExtFSRemoteFile } from "../../API";
 import { useAPI } from "../../API";
 
 import { useMemo } from "react";
@@ -13,40 +13,40 @@ import { useMemo } from "react";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
-const ExtFSRemoteFileItemTagRoutePath = "/extfs/remote-file-item-tags";
+const ExtFSRemoteFileTagRoutePath = "/extfs/remote-file-tags";
 const ExtFSRemoteFileMode = "RF";
-const ExtFSRemoteFileQueryKey = ["extfs-remote-file-items"];
+const ExtFSRemoteFileQueryKey = ["extfs-remote-files"];
 export const ExtFSRemoteFileState = {
   mode: ExtFSRemoteFileMode,
   queryKeyList: [ExtFSRemoteFileQueryKey],
 };
 
 export type ExtFSRemoteFileSingleState = {
-  nodeId: string;
+  peerId: string;
   itemId: number;
   parentPath?: string;
 } & ExtFSSingleState;
-export const RemoteFileItems = () => {
+export const RemoteFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
-  const { nodeId, itemId, parentPath } = state as ExtFSRemoteFileSingleState;
+  const { peerId, itemId, parentPath } = state as ExtFSRemoteFileSingleState;
 
   const api = useAPI();
   const { data: items, isFetching } = useQuery({
-    queryKey: [...ExtFSRemoteFileQueryKey, { nodeId, itemId, parentPath }],
+    queryKey: [...ExtFSRemoteFileQueryKey, { peerId, itemId, parentPath }],
     queryFn: async () =>
-      await api?.searchExtFSRemoteFileItems({ nodeId, itemId, parentPath }),
+      await api?.searchExtFSRemoteFiles({ peerId, itemId, parentPath }),
     enabled: !!api && state.mode === ExtFSRemoteFileMode,
   });
 
   return (
     <ExtFSItems items={items || []} isFetching={isFetching}>
-      <RemoteFileItem />
+      <RemoteFile />
     </ExtFSItems>
   );
 };
 
-export const RemoteFileItem = () => {
-  const { style, data }: ExtFSItemRecord<ExtFSRemoteFileItem> = useExtFSItem();
+export const RemoteFile = () => {
+  const { style, data }: ExtFSItemRecord<ExtFSRemoteFile> = useExtFSItem();
   const avatarIcon = useMemo(() => {
     if (data?.fileType === "D")
       return <FolderIcon color={data.available ? "primary" : "disabled"} />;
@@ -82,7 +82,7 @@ export const RemoteFileItem = () => {
       disabled={!data.available}
     >
       <ExtFSItemTag
-        to={`${ExtFSRemoteFileItemTagRoutePath}/${data.id}`}
+        to={`${ExtFSRemoteFileTagRoutePath}/${data.id}`}
         disabled={!data.available}
         quantity={data.tagQuantity}
         pendingQuantity={data.pendingTagQuantity}

@@ -35,8 +35,8 @@ func (s *AppSettingsService) Save(fields AppSettingsFields) (AppSettings, error)
 	if fields.WebAddress != nil {
 		settings.WebAddress = fields.WebAddress
 	}
-	if fields.NodeAddress != nil {
-		settings.NodeAddress = fields.NodeAddress
+	if fields.PeerAddress != nil {
+		settings.PeerAddress = fields.PeerAddress
 	}
 	if fields.BroadcastAddress != nil {
 		settings.BroadcastAddress = fields.BroadcastAddress

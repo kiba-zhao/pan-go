@@ -96,8 +96,8 @@ export const AppSettings = () => {
             value={"web-address"}
           />
           <Tab
-            label={t("custom.app/settings.node-address")}
-            value={"node-address"}
+            label={t("custom.app/settings.peer-address")}
+            value={"peer-address"}
           />
           <Tab
             label={t("custom.app/settings.broadcast-address")}
@@ -114,8 +114,8 @@ export const AppSettings = () => {
         <TabPanel hidden={tab !== "web-address"}>
           <WebAddressSettings />
         </TabPanel>
-        <TabPanel hidden={tab !== "node-address"}>
-          <NodeAddressSettings />
+        <TabPanel hidden={tab !== "peer-address"}>
+          <PeerAddressSettings />
         </TabPanel>
         <TabPanel hidden={tab !== "broadcast-address"}>
           <BroadcastAddressSettings />
@@ -251,7 +251,7 @@ const AppSummarySettings = () => {
         useFlexGap
         flexWrap="wrap"
       >
-        <NodeQRCode name={data?.name} nodeId={data?.nodeId}>
+        <NodeQRCode name={data?.name} peerId={data?.peerId}>
           <Stack
             direction="row"
             spacing={1}
@@ -286,7 +286,7 @@ const AppSummarySettings = () => {
           />
 
           <TextField
-            label={t("custom.app/settings.fields.nodeId")}
+            label={t("custom.app/settings.fields.peerId")}
             fullWidth
             multiline
             rows={3}
@@ -295,7 +295,7 @@ const AppSummarySettings = () => {
               readOnly: true,
             }}
             required
-            value={data?.nodeId}
+            value={data?.peerId}
           />
           <FormControl component="fieldset">
             <FormLabel component="legend">
@@ -450,7 +450,7 @@ const AddressEditDialog = ({
 type AddressSource =
   | "webAddress"
   | "broadcastAddress"
-  | "nodeAddress"
+  | "peerAddress"
   | "publicAddress";
 
 const NewAddressButton = ({
@@ -702,8 +702,8 @@ const WebAddressSettings = () => {
   );
 };
 
-const NodeAddressSettings = () => {
-  const source = "nodeAddress";
+const PeerAddressSettings = () => {
+  const source = "peerAddress";
   return (
     <AppAddressSettings source={source}>
       <NewAddressButton source={source} defaultValue="0.0.0.0:9000" />

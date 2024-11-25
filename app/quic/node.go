@@ -11,7 +11,7 @@ import (
 
 type quicPeerNode struct {
 	resourceId     peer.PeerResourceID
-	nodeId         peer.PeerID
+	peerId         peer.PeerID
 	conn           quic.Connection
 	quicPeerModule QuicPeerModule
 	mgr            peer.PeerManager
@@ -20,7 +20,7 @@ type quicPeerNode struct {
 }
 
 func (qn *quicPeerNode) PeerID() peer.PeerID {
-	return qn.nodeId
+	return qn.peerId
 }
 
 func (qn *quicPeerNode) PeerType() peer.PeerType {

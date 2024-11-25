@@ -40,7 +40,7 @@ export const AppNodeRoutePath = "/app/nodes";
 
 type AppNode = {
   id: number;
-  nodeId: string;
+  peerId: string;
   name: string;
   blocked: boolean;
   online: boolean;
@@ -152,7 +152,7 @@ export const AppNodeCreate = () => (
         <AppNodeQRScan />
         <Stack spacing={1} minWidth={200} maxWidth={760} width={"70%"}>
           <TextInput source="name" fullWidth />
-          <TextInput source="nodeId" fullWidth rows={3} multiline />
+          <TextInput source="peerId" fullWidth rows={3} multiline />
           <BooleanInput
             source="blocked"
             defaultValue={false}
@@ -167,15 +167,15 @@ export const AppNodeCreate = () => (
 
 const AppNodeQRCode = () => {
   const name = useWatch({ name: "name" });
-  const nodeId = useWatch({ name: "nodeId" });
-  return <NodeQRCode name={name} nodeId={nodeId} />;
+  const peerId = useWatch({ name: "peerId" });
+  return <NodeQRCode name={name} peerId={peerId} />;
 };
 
 const AppNodeQRScan = () => {
   const { setValue } = useFormContext();
 
-  const onQRScan = ({ nodeId, name }: NodeQRCodeValue) => {
-    setValue("nodeId", nodeId, { shouldValidate: true, shouldDirty: true });
+  const onQRScan = ({ peerId, name }: NodeQRCodeValue) => {
+    setValue("peerId", peerId, { shouldValidate: true, shouldDirty: true });
     setValue("name", name, { shouldValidate: true, shouldDirty: true });
   };
 
@@ -215,7 +215,7 @@ export const APPNodeEdit = () => (
         <AppNodeQRCode />
         <Stack spacing={1} minWidth={200} maxWidth={760} width={"70%"}>
           <TextInput source="name" fullWidth />
-          <TextInput source="nodeId" fullWidth rows={3} multiline readOnly />
+          <TextInput source="peerId" fullWidth rows={3} multiline readOnly />
           <BooleanInput
             source="blocked"
             defaultValue={false}

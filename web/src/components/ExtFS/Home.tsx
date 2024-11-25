@@ -1,7 +1,7 @@
 import type { ExtFSItemRecord } from "./Item";
 import { ExtFSItem, ExtFSItems, ExtFSItemTag, useExtFSItem } from "./Item";
 import { More, MoreHelpItem } from "./More";
-import { ExtFSNodeState } from "./Node";
+import { ExtFSNodeState } from "./NodeItem";
 import { ExtFSRemoteState } from "./Remote";
 import { useExtFS } from "./State";
 
@@ -25,7 +25,7 @@ export const ExtFSHomeState = {
 
 type ExtFSNode = {
   name: string;
-  nodeId: string;
+  peerId: string;
 };
 export const HomeItems = () => {
   const [extfs, _] = useExtFS();
@@ -39,7 +39,7 @@ export const HomeItems = () => {
     if (!settings) return;
     return {
       name: settings.name,
-      nodeId: settings.nodeId,
+      peerId: settings.peerId,
     };
   }, [settings]);
 
@@ -89,7 +89,7 @@ const HomeItem = () => {
       const { parentItems } = extfs;
       const state = {
         ...ExtFSRemoteState,
-        nodeId: remoteNode.nodeId,
+        peerId: remoteNode.peerId,
       };
       setExtFS({
         ...state,
@@ -113,7 +113,7 @@ const HomeItem = () => {
         onClick={handleRemoteClick}
       >
         <ExtFSItemTag
-          to={`${ExtFSNodeTagRoutePath}/${remoteNode.nodeId}`}
+          to={`${ExtFSNodeTagRoutePath}/${remoteNode.peerId}`}
           disabled={!remoteNode.available}
           quantity={remoteNode.tagQuantity}
           pendingQuantity={remoteNode.pendingTagQuantity}

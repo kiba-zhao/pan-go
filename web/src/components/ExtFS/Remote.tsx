@@ -23,16 +23,16 @@ export const ExtFSRemoteState = {
 };
 
 export type ExtFSRemoteSingleState = {
-  nodeId: string;
+  peerId: string;
 } & ExtFSSingleState;
 export const RemoteItems = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
-  const { nodeId } = state as ExtFSRemoteSingleState;
+  const { peerId } = state as ExtFSRemoteSingleState;
 
   const api = useAPI();
   const { data: items, isFetching } = useQuery({
-    queryKey: [...ExtFSRemoteQueryKey, { nodeId }],
-    queryFn: async () => await api?.searchExtFSRemoteItems({ nodeId }),
+    queryKey: [...ExtFSRemoteQueryKey, { peerId }],
+    queryFn: async () => await api?.searchExtFSRemoteItems({ peerId }),
     enabled: state.mode === ExtFSRemoteMode,
   });
   return (
@@ -60,7 +60,7 @@ export const RemoteItem = () => {
       const { parentItems } = extfs;
       const fileState = {
         ...ExtFSRemoteFileState,
-        nodeId: data.nodeId,
+        peerId: data.peerId,
         itemId: data.itemId,
       };
       setExtFS({

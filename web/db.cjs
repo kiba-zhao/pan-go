@@ -20,11 +20,11 @@ module.exports = () => {
   remoteNodes = faker.helpers
     .arrayElements(nodes, { min: 1 })
     .map(parseRemoteNode);
-  const remoteNodeItems = remoteNodes.reduce((arr, node) => {
+  const remoteItems = remoteNodes.reduce((arr, node) => {
     if (!node.available) return arr;
     return arr.concat(
       faker.helpers.multiple(
-        generateExtFSRemoteNodeItem.bind(this, node.nodeId),
+        generateExtFSRemoteNodeItem.bind(this, node.peerId),
         {
           count: { min: 1, max: 10 },
         }
@@ -32,12 +32,12 @@ module.exports = () => {
     );
   }, []);
 
-  const fileItems = nodeItems.reduce((arr, item) => {
+  const nodeFiles = nodeItems.reduce((arr, item) => {
     if (!item.available || item.fileType !== "D") return arr;
     const folders = ["/"];
     return arr.concat(
       faker.helpers.multiple(
-        generateExtFSFileItem.bind(this, item.id, folders),
+        generateExtFSNodeFile.bind(this, item.id, folders),
         {
           count: { min: 1, max: 10 },
         }
@@ -45,17 +45,12 @@ module.exports = () => {
     );
   }, []);
 
-  const remoteFileItems = remoteNodeItems.reduce((arr, item) => {
+  const remoteFiles = remoteItems.reduce((arr, item) => {
     if (!item.available || item.fileType !== "D") return arr;
     const folders = ["/"];
     return arr.concat(
       faker.helpers.multiple(
-        generateExtFSRemoteFileItem.bind(
-          this,
-          item.nodeId,
-          item.itemId,
-          folders
-        ),
+        generateExtFSRemoteFile.bind(this, item.peerId, item.itemId, folders),
         {
           count: { min: 1, max: 10 },
         }
@@ -71,9 +66,9 @@ module.exports = () => {
     "app-nodes": nodes,
     "extfs-remote-nodes": remoteNodes,
     "extfs-node-items": nodeItems,
-    "extfs-remote-node-items": remoteNodeItems,
-    "extfs-file-items": fileItems,
-    "extfs-remote-file-items": remoteFileItems,
+    "extfs-remote-items": remoteItems,
+    "extfs-node-files": nodeFiles,
+    "extfs-remote-files": remoteFiles,
   };
 };
 
@@ -111,7 +106,7 @@ function generateAppSettings(rootPaths) {
   const webAddress = faker.helpers.multiple(generateAddress, {
     count: { min: 1, max: 3 },
   });
-  const nodeAddress = faker.helpers.multiple(generateAddress, {
+  const peerAddress = faker.helpers.multiple(generateAddress, {
     count: { min: 1, max: 3 },
   });
   const broadcastAddress = faker.helpers.multiple(generateAddress, {
@@ -124,10 +119,10 @@ function generateAppSettings(rootPaths) {
     rootPath: faker.helpers.arrayElement(rootPaths),
     name: faker.internet.domainName(),
     webAddress,
-    nodeAddress,
+    peerAddress,
     broadcastAddress,
     publicAddress,
-    nodeId: faker.helpers.arrayElement(["", faker.string.nanoid()]),
+    peerId: faker.helpers.arrayElement(["", faker.string.nanoid()]),
     guardEnabled: faker.datatype.boolean(),
     guardAccess: faker.datatype.boolean(),
   };
@@ -146,7 +141,7 @@ function generateNodes() {
       const blocked = faker.datatype.boolean();
       return {
         id: faker.number.int(),
-        nodeId: faker.string.nanoid(),
+        peerId: faker.string.nanoid(),
         name: faker.internet.domainName(),
         blocked,
         online: blocked || faker.datatype.boolean(),
@@ -163,7 +158,7 @@ function generateNodes() {
 function parseRemoteNode(node) {
   return {
     id: node.id,
-    nodeId: node.nodeId,
+    peerId: node.peerId,
     name: node.name,
     available: node.online,
     createdAt: node.createdAt,
@@ -189,10 +184,10 @@ function generateExtFSNodeItem() {
   };
 }
 
-function generateExtFSRemoteNodeItem(nodeId) {
+function generateExtFSRemoteNodeItem(peerId) {
   return {
     id: faker.string.nanoid(),
-    nodeId,
+    peerId,
     itemId: faker.number.int({ min: 1, max: 999999 }),
     name: faker.word.sample(),
     fileType: faker.helpers.arrayElement(["F", "D"]),
@@ -205,7 +200,7 @@ function generateExtFSRemoteNodeItem(nodeId) {
   };
 }
 
-function generateExtFSFileItem(itemId, folders = ["/"]) {
+function generateExtFSNodeFile(itemId, folders = ["/"]) {
   const isDir = faker.datatype.boolean();
   const folder = faker.helpers.arrayElement(folders);
   const fileType = isDir ? "D" : "F";
@@ -230,7 +225,7 @@ function generateExtFSFileItem(itemId, folders = ["/"]) {
   };
 }
 
-function generateExtFSRemoteFileItem(nodeId, itemId, folders = ["/"]) {
+function generateExtFSRemoteFile(peerId, itemId, folders = ["/"]) {
   const isDir = faker.datatype.boolean();
   const folder = faker.helpers.arrayElement(folders);
   const fileType = isDir ? "D" : "F";
@@ -241,7 +236,7 @@ function generateExtFSRemoteFileItem(nodeId, itemId, folders = ["/"]) {
   }
   return {
     id: faker.string.nanoid(),
-    nodeId,
+    peerId,
     itemId,
     name,
     parentPath: folder,

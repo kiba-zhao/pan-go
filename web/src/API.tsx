@@ -5,12 +5,12 @@ import type {
   AppSettingsFields,
   DiskFile,
   DiskFileSearchCondition,
-  ExtFSFileItem,
-  ExtFSFileItemSearchCondition,
+  ExtFSNodeFile,
+  ExtFSNodeFileSearchCondition,
   ExtFSNodeItem,
   ExtFSNodeItemFields,
-  ExtFSRemoteFileItem,
-  ExtFSRemoteFileItemSearchCondition,
+  ExtFSRemoteFile,
+  ExtFSRemoteFileSearchCondition,
   ExtFSRemoteItem,
   ExtFSRemoteItemSearchCondition,
   ExtFSRemoteNode,
@@ -21,10 +21,10 @@ export type {
   AppSettings,
   AppSettingsFields,
   DiskFile,
-  ExtFSFileItem,
+  ExtFSNodeFile,
   ExtFSNodeItem,
   ExtFSNodeItemFields,
-  ExtFSRemoteFileItem,
+  ExtFSRemoteFile,
   ExtFSRemoteItem,
   ExtFSRemoteNode,
 };
@@ -42,15 +42,15 @@ export interface API {
   ): Promise<ExtFSNodeItem>;
   selectExtFSNodeItem(id: ExtFSNodeItem["id"]): Promise<ExtFSNodeItem>;
   deleteExtFSNodeItem(id: ExtFSNodeItem["id"]): Promise<void>;
-  searchExtFSFileItems(
-    condition: ExtFSFileItemSearchCondition
-  ): Promise<ExtFSFileItem[]>;
+  searchExtFSNodeFiles(
+    condition: ExtFSNodeFileSearchCondition
+  ): Promise<ExtFSNodeFile[]>;
   searchExtFSRemoteItems(
     condition: ExtFSRemoteItemSearchCondition
   ): Promise<ExtFSRemoteItem[]>;
-  searchExtFSRemoteFileItems(
-    condition: ExtFSRemoteFileItemSearchCondition
-  ): Promise<ExtFSRemoteFileItem[]>;
+  searchExtFSRemoteFiles(
+    condition: ExtFSRemoteFileSearchCondition
+  ): Promise<ExtFSRemoteFile[]>;
 }
 
 const APIContext = createContext<API | null>(null);

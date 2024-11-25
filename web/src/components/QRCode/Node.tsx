@@ -15,26 +15,26 @@ import Stack from "@mui/material/Stack";
 
 export type NodeQRCodeValue = {
   name: string;
-  nodeId: string;
+  peerId: string;
 };
 
 type NodeQRCodeProps = {
   name?: string;
-  nodeId?: string;
+  peerId?: string;
   width?: number;
   children?: ReactNode;
   base?: string;
 };
 export const NodeQRCode = ({
   name = "",
-  nodeId = "",
+  peerId = "",
   width = 200,
   children,
 }: NodeQRCodeProps) => {
   const value = useMemo(() => {
-    if (!name || name.length <= 0 || !nodeId || nodeId.length <= 0) return;
-    return toNodeQRCodeUrl({ name, nodeId });
-  }, [name, nodeId]);
+    if (!name || name.length <= 0 || !peerId || peerId.length <= 0) return;
+    return toNodeQRCodeUrl({ name, peerId });
+  }, [name, peerId]);
 
   return (
     <QRProvider>
@@ -125,13 +125,13 @@ function parseNodeQRCodeValue(value: string): NodeQRCodeValue | undefined {
   const url = new URL(value);
   if (url.protocol.slice(0, -1) !== import.meta.env.VITE_APP_NAME) return;
   if (url.pathname !== "//app/node") return;
-  const nodeId = url.searchParams.get("nodeId");
+  const peerId = url.searchParams.get("peerId");
   const name = url.searchParams.get("name");
-  if (!nodeId || nodeId.length <= 0 || !name || name.length <= 0) return;
-  return { name, nodeId };
+  if (!peerId || peerId.length <= 0 || !name || name.length <= 0) return;
+  return { name, peerId };
 }
 
-function toNodeQRCodeUrl({ name, nodeId }: NodeQRCodeValue): string {
-  const query = new URLSearchParams({ nodeId, name });
+function toNodeQRCodeUrl({ name, peerId }: NodeQRCodeValue): string {
+  const query = new URLSearchParams({ peerId, name });
   return `${import.meta.env.VITE_APP_NAME}://app/node?${query.toString()}`;
 }

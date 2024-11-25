@@ -15,7 +15,7 @@ type RemoteFileService struct {
 
 func (s *RemoteFileService) Search(condition RemoteFileSearchCondition) (total int64, items []RemoteFile, err error) {
 
-	nodeId, err := base64.StdEncoding.DecodeString(condition.PeerID)
+	peerId, err := base64.StdEncoding.DecodeString(condition.PeerID)
 	if err != nil {
 		return
 	}
@@ -41,7 +41,7 @@ func (s *RemoteFileService) Search(condition RemoteFileSearchCondition) (total i
 
 		items = append(items, item)
 		return nil
-	}, nodeId, &recordSearch)
+	}, peerId, &recordSearch)
 
 	total = int64(len(items))
 	return

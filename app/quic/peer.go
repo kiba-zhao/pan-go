@@ -97,8 +97,8 @@ func (qm *quicPeerModule) OnConfigUpdated(settings config.AppSettings) {
 	defer qm.locker.Unlock()
 
 	var reloadServe bool
-	if reloadServe = !slices.Equal(qm.addrs, settings.NodeAddress); reloadServe {
-		qm.addrs = settings.NodeAddress
+	if reloadServe = !slices.Equal(qm.addrs, settings.PeerAddress); reloadServe {
+		qm.addrs = settings.PeerAddress
 	}
 
 	if !qm.reloadServe && reloadServe {
@@ -162,7 +162,7 @@ func (qm *quicPeerModule) Dial(ctx context.Context, addr string) (quic.Connectio
 
 func (qm *quicPeerModule) createNode(conn quic.Connection) (*quicPeerNode, error) {
 
-	nodeId, err := parsePeerID(conn)
+	peerId, err := parsePeerID(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (qm *quicPeerModule) createNode(conn quic.Connection) (*quicPeerNode, error
 	qnode := &quicPeerNode{
 		quicPeerModule: qm,
 		conn:           conn,
-		nodeId:         nodeId,
+		peerId:         peerId,
 		mgr:            peerModule.PeerManager(),
 	}
 

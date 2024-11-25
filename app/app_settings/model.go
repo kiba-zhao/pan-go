@@ -11,7 +11,7 @@ type AppSettings struct {
 type AppSettingsFields struct {
 	Name             string   `form:"name" json:"name"  binding:"omitempty"`
 	WebAddress       []string `form:"webAddress" json:"webAddress"  binding:"omitempty"`
-	NodeAddress      []string `form:"nodeAddress" json:"nodeAddress"  binding:"omitempty"`
+	PeerAddress      []string `form:"peerAddress" json:"peerAddress"  binding:"omitempty"`
 	BroadcastAddress []string `form:"broadcastAddress" json:"broadcastAddress"  binding:"omitempty"`
 	PublicAddress    []string `form:"publicAddress" json:"publicAddress"  binding:"omitempty"`
 	GuardEnabled     *bool    `form:"guardEnabled" json:"guardEnabled"  binding:"omitempty"`

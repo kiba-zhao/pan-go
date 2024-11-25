@@ -28,14 +28,14 @@ import { styled, useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
-import { ExtFSFileState, FileItems, FileMore } from "./ExtFS/File";
 import { ExtFSHomeState, HomeItems, HomeMore } from "./ExtFS/Home";
-import { ExtFSNodeState, NodeItems, NodeMore } from "./ExtFS/Node";
+import { ExtFSNodeFileState, NodeFileMore, NodeFiles } from "./ExtFS/NodeFile";
+import { ExtFSNodeState, NodeItems, NodeMore } from "./ExtFS/NodeItem";
 import { ExtFSRemoteState, RemoteItems, RemoteMore } from "./ExtFS/Remote";
 import {
   ExtFSRemoteFileState,
-  RemoteFileItems,
   RemoteFileMore,
+  RemoteFiles,
 } from "./ExtFS/RemoteFile";
 import type { ExtFSParentItem, ExtFSState } from "./ExtFS/State";
 import { ExtFSProvider as ExtFSStateProvider, useExtFS } from "./ExtFS/State";
@@ -77,12 +77,12 @@ const Home = () => {
       return [<HomeItems />, <HomeMore />];
     if (extfs.mode === ExtFSNodeState.mode)
       return [<NodeItems />, <NodeMore />];
-    if (extfs.mode === ExtFSFileState.mode)
-      return [<FileItems />, <FileMore />];
+    if (extfs.mode === ExtFSNodeFileState.mode)
+      return [<NodeFiles />, <NodeFileMore />];
     if (extfs.mode === ExtFSRemoteState.mode)
       return [<RemoteItems />, <RemoteMore />];
     if (extfs.mode === ExtFSRemoteFileState.mode)
-      return [<RemoteFileItems />, <RemoteFileMore />];
+      return [<RemoteFiles />, <RemoteFileMore />];
     return [];
   }, [extfs.mode]);
   return (

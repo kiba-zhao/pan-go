@@ -1,7 +1,6 @@
 import type { ExtFSNodeItem } from "../../API";
 import { useAPI } from "../../API";
 import { ExtFSNodeItemRoutePath } from "../ExtFSNodeItem";
-import { ExtFSFileState } from "./File";
 import type { ExtFSItemRecord } from "./Item";
 import {
   ExtFSItem,
@@ -11,6 +10,7 @@ import {
   useExtFSItem,
 } from "./Item";
 import { More, MoreHelpItem, MoreNewItem } from "./More";
+import { ExtFSNodeFileState } from "./NodeFile";
 import { useExtFS } from "./State";
 
 import { useQuery } from "@tanstack/react-query";
@@ -60,7 +60,7 @@ export const NodeItem = () => {
     if (data.fileType === "D") {
       const { parentItems } = extfs;
       const fileState = {
-        ...ExtFSFileState,
+        ...ExtFSNodeFileState,
         itemId: data.id,
       };
       setExtFS({

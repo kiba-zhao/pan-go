@@ -11,7 +11,7 @@ import { More, MoreHelpItem, MoreSettingsItem } from "./More";
 import type { ExtFSSingleState } from "./State";
 import { useExtFS } from "./State";
 
-import type { ExtFSFileItem } from "../../API";
+import type { ExtFSNodeFile } from "../../API";
 import { useAPI } from "../../API";
 
 import { useQuery } from "@tanstack/react-query";
@@ -21,40 +21,40 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
 import { useMemo } from "react";
 
-const ExtFSFileItemRoutePath = "/extfs/file-items";
-const ExtFSFileItemTagRoutePath = "/extfs/file-item-tags";
+const ExtFSNodeFileRoutePath = "/extfs/node-files";
+const ExtFSNodeFileTagRoutePath = "/extfs/node-file-tags";
 
-const ExtFSFileMode = "F";
-const ExtFSFileQueryKey = ["extfs-file-items"];
-export const ExtFSFileState = {
-  mode: ExtFSFileMode,
-  queryKeyList: [ExtFSFileQueryKey],
+const ExtFSNodeFileMode = "F";
+const ExtFSNodeFileQueryKey = ["extfs-node-files"];
+export const ExtFSNodeFileState = {
+  mode: ExtFSNodeFileMode,
+  queryKeyList: [ExtFSNodeFileQueryKey],
 };
 
-export type ExtFSFileSingleState = {
+export type ExtFSNodeFileSingleState = {
   itemId: number;
   parentPath?: string;
 } & ExtFSSingleState;
-export const FileItems = () => {
+export const NodeFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
-  const { itemId, parentPath } = state as ExtFSFileSingleState;
+  const { itemId, parentPath } = state as ExtFSNodeFileSingleState;
   const api = useAPI();
   const { data: items, isFetching } = useQuery({
-    queryKey: [...ExtFSFileQueryKey, { itemId, parentPath }],
+    queryKey: [...ExtFSNodeFileQueryKey, { itemId, parentPath }],
     queryFn: async () =>
-      await api?.searchExtFSFileItems({ itemId, parentPath }),
-    enabled: state.mode === ExtFSFileMode,
+      await api?.searchExtFSNodeFiles({ itemId, parentPath }),
+    enabled: state.mode === ExtFSNodeFileMode,
   });
 
   return (
     <ExtFSItems items={items || []} isFetching={isFetching}>
-      <FileItem />
+      <NodeFile />
     </ExtFSItems>
   );
 };
 
-export const FileItem = () => {
-  const { style, data }: ExtFSItemRecord<ExtFSFileItem> = useExtFSItem();
+export const NodeFile = () => {
+  const { style, data }: ExtFSItemRecord<ExtFSNodeFile> = useExtFSItem();
 
   const avatarIcon = useMemo(() => {
     if (data?.fileType === "D")
@@ -92,28 +92,28 @@ export const FileItem = () => {
       disabled={!data.available}
     >
       <ExtFSItemTag
-        to={`${ExtFSFileItemTagRoutePath}/${data.id}`}
+        to={`${ExtFSNodeFileTagRoutePath}/${data.id}`}
         disabled={!data.available}
         quantity={data.tagQuantity}
         pendingQuantity={data.pendingTagQuantity}
       />
-      <ExtFSItemSettings to={`${ExtFSFileItemRoutePath}/${data.id}`} />
+      <ExtFSItemSettings to={`${ExtFSNodeFileRoutePath}/${data.id}`} />
     </ExtFSItem>
   );
 };
 
-export const FileMore = () => {
+export const NodeFileMore = () => {
   return (
     <More>
-      <FileSettingsMore />
+      <NodeFileSettingsMore />
       <MoreHelpItem />
     </More>
   );
 };
 
-const FileSettingsMore = () => {
+const NodeFileSettingsMore = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
-  const { itemId, parentPath } = state as ExtFSFileSingleState;
+  const { itemId, parentPath } = state as ExtFSNodeFileSingleState;
   if (parentPath) return void 0;
   return <MoreSettingsItem to={`${ExtFSNodeItemRoutePath}/${itemId}`} />;
 };
