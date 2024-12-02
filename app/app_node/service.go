@@ -10,13 +10,13 @@ import (
 var ErrAppNodeBlocked = errors.New("appnode.AppNodeService Error: App Node Blocked")
 
 type AppNodeExternalService interface {
-	TraverseWithPeerIDs(func(AppNode) error, []string) error
+	TraverseAll(func(AppNode) error) error
 	SelectByName(string) (AppNode, error)
 }
 
 type AppNodeService struct {
 	AppNodeRepo AppNodeRepository
-	PeerManager peer.PeerManager
+	PeerModule  peer.PeerModule
 }
 
 func (s *AppNodeService) Search(conditions AppNodeSearchCondition) (total int64, items []AppNode, err error) {
@@ -29,14 +29,14 @@ func (s *AppNodeService) Search(conditions AppNodeSearchCondition) (total int64,
 		return
 	}
 
-	mgr := s.PeerManager
-	if mgr == nil {
+	peerModule := s.PeerModule
+	if peerModule == nil {
 		return
 	}
 	items_ := make([]AppNode, 0)
 	for _, item := range items {
 		if !item.Blocked {
-			setNodeOnline(mgr, &item)
+			setPeerOnline(peerModule, &item)
 		}
 		if conditions.Online != nil && *conditions.Online != item.Online {
 			continue
@@ -51,9 +51,9 @@ func (s *AppNodeService) Select(id uint) (AppNode, error) {
 
 	model, err := s.AppNodeRepo.Select(id)
 	if err == nil && !model.Blocked {
-		mgr := s.PeerManager
-		if mgr != nil {
-			err = setNodeOnline(mgr, &model)
+		peerModule := s.PeerModule
+		if peerModule != nil {
+			err = setPeerOnline(peerModule, &model)
 		}
 	}
 	return model, err
@@ -62,9 +62,9 @@ func (s *AppNodeService) Select(id uint) (AppNode, error) {
 func (s *AppNodeService) SelectByName(name string) (AppNode, error) {
 	model, err := s.AppNodeRepo.SelectByName(name)
 	if err == nil && !model.Blocked {
-		mgr := s.PeerManager
-		if mgr != nil {
-			err = setNodeOnline(mgr, &model)
+		peerModule := s.PeerModule
+		if peerModule != nil {
+			err = setPeerOnline(peerModule, &model)
 		}
 	}
 	return model, err
@@ -80,9 +80,9 @@ func (s *AppNodeService) Delete(id uint) error {
 		return err
 	}
 	if !model.Blocked {
-		mgr := s.PeerManager
-		if mgr != nil {
-			err = closeNode(mgr, &model)
+		peerModule := s.PeerModule
+		if peerModule != nil {
+			err = purgeWithPeerID(peerModule, &model)
 		}
 	}
 	return err
@@ -122,18 +122,17 @@ func (s *AppNodeService) Update(id uint, fields AppNodeFields) (AppNode, error) 
 	if dirty {
 		model, err = s.AppNodeRepo.Save(model)
 		if err == nil && needClosed {
-			mgr := s.PeerManager
-			if mgr != nil {
-				err = closeNode(mgr, &model)
+			peerModule := s.PeerModule
+			if peerModule != nil {
+				err = purgeWithPeerID(peerModule, &model)
 			}
 		}
 	}
 
 	if err == nil && !model.Blocked {
-		mgr := s.PeerManager
-
-		if mgr != nil {
-			err = setNodeOnline(mgr, &model)
+		peerModule := s.PeerModule
+		if peerModule != nil {
+			err = setPeerOnline(peerModule, &model)
 		}
 	}
 	return model, err
@@ -148,26 +147,32 @@ func (s *AppNodeService) AccessWithPeerID(peerId peer.PeerID) error {
 	return err
 }
 
-func (s *AppNodeService) TraverseWithPeerIDs(traverseFn func(model AppNode) error, peerIds []string) error {
-	return s.AppNodeRepo.TraverseWithPeerIDs(traverseFn, peerIds)
+func (s *AppNodeService) TraverseAll(traverseFn func(model AppNode) error) error {
+	return s.AppNodeRepo.TraverseAll(func(an AppNode) error {
+		var err error
+		peerModule := s.PeerModule
+		if peerModule != nil {
+			err = setPeerOnline(peerModule, &an)
+		}
+		if err != nil {
+			return err
+		}
+		return traverseFn(an)
+	})
 }
 
-func setNodeOnline(mgr peer.PeerManager, model *AppNode) error {
+func setPeerOnline(peerModule peer.PeerModule, model *AppNode) error {
 	peerId, err := base64.StdEncoding.DecodeString(model.PeerID)
 	if err == nil {
-		count := mgr.Count(peerId)
-		model.Online = count > 0
+		model.Online = peerModule.CanReach(peerId)
 	}
 	return err
 }
 
-func closeNode(mgr peer.PeerManager, model *AppNode) error {
+func purgeWithPeerID(peerModule peer.PeerModule, model *AppNode) error {
 	peerId, err := base64.StdEncoding.DecodeString(model.PeerID)
-	mgr.TraversePeerNode(peerId, traverseCloseAppNode)
+	if err == nil {
+		err = peerModule.Purge(peerId)
+	}
 	return err
-}
-
-func traverseCloseAppNode(item peer.PeerNode) bool {
-	item.Close()
-	return true
 }

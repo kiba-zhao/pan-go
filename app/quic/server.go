@@ -62,7 +62,7 @@ func (qs *quicPeerServer) ListenAndServe(ctx context.Context) error {
 			conn.CloseWithError(quic.ApplicationErrorCode(quic.InternalError), err.Error())
 		}
 		if err == nil {
-			_, err = qs.quicPeerModule.Serve(conn)
+			_, err = qs.quicPeerModule.Serve(conn, nil)
 		}
 		if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) {
 			break

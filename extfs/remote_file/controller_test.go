@@ -1,6 +1,7 @@
 package remotefile_test
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http/httptest"
@@ -59,12 +60,12 @@ func TestRemoteFileController(t *testing.T) {
 		resBody, err := proto.Marshal(&recordList)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", peerId, remotefile.SearchRemoteFiles, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
-			resp := args.Get(2).(*remotefile.RemoteFileRecordList)
+		samplePeer.On("RequestWithProto", context.Background(), peerId, remotefile.SearchRemoteFiles, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+			resp := args.Get(3).(*remotefile.RemoteFileRecordList)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)
 
-			condition := args.Get(3).(*remotefile.RemoteFileRecordSearchCondition)
+			condition := args.Get(4).(*remotefile.RemoteFileRecordSearchCondition)
 			assert.Equal(t, record.ItemID, condition.ItemID)
 		})
 

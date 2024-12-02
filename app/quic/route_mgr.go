@@ -2,33 +2,34 @@ package quic
 
 import (
 	"bytes"
+	"pan/app/peer"
 	"slices"
 	"sync"
 )
 
-type quicPeerRouteMgr struct {
-	routes []*quicPeerRoute
+type quicRouteMgr struct {
+	routes []*quicRoute
 	rw     sync.RWMutex
 }
 
-func (mgr *quicPeerRouteMgr) compareWithQuicRoute(route *quicPeerRoute, routeId []byte) int {
-	return bytes.Compare(route.routeId, routeId)
+func (mgr *quicRouteMgr) compare(route *quicRoute, peerId peer.PeerID) int {
+	return bytes.Compare(route.peerId, peerId)
 }
 
-func (mgr *quicPeerRouteMgr) Search(routeId []byte) *quicPeerRoute {
+func (mgr *quicRouteMgr) Search(peerId peer.PeerID) *quicRoute {
 	mgr.rw.RLock()
 	defer mgr.rw.RUnlock()
-	idx, ok := slices.BinarySearchFunc(mgr.routes, routeId, mgr.compareWithQuicRoute)
+	idx, ok := slices.BinarySearchFunc(mgr.routes, peerId, mgr.compare)
 	if !ok {
 		return nil
 	}
 	return mgr.routes[idx]
 }
 
-func (mgr *quicPeerRouteMgr) SearchOrStore(route *quicPeerRoute) (*quicPeerRoute, bool) {
+func (mgr *quicRouteMgr) SearchOrStore(route *quicRoute) (*quicRoute, bool) {
 	mgr.rw.Lock()
 	defer mgr.rw.Unlock()
-	idx, ok := slices.BinarySearchFunc(mgr.routes, route.routeId, mgr.compareWithQuicRoute)
+	idx, ok := slices.BinarySearchFunc(mgr.routes, route.PeerID(), mgr.compare)
 	if !ok {
 		mgr.routes = slices.Insert(mgr.routes, idx, route)
 		return route, false
@@ -36,10 +37,10 @@ func (mgr *quicPeerRouteMgr) SearchOrStore(route *quicPeerRoute) (*quicPeerRoute
 	return mgr.routes[idx], true
 }
 
-func (mgr *quicPeerRouteMgr) Delete(route *quicPeerRoute) {
+func (mgr *quicRouteMgr) Delete(route *quicRoute) {
 	mgr.rw.Lock()
 	defer mgr.rw.Unlock()
-	idx, ok := slices.BinarySearchFunc(mgr.routes, route.routeId, mgr.compareWithQuicRoute)
+	idx, ok := slices.BinarySearchFunc(mgr.routes, route.PeerID(), mgr.compare)
 	if !ok {
 		return
 	}

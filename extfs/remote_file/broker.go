@@ -1,6 +1,7 @@
 package remotefile
 
 import (
+	"context"
 	"pan/app/peer"
 	"pan/app/sample"
 )
@@ -14,14 +15,14 @@ type RemoteFileBroker struct {
 
 func (broker *RemoteFileBroker) Search(peerId peer.PeerID, condition *RemoteFileRecordSearchCondition) (*RemoteFileRecordList, error) {
 	var remoteFileRecordList RemoteFileRecordList
-	err := broker.SamplePeer.RequestWithProto(peerId, SearchRemoteFiles, &remoteFileRecordList, condition)
+	err := broker.SamplePeer.RequestWithProto(context.Background(), peerId, SearchRemoteFiles, &remoteFileRecordList, condition)
 
 	return &remoteFileRecordList, err
 }
 
 func (broker *RemoteFileBroker) Select(peerId peer.PeerID, condition *RemoteFileRecordSelectCondition) (*RemoteFileRecord, error) {
 	var remoteFileRecord RemoteFileRecord
-	err := broker.SamplePeer.RequestWithProto(peerId, SelectRemoteFile, &remoteFileRecord, condition)
+	err := broker.SamplePeer.RequestWithProto(context.Background(), peerId, SelectRemoteFile, &remoteFileRecord, condition)
 
 	return &remoteFileRecord, err
 }

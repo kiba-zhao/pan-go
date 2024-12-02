@@ -2,6 +2,7 @@ package sample
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"pan/app/peer"
 
@@ -9,18 +10,18 @@ import (
 )
 
 type SamplePeer interface {
-	Do(peer.PeerID, *peer.Request, ...peer.PeerDoContextUpdater) (*peer.Response, error)
-	Request(peer.PeerID, peer.RequestName, proto.Message, ...peer.PeerDoContextUpdater) (*peer.Response, error)
-	RequestWithProto(peer.PeerID, peer.RequestName, proto.Message, proto.Message, ...peer.PeerDoContextUpdater) error
+	Do(context.Context, peer.PeerID, *peer.Request) (*peer.Response, error)
+	Request(context.Context, peer.PeerID, peer.RequestName, proto.Message, ...peer.HeaderItem) (*peer.Response, error)
+	RequestWithProto(context.Context, peer.PeerID, peer.RequestName, proto.Message, proto.Message, ...peer.HeaderItem) error
 }
 
-func (s *sample[T]) Do(peerId peer.PeerID, request *peer.Request, updaters ...peer.PeerDoContextUpdater) (*peer.Response, error) {
+func (s *sample[T]) Do(ctx context.Context, peerId peer.PeerID, request *peer.Request) (*peer.Response, error) {
 	scope := s.PeerScope()
 	peer.SetRequestScope(request, scope)
-	return s.PeerModule.Do(peerId, request, updaters...)
+	return s.PeerModule.Do(ctx, peerId, request)
 }
 
-func (s *sample[T]) Request(peerId peer.PeerID, name peer.RequestName, body proto.Message, updaters ...peer.PeerDoContextUpdater) (*peer.Response, error) {
+func (s *sample[T]) Request(ctx context.Context, peerId peer.PeerID, name peer.RequestName, body proto.Message, headerItems ...peer.HeaderItem) (*peer.Response, error) {
 	var request *peer.Request
 	if body != nil {
 		requestBytes, err := proto.Marshal(body)
@@ -32,11 +33,17 @@ func (s *sample[T]) Request(peerId peer.PeerID, name peer.RequestName, body prot
 		request = peer.NewRequest(name, nil)
 	}
 
-	return s.Do(peerId, request, updaters...)
+	if len(headerItems) > 0 {
+		for _, headerItem := range headerItems {
+			request.SetHeader(headerItem.Key, headerItem.Value)
+		}
+	}
+
+	return s.Do(ctx, peerId, request)
 }
 
-func (s *sample[T]) RequestWithProto(peerId peer.PeerID, name peer.RequestName, resp proto.Message, body proto.Message, updaters ...peer.PeerDoContextUpdater) error {
-	res, err := s.Request(peerId, name, body, updaters...)
+func (s *sample[T]) RequestWithProto(ctx context.Context, peerId peer.PeerID, name peer.RequestName, resp proto.Message, body proto.Message, headerItems ...peer.HeaderItem) error {
+	res, err := s.Request(ctx, peerId, name, body, headerItems...)
 	if err != nil {
 		return err
 	}

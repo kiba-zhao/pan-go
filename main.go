@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"io/fs"
 	"pan/app"
 	"pan/app/web"
 	"pan/extfs"
+	"pan/logger"
 
 	"pan/runtime"
 )
@@ -31,6 +33,6 @@ func main() {
 	}
 
 	if err != nil {
-		panic(err)
+		logger.Default().Log(context.Background(), logger.LevelError, err.Error())
 	}
 }

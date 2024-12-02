@@ -2,14 +2,12 @@ package peer
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"io"
 	"pan/app/bootstrap"
 	"pan/runtime"
 	"reflect"
 	"sync"
-	"time"
 )
 
 const (
@@ -25,6 +23,7 @@ var ErrPeerModuleNotFound = errors.New("peer.PeerModule Error: Serve Not Found")
 var ErrPeerModuleUnknownPeer = errors.New("peer.PeerModule Error: Unknown Peer")
 var ErrPeerModuleControlConflict = errors.New("peer.PeerModule Error: Control Conflict")
 
+type PeerID = []byte
 type PeerApp = *App
 type PeerRouter = AppHandleGroup
 type PeerContext = AppContext
@@ -49,19 +48,8 @@ type PeerStream interface {
 }
 
 var (
-	ContextNode = []byte("NODE")
+	ContextPeerID = []byte("PeerID")
 )
-
-type PeerDoContext struct {
-	ctx context.Context
-}
-type PeerDoContextUpdater = func(PeerDoContext)
-
-func WithPeerDoContext(ctx context.Context) PeerDoContextUpdater {
-	return func(doContext PeerDoContext) {
-		doContext.ctx = ctx
-	}
-}
 
 type PeerGuard interface {
 	Enabled() bool
@@ -69,39 +57,31 @@ type PeerGuard interface {
 }
 
 type PeerModule interface {
-	Serve(PeerStream, PeerNode) error
-	Do(PeerID, *Request, ...PeerDoContextUpdater) (*Response, error)
-	Request(PeerID, RequestName, io.Reader, ...PeerDoContextUpdater) (*Response, error)
+	CanReach(PeerID) bool
+	Purge(PeerID) error
+	Serve(PeerStream, PeerID) error
+	Do(context.Context, PeerID, *Request) (*Response, error)
+	Request(context.Context, PeerID, RequestName, io.Reader, ...HeaderItem) (*Response, error)
 	PeerSettings() PeerSettings
-	PeerManager() PeerManager
 	ReloadModules() error
 	Access(PeerID) error
-	Control(PeerNode) error
-	NewResourceID(PeerType) PeerResourceID
+}
+
+func New() interface{} {
+	module := &peerModule{}
+	network := &peerNetwork{peerModule: module}
+	module.network = network
+	return module
 }
 
 type peerModule struct {
-	mgr            PeerManager
-	mgrOnce        sync.Once
 	settings       PeerSettings
 	settingsOnce   sync.Once
 	registry       runtime.Registry
 	registryLocker sync.RWMutex
 	app            PeerApp
 	appLocker      sync.RWMutex
-	seq            uint32
-	seqLocker      sync.Mutex
-}
-
-func New() interface{} {
-	return &peerModule{}
-}
-
-func (pn *peerModule) PeerManager() PeerManager {
-	pn.mgrOnce.Do(func() {
-		pn.mgr = &peerManager{}
-	})
-	return pn.mgr
+	network        PeerNetwork
 }
 
 func (pn *peerModule) Init(registry runtime.Registry) error {
@@ -126,6 +106,7 @@ func (pn *peerModule) Defer() error {
 
 func (pn *peerModule) EngineTypes() []reflect.Type {
 	return []reflect.Type{
+		reflect.TypeFor[PeerNetwork](),
 		reflect.TypeFor[PeerAppModule](),
 		reflect.TypeFor[PeerAppModuleProvider](),
 		reflect.TypeFor[PeerGuard](),
@@ -135,18 +116,16 @@ func (pn *peerModule) EngineTypes() []reflect.Type {
 func (pn *peerModule) Components() []bootstrap.Component {
 	return []bootstrap.Component{
 		bootstrap.NewComponent[PeerModule](pn, bootstrap.ComponentExternalScope),
-		bootstrap.NewLazyComponent(pn.PeerManager, bootstrap.ComponentExternalScope),
 	}
 }
 
 func (pn *peerModule) Modules() []interface{} {
 	return []interface{}{
 		pn.PeerSettings(),
-		pn.PeerManager(),
 	}
 }
 
-func (pn *peerModule) Serve(stream PeerStream, target PeerNode) error {
+func (pn *peerModule) Serve(stream PeerStream, target PeerID) error {
 
 	var app PeerApp
 	pn.appLocker.RLock()
@@ -164,7 +143,7 @@ func (pn *peerModule) Serve(stream PeerStream, target PeerNode) error {
 	}
 
 	if err == nil {
-		ctx.Set(ContextNode, target)
+		ctx.Set(ContextPeerID, target)
 		err = app.Run(ctx, nil)
 		defer ctx.Close()
 	}
@@ -190,20 +169,18 @@ func (pn *peerModule) Serve(stream PeerStream, target PeerNode) error {
 	return err
 }
 
-func (pn *peerModule) Do(peerId PeerID, request *Request, updaters ...PeerDoContextUpdater) (*Response, error) {
+func (pn *peerModule) CanReach(peerId PeerID) bool {
+	return pn.network.CanReach(peerId)
+}
 
-	doContext := PeerDoContext{}
-	for _, updater := range updaters {
-		updater(doContext)
-	}
-	if doContext.ctx == nil {
-		doContext.ctx = context.Background()
-	}
+func (pn *peerModule) Purge(peerId PeerID) error {
+	return pn.network.Purge(peerId)
+}
 
-	ctx := doContext.ctx
+func (pn *peerModule) Do(ctx context.Context, peerId PeerID, request *Request) (*Response, error) {
+
 	reqReader := MarshalRequest(request)
-
-	resReader, err := pn.roundTrip(ctx, peerId, reqReader)
+	resReader, err := pn.network.RoundTrip(ctx, peerId, reqReader)
 
 	if err != nil {
 		return nil, err
@@ -229,32 +206,27 @@ func (pn *peerModule) Do(peerId PeerID, request *Request, updaters ...PeerDoCont
 	return response, err
 }
 
-func (pn *peerModule) Request(peerId PeerID, name RequestName, body io.Reader, updaters ...PeerDoContextUpdater) (*Response, error) {
+func (pn *peerModule) Request(ctx context.Context, peerId PeerID, name RequestName, body io.Reader, headerItems ...HeaderItem) (*Response, error) {
 	request := NewRequest(name, body)
-	return pn.Do(peerId, request, updaters...)
+	if len(headerItems) > 0 {
+		for _, headerItem := range headerItems {
+			request.SetHeader(headerItem.Key, headerItem.Value)
+		}
+	}
+	return pn.Do(ctx, peerId, request)
 }
 
-func (pn *peerModule) roundTrip(ctx context.Context, peerId PeerID, reqReader io.Reader) (reader io.ReadCloser, err error) {
+func (pn *peerModule) PeerNetworks() []interface{} {
+	pn.registryLocker.RLock()
+	registry := pn.registry
+	pn.registryLocker.RUnlock()
 
-	mgr := pn.PeerManager()
-	mgr.TraversePeerNode(peerId, func(peerNode PeerNode) bool {
-		if !peerNode.IsIdle() {
-			return true
-		}
-		reader, err = peerNode.Do(ctx, reqReader)
-		if err != nil && !errors.Is(err, ctx.Err()) {
-			return true
-		}
-		if err != nil {
-			peerNode.Close()
-		}
-		return false
-	})
-
-	if err == nil && reader == nil {
-		err = ErrPeerModuleUnknownPeer
+	if registry == nil {
+		return nil
 	}
-	return
+
+	modules, _ := registry.ModulesByType(reflect.TypeFor[PeerNetwork]())
+	return modules
 }
 
 func (pn *peerModule) PeerSettings() PeerSettings {
@@ -315,33 +287,4 @@ func (pn *peerModule) Access(peerId PeerID) error {
 		}
 		return module.Access(peerId)
 	})
-}
-
-func (pn *peerModule) Control(peerNode PeerNode) error {
-	err := pn.Access(peerNode.PeerID())
-
-	if err == nil {
-		mgr := pn.PeerManager()
-		_, ok := mgr.SearchOrStore(peerNode)
-		if ok {
-			err = ErrPeerModuleControlConflict
-		}
-	}
-
-	return err
-}
-
-func (pn *peerModule) NewResourceID(peerType PeerType) PeerResourceID {
-
-	pn.seqLocker.Lock()
-	pn.seq++
-	seq := pn.seq
-	pn.seqLocker.Unlock()
-
-	resourceId := make([]byte, 13)
-	resourceId[0] = byte(peerType)
-	binary.BigEndian.PutUint64(resourceId[1:], uint64(time.Now().Unix()))
-	binary.BigEndian.PutUint32(resourceId[9:], seq)
-
-	return PeerResourceID(resourceId)
 }

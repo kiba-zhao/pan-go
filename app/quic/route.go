@@ -1,105 +1,87 @@
 package quic
 
 import (
-	"bytes"
-	"context"
 	"errors"
-	"io"
 	"pan/app/peer"
+	"slices"
 	"sync"
-
-	"github.com/quic-go/quic-go"
 )
 
-var ErrQuicPeerRouteInvalid = errors.New("quic.PeerRoute Error: Invalid Route")
-var ErrQuicPeerRouteConflict = errors.New("quic.PeerRoute Error:Peer Conflict")
-
-type quicPeerRoute struct {
-	resourceId     peer.PeerResourceID
-	peerId         peer.PeerID
-	address        string
-	quicPeerModule QuicPeerModule
-	failures       uint8
-	failureLocker  sync.RWMutex
-	routeId        []byte
-	closed         bool
-	closedRW       sync.RWMutex
-	mgr            *quicPeerRouteMgr
+type quicRoute struct {
+	peerId peer.PeerID
+	addrs  []string
+	rw     sync.RWMutex
 }
 
-func (qr *quicPeerRoute) PeerID() peer.PeerID {
+func (qr *quicRoute) PeerID() peer.PeerID {
 	return qr.peerId
 }
 
-func (qr *quicPeerRoute) PeerType() peer.PeerType {
-	return peer.PeerTypeReachable
+func (qr *quicRoute) Addrs() []string {
+	qr.rw.RLock()
+	defer qr.rw.RUnlock()
+	return slices.Clone(qr.addrs)
 }
 
-func (qr *quicPeerRoute) Dial(ctx context.Context) (quic.Connection, error) {
-
-	qr.failureLocker.RLock()
-	if qr.failures >= 3 {
-		qr.Close()
-		return nil, ErrQuicPeerRouteInvalid
-	}
-	qr.failureLocker.RUnlock()
-
-	conn, err := qr.quicPeerModule.Dial(ctx, qr.address)
-	if err == nil {
-		peerId, err := parsePeerID(conn)
-		if err == nil && !bytes.Equal(peerId, qr.peerId) {
-			defer qr.Close()
-			err = ErrQuicPeerRouteConflict
-		}
-		if err != nil {
-			conn = nil
-			defer conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "")
-		}
-	}
-
-	qr.failureLocker.Lock()
-	defer qr.failureLocker.Unlock()
-	if err != nil {
-		qr.failures++
-		failures := qr.failures
-		if failures >= 3 {
-			qr.Close()
-		}
-	} else {
-		qr.failures = 0
-	}
-
-	return conn, err
+func (qr *quicRoute) Available() bool {
+	qr.rw.RLock()
+	defer qr.rw.RUnlock()
+	return len(qr.addrs) > 0
 }
 
-func (qr *quicPeerRoute) Do(ctx context.Context, reader io.Reader) (io.ReadCloser, error) {
-	conn, err := qr.Dial(ctx)
-	if err != nil {
-		return nil, err
+func (qr *quicRoute) Store(addr string) error {
+	qr.rw.Lock()
+	defer qr.rw.Unlock()
+	if ok := slices.Contains(qr.addrs, addr); ok {
+		return errors.New("quic.PeerRoute Error: duplicate address")
 	}
-
-	node, err := qr.quicPeerModule.Serve(conn)
-	if err != nil {
-		return nil, err
-	}
-	return node.Do(ctx, reader)
-}
-
-func (qr *quicPeerRoute) Close() error {
-	qr.closedRW.Lock()
-	qr.closed = true
-	qr.closedRW.Unlock()
-
-	qr.mgr.Delete(qr)
+	qr.addrs = append(qr.addrs, addr)
 	return nil
 }
 
-func (qr *quicPeerRoute) PeerResourceID() peer.PeerResourceID {
-	return qr.resourceId
+func (qr *quicRoute) Delete(addr string) {
+	qr.rw.Lock()
+	defer qr.rw.Unlock()
+	idx := slices.Index(qr.addrs, addr)
+	if idx < 0 {
+		return
+	}
+	qr.addrs = slices.Delete(qr.addrs, idx, idx+1)
 }
 
-func (qr *quicPeerRoute) IsIdle() bool {
-	qr.closedRW.RLock()
-	defer qr.closedRW.RUnlock()
-	return !qr.closed
-}
+// func (qr *quicPeerRoute) Dial(ctx context.Context) (quic.Connection, error) {
+
+// 	qr.failureLocker.RLock()
+// 	if qr.failures >= 3 {
+// 		qr.Close()
+// 		return nil, ErrQuicPeerRouteInvalid
+// 	}
+// 	qr.failureLocker.RUnlock()
+
+// 	conn, err := qr.quicPeerModule.Dial(ctx, qr.address)
+// 	if err == nil {
+// 		peerId, err := parsePeerID(conn)
+// 		if err == nil && !bytes.Equal(peerId, qr.peerId) {
+// 			defer qr.Close()
+// 			err = ErrQuicPeerRouteConflict
+// 		}
+// 		if err != nil {
+// 			conn = nil
+// 			defer conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "")
+// 		}
+// 	}
+
+// 	qr.failureLocker.Lock()
+// 	defer qr.failureLocker.Unlock()
+// 	if err != nil {
+// 		qr.failures++
+// 		failures := qr.failures
+// 		if failures >= 3 {
+// 			qr.Close()
+// 		}
+// 	} else {
+// 		qr.failures = 0
+// 	}
+
+// 	return conn, err
+// }

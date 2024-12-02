@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	appnode "pan/app/app_node"
 	mocked "pan/mocks/pan/app/app_node"
@@ -46,11 +45,11 @@ func TestAppNodeController(t *testing.T) {
 		}
 		peerNodeRepo.On("Search", appnode.AppNodeSearchCondition{}).Once().Return(total, items, nil)
 
-		mgr := &mockedPeer.MockPeerManager{}
-		ctrl.AppNodeService.PeerManager = mgr
-		defer mgr.AssertExpectations(t)
-		mgr.On("Count", peerIds[0]).Once().Return(3)
-		mgr.On("Count", peerIds[1]).Once().Return(0)
+		peerModule := &mockedPeer.MockPeerModule{}
+		ctrl.AppNodeService.PeerModule = peerModule
+		defer peerModule.AssertExpectations(t)
+		peerModule.On("CanReach", peerIds[0]).Once().Return(true)
+		peerModule.On("CanReach", peerIds[1]).Once().Return(false)
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/nodes", nil)
@@ -93,11 +92,11 @@ func TestAppNodeController(t *testing.T) {
 		}
 		peerNodeRepo.On("Search", condition).Once().Return(total, items, nil)
 
-		mgr := &mockedPeer.MockPeerManager{}
-		defer mgr.AssertExpectations(t)
-		ctrl.AppNodeService.PeerManager = mgr
-		mgr.On("Count", peerIds[0]).Once().Return(3)
-		mgr.On("Count", peerIds[1]).Once().Return(0)
+		peerModule := &mockedPeer.MockPeerModule{}
+		defer peerModule.AssertExpectations(t)
+		ctrl.AppNodeService.PeerModule = peerModule
+		peerModule.On("CanReach", peerIds[0]).Once().Return(true)
+		peerModule.On("CanReach", peerIds[1]).Once().Return(false)
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/nodes", nil)
@@ -178,10 +177,10 @@ func TestAppNodeController(t *testing.T) {
 		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: false}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 
-		mgr := &mockedPeer.MockPeerManager{}
-		defer mgr.AssertExpectations(t)
-		ctrl.AppNodeService.PeerManager = mgr
-		mgr.On("Count", peerId).Once().Return(1)
+		peerModule := &mockedPeer.MockPeerModule{}
+		defer peerModule.AssertExpectations(t)
+		ctrl.AppNodeService.PeerModule = peerModule
+		peerModule.On("CanReach", peerId).Once().Return(true)
 
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/nodes/%d", item.ID)
@@ -231,10 +230,10 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Delete", item).Once().Return(nil)
 
-		mgr := &mockedPeer.MockPeerManager{}
-		defer mgr.AssertExpectations(t)
-		ctrl.AppNodeService.PeerManager = mgr
-		mgr.On("TraversePeerNode", peerId, mock.Anything).Once().Return(nil)
+		peerModule := &mockedPeer.MockPeerModule{}
+		defer peerModule.AssertExpectations(t)
+		ctrl.AppNodeService.PeerModule = peerModule
+		peerModule.On("Purge", peerId).Once().Return(nil)
 
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/nodes/%d", item.ID)
@@ -315,10 +314,10 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Save", newItem).Once().Return(newItem, nil)
 
-		mgr := &mockedPeer.MockPeerManager{}
-		defer mgr.AssertExpectations(t)
-		ctrl.AppNodeService.PeerManager = mgr
-		mgr.On("TraversePeerNode", peerId, mock.Anything).Once().Return(nil)
+		peerModule := &mockedPeer.MockPeerModule{}
+		defer peerModule.AssertExpectations(t)
+		ctrl.AppNodeService.PeerModule = peerModule
+		peerModule.On("Purge", peerId).Once().Return(nil)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
@@ -356,10 +355,10 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Save", newItem).Once().Return(newItem, nil)
 
-		mgr := &mockedPeer.MockPeerManager{}
-		defer mgr.AssertExpectations(t)
-		ctrl.AppNodeService.PeerManager = mgr
-		mgr.On("Count", peerId).Once().Return(4)
+		peerModule := &mockedPeer.MockPeerModule{}
+		defer peerModule.AssertExpectations(t)
+		ctrl.AppNodeService.PeerModule = peerModule
+		peerModule.On("CanReach", peerId).Once().Return(true)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()

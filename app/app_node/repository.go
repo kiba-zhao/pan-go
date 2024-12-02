@@ -18,7 +18,7 @@ type AppNodeRepository interface {
 	SelectByName(string) (AppNode, error)
 	Delete(AppNode) error
 	SelectByPeerID(string) (AppNode, error)
-	TraverseWithPeerIDs(func(AppNode) error, []string) error
+	TraverseAll(func(AppNode) error) error
 }
 
 type peerNodeRepository struct {
@@ -158,14 +158,14 @@ func (repo *peerNodeRepository) SelectByPeerID(peerId string) (AppNode, error) {
 	return peerNode, results.Error
 }
 
-func (repo *peerNodeRepository) TraverseWithPeerIDs(traverse func(AppNode) error, peerIds []string) error {
+func (repo *peerNodeRepository) TraverseAll(traverse func(AppNode) error) error {
 
 	db := repo.db
 	if db == nil {
 		return sample.ErrSampleDBUnavailable
 	}
 
-	rows, err := db.Model(&AppNode{}).Where("peer_id IN ?", peerIds).Rows()
+	rows, err := db.Model(&AppNode{}).Rows()
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,6 @@ import (
 	"pan/app/peer"
 	"slices"
 	"sync"
-	"time"
 
 	"github.com/quic-go/quic-go"
 )
@@ -22,6 +21,10 @@ var ErrPeerConflict = errors.New("peer.PeerModule Error: Peer Conflict")
 var ErrPeerModuleUnknown = errors.New("peer.PeerModule Error: Unknown")
 var ErrPeerSettingsUnavailable = errors.New("peer.PeerModule Error: Peer Settings Unavailable")
 var ErrBroadcastDeliverExit = errors.New("quic.PeerBroadcast Error: Deliver Exit")
+var ErrPeerModuleRouteNotFound = errors.New("quic.PeerModule Error: Route Not Found")
+var ErrPeerModuleInvalidPeerID = errors.New("quic.PeerModule Error: Invalid Peer ID")
+var ErrPeerModuleInvalidConnection = errors.New("quic.PeerModule Error: Invalid Connection")
+var ErrPeerModuleUnavailable = errors.New("quic.PeerModule Error: Unavailable")
 
 func parsePeerID(conn quic.Connection) (peer.PeerID, error) {
 	state := conn.ConnectionState()
@@ -29,12 +32,52 @@ func parsePeerID(conn quic.Connection) (peer.PeerID, error) {
 	return x509.MarshalPKIXPublicKey(certificate.PublicKey)
 }
 
+func dialAddr(ctx context.Context, addr string, quicPeerModule *quicPeerModule) (quic.Connection, error) {
+	if quicPeerModule == nil {
+		return nil, ErrPeerSettingsUnavailable
+	}
+	settings := quicPeerModule.PeerSettings()
+	if !settings.Available() {
+		return nil, ErrPeerSettingsUnavailable
+	}
+	certificate := settings.Certificate()
+	tlsConf := &tls.Config{Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
+	quicConf := &quic.Config{}
+
+	var conn quic.Connection
+	var err error
+	for i := 0; i < 3; i++ {
+		conn, err = quic.DialAddr(ctx, addr, tlsConf, quicConf)
+		if err == nil {
+			break
+		}
+	}
+	return conn, err
+}
+
+func serveQuicConn(peerModule peer.PeerModule, conn QuicConn) error {
+	defer conn.CloseWithError(quic.ApplicationErrorCode(0), "")
+
+	var err error
+	for {
+		stream, err := conn.AcceptStream(context.Background())
+		if err != nil {
+			break
+		}
+		go peerModule.Serve(stream, conn.PeerID())
+	}
+
+	return err
+}
+
 type QuicPeerModule interface {
+	peer.PeerNetwork
 	PublicAddrs() []string
 	PeerSettings() peer.PeerSettings
-	Serve(quic.Connection) (peer.PeerNode, error)
-	Do(context.Context, quic.Connection, io.Reader) (quic.Stream, error)
-	Dial(context.Context, string) (quic.Connection, error)
+	Serve(quic.Connection, peer.PeerID) (QuicConn, error)
+	Do(context.Context, QuicConn, io.Reader) (quic.Stream, error)
+	Lookup(peer.PeerID) QuicConn
+	Dial(context.Context, peer.PeerID) (QuicConn, error)
 	Route(peer.PeerID, string) error
 }
 
@@ -50,8 +93,10 @@ type quicPeerModule struct {
 	reloadServe     bool
 	reloadBroadcast bool
 
-	mgr *quicPeerRouteMgr
-	wg  sync.WaitGroup
+	networkRW sync.RWMutex
+	connMgr   *quicConnMgr
+	routeMgr  *quicRouteMgr
+	wg        sync.WaitGroup
 }
 
 func (qm *quicPeerModule) PeerSettings() peer.PeerSettings {
@@ -121,7 +166,42 @@ func (qm *quicPeerModule) OnConfigUpdated(settings config.AppSettings) {
 	qm.ReloadChan() <- struct{}{}
 }
 
-func (qm *quicPeerModule) Do(ctx context.Context, conn quic.Connection, reader io.Reader) (quic.Stream, error) {
+func (qm *quicPeerModule) CanReach(peerId peer.PeerID) bool {
+
+	canReach := false
+	connArr := qm.connMgr.Search(peerId)
+	if len(connArr) > 0 {
+		for _, conn := range connArr {
+			canReach = conn.Available()
+			if canReach {
+				break
+			}
+		}
+	}
+
+	if !canReach {
+		if route := qm.routeMgr.Search(peerId); route != nil {
+			canReach = route.Available()
+		}
+	}
+	return canReach
+}
+
+func (qm *quicPeerModule) RoundTrip(ctx context.Context, peerId peer.PeerID, reader io.Reader) (io.ReadCloser, error) {
+
+	conn := qm.Lookup(peerId)
+	if conn == nil {
+		dialConn, err := qm.Dial(ctx, peerId)
+		if err != nil {
+			return nil, err
+		}
+		conn = dialConn
+	}
+
+	return qm.Do(ctx, conn, reader)
+}
+
+func (qm *quicPeerModule) Do(ctx context.Context, conn QuicConn, reader io.Reader) (quic.Stream, error) {
 	stream, err := conn.OpenStream()
 	if err != nil {
 		return nil, err
@@ -132,6 +212,9 @@ func (qm *quicPeerModule) Do(ctx context.Context, conn quic.Connection, reader i
 		_, err = io.Copy(stream, reader)
 		if err == nil {
 			err = stream.Close()
+		}
+		if qStream, ok := stream.(*quicStream); ok {
+			qStream.hangup = false
 		}
 
 		errChan <- err
@@ -146,128 +229,147 @@ func (qm *quicPeerModule) Do(ctx context.Context, conn quic.Connection, reader i
 	return stream, err
 }
 
-func (qm *quicPeerModule) Dial(ctx context.Context, addr string) (quic.Connection, error) {
-	if qm.PeerModule == nil {
-		return nil, ErrPeerModuleUnknown
-	}
-	settings := qm.PeerSettings()
-	if !settings.Available() {
-		return nil, ErrPeerSettingsUnavailable
-	}
-	certificate := settings.Certificate()
-	tlsConf := &tls.Config{Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
-	quicConf := &quic.Config{}
-	return quic.DialAddr(ctx, addr, tlsConf, quicConf)
-}
-
-func (qm *quicPeerModule) createNode(conn quic.Connection) (*quicPeerNode, error) {
-
-	peerId, err := parsePeerID(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	peerModule := qm.PeerModule
-
-	qnode := &quicPeerNode{
-		quicPeerModule: qm,
-		conn:           conn,
-		peerId:         peerId,
-		mgr:            peerModule.PeerManager(),
-	}
-
-	for {
-		qnode.resourceId = peerModule.NewResourceID(peer.PeerTypeAlive)
-		err = peerModule.Control(peer.PeerNode(qnode))
-		if err == nil || err != peer.ErrPeerModuleControlConflict {
+func (qm *quicPeerModule) Lookup(peerId peer.PeerID) QuicConn {
+	var conn QuicConn
+	connArr := qm.connMgr.Search(peerId)
+	if len(connArr) > 0 {
+		for _, connItem := range connArr {
+			if !connItem.Available() {
+				continue
+			}
+			conn = connItem
 			break
 		}
 	}
+	return conn
+}
 
-	return qnode, err
+func (qm *quicPeerModule) Dial(ctx context.Context, peerId peer.PeerID) (QuicConn, error) {
+	qm.networkRW.RLock()
+	defer qm.networkRW.RUnlock()
+
+	route := qm.routeMgr.Search(peerId)
+	if route == nil || !route.Available() {
+		return nil, ErrPeerModuleRouteNotFound
+	}
+	addrs := route.Addrs()
+	if len(addrs) <= 0 {
+		return nil, ErrPeerModuleRouteNotFound
+	}
+
+	var wg sync.WaitGroup
+	var locker sync.Mutex
+	var dialConn QuicConn
+	dialCtx, dialCancel := context.WithCancelCause(ctx)
+
+outer_loop:
+	for _, addr := range addrs {
+		select {
+		case <-dialCtx.Done():
+			break outer_loop
+		default:
+		}
+
+		wg.Add(1)
+		go func(addr string) {
+			defer wg.Done()
+			select {
+			case <-dialCtx.Done():
+				return
+			default:
+			}
+
+			var serveConn QuicConn
+			conn, err := dialAddr(dialCtx, addr, qm)
+			if err == nil {
+				serveConn, err = qm.Serve(conn, peerId)
+			}
+			if err != nil {
+				route.Delete(addr)
+				return
+			}
+
+			locker.Lock()
+			defer locker.Unlock()
+			if dialConn == nil {
+				dialConn = serveConn
+				dialCancel(err)
+			}
+		}(addr)
+	}
+
+	wg.Wait()
+	return dialConn, dialCtx.Err()
 }
 
 func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string) error {
-	peerModule := qm.PeerModule
-
-	routeId := make([]byte, 0)
-	routeId = append(routeId, peerId...)
-	routeId = append(routeId, []byte(addr)...)
-
-	// check conflict
-	route := qm.mgr.Search(routeId)
-	if route != nil {
-		return ErrQuicPeerModuleRouteConflict
-	}
-	//
-
-	// try connect
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	conn, err := qm.Dial(ctx, addr)
+	conn, err := dialAddr(context.Background(), addr, qm)
 	if err == nil {
-		connPeerId, parseErr := parsePeerID(conn)
-		err = parseErr
-		if err == nil && !bytes.Equal(connPeerId, peerId) {
-			err = ErrPeerConflict
-		}
-		conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "")
+		_, err = qm.Serve(conn, peerId)
 	}
 	if err != nil {
 		return err
 	}
+
+	route := qm.routeMgr.Search(peerId)
+	if route == nil {
+		nroute, ok := qm.routeMgr.SearchOrStore(&quicRoute{peerId: peerId})
+		if !ok {
+			route = nroute
+		}
+	}
+
+	return route.Store(addr)
+}
+
+func (qm *quicPeerModule) Serve(conn quic.Connection, peerId peer.PeerID) (QuicConn, error) {
+	if conn == nil {
+		return nil, ErrPeerModuleInvalidConnection
+	}
+
+	if qm.PeerModule == nil {
+		conn.CloseWithError(quic.ApplicationErrorCode(0), "")
+		return nil, ErrPeerModuleUnavailable
+	}
+
+	serveConn, ok := conn.(QuicConn)
+	if !ok {
+		connPeerID, err := parsePeerID(conn)
+		if err == nil && len(peerId) > 0 && !bytes.Equal(peerId, connPeerID) {
+			err = ErrPeerModuleInvalidPeerID
+		}
+		if err == nil {
+			err = qm.PeerModule.Access(connPeerID)
+		}
+		if err != nil {
+			conn.CloseWithError(quic.ApplicationErrorCode(0), "")
+			return nil, err
+		}
+		serveConn, _ = qm.connMgr.SelectOrStore(&quicConn{Connection: conn, peerId: connPeerID})
+	}
+
+	go serveQuicConn(qm.PeerModule, serveConn)
+
+	return serveConn, nil
+}
+
+func (qm *quicPeerModule) Purge(peerId peer.PeerID) error {
+
+	qm.networkRW.Lock()
+	defer qm.networkRW.Unlock()
+
+	// remove route with peerId
+	route := qm.routeMgr.Search(peerId)
+	if route != nil {
+		qm.routeMgr.Delete(route)
+	}
 	//
 
-	route = &quicPeerRoute{
-		quicPeerModule: qm,
-		peerId:         peerId,
-		address:        addr,
-		routeId:        routeId,
-	}
+	// remove all conn with peerId
+	qm.connMgr.Clean(peerId)
+	//
 
-	for {
-		route.resourceId = peerModule.NewResourceID(peer.PeerTypeReachable)
-		err = peerModule.Control(peer.PeerNode(route))
-		if err == nil || err != peer.ErrPeerModuleControlConflict {
-			break
-		}
-	}
-
-	// add to routes
-	if err == nil {
-		_, ok := qm.mgr.SearchOrStore(route)
-		if ok {
-			err = ErrQuicPeerModuleRouteConflict
-		}
-	}
-
-	return err
-}
-
-func (qm *quicPeerModule) serve(peerNode *quicPeerNode) error {
-	defer peerNode.Close()
-
-	conn := peerNode.conn
-
-	var err error
-	for {
-		stream, err := conn.AcceptStream(context.Background())
-		if err != nil {
-			break
-		}
-		peerNode.increaseStream()
-		go qm.PeerModule.Serve(&quicPeerStream{Stream: stream, quicPeerNode: peerNode, isServe: true}, peerNode)
-	}
-
-	return err
-}
-
-func (qm *quicPeerModule) Serve(conn quic.Connection) (peer.PeerNode, error) {
-	node, err := qm.createNode(conn)
-	if err == nil {
-		go qm.serve(node)
-	}
-	return node, err
-
+	return nil
 }
 
 func (qm *quicPeerModule) Components() []bootstrap.Component {

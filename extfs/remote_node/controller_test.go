@@ -15,7 +15,6 @@ import (
 	remotenode "pan/extfs/remote_node"
 
 	mockedAppNode "pan/mocks/pan/app/app_node"
-	mockedPeer "pan/mocks/pan/app/peer"
 )
 
 func TestRemoteNodeController(t *testing.T) {
@@ -33,21 +32,21 @@ func TestRemoteNodeController(t *testing.T) {
 		webApp, ctrl := setup()
 
 		// mock PeerManager
-		mgr := &mockedPeer.MockPeerManager{}
-		defer mgr.AssertExpectations(t)
-		ctrl.RemoteNodeService.PeerManager = mgr
+		// mgr := &mockedPeer.MockPeerManager{}
+		// defer mgr.AssertExpectations(t)
+		// ctrl.RemoteNodeService.PeerManager = mgr
 
 		firstPeerID := peer.PeerID([]byte("1st-peer-id"))
 		secondPeerID := peer.PeerID([]byte("2st-peer-id"))
-		thirdPeerID := peer.PeerID([]byte("3st-peer-id"))
-		fourthPeerID := peer.PeerID([]byte("4st-peer-id"))
-		mgr.On("TraversePeerID", mock.Anything).Once().Run(func(args mock.Arguments) {
-			traverse := args.Get(0).(func(peer.PeerID) error)
-			traverse(firstPeerID)
-			traverse(secondPeerID)
-			traverse(thirdPeerID)
-			traverse(fourthPeerID)
-		}).Return(nil)
+		// thirdPeerID := peer.PeerID([]byte("3st-peer-id"))
+		// fourthPeerID := peer.PeerID([]byte("4st-peer-id"))
+		// mgr.On("TraversePeerID", mock.Anything).Once().Run(func(args mock.Arguments) {
+		// 	traverse := args.Get(0).(func(peer.PeerID) error)
+		// 	traverse(firstPeerID)
+		// 	traverse(secondPeerID)
+		// 	traverse(thirdPeerID)
+		// 	traverse(fourthPeerID)
+		// }).Return(nil)
 
 		// mock NodeExternalService
 		appNodeExternalService := &mockedAppNode.MockAppNodeExternalService{}
@@ -58,13 +57,17 @@ func TestRemoteNodeController(t *testing.T) {
 		firstNode.ID = 1
 		firstNode.PeerID = base64.StdEncoding.EncodeToString(firstPeerID)
 		firstNode.Name = "first-node"
+		firstNode.Blocked = false
+		firstNode.Online = true
 
 		secondNode := appnode.AppNode{}
 		secondNode.ID = 2
 		secondNode.PeerID = base64.StdEncoding.EncodeToString(secondPeerID)
 		secondNode.Name = "second-node"
+		secondNode.Blocked = false
+		secondNode.Online = true
 
-		appNodeExternalService.On("TraverseWithPeerIDs", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+		appNodeExternalService.On("TraverseAll", mock.Anything).Once().Run(func(args mock.Arguments) {
 			traverse := args.Get(0).(func(appnode.AppNode) error)
 			traverse(secondNode)
 			traverse(firstNode)

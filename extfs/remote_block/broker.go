@@ -1,6 +1,7 @@
 package remoteblock
 
 import (
+	"context"
 	"io"
 	"pan/app/peer"
 	"pan/app/sample"
@@ -13,5 +14,5 @@ type RemoteBlockBroker struct {
 }
 
 func (broker *RemoteBlockBroker) Select(peerId peer.PeerID, condition *RemoteBlockSelectCondition) (io.ReadCloser, error) {
-	return broker.SamplePeer.Request(peerId, SelectRemoteBlock, condition)
+	return broker.SamplePeer.Request(context.Background(), peerId, SelectRemoteBlock, condition)
 }

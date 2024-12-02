@@ -1,6 +1,7 @@
 package remoteitem_test
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http/httptest"
@@ -56,8 +57,8 @@ func TestRemoteItemController(t *testing.T) {
 		resBody, err := proto.Marshal(&recordList)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", peerId, remoteitem.SelectAllRemoteItems, mock.Anything, nil).Once().Return(nil).Run(func(args mock.Arguments) {
-			resp := args.Get(2).(*remoteitem.RemoteItemRecordList)
+		samplePeer.On("RequestWithProto", context.Background(), peerId, remoteitem.SelectAllRemoteItems, mock.Anything, nil).Once().Return(nil).Run(func(args mock.Arguments) {
+			resp := args.Get(3).(*remoteitem.RemoteItemRecordList)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)
 		})
