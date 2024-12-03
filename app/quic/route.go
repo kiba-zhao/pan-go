@@ -13,6 +13,7 @@ type quicRoute struct {
 	peerId peer.PeerID
 	addrs  []string
 	rw     sync.RWMutex
+	sync.Mutex
 }
 
 func (qr *quicRoute) PeerID() peer.PeerID {
@@ -29,6 +30,12 @@ func (qr *quicRoute) Available() bool {
 	qr.rw.RLock()
 	defer qr.rw.RUnlock()
 	return len(qr.addrs) > 0
+}
+
+func (qr *quicRoute) Contains(addr string) bool {
+	qr.rw.RLock()
+	defer qr.rw.RUnlock()
+	return slices.Contains(qr.addrs, addr)
 }
 
 func (qr *quicRoute) Store(addr string) error {

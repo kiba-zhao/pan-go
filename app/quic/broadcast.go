@@ -179,7 +179,28 @@ func (qb *quicPeerBroadcast) ReplyGreet(stream quic.Stream, conn QuicConn) error
 	err = proto.Unmarshal(data, &greetMsg)
 	stream.Close()
 	if err == nil {
+
+		remoteAddr := conn.RemoteAddr()
+		ip, _, remoteAddrErr := net.SplitHostPort(remoteAddr.String())
+		if remoteAddrErr != nil {
+			return remoteAddrErr
+		}
+
 		for _, addr := range greetMsg.Addrs {
+
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				continue
+			}
+
+			if ip != host {
+				ipAddr, err := net.ResolveIPAddr("ip", host)
+				if err != nil || !ipAddr.IP.IsUnspecified() {
+					continue
+				}
+				addr = net.JoinHostPort(ip, port)
+			}
+
 			qb.quicPeerModule.Route(conn.PeerID(), addr)
 		}
 	}

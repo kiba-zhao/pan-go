@@ -322,6 +322,23 @@ outer_loop:
 }
 
 func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string) (QuicConn, error) {
+
+	route := qm.routeMgr.Search(peerId)
+	if route == nil {
+		if err := qm.PeerModule.Access(peerId); err != nil {
+			return nil, err
+		}
+		nroute, _ := qm.routeMgr.SearchOrStore(&quicRoute{peerId: peerId})
+		route = nroute
+	}
+
+	route.Lock()
+	defer route.Unlock()
+
+	if route.Contains(addr) {
+		return nil, nil
+	}
+
 	var serveConn QuicConn
 	conn, err := dialAddr(context.Background(), addr, qm)
 	if err == nil {
@@ -329,14 +346,6 @@ func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string) (QuicConn, erro
 	}
 	if err != nil {
 		return serveConn, err
-	}
-
-	route := qm.routeMgr.Search(peerId)
-	if route == nil {
-		nroute, ok := qm.routeMgr.SearchOrStore(&quicRoute{peerId: peerId})
-		if !ok {
-			route = nroute
-		}
 	}
 
 	return serveConn, route.Store(addr)
@@ -358,7 +367,7 @@ func (qm *quicPeerModule) Serve(conn quic.Connection, peerId peer.PeerID) (QuicC
 		if err == nil && len(peerId) > 0 && !bytes.Equal(peerId, connPeerID) {
 			err = ErrPeerModuleInvalidPeerID
 		}
-		if err == nil {
+		if err == nil && len(peerId) <= 0 {
 			err = qm.PeerModule.Access(connPeerID)
 		}
 		if err != nil {

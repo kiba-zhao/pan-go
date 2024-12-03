@@ -117,7 +117,7 @@ func (fuserfe *FUSERemoteFile) Statfs(ctx context.Context, out *fuse.StatfsOut) 
 
 func (fuserfe *FUSERemoteFile) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 
-	if fuserfe.Record.FileType != nodeitem.FileTypeFolder {
+	if fuserfe.Record != nil && fuserfe.Record.FileType != nodeitem.FileTypeFolder {
 		return nil, syscall.ENOTDIR
 	}
 
@@ -168,7 +168,7 @@ func (fuserfe *FUSERemoteFile) Readdir(ctx context.Context) (fs.DirStream, sysca
 }
 
 func (fuserfe *FUSERemoteFile) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
-	if fuserfe.Record.FileType != nodeitem.FileTypeFolder {
+	if fuserfe.Record != nil && fuserfe.Record.FileType != nodeitem.FileTypeFolder {
 		return nil, syscall.ENOTDIR
 	}
 

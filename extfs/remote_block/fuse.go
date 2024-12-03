@@ -8,8 +8,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/v2/fs"
+	"github.com/hanwen/go-fuse/v2/fuse"
 )
 
 type FUSERemoteFile interface {
@@ -60,6 +60,8 @@ func (fuserfr *FUSERemoteBlockReader) initReader(off int64) error {
 	return err
 }
 
+var _ = (fs.FileReader)((*FUSERemoteBlockReader)(nil))
+
 func (fuserfr *FUSERemoteBlockReader) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
 	fuserfr.locker.Lock()
 	defer fuserfr.locker.Unlock()
@@ -101,6 +103,8 @@ func (fuserfr *FUSERemoteBlockReader) Read(ctx context.Context, dest []byte, off
 	}
 	return fuse.ReadResultData(buffer), fs.OK
 }
+
+var _ = (fs.FileReleaser)((*FUSERemoteBlockReader)(nil))
 
 func (fuserfr *FUSERemoteBlockReader) Release(ctx context.Context) syscall.Errno {
 	fuserfr.locker.Lock()
