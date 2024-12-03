@@ -72,7 +72,7 @@ func (m *module) Components() []bootstrap.Component {
 
 	// base
 	components := []bootstrap.Component{
-		bootstrap.NewComponent(m.SamplePeer, bootstrap.ComponentInternalScope),
+		// bootstrap.NewComponent(m.SamplePeer, bootstrap.ComponentInternalScope),
 	}
 
 	// services
@@ -83,6 +83,11 @@ func (m *module) Components() []bootstrap.Component {
 	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemService{})
 	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileService{})
 	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockService{})
+
+	// brokers
+	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemBroker{SamplePeer: m.SamplePeer})
+	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileBroker{SamplePeer: m.SamplePeer})
+	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockBroker{SamplePeer: m.SamplePeer})
 
 	// repositories
 	components = sample.AppendSampleComponent(components, nodeitem.NewNodeItemRepository(m.DB))
