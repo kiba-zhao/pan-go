@@ -9,7 +9,7 @@ type quicStream struct {
 }
 
 func (s *quicStream) Close() error {
-	err := s.Close()
+	err := s.Stream.Close()
 	if !s.hangup {
 		s.conn.CloseStream(s)
 	}

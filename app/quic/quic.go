@@ -1,6 +1,8 @@
 package quic
 
-func New() QuicPeerModule {
+import "pan/runtime"
+
+func New() interface{} {
 
 	var module quicPeerModule
 	module.connMgr = &quicConnMgr{}
@@ -10,5 +12,5 @@ func New() QuicPeerModule {
 	broadcast.quicPeerModule = &module
 	module.quicPeerBroadcast = &broadcast
 
-	return &module
+	return runtime.NewModule(&module, &broadcast)
 }
