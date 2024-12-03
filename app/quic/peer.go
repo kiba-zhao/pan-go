@@ -55,7 +55,7 @@ func dialAddr(ctx context.Context, addr string, quicPeerModule *quicPeerModule) 
 	return conn, err
 }
 
-func serveQuicConn(peerModule peer.PeerModule, conn QuicConn) error {
+func serveQuicConn(conn QuicConn, peerModule peer.PeerModule, quicPeerBroadcast *quicPeerBroadcast) error {
 	defer conn.CloseWithError(quic.ApplicationErrorCode(0), "")
 
 	var err error
@@ -64,7 +64,25 @@ func serveQuicConn(peerModule peer.PeerModule, conn QuicConn) error {
 		if err != nil {
 			break
 		}
-		go peerModule.Serve(stream, conn.PeerID())
+
+		// read flag
+		flags := make([]byte, 1)
+		_, err = stream.Read(flags)
+		if err != nil {
+			break
+		}
+		//
+
+		if flags[0] == 0 {
+			// serve with PeerModule
+			go peerModule.Serve(stream, conn.PeerID())
+			continue
+		}
+
+		// try reply greet
+		if quicPeerBroadcast != nil {
+			go quicPeerBroadcast.ReplyGreet(stream, conn)
+		}
 	}
 
 	return err
@@ -78,7 +96,7 @@ type QuicPeerModule interface {
 	Do(context.Context, QuicConn, io.Reader) (quic.Stream, error)
 	Lookup(peer.PeerID) QuicConn
 	Dial(context.Context, peer.PeerID) (QuicConn, error)
-	Route(peer.PeerID, string) error
+	Route(peer.PeerID, string) (QuicConn, error)
 }
 
 type quicPeerModule struct {
@@ -94,7 +112,7 @@ type quicPeerModule struct {
 	reloadBroadcast bool
 
 	networkRW sync.RWMutex
-	connMgr   *quicConnMgr
+	connMgr   QuicConnMgr
 	routeMgr  *quicRouteMgr
 	wg        sync.WaitGroup
 }
@@ -198,7 +216,8 @@ func (qm *quicPeerModule) RoundTrip(ctx context.Context, peerId peer.PeerID, rea
 		conn = dialConn
 	}
 
-	return qm.Do(ctx, conn, reader)
+	doReader := io.MultiReader(bytes.NewReader([]byte{0}), reader)
+	return qm.Do(ctx, conn, doReader)
 }
 
 func (qm *quicPeerModule) Do(ctx context.Context, conn QuicConn, reader io.Reader) (quic.Stream, error) {
@@ -302,13 +321,14 @@ outer_loop:
 	return dialConn, dialCtx.Err()
 }
 
-func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string) error {
+func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string) (QuicConn, error) {
+	var serveConn QuicConn
 	conn, err := dialAddr(context.Background(), addr, qm)
 	if err == nil {
-		_, err = qm.Serve(conn, peerId)
+		serveConn, err = qm.Serve(conn, peerId)
 	}
 	if err != nil {
-		return err
+		return serveConn, err
 	}
 
 	route := qm.routeMgr.Search(peerId)
@@ -319,7 +339,7 @@ func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string) error {
 		}
 	}
 
-	return route.Store(addr)
+	return serveConn, route.Store(addr)
 }
 
 func (qm *quicPeerModule) Serve(conn quic.Connection, peerId peer.PeerID) (QuicConn, error) {
@@ -348,7 +368,7 @@ func (qm *quicPeerModule) Serve(conn quic.Connection, peerId peer.PeerID) (QuicC
 		serveConn, _ = qm.connMgr.SelectOrStore(&quicConn{Connection: conn, peerId: connPeerID})
 	}
 
-	go serveQuicConn(qm.PeerModule, serveConn)
+	go serveQuicConn(serveConn, qm.PeerModule, qm.quicPeerBroadcast)
 
 	return serveConn, nil
 }

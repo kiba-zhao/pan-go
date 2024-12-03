@@ -1,0 +1,8 @@
+syntax = "proto3";
+package quic;
+
+option go_package = "app/quic;quic";
+
+message QuicGreet {
+    repeated string addrs = 1;
+}

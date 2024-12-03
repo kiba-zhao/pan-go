@@ -7,6 +7,8 @@ import (
 	"sync"
 )
 
+var ErrQuicPeerRouteDuplicateAddress = errors.New("quic.PeerRoute Error: duplicate address")
+
 type quicRoute struct {
 	peerId peer.PeerID
 	addrs  []string
@@ -33,7 +35,7 @@ func (qr *quicRoute) Store(addr string) error {
 	qr.rw.Lock()
 	defer qr.rw.Unlock()
 	if ok := slices.Contains(qr.addrs, addr); ok {
-		return errors.New("quic.PeerRoute Error: duplicate address")
+		return ErrQuicPeerRouteDuplicateAddress
 	}
 	qr.addrs = append(qr.addrs, addr)
 	return nil

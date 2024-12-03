@@ -2,10 +2,13 @@ package quic
 
 func New() QuicPeerModule {
 
-	var broadcast quicPeerBroadcast
 	var module quicPeerModule
-	module.quicPeerBroadcast = &broadcast
+	module.connMgr = &quicConnMgr{}
+	module.routeMgr = &quicRouteMgr{}
+
+	var broadcast quicPeerBroadcast
 	broadcast.quicPeerModule = &module
+	module.quicPeerBroadcast = &broadcast
 
 	return &module
 }
