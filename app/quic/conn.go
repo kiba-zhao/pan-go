@@ -12,8 +12,8 @@ type QuicConn interface {
 	quic.Connection
 	PeerID() peer.PeerID
 	Available() bool
+	Closed() bool
 	CloseStream(quic.Stream)
-	AssignManager(mgr QuicConnMgr)
 }
 
 type quicConn struct {
@@ -21,8 +21,7 @@ type quicConn struct {
 	peerId       peer.PeerID
 	closed       bool
 	closedLocker sync.Mutex
-	mgr          QuicConnMgr
-	mgrRW        sync.RWMutex
+	mgr          *quicConnMgr
 }
 
 func (c *quicConn) PeerID() peer.PeerID {
@@ -38,18 +37,15 @@ func (c *quicConn) Available() bool {
 	return available
 }
 
-func (c *quicConn) CloseStream(stream quic.Stream) {
-	stream.CancelRead(quic.StreamErrorCode(quic.NoError))
+func (c *quicConn) Closed() bool {
+
+	c.closedLocker.Lock()
+	defer c.closedLocker.Unlock()
+	return c.closed
 }
 
-func (c *quicConn) AssignManager(mgr QuicConnMgr) {
-	c.mgrRW.Lock()
-	defer c.mgrRW.Unlock()
-	if c.mgr != nil {
-		c.mgr.Delete(c)
-	}
-
-	c.mgr = mgr
+func (c *quicConn) CloseStream(stream quic.Stream) {
+	stream.CancelRead(quic.StreamErrorCode(quic.NoError))
 }
 
 func (c *quicConn) AcceptStream(ctx context.Context) (quic.Stream, error) {
@@ -78,6 +74,8 @@ func (c *quicConn) CloseWithError(code quic.ApplicationErrorCode, reason string)
 	}
 	c.closed = true
 
-	c.mgr.Delete(c)
+	if c.mgr != nil {
+		c.mgr.Delete(c)
+	}
 	return c.Connection.CloseWithError(code, reason)
 }

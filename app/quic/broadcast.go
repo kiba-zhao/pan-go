@@ -5,14 +5,10 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"io"
 	"net"
 	"pan/app/broadcast"
 	"pan/app/peer"
 	"time"
-
-	"github.com/quic-go/quic-go"
-	"google.golang.org/protobuf/proto"
 )
 
 var ErrQuicPeerBroadcastUnavailable = errors.New("quic.PeerBroadcast Error: Unavailable")
@@ -72,12 +68,8 @@ func (qb *quicPeerBroadcast) ServeBroadcast(payload []byte, ip string) error {
 	}
 
 	// Try  route
-	var conn QuicConn
 	if err == nil {
-		conn, err = qb.quicPeerModule.Route(peerId, address)
-	}
-	if err == nil && conn != nil {
-		err = qb.Greet(conn)
+		err = qb.quicPeerModule.Route(peerId, address, true)
 	}
 	return err
 }
@@ -136,74 +128,10 @@ func (qb *quicPeerBroadcast) Ready(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				break broadcastLoop
-			case <-time.After(15 * time.Second):
+			case <-time.After(30 * time.Second):
 				continue
 			}
 		}
 	}(ctx)
 	return nil
-}
-
-func (qb *quicPeerBroadcast) Greet(conn QuicConn) error {
-	addrs := qb.quicPeerModule.PublicAddrs()
-	if len(addrs) <= 0 {
-		return nil
-	}
-
-	greetMsg := QuicGreet{
-		Addrs: addrs,
-	}
-	data, err := proto.Marshal(&greetMsg)
-	if err != nil {
-		return err
-	}
-
-	reader := io.MultiReader(bytes.NewReader([]byte{1}), bytes.NewReader(data))
-	stream, err := qb.quicPeerModule.Do(context.Background(), conn, reader)
-	if err == nil {
-		stream.Read(make([]byte, 1))
-		err = stream.Close()
-	}
-	return err
-}
-
-func (qb *quicPeerBroadcast) ReplyGreet(stream quic.Stream, conn QuicConn) error {
-
-	data, err := io.ReadAll(stream)
-	if err != nil {
-		stream.Close()
-		return err
-	}
-
-	var greetMsg QuicGreet
-	err = proto.Unmarshal(data, &greetMsg)
-	stream.Close()
-	if err == nil {
-
-		remoteAddr := conn.RemoteAddr()
-		ip, _, remoteAddrErr := net.SplitHostPort(remoteAddr.String())
-		if remoteAddrErr != nil {
-			return remoteAddrErr
-		}
-
-		for _, addr := range greetMsg.Addrs {
-
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil {
-				continue
-			}
-
-			if ip != host {
-				ipAddr, err := net.ResolveIPAddr("ip", host)
-				if err != nil || !ipAddr.IP.IsUnspecified() {
-					continue
-				}
-				addr = net.JoinHostPort(ip, port)
-			}
-
-			qb.quicPeerModule.Route(conn.PeerID(), addr)
-		}
-	}
-
-	return err
 }

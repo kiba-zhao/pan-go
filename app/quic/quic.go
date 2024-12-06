@@ -12,5 +12,9 @@ func New() interface{} {
 	broadcast.quicPeerModule = &module
 	module.quicPeerBroadcast = &broadcast
 
+	var agent quicPeerAgent
+	module.agent = &agent
+	agent.quicPeerModule = &module
+
 	return runtime.NewModule(&module, &broadcast)
 }

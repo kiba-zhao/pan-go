@@ -9,13 +9,6 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-type QuicConnMgr interface {
-	Search(peerId peer.PeerID) []QuicConn
-	SelectOrStore(conn QuicConn) (QuicConn, bool)
-	Delete(conn QuicConn)
-	Clean(peer peer.PeerID)
-}
-
 type quicConnMgr struct {
 	connMatrix [][]QuicConn
 	rw         sync.RWMutex
@@ -40,13 +33,11 @@ func (mgr *quicConnMgr) SelectOrStore(conn QuicConn) (QuicConn, bool) {
 	defer mgr.rw.Unlock()
 	idx, ok := slices.BinarySearchFunc(mgr.connMatrix, conn.PeerID(), mgr.compare)
 	if !ok {
-		conn.AssignManager(mgr)
 		mgr.connMatrix = slices.Insert(mgr.connMatrix, idx, []QuicConn{conn})
 		return conn, false
 	}
 	cidx := slices.Index(mgr.connMatrix[idx], conn)
 	if cidx < 0 {
-		conn.AssignManager(mgr)
 		mgr.connMatrix[idx] = append(mgr.connMatrix[idx], conn)
 		return conn, false
 	}
