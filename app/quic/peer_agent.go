@@ -55,7 +55,7 @@ func acceptQuicConn(conn QuicConn, agent *quicPeerAgent, ch chan struct{}) error
 func doQuicConn(conn QuicConn, flag uint8, reader io.Reader) error {
 	var dataReader io.Reader
 	if reader == nil {
-		dataReader = reader
+		dataReader = bytes.NewReader([]byte{flag})
 	} else {
 		dataReader = io.MultiReader(bytes.NewReader([]byte{flag}), reader)
 	}
