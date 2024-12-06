@@ -57,18 +57,18 @@ func (c *quicConn) Available() bool {
 		writeBytes := 0
 		for _, window := range c.streamWindows {
 
-			window.readRW.RLock()
-			readBytes += window.readBytes
-			window.readRW.RUnlock()
-			if readBytes > QuicConnAvaliableWindowSize {
+			window.writeRW.RLock()
+			writeBytes += window.writeBytes
+			window.writeRW.RUnlock()
+			if writeBytes > QuicConnAvaliableWindowSize || writeBytes < -1*QuicConnAvaliableWindowSize {
 				available = false
 				break
 			}
 
-			window.writeRW.RLock()
-			writeBytes += window.writeBytes
-			window.writeRW.RUnlock()
-			if writeBytes > QuicConnAvaliableWindowSize {
+			window.readRW.RLock()
+			readBytes += window.readBytes
+			window.readRW.RUnlock()
+			if readBytes < -1*QuicConnAvaliableWindowSize || readBytes > QuicConnAvaliableWindowSize {
 				available = false
 				break
 			}
