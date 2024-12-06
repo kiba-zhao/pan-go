@@ -89,11 +89,14 @@ func (c *quicConn) Closed() bool {
 func (c *quicConn) CloseStream(stream quic.Stream) {
 	stream.CancelRead(quic.StreamErrorCode(quic.NoError))
 	c.streamRW.Lock()
-	removeStreamWindow(c.streamWindows, stream.StreamID())
+	c.streamWindows = removeStreamWindow(c.streamWindows, stream.StreamID())
 	c.streamRW.Unlock()
 }
 
 func (c *quicConn) OnStreamRead(streamId quic.StreamID, size int) {
+	if size == 0 {
+		return
+	}
 	c.streamRW.RLock()
 	window := searchStreamWindow(c.streamWindows, streamId)
 	c.streamRW.RUnlock()
@@ -111,6 +114,9 @@ func (c *quicConn) OnStreamRead(streamId quic.StreamID, size int) {
 }
 
 func (c *quicConn) OnStreamWrite(streamId quic.StreamID, size int) {
+	if size == 0 {
+		return
+	}
 	c.streamRW.RLock()
 	window := searchStreamWindow(c.streamWindows, streamId)
 	c.streamRW.RUnlock()
