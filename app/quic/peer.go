@@ -213,8 +213,7 @@ func (qm *quicPeerModule) RoundTrip(ctx context.Context, peerId peer.PeerID, rea
 		return nil, ErrPeerModuleRouteNotFound
 	}
 
-	doReader := io.MultiReader(bytes.NewReader([]byte{0}), reader)
-	return qm.Do(ctx, conn, doReader)
+	return qm.Do(ctx, conn, reader)
 }
 
 func (qm *quicPeerModule) Do(ctx context.Context, conn QuicConn, reader io.Reader) (quic.Stream, error) {
@@ -237,7 +236,7 @@ func (qm *quicPeerModule) Do(ctx context.Context, conn QuicConn, reader io.Reade
 	}()
 
 	<-ctx_.Done()
-	return stream, ctx.Err()
+	return stream, ctx_.Err()
 }
 
 func (qm *quicPeerModule) Lookup(peerId peer.PeerID) QuicConn {
