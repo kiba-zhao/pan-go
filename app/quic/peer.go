@@ -222,8 +222,10 @@ func (qm *quicPeerModule) Do(ctx context.Context, conn QuicConn, reader io.Reade
 		return nil, err
 	}
 
-	ctx_, cancel := context.WithCancelCause(ctx)
-	go func() {
+	errCh := make(chan error)
+	defer close(errCh)
+
+	go func(ch chan error) {
 		_, err = io.Copy(stream, reader)
 		if err == nil {
 			err = stream.Close()
@@ -232,11 +234,16 @@ func (qm *quicPeerModule) Do(ctx context.Context, conn QuicConn, reader io.Reade
 			qStream.hangup = false
 		}
 
-		cancel(err)
-	}()
+		ch <- err
+	}(errCh)
 
-	<-ctx_.Done()
-	return stream, ctx_.Err()
+	select {
+	case <-ctx.Done():
+		stream.Close()
+		err = ctx.Err()
+	case err = <-errCh:
+	}
+	return stream, err
 }
 
 func (qm *quicPeerModule) Lookup(peerId peer.PeerID) QuicConn {
