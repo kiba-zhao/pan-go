@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	nodeitem "pan/extfs/node_item"
 	remoteitem "pan/extfs/remote_item"
 	"slices"
 	"syscall"
@@ -16,8 +17,10 @@ import (
 var ErrRemoteNodeFUSENameConflict = errors.New("remotefile.FUSERemoteNode Error: Name Conflict")
 
 type RemoteNodeServiceFUSEProvider interface {
+	LocalName() string
 	RemoteNodeService() *RemoteNodeService
 	remoteitem.RemoteItemServiceFUSEProvider
+	nodeitem.NodeItemServiceFUSEProvider
 }
 
 type FUSERemoteNode struct {
@@ -37,6 +40,9 @@ func (fusern *FUSERemoteNode) Getattr(ctx context.Context, f fs.FileHandle, out 
 func (fusern *FUSERemoteNode) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 
 	dirs := make([]fuse.DirEntry, 0)
+	localEntry := fuse.DirEntry{Name: fusern.Provider.LocalName(), Mode: fuse.S_IFDIR}
+	dirs = append(dirs, localEntry)
+
 	remoteNodeService := fusern.Provider.RemoteNodeService()
 	_, remotes, err := remoteNodeService.SelectAll()
 	if err != nil {
@@ -44,6 +50,7 @@ func (fusern *FUSERemoteNode) Readdir(ctx context.Context) (fs.DirStream, syscal
 	}
 
 	names := make([]string, 0)
+	names = append(names, localEntry.Name)
 	for _, remote := range remotes {
 		idx, ok := slices.BinarySearch(names, remote.Name)
 		if ok {
@@ -51,7 +58,8 @@ func (fusern *FUSERemoteNode) Readdir(ctx context.Context) (fs.DirStream, syscal
 			break
 		}
 		names = slices.Insert(names, idx, remote.Name)
-		dirs = append(dirs, fuse.DirEntry{Name: remote.Name, Mode: fuse.S_IFDIR})
+		dirEntry := fuse.DirEntry{Name: remote.Name, Mode: fuse.S_IFDIR}
+		dirs = append(dirs, dirEntry)
 	}
 
 	releaseNames := make([]string, 0)
@@ -72,15 +80,18 @@ func (fusern *FUSERemoteNode) Readdir(ctx context.Context) (fs.DirStream, syscal
 }
 
 func (fusern *FUSERemoteNode) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
+
+	fusern.RmChild(name)
+	if name == fusern.Provider.LocalName() {
+		nodeitem := &nodeitem.FUSENodeItem{Provider: fusern.Provider}
+		inode := fusern.NewInode(ctx, nodeitem, fs.StableAttr{Mode: fuse.S_IFDIR})
+		return inode, 0
+	}
+
 	remoteNodeService := fusern.Provider.RemoteNodeService()
 	remote, err := remoteNodeService.SelectByName(name)
 	if err != nil {
 		return nil, syscall.ENOENT
-	}
-
-	inode := fusern.GetChild(name)
-	if inode != nil {
-		return inode, 0
 	}
 
 	peerId, err := base64.StdEncoding.DecodeString(remote.PeerID)
@@ -89,6 +100,6 @@ func (fusern *FUSERemoteNode) Lookup(ctx context.Context, name string, out *fuse
 	}
 
 	remoteItem := &remoteitem.FUSERemoteItem{Provider: fusern.Provider, PeerID: peerId}
-	inode = fusern.NewInode(ctx, remoteItem, fs.StableAttr{Mode: fuse.S_IFDIR})
+	inode := fusern.NewInode(ctx, remoteItem, fs.StableAttr{Mode: fuse.S_IFDIR})
 	return inode, 0
 }

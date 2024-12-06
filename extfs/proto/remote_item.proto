@@ -4,7 +4,7 @@ package remoteitem;
 option go_package = "extfs/remote_item;remoteitem";
 
 message RemoteItemRecordList {
-  repeated RemoteItemRecord items = 1;
+  repeated RemoteItemRecord Items = 1;
 }
 
 message RemoteItemRecord{

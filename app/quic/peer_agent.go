@@ -95,17 +95,36 @@ func (agent *quicPeerAgent) Follow(conn QuicConn) error {
 	return nil
 }
 
-func (agent *quicPeerAgent) Sync(conn QuicConn) error {
-	// TODO: implement
+func (agent *quicPeerAgent) Sync(conn QuicConn, streamId quic.StreamID, size int, readOrWrite bool) error {
 
-	return nil
+	msg := QuicStreamWindowSize{StreamID: int64(streamId), Size: int32(size), ReadOrWrite: readOrWrite}
+	data, err := proto.Marshal(&msg)
+	if err != nil {
+		return err
+	}
+
+	return doQuicConn(conn, QuicConnFlagSync, bytes.NewReader(data))
 }
 
 func (agent *quicPeerAgent) AcceptSync(stream quic.ReceiveStream, conn QuicConn) error {
 	defer stream.CancelRead(quic.StreamErrorCode(quic.NoError))
 
-	// TODO: implement
-	return nil
+	data, err := io.ReadAll(stream)
+	if err != nil {
+		return err
+	}
+
+	var msg QuicStreamWindowSize
+	err = proto.Unmarshal(data, &msg)
+	if err == nil {
+		if msg.ReadOrWrite {
+			conn.OnStreamWrite(quic.StreamID(msg.StreamID), int(msg.Size)*-1)
+		} else {
+			conn.OnStreamRead(quic.StreamID(msg.StreamID), int(msg.Size)*-1)
+		}
+	}
+
+	return err
 }
 
 func (agent *quicPeerAgent) Greet(conn QuicConn) error {

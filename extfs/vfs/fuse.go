@@ -1,12 +1,10 @@
 package vfs
 
 import (
-	"context"
 	"errors"
 	"os"
 
 	"sync"
-	"syscall"
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
@@ -22,6 +20,10 @@ var ErrFUSEUnavailable = errors.New("vfs.FUSE Error: Unavailable")
 
 type FUSEServiceProvider struct {
 	FUSEFileSystem *FUSEFileSystem
+}
+
+func (fusesp *FUSEServiceProvider) LocalName() string {
+	return fusesp.FUSEFileSystem.settings.LocalName
 }
 
 func (fusesp *FUSEServiceProvider) RemoteBlockService() *remoteblock.RemoteBlockService {
@@ -50,19 +52,19 @@ type FUSEFileSystem struct {
 	RemoteItemService  *remoteitem.RemoteItemService
 	RemoteNodeService  *remotenode.RemoteNodeService
 	NodeItemService    *nodeitem.NodeItemService
-	fs.Inode           `inject:"-"`
 	server             *fuse.Server
 	settings           *VFSSettings
 	rw                 sync.RWMutex
-	provider           *FUSEServiceProvider
+	root               fs.InodeEmbedder
 	once               sync.Once
 }
 
-func (fusefs *FUSEFileSystem) Provider() *FUSEServiceProvider {
+func (fusefs *FUSEFileSystem) Root() fs.InodeEmbedder {
 	fusefs.once.Do(func() {
-		fusefs.provider = &FUSEServiceProvider{FUSEFileSystem: fusefs}
+		provider := &FUSEServiceProvider{FUSEFileSystem: fusefs}
+		fusefs.root = &remotenode.FUSERemoteNode{Provider: provider}
 	})
-	return fusefs.provider
+	return fusefs.root
 }
 
 func (fusefs *FUSEFileSystem) Mount(settings VFSSettings) error {
@@ -78,7 +80,7 @@ func (fusefs *FUSEFileSystem) Mount(settings VFSSettings) error {
 		return err
 	}
 	fusefs.settings = &settings
-	rawFS := fs.NewNodeFS(fusefs, opts)
+	rawFS := fs.NewNodeFS(fusefs.Root(), opts)
 	server, err := fuse.NewServer(rawFS, mountPath, &opts.MountOptions)
 	if err != nil {
 		return err
@@ -105,18 +107,4 @@ func (fusefs *FUSEFileSystem) Unmount() error {
 		fusefs.server = nil
 	}
 	return err
-}
-
-func (fusefs *FUSEFileSystem) OnAdd(ctx context.Context) {
-	var inode *fs.Inode
-	if inode = fusefs.GetChild(fusefs.settings.LocalDirName); inode == nil {
-		inode = fusefs.NewPersistentInode(ctx, &nodeitem.FUSENodeItem{Provider: fusefs.Provider()}, fs.StableAttr{Mode: syscall.S_IFDIR})
-		fusefs.AddChild(fusefs.settings.LocalDirName, inode, true)
-	}
-
-	if inode = fusefs.GetChild(fusefs.settings.RemoteDirName); inode == nil {
-		inode = fusefs.NewPersistentInode(ctx, &remotenode.FUSERemoteNode{Provider: fusefs.Provider()}, fs.StableAttr{Mode: syscall.S_IFDIR})
-		fusefs.AddChild(fusefs.settings.RemoteDirName, inode, true)
-	}
-
 }

@@ -4,5 +4,11 @@ package quic;
 option go_package = "app/quic;quic";
 
 message QuicGreet {
-    repeated string addrs = 1;
+    repeated string Addrs = 1;
+}
+
+message QuicStreamWindowSize {
+    int64 StreamID = 1;
+    int32 Size = 2;
+    bool ReadOrWrite = 3;
 }

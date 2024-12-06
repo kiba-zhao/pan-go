@@ -8,6 +8,18 @@ type quicStream struct {
 	hangup bool
 }
 
+func (s *quicStream) Read(b []byte) (int, error) {
+	n, err := s.Stream.Read(b)
+	s.conn.OnStreamRead(s.StreamID(), n)
+	return n, err
+}
+
+func (s *quicStream) Write(b []byte) (int, error) {
+	n, err := s.Stream.Write(b)
+	s.conn.OnStreamWrite(s.StreamID(), n)
+	return n, err
+}
+
 func (s *quicStream) Close() error {
 	err := s.Stream.Close()
 	if !s.hangup {

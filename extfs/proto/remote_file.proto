@@ -4,7 +4,7 @@ package remotefile;
 option go_package = "extfs/remote_file;remotefile";
 
 message RemoteFileRecordList {
-    repeated RemoteFileRecord items = 1;
+    repeated RemoteFileRecord Items = 1;
 }
 
 message RemoteFileRecord {
