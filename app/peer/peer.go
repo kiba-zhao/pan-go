@@ -22,6 +22,7 @@ var ErrPeerModuleInvalidApp = errors.New("peer.PeerModule Error: Invalid App")
 var ErrPeerModuleNotFound = errors.New("peer.PeerModule Error: Serve Not Found")
 var ErrPeerModuleUnknownPeer = errors.New("peer.PeerModule Error: Unknown Peer")
 var ErrPeerModuleControlConflict = errors.New("peer.PeerModule Error: Control Conflict")
+var ErrPeerModuleNetworkNotFound = errors.New("peer.PeerModule Error: Network Not Found")
 
 type PeerID = []byte
 type PeerApp = *App
@@ -184,6 +185,10 @@ func (pn *peerModule) Do(ctx context.Context, peerId PeerID, request *Request) (
 
 	if err != nil {
 		return nil, err
+	}
+
+	if resReader == nil {
+		return nil, ErrPeerModuleNetworkNotFound
 	}
 
 	response := &Response{}

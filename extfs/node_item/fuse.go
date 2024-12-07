@@ -75,24 +75,6 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 		return nil, syscall.ENOENT
 	}
 
-	inode := fuseni.GetChild(name)
-	if inode != nil {
-		if nodeItem.FileType == FileTypeFolder && inode.Mode() == fuse.S_IFDIR {
-			return inode, 0
-		}
-		if nodeItem.FileType == FileTypeFile && inode.Mode() == fuse.S_IFREG {
-			return inode, 0
-		}
-		inode = nil
-	}
-
-	itemNode := &fs.LoopbackNode{
-		RootData: &fs.LoopbackRoot{
-			Path: nodeItem.FilePath,
-		},
-	}
-	itemNode.RootData.RootNode = itemNode
-
 	var mode uint32
 	switch nodeItem.FileType {
 	case FileTypeFile:
@@ -101,7 +83,22 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 		mode = fuse.S_IFDIR
 	}
 
+	inode := fuseni.GetChild(name)
+	if inode != nil {
+		loopbackNode, ok := inode.Operations().(*fs.LoopbackNode)
+		if ok && loopbackNode.RootData.Path == nodeItem.FilePath && inode.Mode() == mode {
+			return inode, fs.OK
+		}
+		fuseni.RmChild(name)
+	}
+
+	itemNode := &fs.LoopbackNode{
+		RootData: &fs.LoopbackRoot{
+			Path: nodeItem.FilePath,
+		},
+	}
+	itemNode.RootData.RootNode = itemNode
 	inode = fuseni.NewInode(ctx, itemNode, fs.StableAttr{Mode: mode})
 
-	return inode, 0
+	return inode, fs.OK
 }

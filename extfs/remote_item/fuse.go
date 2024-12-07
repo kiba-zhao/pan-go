@@ -121,7 +121,6 @@ func (fuserni *FUSERemoteItem) Lookup(ctx context.Context, name string, out *fus
 		return nil, syscall.ENOENT
 	}
 
-	inode := fuserni.GetChild(name)
 	var mode uint32
 	switch record.FileType {
 	case nodeitem.FileTypeFile:
@@ -130,15 +129,18 @@ func (fuserni *FUSERemoteItem) Lookup(ctx context.Context, name string, out *fus
 		mode = fuse.S_IFDIR
 	}
 
-	if inode != nil && inode.Mode() != mode {
+	inode := fuserni.GetChild(name)
+	if inode != nil {
+		fuseRemoteFile, ok := inode.Operations().(*remotefile.FUSERemoteFile)
+		if ok && fuseRemoteFile.ItemID() == record.ID && inode.Mode() == mode {
+			return inode, fs.OK
+		}
 		fuserni.RmChild(name)
-		inode = nil
 	}
 
-	if inode == nil {
-		fileInfo := &FUSERemoteFileInfo{peerId: fuserni.PeerID, itemId: record.ID, provider: fuserni.Provider}
-		remoteFile := &remotefile.FUSERemoteFile{Provider: fuserni.Provider, FUSERemoteFIleInfo: fileInfo}
-		inode = fuserni.NewInode(ctx, remoteFile, fs.StableAttr{Mode: mode})
-	}
-	return inode, 0
+	fileInfo := &FUSERemoteFileInfo{peerId: fuserni.PeerID, itemId: record.ID, provider: fuserni.Provider}
+	remoteFile := &remotefile.FUSERemoteFile{Provider: fuserni.Provider, FUSERemoteFIleInfo: fileInfo}
+	inode = fuserni.NewInode(ctx, remoteFile, fs.StableAttr{Mode: mode})
+
+	return inode, fs.OK
 }

@@ -1,6 +1,7 @@
 package remotenode
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -81,11 +82,19 @@ func (fusern *FUSERemoteNode) Readdir(ctx context.Context) (fs.DirStream, syscal
 
 func (fusern *FUSERemoteNode) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
 
-	fusern.RmChild(name)
+	inode := fusern.GetChild(name)
 	if name == fusern.Provider.LocalName() {
+		if inode != nil {
+			_, ok := inode.Operations().(*nodeitem.FUSENodeItem)
+			if ok {
+				return inode, fs.OK
+			}
+			fusern.RmChild(name)
+		}
+
 		nodeitem := &nodeitem.FUSENodeItem{Provider: fusern.Provider}
-		inode := fusern.NewInode(ctx, nodeitem, fs.StableAttr{Mode: fuse.S_IFDIR})
-		return inode, 0
+		inode = fusern.NewInode(ctx, nodeitem, fs.StableAttr{Mode: fuse.S_IFDIR})
+		return inode, fs.OK
 	}
 
 	remoteNodeService := fusern.Provider.RemoteNodeService()
@@ -99,7 +108,15 @@ func (fusern *FUSERemoteNode) Lookup(ctx context.Context, name string, out *fuse
 		return nil, syscall.ENOENT
 	}
 
+	if inode != nil {
+		fuseRemoteItem, ok := inode.Operations().(*remoteitem.FUSERemoteItem)
+		if ok && bytes.Equal(fuseRemoteItem.PeerID, peerId) {
+			return inode, fs.OK
+		}
+		fusern.RmChild(name)
+	}
+
 	remoteItem := &remoteitem.FUSERemoteItem{Provider: fusern.Provider, PeerID: peerId}
-	inode := fusern.NewInode(ctx, remoteItem, fs.StableAttr{Mode: fuse.S_IFDIR})
-	return inode, 0
+	inode = fusern.NewInode(ctx, remoteItem, fs.StableAttr{Mode: fuse.S_IFDIR})
+	return inode, fs.OK
 }

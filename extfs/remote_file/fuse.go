@@ -192,12 +192,13 @@ func (fuserfe *FUSERemoteFile) Lookup(ctx context.Context, name string, out *fus
 		mode = fuse.S_IFDIR
 	}
 
-	if inode != nil && inode.Mode() != mode {
+	if inode != nil {
+		if inode.Mode() == mode {
+			return inode, fs.OK
+		}
 		fuserfe.RmChild(name)
-		inode = nil
 	}
-	if inode == nil {
-		inode = fuserfe.NewInode(ctx, &FUSERemoteFile{Provider: fuserfe.Provider, Record: record, FUSERemoteFIleInfo: fuserfe}, fs.StableAttr{Mode: mode})
-	}
+
+	inode = fuserfe.NewInode(ctx, &FUSERemoteFile{Provider: fuserfe.Provider, Record: record, FUSERemoteFIleInfo: fuserfe}, fs.StableAttr{Mode: mode})
 	return inode, fs.OK
 }
