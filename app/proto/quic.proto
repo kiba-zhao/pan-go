@@ -7,12 +7,3 @@ message QuicGreet {
     repeated string Addrs = 1;
 }
 
-message QuicStreamBytes {
-    int64 StreamID = 1;
-    int32 ReadSize = 2;
-    int32 WriteSize = 3;
-}
-
-message QuicStreamBytesList{
-    repeated QuicStreamBytes Streams = 1;
-}

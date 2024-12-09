@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	QuicConnFlagSync = uint8(iota)
-	QuicConnFlagGreet
+	QuicConnFlagGreet = uint8(iota)
 	QuicConnFlagInvite
 	QuicConnFlagDeclineInvite
 )
@@ -37,8 +36,6 @@ func acceptQuicConn(conn QuicConn, agent *quicPeerAgent) error {
 		//
 
 		switch flags[0] {
-		case QuicConnFlagSync:
-			go agent.AcceptSync(stream, conn)
 		case QuicConnFlagGreet:
 			go agent.AcceptGreet(stream, conn)
 		case QuicConnFlagInvite:
@@ -89,34 +86,6 @@ func (agent *quicPeerAgent) Follow(conn QuicConn) error {
 
 	go acceptQuicConn(conn, agent)
 	return nil
-}
-
-func (agent *quicPeerAgent) Sync(conn QuicConn, msg *QuicStreamBytesList) error {
-	data, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	return doQuicConn(conn, QuicConnFlagSync, bytes.NewReader(data))
-}
-
-func (agent *quicPeerAgent) AcceptSync(stream quic.ReceiveStream, conn QuicConn) error {
-	defer stream.CancelRead(quic.StreamErrorCode(quic.NoError))
-
-	data, err := io.ReadAll(stream)
-	if err != nil {
-		return err
-	}
-
-	var msg QuicStreamBytesList
-	err = proto.Unmarshal(data, &msg)
-	if err == nil {
-		for _, stream := range msg.Streams {
-			conn.OnStreamWrite(quic.StreamID(stream.StreamID), int(stream.WriteSize)*-1)
-			conn.OnStreamRead(quic.StreamID(stream.StreamID), int(stream.ReadSize)*-1)
-		}
-	}
-
-	return err
 }
 
 func (agent *quicPeerAgent) Greet(conn QuicConn) error {

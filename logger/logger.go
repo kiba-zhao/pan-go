@@ -88,6 +88,8 @@ func init() {
 	}
 
 	traceLog := flag.String("trace-log", defaultTraceLog, "enable trace logging")
+
+	flag.Parse()
 	var traceLevel slog.Level
 
 	if traceLog != nil {
