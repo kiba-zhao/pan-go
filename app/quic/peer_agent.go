@@ -20,8 +20,7 @@ const (
 	QuicConnFlagDeclineInvite
 )
 
-func acceptQuicConn(conn QuicConn, agent *quicPeerAgent, ch chan struct{}) error {
-	ch <- struct{}{}
+func acceptQuicConn(conn QuicConn, agent *quicPeerAgent) error {
 	var err error
 	for {
 		stream, err := conn.AcceptUniStream(context.Background())
@@ -78,10 +77,6 @@ type quicPeerAgent struct {
 
 func (agent *quicPeerAgent) Follow(conn QuicConn) error {
 
-	ch := make(chan struct{})
-	go acceptQuicConn(conn, agent, ch)
-	<-ch
-
 	agent.locker.Lock()
 	receptions := searchReceptions(agent.matrix, conn.PeerID())
 	if len(receptions) <= 0 {
@@ -92,17 +87,15 @@ func (agent *quicPeerAgent) Follow(conn QuicConn) error {
 	agent.locker.Unlock()
 	receptions[0].ch <- conn
 
+	go acceptQuicConn(conn, agent)
 	return nil
 }
 
-func (agent *quicPeerAgent) Sync(conn QuicConn, streamId quic.StreamID, size int, readOrWrite bool) error {
-
-	msg := QuicStreamWindowSize{StreamID: int64(streamId), Size: int32(size), ReadOrWrite: readOrWrite}
-	data, err := proto.Marshal(&msg)
+func (agent *quicPeerAgent) Sync(conn QuicConn, msg *QuicStreamBytesList) error {
+	data, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
-
 	return doQuicConn(conn, QuicConnFlagSync, bytes.NewReader(data))
 }
 
@@ -114,13 +107,12 @@ func (agent *quicPeerAgent) AcceptSync(stream quic.ReceiveStream, conn QuicConn)
 		return err
 	}
 
-	var msg QuicStreamWindowSize
+	var msg QuicStreamBytesList
 	err = proto.Unmarshal(data, &msg)
 	if err == nil {
-		if msg.ReadOrWrite {
-			conn.OnStreamWrite(quic.StreamID(msg.StreamID), int(msg.Size)*-1)
-		} else {
-			conn.OnStreamRead(quic.StreamID(msg.StreamID), int(msg.Size)*-1)
+		for _, stream := range msg.Streams {
+			conn.OnStreamWrite(quic.StreamID(stream.StreamID), int(stream.WriteSize)*-1)
+			conn.OnStreamRead(quic.StreamID(stream.StreamID), int(stream.ReadSize)*-1)
 		}
 	}
 

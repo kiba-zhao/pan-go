@@ -67,18 +67,18 @@ func (x *QuicGreet) GetAddrs() []string {
 	return nil
 }
 
-type QuicStreamWindowSize struct {
+type QuicStreamBytes struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	StreamID    int64 `protobuf:"varint,1,opt,name=StreamID,proto3" json:"StreamID,omitempty"`
-	Size        int32 `protobuf:"varint,2,opt,name=Size,proto3" json:"Size,omitempty"`
-	ReadOrWrite bool  `protobuf:"varint,3,opt,name=ReadOrWrite,proto3" json:"ReadOrWrite,omitempty"`
+	StreamID  int64 `protobuf:"varint,1,opt,name=StreamID,proto3" json:"StreamID,omitempty"`
+	ReadSize  int32 `protobuf:"varint,2,opt,name=ReadSize,proto3" json:"ReadSize,omitempty"`
+	WriteSize int32 `protobuf:"varint,3,opt,name=WriteSize,proto3" json:"WriteSize,omitempty"`
 }
 
-func (x *QuicStreamWindowSize) Reset() {
-	*x = QuicStreamWindowSize{}
+func (x *QuicStreamBytes) Reset() {
+	*x = QuicStreamBytes{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_app_proto_quic_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -86,13 +86,13 @@ func (x *QuicStreamWindowSize) Reset() {
 	}
 }
 
-func (x *QuicStreamWindowSize) String() string {
+func (x *QuicStreamBytes) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*QuicStreamWindowSize) ProtoMessage() {}
+func (*QuicStreamBytes) ProtoMessage() {}
 
-func (x *QuicStreamWindowSize) ProtoReflect() protoreflect.Message {
+func (x *QuicStreamBytes) ProtoReflect() protoreflect.Message {
 	mi := &file_app_proto_quic_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -104,30 +104,77 @@ func (x *QuicStreamWindowSize) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use QuicStreamWindowSize.ProtoReflect.Descriptor instead.
-func (*QuicStreamWindowSize) Descriptor() ([]byte, []int) {
+// Deprecated: Use QuicStreamBytes.ProtoReflect.Descriptor instead.
+func (*QuicStreamBytes) Descriptor() ([]byte, []int) {
 	return file_app_proto_quic_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *QuicStreamWindowSize) GetStreamID() int64 {
+func (x *QuicStreamBytes) GetStreamID() int64 {
 	if x != nil {
 		return x.StreamID
 	}
 	return 0
 }
 
-func (x *QuicStreamWindowSize) GetSize() int32 {
+func (x *QuicStreamBytes) GetReadSize() int32 {
 	if x != nil {
-		return x.Size
+		return x.ReadSize
 	}
 	return 0
 }
 
-func (x *QuicStreamWindowSize) GetReadOrWrite() bool {
+func (x *QuicStreamBytes) GetWriteSize() int32 {
 	if x != nil {
-		return x.ReadOrWrite
+		return x.WriteSize
 	}
-	return false
+	return 0
+}
+
+type QuicStreamBytesList struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Streams []*QuicStreamBytes `protobuf:"bytes,1,rep,name=Streams,proto3" json:"Streams,omitempty"`
+}
+
+func (x *QuicStreamBytesList) Reset() {
+	*x = QuicStreamBytesList{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_app_proto_quic_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *QuicStreamBytesList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QuicStreamBytesList) ProtoMessage() {}
+
+func (x *QuicStreamBytesList) ProtoReflect() protoreflect.Message {
+	mi := &file_app_proto_quic_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QuicStreamBytesList.ProtoReflect.Descriptor instead.
+func (*QuicStreamBytesList) Descriptor() ([]byte, []int) {
+	return file_app_proto_quic_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *QuicStreamBytesList) GetStreams() []*QuicStreamBytes {
+	if x != nil {
+		return x.Streams
+	}
+	return nil
 }
 
 var File_app_proto_quic_proto protoreflect.FileDescriptor
@@ -137,15 +184,19 @@ var file_app_proto_quic_proto_rawDesc = []byte{
 	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x04, 0x71, 0x75, 0x69, 0x63, 0x22, 0x21, 0x0a, 0x09,
 	0x51, 0x75, 0x69, 0x63, 0x47, 0x72, 0x65, 0x65, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x41, 0x64, 0x64,
 	0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x41, 0x64, 0x64, 0x72, 0x73, 0x22,
-	0x68, 0x0a, 0x14, 0x51, 0x75, 0x69, 0x63, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x57, 0x69, 0x6e,
-	0x64, 0x6f, 0x77, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x53, 0x74, 0x72, 0x65, 0x61,
-	0x6d, 0x49, 0x44, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x08, 0x53, 0x74, 0x72, 0x65, 0x61,
-	0x6d, 0x49, 0x44, 0x12, 0x12, 0x0a, 0x04, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x05, 0x52, 0x04, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x20, 0x0a, 0x0b, 0x52, 0x65, 0x61, 0x64, 0x4f,
-	0x72, 0x57, 0x72, 0x69, 0x74, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0b, 0x52, 0x65,
-	0x61, 0x64, 0x4f, 0x72, 0x57, 0x72, 0x69, 0x74, 0x65, 0x42, 0x0f, 0x5a, 0x0d, 0x61, 0x70, 0x70,
-	0x2f, 0x71, 0x75, 0x69, 0x63, 0x3b, 0x71, 0x75, 0x69, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x67, 0x0a, 0x0f, 0x51, 0x75, 0x69, 0x63, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x42, 0x79, 0x74,
+	0x65, 0x73, 0x12, 0x1a, 0x0a, 0x08, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x49, 0x44, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x08, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x49, 0x44, 0x12, 0x1a,
+	0x0a, 0x08, 0x52, 0x65, 0x61, 0x64, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05,
+	0x52, 0x08, 0x52, 0x65, 0x61, 0x64, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x57, 0x72,
+	0x69, 0x74, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x09, 0x57,
+	0x72, 0x69, 0x74, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x22, 0x46, 0x0a, 0x13, 0x51, 0x75, 0x69, 0x63,
+	0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x42, 0x79, 0x74, 0x65, 0x73, 0x4c, 0x69, 0x73, 0x74, 0x12,
+	0x2f, 0x0a, 0x07, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x15, 0x2e, 0x71, 0x75, 0x69, 0x63, 0x2e, 0x51, 0x75, 0x69, 0x63, 0x53, 0x74, 0x72, 0x65,
+	0x61, 0x6d, 0x42, 0x79, 0x74, 0x65, 0x73, 0x52, 0x07, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x73,
+	0x42, 0x0f, 0x5a, 0x0d, 0x61, 0x70, 0x70, 0x2f, 0x71, 0x75, 0x69, 0x63, 0x3b, 0x71, 0x75, 0x69,
+	0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -160,17 +211,19 @@ func file_app_proto_quic_proto_rawDescGZIP() []byte {
 	return file_app_proto_quic_proto_rawDescData
 }
 
-var file_app_proto_quic_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_app_proto_quic_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_app_proto_quic_proto_goTypes = []interface{}{
-	(*QuicGreet)(nil),            // 0: quic.QuicGreet
-	(*QuicStreamWindowSize)(nil), // 1: quic.QuicStreamWindowSize
+	(*QuicGreet)(nil),           // 0: quic.QuicGreet
+	(*QuicStreamBytes)(nil),     // 1: quic.QuicStreamBytes
+	(*QuicStreamBytesList)(nil), // 2: quic.QuicStreamBytesList
 }
 var file_app_proto_quic_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: quic.QuicStreamBytesList.Streams:type_name -> quic.QuicStreamBytes
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_app_proto_quic_proto_init() }
@@ -192,7 +245,19 @@ func file_app_proto_quic_proto_init() {
 			}
 		}
 		file_app_proto_quic_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QuicStreamWindowSize); i {
+			switch v := v.(*QuicStreamBytes); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_app_proto_quic_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*QuicStreamBytesList); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -210,7 +275,7 @@ func file_app_proto_quic_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_app_proto_quic_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

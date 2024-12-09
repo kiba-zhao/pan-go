@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"pan/app/peer"
+	"pan/logger"
 	"slices"
 	"sync"
 
@@ -23,22 +24,29 @@ type QuicConn interface {
 }
 
 type quicStreamWindow struct {
-	streamId   quic.StreamID
-	readBytes  int
-	writeBytes int
-	readRW     sync.RWMutex
-	writeRW    sync.RWMutex
+	streamId          quic.StreamID
+	readBytes         int
+	writeBytes        int
+	readRW            sync.RWMutex
+	writeRW           sync.RWMutex
+	blockedReadBytes  int
+	blockedWriteBytes int
+	blockedReadRW     sync.RWMutex
+	blockedWriteRW    sync.RWMutex
 }
 
 type quicConn struct {
 	quic.Connection
-	peerId        peer.PeerID
-	closed        bool
-	closedLocker  sync.Mutex
-	mgr           *quicConnMgr
-	streamWindows []*quicStreamWindow
-	streamRW      sync.RWMutex
-	agent         *quicPeerAgent
+	peerId          peer.PeerID
+	closed          bool
+	closedLocker    sync.Mutex
+	mgr             *quicConnMgr
+	streamWindows   []*quicStreamWindow
+	streamWindowsRW sync.RWMutex
+	agent           *quicPeerAgent
+	syncCh          chan struct{}
+	syncCount       uint8
+	syncLocker      sync.Mutex
 }
 
 func (c *quicConn) PeerID() peer.PeerID {
@@ -51,7 +59,7 @@ func (c *quicConn) Available() bool {
 		return available
 	}
 
-	c.streamRW.RLock()
+	c.streamWindowsRW.RLock()
 	if len(c.streamWindows) > 1 {
 		readBytes := 0
 		writeBytes := 0
@@ -75,7 +83,7 @@ func (c *quicConn) Available() bool {
 
 		}
 	}
-	c.streamRW.RUnlock()
+	c.streamWindowsRW.RUnlock()
 	return available
 }
 
@@ -88,18 +96,21 @@ func (c *quicConn) Closed() bool {
 
 func (c *quicConn) CloseStream(stream quic.Stream) {
 	stream.CancelRead(quic.StreamErrorCode(quic.NoError))
-	c.streamRW.Lock()
+	c.streamWindowsRW.Lock()
 	c.streamWindows = removeStreamWindow(c.streamWindows, stream.StreamID())
-	c.streamRW.Unlock()
+	c.streamWindowsRW.Unlock()
 }
 
 func (c *quicConn) OnStreamRead(streamId quic.StreamID, size int) {
+	if c.Closed() {
+		return
+	}
 	if size == 0 {
 		return
 	}
-	c.streamRW.RLock()
+	c.streamWindowsRW.RLock()
 	window := searchStreamWindow(c.streamWindows, streamId)
-	c.streamRW.RUnlock()
+	c.streamWindowsRW.RUnlock()
 
 	if window == nil {
 		return
@@ -109,17 +120,24 @@ func (c *quicConn) OnStreamRead(streamId quic.StreamID, size int) {
 	window.readRW.Unlock()
 
 	if size > 0 {
-		c.agent.Sync(c, streamId, size, true)
+		window.blockedReadRW.Lock()
+		window.blockedReadBytes += size
+		window.blockedReadRW.Unlock()
+
+		syncStreamBytes(c)
 	}
 }
 
 func (c *quicConn) OnStreamWrite(streamId quic.StreamID, size int) {
+	if c.Closed() {
+		return
+	}
 	if size == 0 {
 		return
 	}
-	c.streamRW.RLock()
+	c.streamWindowsRW.RLock()
 	window := searchStreamWindow(c.streamWindows, streamId)
-	c.streamRW.RUnlock()
+	c.streamWindowsRW.RUnlock()
 	if window == nil {
 		return
 	}
@@ -128,7 +146,11 @@ func (c *quicConn) OnStreamWrite(streamId quic.StreamID, size int) {
 	window.writeRW.Unlock()
 
 	if size > 0 {
-		c.agent.Sync(c, streamId, size, false)
+		window.blockedWriteRW.Lock()
+		window.blockedWriteBytes += size
+		window.blockedWriteRW.Unlock()
+
+		syncStreamBytes(c)
 	}
 }
 
@@ -138,9 +160,9 @@ func (c *quicConn) AcceptStream(ctx context.Context) (quic.Stream, error) {
 		return nil, err
 	}
 
-	c.streamRW.Lock()
+	c.streamWindowsRW.Lock()
 	c.streamWindows = storeStreamWindow(c.streamWindows, &quicStreamWindow{streamId: stream.StreamID()})
-	c.streamRW.Unlock()
+	c.streamWindowsRW.Unlock()
 	return &quicStream{Stream: stream, conn: c}, err
 }
 
@@ -150,9 +172,9 @@ func (c *quicConn) OpenStream() (quic.Stream, error) {
 		return nil, err
 	}
 
-	c.streamRW.Lock()
+	c.streamWindowsRW.Lock()
 	c.streamWindows = storeStreamWindow(c.streamWindows, &quicStreamWindow{streamId: stream.StreamID()})
-	c.streamRW.Unlock()
+	c.streamWindowsRW.Unlock()
 	return &quicStream{Stream: stream, conn: c, hangup: true}, err
 }
 
@@ -197,4 +219,81 @@ func storeStreamWindow(streamWindows []*quicStreamWindow, window *quicStreamWind
 		return streamWindows
 	}
 	return slices.Insert(streamWindows, idx, window)
+}
+
+func syncStreamBytes(c *quicConn) {
+
+	c.syncLocker.Lock()
+	if c.syncCh == nil {
+		c.syncCh = make(chan struct{}, 1)
+	}
+
+	if c.syncCount > 2 {
+		c.syncLocker.Unlock()
+		return
+	}
+	c.syncCount++
+	c.syncLocker.Unlock()
+
+	go syncWorker(c)
+}
+
+func syncWorker(c *quicConn) {
+	c.syncLocker.Lock()
+	if c.syncCount > 1 {
+		<-c.syncCh
+	}
+	c.syncLocker.Unlock()
+	defer completeSyncWorker(c)
+
+	if c.Closed() {
+		return
+	}
+
+	c.streamWindowsRW.RLock()
+	if len(c.streamWindows) <= 0 {
+		c.streamWindowsRW.RUnlock()
+		return
+	}
+	windows := slices.Clone(c.streamWindows)
+	c.streamWindowsRW.RUnlock()
+
+	var list QuicStreamBytesList
+	for _, window := range windows {
+		var stream QuicStreamBytes
+		stream.StreamID = int64(window.streamId)
+
+		window.blockedReadRW.Lock()
+		stream.ReadSize = int32(window.blockedReadBytes)
+		window.blockedReadBytes = 0
+		window.blockedReadRW.Unlock()
+
+		window.blockedWriteRW.Lock()
+		stream.WriteSize = int32(window.blockedWriteBytes)
+		window.blockedWriteBytes = 0
+		window.blockedWriteRW.Unlock()
+		if stream.ReadSize == 0 && stream.WriteSize == 0 {
+			continue
+		}
+		list.Streams = append(list.Streams, &stream)
+	}
+
+	if len(list.Streams) <= 0 {
+		return
+	}
+
+	err := c.agent.Sync(c, &list)
+	if err != nil {
+		logger.Default().Log(context.Background(), logger.LevelError, err.Error())
+	}
+
+}
+
+func completeSyncWorker(c *quicConn) {
+	c.syncLocker.Lock()
+	defer c.syncLocker.Unlock()
+	c.syncCount--
+	if c.syncCount > 0 {
+		c.syncCh <- struct{}{}
+	}
 }

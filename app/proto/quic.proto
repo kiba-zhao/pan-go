@@ -7,8 +7,12 @@ message QuicGreet {
     repeated string Addrs = 1;
 }
 
-message QuicStreamWindowSize {
+message QuicStreamBytes {
     int64 StreamID = 1;
-    int32 Size = 2;
-    bool ReadOrWrite = 3;
+    int32 ReadSize = 2;
+    int32 WriteSize = 3;
+}
+
+message QuicStreamBytesList{
+    repeated QuicStreamBytes Streams = 1;
 }
