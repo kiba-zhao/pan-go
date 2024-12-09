@@ -224,11 +224,8 @@ func storeStreamWindow(streamWindows []*quicStreamWindow, window *quicStreamWind
 func syncStreamBytes(c *quicConn) {
 
 	c.syncLocker.Lock()
-	if c.syncCh == nil {
-		c.syncCh = make(chan struct{}, 1)
-	}
 
-	if c.syncCount > 2 {
+	if c.syncCount > 1 {
 		c.syncLocker.Unlock()
 		return
 	}
@@ -239,11 +236,6 @@ func syncStreamBytes(c *quicConn) {
 }
 
 func syncWorker(c *quicConn) {
-	c.syncLocker.Lock()
-	if c.syncCount > 1 {
-		<-c.syncCh
-	}
-	c.syncLocker.Unlock()
 	defer completeSyncWorker(c)
 
 	if c.Closed() {
@@ -294,6 +286,6 @@ func completeSyncWorker(c *quicConn) {
 	defer c.syncLocker.Unlock()
 	c.syncCount--
 	if c.syncCount > 0 {
-		c.syncCh <- struct{}{}
+		go syncWorker(c)
 	}
 }
