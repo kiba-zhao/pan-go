@@ -44,7 +44,6 @@ type quicConn struct {
 	streamWindows   []*quicStreamWindow
 	streamWindowsRW sync.RWMutex
 	agent           *quicPeerAgent
-	syncCh          chan struct{}
 	syncCount       uint8
 	syncLocker      sync.Mutex
 }
@@ -284,8 +283,8 @@ func syncWorker(c *quicConn) {
 func completeSyncWorker(c *quicConn) {
 	c.syncLocker.Lock()
 	defer c.syncLocker.Unlock()
-	c.syncCount--
 	if c.syncCount > 0 {
+		c.syncCount--
 		go syncWorker(c)
 	}
 }
