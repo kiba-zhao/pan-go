@@ -316,6 +316,9 @@ outer_loop:
 	}
 
 	wg.Wait()
+	if dialConn != nil {
+		return dialConn, nil
+	}
 	return dialConn, dialCtx.Err()
 }
 
