@@ -59,7 +59,7 @@ func (c *quicConn) Available() bool {
 	}
 
 	c.streamWindowsRW.RLock()
-	if len(c.streamWindows) > 1 {
+	if len(c.streamWindows) > 2 {
 		readBytes := 0
 		writeBytes := 0
 		for _, window := range c.streamWindows {
@@ -279,17 +279,19 @@ func syncWorker(c *quicConn) {
 
 	err := c.agent.Sync(c, &list)
 	if err != nil {
-		logger.Default().Log(context.Background(), logger.LevelError, err.Error())
+		logger.Default().Log(context.Background(), logger.LevelError, "app.quic.conn.syncWorker Error:"+err.Error())
 	}
 
 }
 
 func completeSyncWorker(c *quicConn) {
 	c.syncLocker.Lock()
-	defer c.syncLocker.Unlock()
 
 	c.syncCount--
-	if c.syncCount > 0 {
-		go syncWorker(c)
+	if c.syncCount <= 0 {
+		c.syncLocker.Unlock()
+		return
 	}
+	c.syncLocker.Unlock()
+	go syncWorker(c)
 }
