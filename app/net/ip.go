@@ -3,6 +3,7 @@ package net
 import "net"
 
 type AddrStat struct {
+	IPv4Enabled       bool
 	IPv6Enabled       bool
 	IPv6GlobalEnabled bool
 	IPv4GlobalEnabled bool
@@ -33,6 +34,7 @@ func StatAddr() (*AddrStat, error) {
 
 		if ipNet.IP.To4() != nil {
 			addrStat.IPv4GlobalEnabled = ipNet.IP.IsGlobalUnicast()
+			addrStat.IPv4Enabled = true
 			continue
 		}
 
