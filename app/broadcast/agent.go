@@ -30,8 +30,8 @@ const (
 
 const (
 	BroadcastMulticastTypeGlobal = uint8(iota + 1)
-	BroadcastMulticastTypeLocal
 	BroadcastMulticastTypeIPV6Global
+	BroadcastMulticastTypeLocal
 	BroadcastMulticastTypeIPV6Local
 )
 
@@ -167,24 +167,7 @@ func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 		if err != nil {
 			continue
 		}
-		ip := udpAddr.IP
-		var multicastType uint8
-		if ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() {
-			if ip.To16() == nil {
-				multicastType = BroadcastMulticastTypeLocal
-			} else {
-				multicastType = BroadcastMulticastTypeIPV6Local
-			}
-		}
-
-		if multicastType == 0 && ip.IsMulticast() {
-			if ip.To16() == nil {
-				multicastType = BroadcastMulticastTypeGlobal
-			} else {
-				multicastType = BroadcastMulticastTypeIPV6Global
-			}
-		}
-
+		multicastType := selectBroadcastMulticastType(udpAddr.IP)
 		if multicastType != 0 {
 			addrsMap[multicastType] = append(addrsMap[multicastType], addr)
 		}
@@ -197,7 +180,7 @@ func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 			continue
 		}
 		ipAddr, err := net.ResolveIPAddr("ip", ip)
-		if err != nil {
+		if err != nil || ipAddr.IP.IsMulticast() {
 			continue
 		}
 
@@ -364,4 +347,30 @@ func unpackAgentPayload(buffer []byte) ([]byte, []byte, error) {
 	sig := buffer[2:offset]
 	payload := buffer[offset:]
 	return payload, sig, nil
+}
+
+func selectBroadcastMulticastType(ip net.IP) uint8 {
+
+	var isGlobal bool
+	if ip.IsMulticast() {
+		isGlobal = isGlobalMulticastIP(ip)
+	} else {
+		isGlobal = ip.IsGlobalUnicast() && !ip.IsPrivate()
+	}
+
+	var multicastType uint8
+	if isGlobal {
+		if ip.To16() == nil {
+			multicastType = BroadcastMulticastTypeGlobal
+		} else {
+			multicastType = BroadcastMulticastTypeIPV6Global
+		}
+	} else {
+		if ip.To4() != nil {
+			multicastType = BroadcastMulticastTypeLocal
+		} else {
+			multicastType = BroadcastMulticastTypeIPV6Local
+		}
+	}
+	return multicastType
 }

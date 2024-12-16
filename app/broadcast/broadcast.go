@@ -130,16 +130,21 @@ func (b *broadcastModule) Deliver(payload []byte, addrs ...string) error {
 
 	connArr := make([]*net.UDPConn, 0)
 	for _, addr := range deliverAddrs {
-		udpAddr, err := net.ResolveUDPAddr("udp", addr)
+		udpAddrs, err := resolveAddrs(addr)
 		if err != nil {
 			return err
 		}
-		conn, err := net.DialUDP("udp", nil, udpAddr)
-		if err != nil {
-			return err
+		if len(udpAddrs) <= 0 {
+			continue
 		}
-		connArr = append(connArr, conn)
-		defer conn.Close()
+		for _, udpAddr := range udpAddrs {
+			conn, err := net.DialUDP("udp", nil, udpAddr)
+			if err != nil {
+				continue
+			}
+			connArr = append(connArr, conn)
+			defer conn.Close()
+		}
 	}
 
 	mtu := b.mtu
@@ -299,4 +304,49 @@ func broadcastMTU() int {
 		}
 	}
 	return mtu
+}
+
+func resolveAddrs(addr string) ([]*net.UDPAddr, error) {
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	if udpAddr.IP.To4() != nil || !udpAddr.IP.IsMulticast() || len(udpAddr.Zone) > 0 {
+		return []*net.UDPAddr{udpAddr}, nil
+	}
+
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	isGlobalAddr := isGlobalMulticastIP(udpAddr.IP)
+	udpAddrs := make([]*net.UDPAddr, 0)
+	for _, iface := range ifaces {
+		if net.FlagMulticast != (net.FlagMulticast & iface.Flags) {
+			continue
+		}
+		ifaceAddrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, ifaceAddr := range ifaceAddrs {
+			ipNet, ok := ifaceAddr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+			if isGlobalAddr == (ipNet.IP.IsGlobalUnicast() && !ipNet.IP.IsPrivate()) {
+				udpAddr_ := net.UDPAddrFromAddrPort(udpAddr.AddrPort())
+				udpAddr_.Zone = iface.Name
+				udpAddrs = append(udpAddrs, udpAddr_)
+				break
+			}
+		}
+	}
+	return udpAddrs, err
+}
+
+func isGlobalMulticastIP(ip net.IP) bool {
+	return !(ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast())
 }

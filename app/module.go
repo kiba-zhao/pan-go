@@ -101,7 +101,7 @@ func (m *module) Components() []injection.Component {
 	}
 
 	//  store
-	components = sample.AppendSampleInternalComponent(components, &appbroadcast.BroadcastStore{})
+	components = sample.AppendSampleInternalComponent[broadcast.BroadcastStore](components, &appbroadcast.BroadcastStore{})
 	return components
 }
 
