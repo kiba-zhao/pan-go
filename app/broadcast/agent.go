@@ -124,11 +124,12 @@ func (agent *broadcastAgent) ServeBroadcast(payload []byte, addr string) error {
 		return nil
 	}
 
+	var err error
 	switch flag := payload[0]; flag {
 	case BroadcastTypeOnline:
-		go agent.AcceptOnline(slices.Clone(payload[1:]), addr)
+		err = agent.AcceptOnline(slices.Clone(payload[1:]), addr)
 	}
-	return nil
+	return err
 }
 
 func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
@@ -230,6 +231,11 @@ func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 }
 
 func (agent *broadcastAgent) AcceptOnline(payload []byte, addr string) error {
+	settings := agent.PeerModule.PeerSettings()
+	if !settings.Available() {
+		return ErrBroadcastAgentDeliverOnlineUnavailable
+	}
+
 	data, sig, err := unpackAgentPayload(payload)
 	if err != nil {
 		return err
@@ -238,6 +244,9 @@ func (agent *broadcastAgent) AcceptOnline(payload []byte, addr string) error {
 	var msg PeerOnline
 	err = proto.Unmarshal(data, &msg)
 	if err == nil {
+		if bytes.Equal(msg.PeerId, settings.PeerID()) {
+			return err
+		}
 		err = peer.Verify(data, sig, msg.PeerId)
 	}
 	if err != nil {

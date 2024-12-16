@@ -43,7 +43,7 @@ func (repo *appBroadcastInfoRepository) UpdateHeightest(info AppBroadcastInfo) (
 		return AppBroadcastInfo{}, sample.ErrSampleDBUnavailable
 	}
 
-	results := db.Model(&info).Where("hightest < ?", info.Hightest).Limit(1)
+	results := db.Model(&info).Where("hightest < ?", info.Hightest).Limit(1).Updates(info)
 	if results.Error == nil && results.RowsAffected != 1 {
 		return info, ErrAppBroadcastInfoNotFound
 	}
