@@ -3,7 +3,7 @@ package config
 import (
 	"io/fs"
 	"os"
-	"pan/app/bootstrap"
+	"pan/app/injection"
 	"pan/runtime"
 	"path"
 	"reflect"
@@ -88,9 +88,9 @@ func (c *configImpl[T]) EngineTypes() []reflect.Type {
 	}
 }
 
-func (c *configImpl[T]) Components() []bootstrap.Component {
-	return []bootstrap.Component{
-		bootstrap.NewComponent[Config[T]](c, bootstrap.ComponentExternalScope),
+func (c *configImpl[T]) Components() []injection.Component {
+	return []injection.Component{
+		injection.NewComponent[Config[T]](c, injection.ComponentExternalScope),
 	}
 }
 

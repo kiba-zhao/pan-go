@@ -4,12 +4,14 @@ import (
 	"encoding/base64"
 	"path"
 
+	appbroadcast "pan/app/app_broadcast"
 	appnode "pan/app/app_node"
 	appsettings "pan/app/app_settings"
 	"pan/app/bootstrap"
 	"pan/app/broadcast"
 	"pan/app/config"
 	diskfile "pan/app/disk_file"
+	"pan/app/injection"
 
 	"pan/app/guard"
 	"pan/app/peer"
@@ -23,7 +25,12 @@ import (
 func New() interface{} {
 	m := &module{}
 	m.peerGuard = &guard.PeerGuard{}
-	return runtime.NewModule(bootstrap.New(), config.New(), peer.New(), broadcast.New(), quic.New(), web.New(), sample.New(m))
+	m.store = injection.NewComponentStore()
+
+	sampleModule := sample.New(m)
+	m.sample = sampleModule
+
+	return runtime.NewModule(bootstrap.New(), config.New(), peer.New(), broadcast.New(m.store), quic.New(), web.New(), sampleModule)
 }
 
 func Bootstrap() interface{} {
@@ -35,7 +42,8 @@ const moduleName = "app"
 type module struct {
 	PeerModule      peer.PeerModule
 	Config          config.AppConfig
-	DB              sample.RepositoryDB
+	store           injection.ComponentStore
+	sample          sample.Sample
 	settings        config.AppSettings
 	settingsRW      sync.RWMutex
 	controllers     []web.WebController
@@ -62,14 +70,20 @@ func (m *module) WebControllers() []web.WebController {
 func (m *module) Models() []interface{} {
 	return []interface{}{
 		&appnode.AppNode{},
+		&appbroadcast.AppBroadcastInfo{},
 	}
 }
 
-func (m *module) Components() []bootstrap.Component {
+func (m *module) ComponentStore() injection.ComponentStore {
+	return m.store
+}
+
+func (m *module) Components() []injection.Component {
 	// base
-	components := []bootstrap.Component{
+	components := []injection.Component{
+		injection.NewComponent(m, injection.ComponentNoneScope),
 		// submodules
-		bootstrap.NewComponent(m.peerGuard, bootstrap.ComponentNoneScope),
+		injection.NewComponent(m.peerGuard, injection.ComponentNoneScope),
 	}
 
 	// services
@@ -78,13 +92,16 @@ func (m *module) Components() []bootstrap.Component {
 	components = sample.AppendSampleExternalComponent[appnode.AppNodeExternalService](components, &appnode.AppNodeService{})
 
 	// repositories
-	components = sample.AppendSampleComponent(components, appnode.NewAppNodeRepository(m.DB))
+	components = sample.AppendSampleComponent(components, appnode.NewAppNodeRepository(m.sample.DB()))
+	components = sample.AppendSampleComponent(components, appbroadcast.NewAppBroadcastInfoRepository(m.sample.DB()))
 
 	// controllers
 	for _, ctrl := range m.WebControllers() {
-		components = append(components, bootstrap.NewComponent(ctrl, bootstrap.ComponentNoneScope))
+		components = append(components, injection.NewComponent(ctrl, injection.ComponentNoneScope))
 	}
 
+	//  store
+	components = sample.AppendSampleInternalComponent(components, &appbroadcast.BroadcastStore{})
 	return components
 }
 

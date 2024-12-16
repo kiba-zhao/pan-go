@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"pan/app/config"
+	"pan/logger"
 	"pan/runtime"
 	"reflect"
 	"slices"
@@ -212,8 +213,10 @@ func (w *webModule) Ready(ctx context.Context) error {
 			wg.Add(1)
 			go func(s *http.Server) {
 				defer wg.Done()
-				_ = s.ListenAndServe()
-
+				err = s.ListenAndServe()
+				if err != nil {
+					logger.Default().Log(context.Background(), logger.LevelError, "app.web.webModule.Ready Error: %s", err.Error())
+				}
 				// TODO: echo error into log
 			}(httpServer)
 		}

@@ -14,8 +14,10 @@ func (s *RemoteNodeService) SelectAll() (int64, []RemoteNode, error) {
 	err := s.AppNodeExternalService.TraverseAll(func(model appnode.AppNode) error {
 
 		remote := parseRemoteNode(model)
-		// TODO: set tag quantity
-		remotes = append(remotes, remote)
+		if remote.Available {
+			// TODO: set tag quantity
+			remotes = append(remotes, remote)
+		}
 
 		return nil
 	})

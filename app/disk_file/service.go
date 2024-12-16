@@ -90,7 +90,7 @@ func (s *DiskFileService) SelectRoot() (item DiskFile, err error) {
 
 	s.rw.Lock()
 	defer s.rw.Unlock()
-	rootPath, err := os.Getwd()
+	rootPath, err := os.UserHomeDir()
 	if err != nil {
 		return
 	}

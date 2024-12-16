@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
+	"pan/app/injection"
 	"pan/runtime"
 	"syscall"
 )
@@ -12,7 +13,7 @@ import (
 var ErrBootstrapExit = errors.New("bootstrap.engine Error: bootstrap exit")
 
 func New() interface{} {
-	return runtime.NewModule(&injectEngine{}, &readyEngine{}, &deferEngine{})
+	return runtime.NewModule(injection.New(), &readyEngine{}, &deferEngine{})
 }
 
 func Bootstrap() interface{} {
@@ -42,8 +43,8 @@ func (e *engine) Init(registry runtime.Registry) error {
 	return err
 }
 
-func (e *engine) Components() []Component {
-	return []Component{
-		NewComponent(e, ComponentNoneScope),
+func (e *engine) Components() []injection.Component {
+	return []injection.Component{
+		injection.NewComponent(e, injection.ComponentNoneScope),
 	}
 }

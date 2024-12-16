@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
-	"pan/app/bootstrap"
+	"pan/app/injection"
 	"pan/runtime"
 	"reflect"
 	"sync"
@@ -114,9 +114,9 @@ func (pn *peerModule) EngineTypes() []reflect.Type {
 	}
 }
 
-func (pn *peerModule) Components() []bootstrap.Component {
-	return []bootstrap.Component{
-		bootstrap.NewComponent[PeerModule](pn, bootstrap.ComponentExternalScope),
+func (pn *peerModule) Components() []injection.Component {
+	return []injection.Component{
+		injection.NewComponent[PeerModule](pn, injection.ComponentExternalScope),
 	}
 }
 

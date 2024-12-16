@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"net"
+	"pan/app/discovery"
+
 	"sync"
 	"time"
 
@@ -67,6 +69,7 @@ func doQuicConn(conn QuicConn, flag uint8, reader io.Reader) error {
 }
 
 type quicPeerAgent struct {
+	Broadcast      discovery.Broadcast
 	quicPeerModule QuicPeerModule
 	matrix         [][]*quicReception
 	locker         sync.Mutex
@@ -89,7 +92,7 @@ func (agent *quicPeerAgent) Follow(conn QuicConn) error {
 }
 
 func (agent *quicPeerAgent) Greet(conn QuicConn) error {
-	addrs := agent.quicPeerModule.PublicAddrs()
+	addrs := agent.Broadcast.PublicAddrs()
 	if len(addrs) <= 0 {
 		return nil
 	}

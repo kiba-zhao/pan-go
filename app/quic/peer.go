@@ -7,9 +7,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"io"
-	"pan/app/bootstrap"
 	"pan/app/config"
+	"pan/app/injection"
 	"pan/app/peer"
+	"pan/logger"
 	"slices"
 	"sync"
 
@@ -74,7 +75,6 @@ func serveQuicConn(conn QuicConn, peerModule peer.PeerModule) error {
 
 type QuicPeerModule interface {
 	peer.PeerNetwork
-	PublicAddrs() []string
 	PeerSettings() peer.PeerSettings
 	Serve(quic.Connection, peer.PeerID) (QuicConn, error)
 	Do(context.Context, QuicConn, io.Reader) (quic.Stream, error)
@@ -82,20 +82,18 @@ type QuicPeerModule interface {
 	Dial(context.Context, peer.PeerID) (QuicConn, error)
 	Route(peer.PeerID, string, bool) error
 	Invite(peer.PeerID) (QuicConn, error)
+	Reload()
 }
 
 type quicPeerModule struct {
-	PeerModule        peer.PeerModule
-	quicPeerBroadcast *quicPeerBroadcast
-	agent             *quicPeerAgent
+	PeerModule peer.PeerModule
+	agent      *quicPeerAgent
 
-	publicAddrs     []string
-	addrs           []string
-	locker          sync.RWMutex
-	reloadChan      chan struct{}
-	reloadOnce      sync.Once
-	reloadServe     bool
-	reloadBroadcast bool
+	addrs       []string
+	locker      sync.RWMutex
+	reloadChan  chan struct{}
+	reloadOnce  sync.Once
+	reloadServe bool
 
 	networkRW sync.RWMutex
 	connMgr   *quicConnMgr
@@ -110,12 +108,6 @@ func (qm *quicPeerModule) PeerSettings() peer.PeerSettings {
 	return qm.PeerModule.PeerSettings()
 }
 
-func (qm *quicPeerModule) PublicAddrs() []string {
-	qm.locker.RLock()
-	defer qm.locker.RUnlock()
-	return qm.publicAddrs
-}
-
 func (qm *quicPeerModule) Addrs() []string {
 	qm.locker.RLock()
 	defer qm.locker.RUnlock()
@@ -123,21 +115,22 @@ func (qm *quicPeerModule) Addrs() []string {
 }
 
 func (qm *quicPeerModule) ReloadChan() chan struct{} {
+
 	qm.reloadOnce.Do(func() {
 		qm.reloadChan = make(chan struct{}, 1)
 	})
 	return qm.reloadChan
 }
 
-func (qm *quicPeerModule) OnPeerSettingsUpdated(settings peer.PeerSettings) {
+func (qm *quicPeerModule) Reload() {
 	qm.locker.Lock()
 	defer qm.locker.Unlock()
 
-	if qm.reloadServe {
-		return
-	}
-	qm.reloadServe = true
-	qm.ReloadChan() <- struct{}{}
+	reload(qm)
+}
+
+func (qm *quicPeerModule) OnPeerSettingsUpdated(settings peer.PeerSettings) {
+	qm.Reload()
 }
 
 func (qm *quicPeerModule) OnConfigUpdated(settings config.AppSettings) {
@@ -145,29 +138,11 @@ func (qm *quicPeerModule) OnConfigUpdated(settings config.AppSettings) {
 	qm.locker.Lock()
 	defer qm.locker.Unlock()
 
-	var reloadServe bool
-	if reloadServe = !slices.Equal(qm.addrs, settings.PeerAddress); reloadServe {
+	if reloadServe := !slices.Equal(qm.addrs, settings.PeerAddress); reloadServe {
 		qm.addrs = settings.PeerAddress
 	}
 
-	if !qm.reloadServe && reloadServe {
-		qm.reloadServe = reloadServe
-	}
-
-	var reloadBroadcast bool
-	if reloadBroadcast = !slices.Equal(qm.publicAddrs, settings.PublicAddress); reloadBroadcast {
-		qm.publicAddrs = settings.PublicAddress
-	}
-
-	if !qm.reloadBroadcast && reloadBroadcast {
-		qm.reloadBroadcast = reloadBroadcast
-	}
-
-	if !qm.reloadServe && !qm.reloadBroadcast {
-		return
-	}
-
-	qm.ReloadChan() <- struct{}{}
+	reload(qm)
 }
 
 func (qm *quicPeerModule) CanReach(peerId peer.PeerID) bool {
@@ -432,21 +407,17 @@ func (qm *quicPeerModule) Purge(peerId peer.PeerID) error {
 	return nil
 }
 
-func (qm *quicPeerModule) Components() []bootstrap.Component {
-	return []bootstrap.Component{
-		bootstrap.NewComponent(qm, bootstrap.ComponentNoneScope),
-		bootstrap.NewComponent[QuicPeerModule](qm, bootstrap.ComponentExternalScope),
-		bootstrap.NewComponent(qm.quicPeerBroadcast, bootstrap.ComponentNoneScope),
+func (qm *quicPeerModule) Components() []injection.Component {
+	return []injection.Component{
+		injection.NewComponent(qm, injection.ComponentNoneScope),
+		injection.NewComponent[QuicPeerModule](qm, injection.ComponentExternalScope),
+		injection.NewComponent(qm.agent, injection.ComponentNoneScope),
 	}
 }
 
 func (qm *quicPeerModule) Ready(ctx context.Context) error {
 
 	var servers []*quicPeerServer
-	defer qm.shutdownForQuic(servers)
-
-	var cancel context.CancelCauseFunc
-	defer qm.shutdownForBroadcast(cancel)
 
 	var err error
 	closed := false
@@ -460,28 +431,15 @@ func (qm *quicPeerModule) Ready(ctx context.Context) error {
 		}
 
 		qm.locker.Lock()
-		reloadServe := qm.reloadServe
 		qm.reloadServe = false
-
-		reloadBroadcast := qm.reloadBroadcast
-		qm.reloadBroadcast = false
 		qm.locker.Unlock()
 
+		qm.shutdownForQuic(servers)
 		if closed {
 			break
 		}
 
-		if reloadServe {
-			qm.shutdownForQuic(servers)
-			servers = qm.serveForQuic(ctx)
-		}
-
-		if reloadBroadcast {
-			qm.shutdownForBroadcast(cancel)
-			causeCtx, causeCancel := context.WithCancelCause(ctx)
-			cancel = causeCancel
-			qm.quicPeerBroadcast.Ready(causeCtx)
-		}
+		servers = qm.serveForQuic(ctx)
 
 	}
 	return err
@@ -508,15 +466,19 @@ func (qm *quicPeerModule) serveForQuic(ctx context.Context) []*quicPeerServer {
 		qm.wg.Add(1)
 		go func(s *quicPeerServer, c context.Context) {
 			defer qm.wg.Done()
-			_ = s.ListenAndServe(c)
-			// TODO: write error into log
+			err := s.ListenAndServe(c)
+			if err != nil {
+				logger.Default().Log(context.Background(), logger.LevelError, "app.quic.serveForQuic Error: %s", err.Error())
+			}
 		}(server, ctx)
 	}
 	return servers
 }
 
-func (qm *quicPeerModule) shutdownForBroadcast(cancel context.CancelCauseFunc) {
-	if cancel != nil {
-		cancel(ErrBroadcastDeliverExit)
+func reload(qm *quicPeerModule) {
+	if qm.reloadServe {
+		return
 	}
+	qm.reloadServe = true
+	qm.ReloadChan() <- struct{}{}
 }

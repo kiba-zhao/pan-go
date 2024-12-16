@@ -1,4 +1,4 @@
-package bootstrap
+package injection
 
 import (
 	"errors"
@@ -7,121 +7,27 @@ import (
 	"strings"
 )
 
-type ComponentStore = map[reflect.Type]interface{}
 type ComponentPendings = map[reflect.Type][]reflect.Value
 
-type Component interface {
-	Type() reflect.Type
-	Target() interface{}
-	Scope() string
+var ErrComponentConflict = errors.New("[app.injection] engine Error: dependency conflict")
+var ErrComponentScope = errors.New("[app.injection] engine Error: invalid component scope")
+
+type engine struct {
 }
 
-const (
-	ComponentNoneScope     = "none"
-	ComponentInternalScope = "internal"
-	ComponentExternalScope = "external"
-)
-
-type componentBase struct {
-	ty    reflect.Type
-	scope string
-}
-
-func (c *componentBase) Type() reflect.Type {
-	return c.ty
-}
-
-func (c *componentBase) Scope() string {
-	return c.scope
-}
-
-type componentImpl struct {
-	componentBase
-	target interface{}
-}
-
-func NewComponent[T any](target T, scope string) Component {
-	base := componentBase{
-		ty:    reflect.TypeFor[T](),
-		scope: scope,
-	}
-
-	return &componentImpl{
-		target:        target,
-		componentBase: base,
-	}
-}
-
-func NewComponentByType(ty reflect.Type, target interface{}, scope string) Component {
-
-	base := componentBase{
-		ty:    ty,
-		scope: scope,
-	}
-
-	return &componentImpl{
-		target:        target,
-		componentBase: base,
-	}
-}
-
-func (c *componentImpl) Target() interface{} {
-	return c.target
-}
-
-type LazyComponentFunc[T any] func() T
-
-type lazyComponentImpl[T any] struct {
-	componentBase
-	lazyFunc LazyComponentFunc[T]
-}
-
-func NewLazyComponent[T any](lazyFunc LazyComponentFunc[T], scope string) Component {
-	base := componentBase{
-		ty:    reflect.TypeFor[T](),
-		scope: scope,
-	}
-	return &lazyComponentImpl[T]{
-		lazyFunc:      lazyFunc,
-		componentBase: base,
-	}
-}
-
-func (c *lazyComponentImpl[T]) Target() interface{} {
-	return c.lazyFunc()
-}
-
-type ComponentProvider interface {
-	Components() []Component
-}
-
-type simpleComponentProvider struct {
-	components []Component
-}
-
-func NewComponentProvider(components ...Component) ComponentProvider {
-	provider := &simpleComponentProvider{}
-	provider.components = components
-	return provider
-}
-
-func (s *simpleComponentProvider) Components() []Component {
-	return s.components
-}
-
-var ErrComponentConflict = errors.New("[app.bootstrap] Injector Error: dependency conflict")
-var ErrComponentScope = errors.New("[app.bootstrap] Injector Error: invalid component scope")
-
-type injectEngine struct {
-}
-
-func (ie *injectEngine) Init(registry runtime.Registry) error {
-	store := make(ComponentStore)
+func (ie *engine) Init(registry runtime.Registry) error {
+	store := NewComponentStore()
 	pendings := make(ComponentPendings)
 
 	// traverse component provider
 	err := runtime.TraverseRegistry(registry, func(provider ComponentProvider) error {
-		internalStore := make(ComponentStore)
+		var internalStore ComponentStore
+		if storeProvider, ok := provider.(ComponentStoreProvider); ok {
+			internalStore = storeProvider.ComponentStore()
+		}
+		if internalStore == nil {
+			internalStore = NewComponentStore()
+		}
 		var componentErr error
 		components := provider.Components()
 		for _, component := range components {
@@ -136,7 +42,7 @@ func (ie *injectEngine) Init(registry runtime.Registry) error {
 	return err
 }
 
-func (in *injectEngine) EngineTypes() []reflect.Type {
+func (in *engine) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[ComponentProvider](),
 	}

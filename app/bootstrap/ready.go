@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"pan/app/injection"
 	"pan/runtime"
 	"reflect"
 	"sync"
@@ -32,9 +33,9 @@ func (re *readyEngine) EngineTypes() []reflect.Type {
 	}
 }
 
-func (re *readyEngine) Components() []Component {
-	return []Component{
-		NewComponent(re, ComponentExternalScope),
+func (re *readyEngine) Components() []injection.Component {
+	return []injection.Component{
+		injection.NewComponent(re, injection.ComponentExternalScope),
 	}
 }
 

@@ -2,8 +2,9 @@ package vfs
 
 import (
 	"context"
-	"pan/app/bootstrap"
 	appConfig "pan/app/config"
+	"pan/app/injection"
+	"pan/logger"
 	"sync"
 )
 
@@ -12,8 +13,13 @@ type VFSFileSystem interface {
 	Unmount() error
 }
 
+func New(store injection.ComponentStore) interface{} {
+	return &VFS{store: store}
+}
+
 type VFS struct {
 	VFSFileSystem VFSFileSystem
+	store         injection.ComponentStore
 	locker        sync.Mutex
 	vfsSettings   *VFSSettings
 	needReload    bool
@@ -23,16 +29,20 @@ type VFS struct {
 	modOnce       sync.Once
 }
 
-func (vfs *VFS) VFSComponents() []bootstrap.Component {
-	components := []bootstrap.Component{
-		bootstrap.NewComponent(vfs, bootstrap.ComponentNoneScope),
+func (vfs *VFS) ComponentStore() injection.ComponentStore {
+	return vfs.store
+}
+
+func (vfs *VFS) Components() []injection.Component {
+	components := []injection.Component{
+		injection.NewComponent(vfs, injection.ComponentNoneScope),
 	}
 
 	// append FUSEFileSystem
 	var fuse FUSEFileSystem
 	components = append(components,
-		bootstrap.NewComponent(&fuse, bootstrap.ComponentNoneScope),
-		bootstrap.NewComponent[VFSFileSystem](&fuse, bootstrap.ComponentInternalScope),
+		injection.NewComponent(&fuse, injection.ComponentNoneScope),
+		injection.NewComponent[VFSFileSystem](&fuse, injection.ComponentInternalScope),
 	)
 
 	return components
@@ -97,7 +107,10 @@ func (vfs *VFS) Ready(ctx context.Context) error {
 			continue
 		}
 
-		vfs.VFSFileSystem.Mount(settings)
+		err := vfs.VFSFileSystem.Mount(settings)
+		if err != nil {
+			logger.Default().Log(context.Background(), logger.LevelError, "extfs.vfs.VFS Error: %s", err.Error())
+		}
 	}
 	return err
 }

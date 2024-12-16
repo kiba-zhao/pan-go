@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"pan/app/injection"
 	"pan/runtime"
 	"reflect"
 	"sync"
@@ -32,9 +33,9 @@ func (de *deferEngine) EngineTypes() []reflect.Type {
 	}
 }
 
-func (de *deferEngine) Components() []Component {
-	return []Component{
-		NewComponent(de, ComponentExternalScope),
+func (de *deferEngine) Components() []injection.Component {
+	return []injection.Component{
+		injection.NewComponent(de, injection.ComponentExternalScope),
 	}
 }
 

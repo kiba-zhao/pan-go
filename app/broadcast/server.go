@@ -14,11 +14,11 @@ var ErrBroadcastServerUnavailable = errors.New("broadcast.BroadcastServer Error:
 var ErrBroadcastInvalidConn = errors.New("broadcast.BroadcastServer Error: Invalid Connection")
 
 type broadcastServer struct {
-	broadcastModule *broadcastModule
-	locker          sync.RWMutex
-	conn            *net.UDPConn
-	address         string
-	mtu             int
+	module  *broadcastModule
+	locker  sync.RWMutex
+	conn    *net.UDPConn
+	address string
+	mtu     int
 }
 
 func (bs *broadcastServer) Shutdown() error {
@@ -36,7 +36,7 @@ func (bs *broadcastServer) Shutdown() error {
 }
 
 func (bs *broadcastServer) ListenAndServe() error {
-	if bs.broadcastModule == nil {
+	if bs.module == nil {
 		return ErrBroadcastServerUnavailable
 	}
 
@@ -130,7 +130,7 @@ func (bs *broadcastServer) ListenAndServe() error {
 			bufferItem.cancel()
 			bufferItem.wg.Wait()
 		}
-		go bs.broadcastModule.Serve(buffer, addr.IP.String())
+		go bs.module.Serve(buffer, addr.String())
 	}
 	return err
 }

@@ -6,4 +6,3 @@ option go_package = "app/quic;quic";
 message QuicGreet {
     repeated string Addrs = 1;
 }
-

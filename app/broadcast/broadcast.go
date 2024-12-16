@@ -5,8 +5,8 @@ import (
 	"context"
 	"errors"
 	"net"
-	"pan/app/bootstrap"
-	"pan/app/config"
+	"pan/app/injection"
+	"pan/logger"
 	"pan/runtime"
 	"reflect"
 	"slices"
@@ -14,6 +14,19 @@ import (
 )
 
 var ErrBroadcastModuleServeUnavailable = errors.New("broadcast.BroadcastModule Error: Serve Unavailable")
+var ErrBroadcastDeliverNoAddrs = errors.New("broadcast.BroadcastModule Error: Deliver No Addrs")
+
+type BroadcastServeAddrsProvider interface {
+	BroadcastServeAddrs() []string
+}
+
+type BroadcastDeliverAddrsProvider interface {
+	BroadcastDeliverAddrs() []string
+}
+
+type BroadcastPublicAddrsProvider interface {
+	BroadcastPublicAddrs() []string
+}
 
 type BroadcastServeModule interface {
 	ServeBroadcast([]byte, string) error
@@ -21,19 +34,34 @@ type BroadcastServeModule interface {
 
 type BroadcastModule interface {
 	Serve([]byte, string) error
-	Deliver([]byte) error
+	Deliver([]byte, ...string) error
+	ServeAddrs() []string
+	DeliverAddrs() []string
+	Reload()
 }
 
-func New() BroadcastModule {
-	return &broadcastModule{}
+func New(store injection.ComponentStore) BroadcastModule {
+	module := &broadcastModule{}
+
+	agent := &broadcastAgent{store: store}
+	agent.module = module
+	module.agent = agent
+
+	provider := &broadcastAddrsProvider{}
+	provider.agent = agent
+	provider.module = module
+	module.provider = provider
+
+	return module
 }
 
 type broadcastModule struct {
-	registry       runtime.Registry
-	registryLocker sync.RWMutex
+	provider   *broadcastAddrsProvider
+	agent      *broadcastAgent
+	registry   runtime.Registry
+	registryRW sync.RWMutex
 
-	addresses  []string
-	locker     sync.RWMutex
+	locker     sync.Mutex
 	reloadChan chan struct{}
 	reloadOnce sync.Once
 	needReload bool
@@ -43,53 +71,70 @@ type broadcastModule struct {
 func (b *broadcastModule) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[BroadcastServeModule](),
+		reflect.TypeFor[BroadcastServeAddrsProvider](),
+		reflect.TypeFor[BroadcastDeliverAddrsProvider](),
 	}
 }
 
-func (b *broadcastModule) Components() []bootstrap.Component {
-	return []bootstrap.Component{
-		bootstrap.NewComponent[BroadcastModule](b, bootstrap.ComponentExternalScope),
+func (b *broadcastModule) Components() []injection.Component {
+	return []injection.Component{
+		injection.NewComponent[BroadcastModule](b, injection.ComponentExternalScope),
 	}
 }
 
-func (b *broadcastModule) Addresses() []string {
-	b.locker.RLock()
-	defer b.locker.RUnlock()
-	return b.addresses
+func (b *broadcastModule) Modules() []interface{} {
+	return []interface{}{b.agent, b.provider}
 }
 
-func (b *broadcastModule) Serve(payload []byte, ip string) error {
-	b.registryLocker.RLock()
+func (b *broadcastModule) Reload() {
+	b.locker.Lock()
+	defer b.locker.Unlock()
+	if b.needReload {
+		return
+	}
+	b.needReload = true
+	b.ReloadChan()
+}
+
+func (b *broadcastModule) Serve(payload []byte, addr string) error {
+
+	b.registryRW.RLock()
 	registry := b.registry
-	b.registryLocker.RUnlock()
+	b.registryRW.RUnlock()
 
 	if registry == nil {
 		return ErrBroadcastModuleServeUnavailable
 	}
 
 	return runtime.TraverseRegistry(registry, func(module BroadcastServeModule) error {
-		return module.ServeBroadcast(payload, ip)
+		return module.ServeBroadcast(payload, addr)
 	})
 }
 
-func (b *broadcastModule) Deliver(payload []byte) error {
-	size := len(payload)
-	if size <= 0 {
-		return nil
-	}
+func (b *broadcastModule) Deliver(payload []byte, addrs ...string) error {
+	size := len(payload) + 1
 	if size > 65531 {
 		return bytes.ErrTooLarge
 	}
 
-	addresses := b.Addresses()
+	var deliverAddrs []string
+	if len(addrs) <= 0 {
+		deliverAddrs = b.DeliverAddrs()
+	} else {
+		deliverAddrs = addrs
+	}
+
+	if len(deliverAddrs) <= 0 {
+		return ErrBroadcastDeliverNoAddrs
+	}
 
 	connArr := make([]*net.UDPConn, 0)
-	for _, address := range addresses {
-		addr, err := net.ResolveUDPAddr("udp", address)
+	for _, addr := range deliverAddrs {
+		udpAddr, err := net.ResolveUDPAddr("udp", addr)
 		if err != nil {
 			return err
 		}
-		conn, err := net.DialUDP("udp", nil, addr)
+		conn, err := net.DialUDP("udp", nil, udpAddr)
 		if err != nil {
 			return err
 		}
@@ -120,6 +165,56 @@ func (b *broadcastModule) Deliver(payload []byte) error {
 	return nil
 }
 
+func (b *broadcastModule) ServeAddrs() []string {
+	b.registryRW.RLock()
+	registry := b.registry
+	b.registryRW.RUnlock()
+
+	if registry == nil {
+		return nil
+	}
+
+	addrs := make([]string, 0)
+	runtime.TraverseRegistry(registry, func(provider BroadcastServeAddrsProvider) error {
+		serveAddrs := provider.BroadcastServeAddrs()
+		if len(serveAddrs) <= 0 {
+			return nil
+		}
+		for _, addr := range serveAddrs {
+			if idx, ok := slices.BinarySearch(addrs, addr); !ok {
+				addrs = slices.Insert(addrs, idx, addr)
+			}
+		}
+		return nil
+	})
+	return addrs
+}
+
+func (b *broadcastModule) DeliverAddrs() []string {
+	b.registryRW.RLock()
+	registry := b.registry
+	b.registryRW.RUnlock()
+
+	if registry == nil {
+		return nil
+	}
+
+	addrs := make([]string, 0)
+	runtime.TraverseRegistry(registry, func(provider BroadcastDeliverAddrsProvider) error {
+		deliverAddrs := provider.BroadcastDeliverAddrs()
+		if len(deliverAddrs) <= 0 {
+			return nil
+		}
+		for _, addr := range deliverAddrs {
+			if idx, ok := slices.BinarySearch(addrs, addr); !ok {
+				addrs = slices.Insert(addrs, idx, addr)
+			}
+		}
+		return nil
+	})
+	return addrs
+}
+
 func (b *broadcastModule) ReloadChan() chan struct{} {
 
 	b.reloadOnce.Do(func() {
@@ -130,27 +225,9 @@ func (b *broadcastModule) ReloadChan() chan struct{} {
 	return b.reloadChan
 }
 
-func (b *broadcastModule) OnConfigUpdated(settings config.AppSettings) {
-	b.locker.Lock()
-	defer b.locker.Unlock()
-
-	if slices.Equal(b.addresses, settings.BroadcastAddress) {
-		return
-	}
-
-	b.addresses = settings.BroadcastAddress
-
-	// trigger to reload
-	if b.needReload {
-		return
-	}
-	b.needReload = true
-	b.ReloadChan() <- struct{}{}
-}
-
 func (b *broadcastModule) Init(registry runtime.Registry) error {
-	b.registryLocker.Lock()
-	defer b.registryLocker.Unlock()
+	b.registryRW.Lock()
+	defer b.registryRW.Unlock()
 	b.registry = registry
 	return nil
 }
@@ -171,8 +248,8 @@ func (b *broadcastModule) Ready(ctx context.Context) error {
 
 		b.locker.Lock()
 		b.needReload = false
-		addresses := b.addresses
 		b.locker.Unlock()
+		addrs := b.ServeAddrs()
 
 		if len(servers) > 0 {
 			for _, item := range servers {
@@ -187,19 +264,21 @@ func (b *broadcastModule) Ready(ctx context.Context) error {
 
 		servers = make([]*broadcastServer, 0)
 		mtu := b.mtu
-		for _, address := range addresses {
+		for _, addr := range addrs {
 			server := &broadcastServer{
-				address:         address,
-				broadcastModule: b,
-				mtu:             mtu,
+				address: addr,
+				module:  b,
+				mtu:     mtu,
 			}
 
 			servers = append(servers, server)
 			wg.Add(1)
 			go func(bs *broadcastServer) {
 				defer wg.Done()
-				_ = bs.ListenAndServe()
-				// TODO: write error into log
+				err = bs.ListenAndServe()
+				if err != nil {
+					logger.Default().Log(context.Background(), logger.LevelError, "app.broadcast Error: %s", err.Error())
+				}
 			}(server)
 		}
 	}

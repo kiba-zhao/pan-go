@@ -1,10 +1,11 @@
 package extfs
 
 import (
-	"pan/app/bootstrap"
+	"pan/app/injection"
 	"pan/app/peer"
 	"pan/app/sample"
 	"pan/app/web"
+	"pan/runtime"
 
 	"pan/extfs/vfs"
 	"sync"
@@ -18,19 +19,24 @@ import (
 )
 
 func New() interface{} {
-	return sample.New(&module{vfs: &vfs.VFS{}})
+	m := &module{}
+	m.store = injection.NewComponentStore()
+
+	sampleModule := sample.New(m)
+	m.sample = sampleModule
+
+	return runtime.NewModule(vfs.New(m.store), sampleModule)
 }
 
 const moduleName = "extfs"
 
 type module struct {
-	DB                 sample.RepositoryDB
-	SamplePeer         sample.SamplePeer
+	store              injection.ComponentStore
+	sample             sample.Sample
 	controllers        []web.WebController
 	controllersOnce    sync.Once
 	peerAppModules     []peer.PeerAppModule
 	peerAppModulesOnce sync.Once
-	vfs                *vfs.VFS
 }
 
 func (m *module) Name() string {
@@ -68,12 +74,14 @@ func (m *module) Models() []interface{} {
 	}
 }
 
-func (m *module) Components() []bootstrap.Component {
+func (m *module) ComponentStore() injection.ComponentStore {
+	return m.store
+}
+
+func (m *module) Components() []injection.Component {
 
 	// base
-	components := []bootstrap.Component{
-		// bootstrap.NewComponent(m.SamplePeer, bootstrap.ComponentInternalScope),
-	}
+	components := []injection.Component{}
 
 	// services
 	components = sample.AppendSampleInternalComponent[nodeitem.NodeItemInternalService](components, &nodeitem.NodeItemService{})
@@ -85,31 +93,22 @@ func (m *module) Components() []bootstrap.Component {
 	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockService{})
 
 	// brokers
-	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemBroker{SamplePeer: m.SamplePeer})
-	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileBroker{SamplePeer: m.SamplePeer})
-	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockBroker{SamplePeer: m.SamplePeer})
+	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemBroker{SamplePeer: m.sample})
+	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileBroker{SamplePeer: m.sample})
+	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockBroker{SamplePeer: m.sample})
 
 	// repositories
-	components = sample.AppendSampleComponent(components, nodeitem.NewNodeItemRepository(m.DB))
+	components = sample.AppendSampleComponent(components, nodeitem.NewNodeItemRepository(m.sample.DB()))
 
 	// controllers
 	for _, ctrl := range m.WebControllers() {
-		components = append(components, bootstrap.NewComponent(ctrl, bootstrap.ComponentNoneScope))
+		components = append(components, injection.NewComponent(ctrl, injection.ComponentNoneScope))
 	}
 
 	// peer app modules
 	for _, peerAppModule := range m.PeerAppModules() {
-		components = append(components, bootstrap.NewComponent(peerAppModule, bootstrap.ComponentNoneScope))
+		components = append(components, injection.NewComponent(peerAppModule, injection.ComponentNoneScope))
 	}
 
-	// vfs components
-	vfsComponents := m.vfs.VFSComponents()
-	components = append(components, vfsComponents...)
 	return components
-}
-
-func (m *module) Modules() []interface{} {
-	return []interface{}{
-		m.vfs,
-	}
 }

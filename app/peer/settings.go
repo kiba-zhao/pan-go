@@ -14,8 +14,8 @@ import (
 	"io/fs"
 	"math/big"
 	"os"
-	"pan/app/bootstrap"
 	"pan/app/config"
+	"pan/app/injection"
 	"pan/runtime"
 	"path"
 	"reflect"
@@ -58,9 +58,9 @@ func (ns *peerSettings) Init(registry runtime.Registry) error {
 	return ns.Generate()
 }
 
-func (ns *peerSettings) Components() []bootstrap.Component {
-	return []bootstrap.Component{
-		bootstrap.NewComponent(ns, bootstrap.ComponentNoneScope),
+func (ns *peerSettings) Components() []injection.Component {
+	return []injection.Component{
+		injection.NewComponent(ns, injection.ComponentNoneScope),
 	}
 }
 

@@ -2,8 +2,8 @@ package sample
 
 import (
 	"os"
-	"pan/app/bootstrap"
 	"pan/app/config"
+	"pan/app/injection"
 	"pan/app/peer"
 	"pan/app/web"
 	"path"
@@ -18,6 +18,11 @@ type SampleProvider interface {
 	Models() []interface{}
 }
 
+type Sample interface {
+	DB() RepositoryDB
+	SamplePeer
+}
+
 type sample[T SampleProvider] struct {
 	Config     config.AppConfig
 	PeerModule peer.PeerModule
@@ -26,7 +31,7 @@ type sample[T SampleProvider] struct {
 	once       sync.Once
 }
 
-func New[T SampleProvider](provider T) interface{} {
+func New[T SampleProvider](provider T) Sample {
 	return &sample[T]{provider: provider}
 }
 
@@ -84,12 +89,9 @@ func (s *sample[T]) Models() []interface{} {
 	}
 }
 
-func (s *sample[T]) Components() []bootstrap.Component {
-	return []bootstrap.Component{
-		bootstrap.NewComponent(s, bootstrap.ComponentNoneScope),
-		bootstrap.NewComponent[SamplePeer](s, bootstrap.ComponentInternalScope),
-		bootstrap.NewLazyComponent(s.DB, bootstrap.ComponentInternalScope),
-		bootstrap.NewComponent(s.provider, bootstrap.ComponentNoneScope),
+func (s *sample[T]) Components() []injection.Component {
+	return []injection.Component{
+		injection.NewComponent(s, injection.ComponentNoneScope),
 	}
 }
 

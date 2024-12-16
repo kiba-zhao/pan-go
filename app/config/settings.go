@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"pan/app/net"
 )
 
 type AppSettings = *Settings
@@ -17,11 +18,29 @@ type Settings struct {
 }
 
 func newDefaultSettings() AppSettings {
+
 	settings := &Settings{}
+	addrStat, err := net.StatAddr()
+	if err == nil {
+		if addrStat.IPv6Enabled {
+			settings.WebAddress = append(settings.WebAddress, "[::1]:9002")
+			settings.PeerAddress = append(settings.PeerAddress, "[::]:9000")
+			settings.BroadcastAddress = append(settings.BroadcastAddress, "[FF01::FE]:9100")
+		} else {
+			settings.WebAddress = append(settings.WebAddress, "127.0.0.1:9002")
+			settings.PeerAddress = append(settings.PeerAddress, "0.0.0.0:9000")
+			settings.BroadcastAddress = append(settings.BroadcastAddress, "224.0.0.254:9100")
+		}
+		// Temporary annotation, awaiting completion of broadcast optimization
+		// if addrStat.IPv6GlobalEnabled {
+		// 	settings.BroadcastAddress = append(settings.BroadcastAddress, "[FF0E::FE]:9100")
+		// }
+		if addrStat.IPv4GlobalEnabled {
+			settings.BroadcastAddress = append(settings.BroadcastAddress, "224.0.1.254:9100")
+		}
+	}
+
 	settings.Name = generateName()
-	settings.WebAddress = []string{"127.0.0.1:9002"}
-	settings.PeerAddress = []string{"0.0.0.0:9000"}
-	settings.BroadcastAddress = []string{"224.0.0.120:9100"}
 	settings.PublicAddress = settings.PeerAddress
 	settings.GuardEnabled = true
 	settings.GuardAccess = true

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log/slog"
 	"os"
+	"testing"
 )
 
 type Logger = *slog.Logger
@@ -89,6 +90,7 @@ func init() {
 
 	traceLog := flag.String("trace-log", defaultTraceLog, "enable trace logging")
 
+	testing.Init()
 	flag.Parse()
 	var traceLevel slog.Level
 
