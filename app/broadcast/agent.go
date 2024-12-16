@@ -116,7 +116,7 @@ func (agent *broadcastAgent) Reload() {
 		return
 	}
 	agent.needReload = true
-	agent.ReloadChan()
+	agent.ReloadChan() <- struct{}{}
 }
 
 func (agent *broadcastAgent) ServeBroadcast(payload []byte, addr string) error {

@@ -93,7 +93,7 @@ func (b *broadcastModule) Reload() {
 		return
 	}
 	b.needReload = true
-	b.ReloadChan()
+	b.ReloadChan() <- struct{}{}
 }
 
 func (b *broadcastModule) Serve(payload []byte, addr string) error {
