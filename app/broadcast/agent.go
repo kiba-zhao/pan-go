@@ -327,7 +327,7 @@ func (agent *broadcastAgent) Ready(ctx context.Context) error {
 
 func (agent *broadcastAgent) StartDelivery(ctx context.Context) {
 loop:
-	for i := 0; i < 6; i++ {
+	for {
 		err := agent.DeliverOnline()
 		if err != nil {
 			break

@@ -311,18 +311,29 @@ func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string, needGreet bool)
 	route.Lock()
 	defer route.Unlock()
 
+	var serveConn QuicConn
 	if route.Contains(addr) {
-		return nil
+		if !needGreet {
+			return nil
+		}
+		serveConn = qm.Lookup(peerId)
 	}
 
-	var serveConn QuicConn
-	conn, err := dialAddr(context.Background(), addr, qm)
-	if err == nil {
-		serveConn, err = qm.Serve(conn, peerId)
+	var err error
+	if serveConn == nil {
+		var conn quic.Connection
+		conn, err = dialAddr(context.Background(), addr, qm)
+		if err == nil {
+			serveConn, err = qm.Serve(conn, peerId)
+		}
+		if err == nil {
+			err = route.Store(addr)
+			if err == ErrQuicPeerRouteDuplicateAddress {
+				err = nil
+			}
+		}
 	}
-	if err == nil {
-		err = route.Store(addr)
-	}
+
 	if err == nil && needGreet {
 		err = qm.agent.Greet(serveConn)
 	}
