@@ -37,6 +37,7 @@ func (store *BroadcastStore) SaveHighest(peerId peer.PeerID, heightest uint64) e
 	}
 
 	if ok && modelInfo.Hightest <= heightest {
+		modelInfo.Hightest = heightest
 		modelInfo, err = store.Repo.UpdateHeightest(modelInfo)
 	}
 	return err
