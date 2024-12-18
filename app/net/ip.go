@@ -19,27 +19,32 @@ func StatAddr() (*AddrStat, error) {
 	var addrStat AddrStat
 	for _, addr := range addrs {
 		ipNet := addr.(*net.IPNet)
-		if ipNet.IP.IsLoopback() {
-			continue
-		}
-		if ipNet.IP.IsPrivate() {
-			continue
-		}
-		if ipNet.IP.IsLinkLocalUnicast() {
-			continue
-		}
-		if ipNet.IP.IsMulticast() || ipNet.IP.IsLinkLocalMulticast() || ipNet.IP.IsInterfaceLocalMulticast() {
-			continue
-		}
+		// if ipNet.IP.IsLoopback() {
+		// 	continue
+		// }
+		// if ipNet.IP.IsPrivate() {
+		// 	continue
+		// }
+		// if ipNet.IP.IsLinkLocalUnicast() {
+		// 	continue
+		// }
+		// if ipNet.IP.IsMulticast() || ipNet.IP.IsLinkLocalMulticast() || ipNet.IP.IsInterfaceLocalMulticast() {
+		// 	continue
+		// }
 
 		if ipNet.IP.To4() != nil {
-			addrStat.IPv4GlobalEnabled = ipNet.IP.IsGlobalUnicast()
 			addrStat.IPv4Enabled = true
+			if !addrStat.IPv4GlobalEnabled {
+				addrStat.IPv4GlobalEnabled = ipNet.IP.IsGlobalUnicast() && !ipNet.IP.IsPrivate()
+			}
+
 			continue
 		}
 
 		addrStat.IPv6Enabled = true
-		addrStat.IPv6GlobalEnabled = ipNet.IP.IsGlobalUnicast()
+		if !addrStat.IPv6GlobalEnabled {
+			addrStat.IPv6GlobalEnabled = ipNet.IP.IsGlobalUnicast() && !ipNet.IP.IsPrivate()
+		}
 
 	}
 

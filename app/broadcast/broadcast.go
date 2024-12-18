@@ -333,7 +333,7 @@ func resolveAddrs(addr string) ([]*net.UDPAddr, error) {
 		}
 		for _, ifaceAddr := range ifaceAddrs {
 			ipNet, ok := ifaceAddr.(*net.IPNet)
-			if !ok {
+			if !ok || ipNet.IP.To4() != nil {
 				continue
 			}
 			if isGlobalAddr == (ipNet.IP.IsGlobalUnicast() && !ipNet.IP.IsPrivate()) {

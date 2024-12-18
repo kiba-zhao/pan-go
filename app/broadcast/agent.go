@@ -185,23 +185,29 @@ func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 			continue
 		}
 
-		addrsList := make([][]string, 0)
-		if ipAddr.IP.IsUnspecified() || ipAddr.IP.IsLinkLocalUnicast() || ipAddr.IP.IsPrivate() {
-			if ipAddr.IP.To16() == nil {
-				addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeLocal])
-			} else {
-				addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeIPV6Local])
+		var addrs []string
+
+		if ipAddr.IP.IsUnspecified() {
+			addrs = deliverAddrs
+		} else {
+			addrsList := make([][]string, 0)
+			if ipAddr.IP.IsLinkLocalUnicast() || ipAddr.IP.IsPrivate() {
+				if ipAddr.IP.To4() != nil {
+					addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeLocal])
+				} else {
+					addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeIPV6Local])
+				}
 			}
-		}
-		if ipAddr.IP.IsUnspecified() || ipAddr.IP.IsGlobalUnicast() && !ipAddr.IP.IsPrivate() {
-			if ipAddr.IP.To16() == nil {
-				addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeGlobal])
-			} else {
-				addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeIPV6Global])
+			if ipAddr.IP.IsGlobalUnicast() && !ipAddr.IP.IsPrivate() {
+				if ipAddr.IP.To4() != nil {
+					addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeGlobal])
+				} else {
+					addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeIPV6Global])
+				}
 			}
+			addrs = slices.Concat(addrsList...)
 		}
 
-		addrs := slices.Concat(addrsList...)
 		if len(addrs) <= 0 {
 			continue
 		}

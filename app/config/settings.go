@@ -25,23 +25,21 @@ func newDefaultSettings() AppSettings {
 		if addrStat.IPv6Enabled {
 			settings.WebAddress = append(settings.WebAddress, "[::1]:9002")
 			settings.PeerAddress = append(settings.PeerAddress, "[::]:9000")
-			settings.BroadcastAddress = append(settings.BroadcastAddress, "[FF01::FE]:9100")
+			settings.BroadcastAddress = append(settings.BroadcastAddress, "[FF02::1]:9100")
 		}
 		if addrStat.IPv4Enabled {
-			if len(settings.WebAddress) > 0 {
-				settings.WebAddress = append(settings.WebAddress, "127.0.0.1:9002")
-			}
-			if len(settings.PeerAddress) > 0 {
+			settings.WebAddress = append(settings.WebAddress, "127.0.0.1:9002")
+			if !addrStat.IPv6Enabled {
 				settings.PeerAddress = append(settings.PeerAddress, "0.0.0.0:9000")
 			}
-			settings.BroadcastAddress = append(settings.BroadcastAddress, "224.0.0.254:9100")
+			settings.BroadcastAddress = append(settings.BroadcastAddress, "224.0.0.1:9100")
 		}
 		// Temporary annotation, awaiting completion of broadcast optimization
 		// if addrStat.IPv6GlobalEnabled {
-		// 	settings.BroadcastAddress = append(settings.BroadcastAddress, "[FF0E::FE]:9100")
+		// 	settings.BroadcastAddress = append(settings.BroadcastAddress, "[FF0E::1]:9100")
 		// }
 		if addrStat.IPv4GlobalEnabled {
-			settings.BroadcastAddress = append(settings.BroadcastAddress, "224.0.1.254:9100")
+			settings.BroadcastAddress = append(settings.BroadcastAddress, "224.0.1.1:9100")
 		}
 	}
 
