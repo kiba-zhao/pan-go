@@ -24,7 +24,7 @@ import { useMemo } from "react";
 const ExtFSNodeFileRoutePath = "/extfs/node-files";
 const ExtFSNodeFileTagRoutePath = "/extfs/node-file-tags";
 
-const ExtFSNodeFileMode = "F";
+const ExtFSNodeFileMode = "NF";
 const ExtFSNodeFileQueryKey = ["extfs-node-files"];
 export const ExtFSNodeFileState = {
   mode: ExtFSNodeFileMode,

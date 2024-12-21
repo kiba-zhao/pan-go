@@ -92,6 +92,10 @@
       "enabled": "Enabled",
       "allowed": "Allowed",
       "refused": "Refused"
+    },
+    "placeholder":{
+      "search":"Search ...",
+      "search-input":"What are you looking for ?"
     }
   }
 }

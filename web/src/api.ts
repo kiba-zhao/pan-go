@@ -243,3 +243,30 @@ export async function searchExtFSRemoteFiles({
 
   return remotefiles;
 }
+
+export type ExtFSSearchItemSearchCondition = {
+  q: string;
+}
+
+export type ExtFSSearchItem = {
+  id: string;
+  name: string;
+  fileType: "F" | "D";
+  size: number;
+  available: boolean;
+  reason:string,
+  referId:string,
+  referType:"N"|"NF"|"R"|"RF",
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function searchExtFSSearchItems(
+  condition: ExtFSSearchItemSearchCondition
+): Promise<ExtFSSearchItem[]> {
+  const [_, searchItems] = await fetchMany(
+    withPath("extfs/search-items", "merge"),
+    withQuery(condition, "merge")
+  );
+  return searchItems;
+}

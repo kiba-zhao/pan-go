@@ -98,6 +98,10 @@
       "enabled": "启用",
       "allowed": "允许",
       "refused": "拒绝"
+    },
+    "placeholder":{
+      "search":"文件检索 ...",
+      "search-input":"请输入检索内容"
     }
   }
 }

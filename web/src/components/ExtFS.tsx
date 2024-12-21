@@ -116,6 +116,7 @@ const CustomButton = styled(ButtonBase)(({ theme }) => ({
 }));
 
 const Search = () => {
+  const t = useTranslate();
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -144,7 +145,7 @@ const Search = () => {
           justifyContent="flex-start"
         >
           <SearchIcon />
-          <Typography sx={{ opacity: 0.5 }}>Search ...</Typography>
+          <Typography sx={{ opacity: 0.5 }}>{t("custom.placeholder.search")}</Typography>
         </Stack>
       </CustomButton>
       <IconButton
@@ -154,6 +155,25 @@ const Search = () => {
         <SearchIcon />
       </IconButton>
       <Dialog fullScreen={fullScreen} open={open} onClose={onClose}>
+        <SearchItems onEsc={onClose} />
+      </Dialog>
+    </Fragment>
+  );
+};
+
+type SearchItemsProps = {
+  onEsc: () => void
+}
+const SearchItems = ({onEsc}: SearchItemsProps) => {
+
+  const t = useTranslate();
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+
+  
+   
+  return(
+    <Fragment>
         <Stack
           padding={1}
           component="form"
@@ -164,12 +184,12 @@ const Search = () => {
         >
           <SearchIcon />
           <InputBase
-            placeholder="What are you looking for ?"
+            placeholder={t("custom.placeholder.search-input")}
             fullWidth
             size="medium"
             autoFocus
           />
-          <ButtonBase onClick={onClose}>
+          <ButtonBase onClick={onEsc}>
             <Chip
               label="esc"
               variant="outlined"
@@ -222,10 +242,9 @@ const Search = () => {
             </ListItemButton>
           </ListItem>
         </List>
-      </Dialog>
     </Fragment>
-  );
-};
+  )
+}
 
 const Refresh = () => {
   const [extFS, _] = useExtFS();
