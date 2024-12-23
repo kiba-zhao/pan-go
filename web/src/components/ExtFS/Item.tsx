@@ -1,12 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import {
-  Children,
-  createContext,
-  createElement,
-  Fragment,
-  isValidElement,
-  useContext,
-} from "react";
+import { Fragment } from "react";
 
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -24,21 +17,18 @@ import Typography from "@mui/material/Typography";
 
 import type { To } from "react-router-dom";
 import { Link as RouterLink } from "react-router-dom";
-import AutoSizer from "react-virtualized-auto-sizer";
-import { FixedSizeList } from "react-window";
 
-export type ExtFSItemRecord<T extends any> = {
-  data: T;
-  style?: CSSProperties;
-};
-const ExtFSItemContext = createContext<ExtFSItemRecord<any>>(null!);
-export const useExtFSItem = <T extends any>() =>
-  useContext<ExtFSItemRecord<T>>(ExtFSItemContext);
+import type { ListItemData, ListItemsProps } from "../List/Item";
+import { ListItems, useListItems } from "../List/Item";
+
+export type ExtFSItemRecord<T extends any> = ListItemData<T>;
+
+export const useExtFSItem = useListItems;
 
 export type ExtFSItemsProps<T extends any> = {
-  items: T[];
-  isFetching: boolean;
-  children: ReactNode;
+  items: ListItemsProps<T>["items"];
+  isFetching: ListItemsProps<T>["isFetching"];
+  children: ListItemsProps<T>["children"];
 };
 export const ExtFSItems = <T extends any>({
   items,
@@ -57,29 +47,9 @@ export const ExtFSItems = <T extends any>({
       >
         <CircularProgress />
       </Box>
-      <AutoSizer disableWidth={true} hidden={isFetching}>
-        {({ height }) => (
-          <FixedSizeList
-            height={height}
-            width="100%"
-            itemSize={68}
-            itemCount={items.length}
-          >
-            {({ index, style }) => (
-              <ExtFSItemContext.Provider
-                value={{ data: items[index], style }}
-                key={`extfs-items-${index}`}
-              >
-                {Children.map(children, (child) =>
-                  child && isValidElement(child)
-                    ? createElement(child.type, child.props)
-                    : child
-                )}
-              </ExtFSItemContext.Provider>
-            )}
-          </FixedSizeList>
-        )}
-      </AutoSizer>
+      <ListItems items={items} isFetching={isFetching} itemSize={68}>
+        {children}
+      </ListItems>
     </Fragment>
   );
 };

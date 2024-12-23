@@ -72,17 +72,17 @@ export const HomeItems = () => {
 
 const ExtFSNodeTagRoutePath = "/extfs/node-tags"; // TODO: not implement
 const HomeItem = () => {
-  const { style, data }: ExtFSItemRecord<ExtFSNode | ExtFSRemoteNode> =
+  const { style, item }: ExtFSItemRecord<ExtFSNode | ExtFSRemoteNode> =
     useExtFSItem();
 
   const [extfs, setExtFS] = useExtFS();
 
   const remoteNode = useMemo(
     () =>
-      (data as ExtFSRemoteNode).updatedAt !== void 0
-        ? (data as ExtFSRemoteNode)
+      (item as ExtFSRemoteNode).updatedAt !== void 0
+        ? (item as ExtFSRemoteNode)
         : void 0,
-    [data]
+    [item]
   );
   if (remoteNode !== void 0) {
     const handleRemoteClick = () => {
@@ -128,7 +128,7 @@ const HomeItem = () => {
       parentItems: [{ name: localNode.name, state: ExtFSNodeState }],
     });
   };
-  const localNode = data as ExtFSNode;
+  const localNode = item as ExtFSNode;
   return (
     <ExtFSItem
       style={style}

@@ -245,18 +245,13 @@ export async function searchExtFSRemoteFiles({
 }
 
 export type ExtFSSearchItemSearchCondition = {
-  q: string;
-}
+  q?: string;
+  limit?: number;
+};
 
 export type ExtFSSearchItem = {
   id: string;
-  name: string;
-  fileType: "F" | "D";
-  size: number;
-  available: boolean;
-  reason:string,
-  referId:string,
-  referType:"N"|"NF"|"R"|"RF",
+  query: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -264,9 +259,46 @@ export type ExtFSSearchItem = {
 export async function searchExtFSSearchItems(
   condition: ExtFSSearchItemSearchCondition
 ): Promise<ExtFSSearchItem[]> {
+  const { limit, ...queries } = condition;
+  const _limit = limit != void 0 ? limit.toString() : void 0;
   const [_, searchItems] = await fetchMany(
     withPath("extfs/search-items", "merge"),
-    withQuery(condition, "merge")
+    withQuery(_limit ? { ...queries, _limit } : queries, "merge")
   );
   return searchItems;
 }
+
+export async function deleteExtFSSearchItem(id: ExtFSSearchItem["id"]) {
+  return await fetchOne(
+    withPath(`extfs/search-items/${id}`, "merge"),
+    withMethod("DELETE")
+  );
+}
+
+export type ExtFSSearchItemFields = Omit<
+  ExtFSSearchItem,
+  "id" | "createdAt" | "updatedAt"
+>;
+
+export async function saveExtFSSearchItem(
+  fields: ExtFSSearchItemFields
+): Promise<ExtFSSearchItem> {
+  return await fetchOne(
+    withPath(`extfs/search-items`, "merge"),
+    withMethod("POST"),
+    withJSONBody(fields)
+  );
+}
+
+export type ExtFSSearchFile = {
+  id: string;
+  name: string;
+  fileType: "F" | "D";
+  size: number;
+  available: boolean;
+  reason: string;
+  referId: string;
+  referType: "N" | "NF" | "R" | "RF";
+  createdAt: string;
+  updatedAt: string;
+};

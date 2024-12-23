@@ -14,8 +14,9 @@ import type {
   ExtFSRemoteItem,
   ExtFSRemoteItemSearchCondition,
   ExtFSRemoteNode,
-  ExtFSSearchItemSearchCondition,
   ExtFSSearchItem,
+  ExtFSSearchItemFields,
+  ExtFSSearchItemSearchCondition,
 } from "./api";
 import * as api from "./api";
 
@@ -30,6 +31,7 @@ export type {
   ExtFSRemoteItem,
   ExtFSRemoteNode,
   ExtFSSearchItem,
+  ExtFSSearchItemFields,
 };
 export interface API {
   selectAllAppSettings(): Promise<AppSettings>;
@@ -57,6 +59,8 @@ export interface API {
   searchExtFSSearchItems(
     condition: ExtFSSearchItemSearchCondition
   ): Promise<ExtFSSearchItem[]>;
+  deleteExtFSSearchItem(id: ExtFSSearchItem["id"]): Promise<void>;
+  saveExtFSSearchItem(fields: ExtFSSearchItemFields): Promise<ExtFSSearchItem>;
 }
 
 const APIContext = createContext<API | null>(null);

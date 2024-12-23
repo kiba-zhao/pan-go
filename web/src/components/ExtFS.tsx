@@ -1,6 +1,5 @@
 import { Title, useTranslate } from "react-admin";
 
-import ClearIcon from "@mui/icons-material/Clear";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -9,16 +8,8 @@ import StorageIcon from "@mui/icons-material/Storage";
 import Box from "@mui/material/Box";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import ButtonBase from "@mui/material/ButtonBase";
-import Chip from "@mui/material/Chip";
-import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
-import InputBase from "@mui/material/InputBase";
 import Link from "@mui/material/Link";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemSecondaryAction from "@mui/material/ListItemSecondaryAction";
-import ListItemText from "@mui/material/ListItemText";
 import type { MenuProps } from "@mui/material/Menu";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
@@ -37,6 +28,7 @@ import {
   RemoteFileMore,
   RemoteFiles,
 } from "./ExtFS/RemoteFile";
+import { SearchItems } from "./ExtFS/Search";
 import type { ExtFSParentItem, ExtFSState } from "./ExtFS/State";
 import { ExtFSProvider as ExtFSStateProvider, useExtFS } from "./ExtFS/State";
 
@@ -145,7 +137,9 @@ const Search = () => {
           justifyContent="flex-start"
         >
           <SearchIcon />
-          <Typography sx={{ opacity: 0.5 }}>{t("custom.placeholder.search")}</Typography>
+          <Typography sx={{ opacity: 0.5 }}>
+            {t("custom.placeholder.search")}
+          </Typography>
         </Stack>
       </CustomButton>
       <IconButton
@@ -154,97 +148,115 @@ const Search = () => {
       >
         <SearchIcon />
       </IconButton>
-      <Dialog fullScreen={fullScreen} open={open} onClose={onClose}>
-        <SearchItems onEsc={onClose} />
+      <Dialog
+        fullScreen={fullScreen}
+        open={open}
+        onClose={onClose}
+        PaperProps={{
+          sx: fullScreen ? {} : { width: "100%", overflowX: "hidden" },
+        }}
+      >
+        <SearchItems onEsc={onClose} enabled={open} />
       </Dialog>
     </Fragment>
   );
 };
 
-type SearchItemsProps = {
-  onEsc: () => void
-}
-const SearchItems = ({onEsc}: SearchItemsProps) => {
+// type SearchItemsProps = {
+//   onEsc: () => void;
+//   enabled: boolean;
+// };
+// const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
+//   const t = useTranslate();
+//   const theme = useTheme();
+//   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const t = useTranslate();
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+//   const [q, setQ] = useState("");
 
-  
-   
-  return(
-    <Fragment>
-        <Stack
-          padding={1}
-          component="form"
-          spacing={0.5}
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-        >
-          <SearchIcon />
-          <InputBase
-            placeholder={t("custom.placeholder.search-input")}
-            fullWidth
-            size="medium"
-            autoFocus
-          />
-          <ButtonBase onClick={onEsc}>
-            <Chip
-              label="esc"
-              variant="outlined"
-              sx={{ borderRadius: 1 }}
-              size="small"
-            />
-          </ButtonBase>
-        </Stack>
-        <Divider />
-        <List
-          sx={{ pt: 0, ...(fullScreen ? {} : { height: 680, width: 552 }) }}
-        >
-          <ListItem disableGutters>
-            <ListItemButton>
-              <ListItemText
-                primary="Keywords 1"
-                sx={{ paddingRight: 5 }}
-              ></ListItemText>
-              <ListItemSecondaryAction>
-                <IconButton size="small">
-                  <ClearIcon fontSize="small" />
-                </IconButton>
-              </ListItemSecondaryAction>
-            </ListItemButton>
-          </ListItem>
-          <ListItem disableGutters>
-            <ListItemButton>
-              <ListItemText
-                primary="Keywords 2"
-                sx={{ paddingRight: 5 }}
-              ></ListItemText>
-              <ListItemSecondaryAction>
-                <IconButton size="small">
-                  <ClearIcon fontSize="small" />
-                </IconButton>
-              </ListItemSecondaryAction>
-            </ListItemButton>
-          </ListItem>
-          <ListItem disableGutters>
-            <ListItemButton>
-              <ListItemText
-                primary="Keywords 3"
-                sx={{ paddingRight: 5 }}
-              ></ListItemText>
-              <ListItemSecondaryAction>
-                <IconButton size="small">
-                  <ClearIcon fontSize="small" />
-                </IconButton>
-              </ListItemSecondaryAction>
-            </ListItemButton>
-          </ListItem>
-        </List>
-    </Fragment>
-  )
-}
+//   const api = useAPI();
+//   const { data, isFetching } = useQuery({
+//     queryKey: ["extfs-search-items", q],
+//     queryFn: async () => await api?.searchExtFSSearchItems({ q }),
+//     enabled,
+//   });
+
+//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     setQ(e.target.value);
+//   };
+
+//   return (
+//     <Fragment>
+//       <Stack
+//         padding={1}
+//         component="form"
+//         spacing={0.5}
+//         direction="row"
+//         alignItems="center"
+//         justifyContent="space-between"
+//       >
+//         <SearchIcon />
+//         <InputBase
+//           placeholder={t("custom.placeholder.search-input")}
+//           fullWidth
+//           size="medium"
+//           onChange={handleChange}
+//           autoFocus
+//         />
+//         <ButtonBase onClick={onEsc}>
+//           <Chip
+//             label="esc"
+//             variant="outlined"
+//             sx={{ borderRadius: 1 }}
+//             size="small"
+//           />
+//         </ButtonBase>
+//       </Stack>
+//       <Divider />
+//       <List sx={{ pt: 0, ...(fullScreen ? {} : { height: 680, width: 552 }) }}>
+
+//         <ListItem disableGutters>
+//           <ListItemButton>
+//             <ListItemText
+//               primary="Keywords 1"
+//               sx={{ paddingRight: 5 }}
+//             ></ListItemText>
+//             <ListItemSecondaryAction>
+//               <IconButton size="small">
+//                 <ClearIcon fontSize="small" />
+//               </IconButton>
+//             </ListItemSecondaryAction>
+//           </ListItemButton>
+//         </ListItem>
+//         <ListItem disableGutters>
+//           <ListItemButton>
+//             <ListItemText
+//               primary="Keywords 2"
+//               sx={{ paddingRight: 5 }}
+//             ></ListItemText>
+//             <ListItemSecondaryAction>
+//               <IconButton size="small">
+//                 <ClearIcon fontSize="small" />
+//               </IconButton>
+//             </ListItemSecondaryAction>
+//           </ListItemButton>
+//         </ListItem>
+//         <ListItem disableGutters>
+//           <ListItemButton>
+//             <ListItemText
+//               primary="Keywords 3"
+//               sx={{ paddingRight: 5 }}
+//             ></ListItemText>
+//             <ListItemSecondaryAction>
+//               <IconButton size="small">
+//                 <ClearIcon fontSize="small" />
+//               </IconButton>
+//             </ListItemSecondaryAction>
+//           </ListItemButton>
+//         </ListItem>
+//       </List>
+//     </Fragment>
+//   );
+// };
 
 const Refresh = () => {
   const [extFS, _] = useExtFS();

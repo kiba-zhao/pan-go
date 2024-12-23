@@ -46,28 +46,28 @@ export const RemoteFiles = () => {
 };
 
 export const RemoteFile = () => {
-  const { style, data }: ExtFSItemRecord<ExtFSRemoteFile> = useExtFSItem();
+  const { style, item }: ExtFSItemRecord<ExtFSRemoteFile> = useExtFSItem();
   const avatarIcon = useMemo(() => {
-    if (data?.fileType === "D")
-      return <FolderIcon color={data.available ? "primary" : "disabled"} />;
-    if (data?.fileType === "F")
+    if (item?.fileType === "D")
+      return <FolderIcon color={item.available ? "primary" : "disabled"} />;
+    if (item?.fileType === "F")
       return (
-        <InsertDriveFileIcon color={data.available ? "action" : "disabled"} />
+        <InsertDriveFileIcon color={item.available ? "action" : "disabled"} />
       );
-  }, [data?.fileType]);
+  }, [item?.fileType]);
 
   const [extfs, setExtFS] = useExtFS();
   const handleClick = () => {
-    if (!data.available) return;
-    if (data.fileType === "D") {
+    if (!item.available) return;
+    if (item.fileType === "D") {
       const { parentItems, ...state } = extfs;
       const fileState = {
         ...state,
-        parentPath: data.filePath,
+        parentPath: item.filePath,
       };
       setExtFS({
         ...fileState,
-        parentItems: [...parentItems, { name: data.name, state: fileState }],
+        parentItems: [...parentItems, { name: item.name, state: fileState }],
       });
       return;
     }
@@ -75,17 +75,17 @@ export const RemoteFile = () => {
   return (
     <ExtFSItem
       style={style}
-      primary={data.name}
-      secondary={data.updatedAt}
+      primary={item.name}
+      secondary={item.updatedAt}
       avatarIcon={avatarIcon}
       onClick={handleClick}
-      disabled={!data.available}
+      disabled={!item.available}
     >
       <ExtFSItemTag
-        to={`${ExtFSRemoteFileTagRoutePath}/${data.id}`}
-        disabled={!data.available}
-        quantity={data.tagQuantity}
-        pendingQuantity={data.pendingTagQuantity}
+        to={`${ExtFSRemoteFileTagRoutePath}/${item.id}`}
+        disabled={!item.available}
+        quantity={item.tagQuantity}
+        pendingQuantity={item.pendingTagQuantity}
       />
     </ExtFSItem>
   );
