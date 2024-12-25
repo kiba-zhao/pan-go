@@ -8,10 +8,10 @@ import {
   useExtFSItem,
 } from "./Item";
 import { More, MoreHelpItem, MoreSettingsItem } from "./More";
-import type { ExtFSSingleState } from "./State";
+import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
 
-import type { ExtFSNodeFile } from "../../API";
+import type { ExtFSNodeFile, ExtFSSearchFile, API } from "../../API";
 import { useAPI } from "../../API";
 
 import { useQuery } from "@tanstack/react-query";
@@ -24,12 +24,31 @@ import { useMemo } from "react";
 const ExtFSNodeFileRoutePath = "/extfs/node-files";
 const ExtFSNodeFileTagRoutePath = "/extfs/node-file-tags";
 
-const ExtFSNodeFileMode = "NF";
+export const ExtFSNodeFileMode = "NF";
 const ExtFSNodeFileQueryKey = ["extfs-node-files"];
-export const ExtFSNodeFileState = {
+const ExtFSNodeFileState = {
   mode: ExtFSNodeFileMode,
   queryKeyList: [ExtFSNodeFileQueryKey],
 };
+
+type NewExtFSStateOpts = {
+  filePath?: ExtFSNodeFile["filePath"];
+} & Pick<ExtFSNodeFile, "itemId" | "name">;
+export function newExtFSState(
+  extfs: ExtFSState,
+  opts: NewExtFSStateOpts
+): ExtFSState {
+  const { parentItems } = extfs;
+  const fileState = {
+    ...ExtFSNodeFileState,
+    itemId: opts.itemId,
+    parentPath: opts.filePath,
+  };
+  return {
+    ...fileState,
+    parentItems: [...parentItems, { name: opts.name, state: fileState }],
+  } as ExtFSState;
+}
 
 export type ExtFSNodeFileSingleState = {
   itemId: number;
@@ -69,15 +88,8 @@ export const NodeFile = () => {
   const handleClick = () => {
     if (!item.available) return;
     if (item.fileType === "D") {
-      const { parentItems, ...state } = extfs;
-      const fileState = {
-        ...state,
-        parentPath: item.filePath,
-      };
-      setExtFS({
-        ...fileState,
-        parentItems: [...parentItems, { name: item.name, state: fileState }],
-      });
+      const state = newExtFSState(extfs, item);
+      setExtFS(state);
       return;
     }
   };

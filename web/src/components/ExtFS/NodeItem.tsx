@@ -1,4 +1,4 @@
-import type { ExtFSNodeItem } from "../../API";
+import type { ExtFSNodeItem, ExtFSSearchFile } from "../../API";
 import { useAPI } from "../../API";
 import { ExtFSNodeItemRoutePath } from "../ExtFSNodeItem";
 import type { ExtFSItemRecord } from "./Item";
@@ -10,7 +10,8 @@ import {
   useExtFSItem,
 } from "./Item";
 import { More, MoreHelpItem, MoreNewItem } from "./More";
-import { ExtFSNodeFileState } from "./NodeFile";
+import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
+import type { ExtFSState } from "./State";
 import { useExtFS } from "./State";
 
 import { useQuery } from "@tanstack/react-query";
@@ -20,12 +21,33 @@ import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
 const ExtFSNodeItemTagRoutePath = "/extfs/node-item-tags";
-const ExtFSNodeMode = "N";
+export const ExtFSNodeMode = "N";
 const ExtFSNodeQueryKey = ["extfs-node-items"];
-export const ExtFSNodeState = {
+
+const ExtFSNodeState = {
   mode: ExtFSNodeMode,
   queryKeyList: [ExtFSNodeQueryKey],
 };
+
+export function newExtFSState(extfs: ExtFSState, name: string): ExtFSState {
+  const { parentItems } = extfs;
+  return {
+    ...ExtFSNodeState,
+    parentItems: [...parentItems, { name: name, state: ExtFSNodeState }],
+  } as ExtFSState;
+}
+
+export function newItemSettingsUrl(id: ExtFSNodeItem["id"]): string {
+  return `${ExtFSNodeItemTagRoutePath}/${id}`;
+}
+
+type NewExtFSStateReferOpts = Pick<ExtFSSearchFile, "name" | "referId">;
+export function newExtFSStateWithRefer(
+  extfs: ExtFSState,
+  opts: NewExtFSStateReferOpts
+): ExtFSState {
+  return newExtFSState(extfs, opts.name);
+}
 
 export const NodeItems = () => {
   const [extfs, _] = useExtFS();
@@ -58,18 +80,16 @@ export const NodeItem = () => {
   const handleClick = () => {
     if (!item.available) return;
     if (item.fileType === "D") {
-      const { parentItems } = extfs;
-      const fileState = {
-        ...ExtFSNodeFileState,
+      const state = newExtFSStateWithNodeFile(extfs, {
         itemId: item.id,
-      };
-      setExtFS({
-        ...fileState,
-        parentItems: [...parentItems, { name: item.name, state: fileState }],
+        name: item.name,
       });
+      setExtFS(state);
       return;
     }
   };
+
+  const settingsUrl = useMemo(() => newItemSettingsUrl(item.id), [item.id]);
   return (
     <ExtFSItem
       style={style}
@@ -85,7 +105,7 @@ export const NodeItem = () => {
         quantity={item.tagQuantity}
         pendingQuantity={item.pendingTagQuantity}
       />
-      <ExtFSItemSettings to={`${ExtFSNodeItemRoutePath}/${item.id}`} />
+      <ExtFSItemSettings to={settingsUrl} />
     </ExtFSItem>
   );
 };

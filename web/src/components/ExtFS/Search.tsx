@@ -24,16 +24,20 @@ import {
   useContext,
   useMemo,
   useState,
+  memo,
+  useDeferredValue,
 } from "react";
 
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 
 import type { ExtFSSearchItem, ExtFSSearchItemFields } from "../../API";
 import { useAPI } from "../../API";
 import type { ListItemData } from "../List/Item";
 import { ListItems, useListItems } from "../List/Item";
+import { useExtFS } from "./State";
+import { newExtFSState } from "./SearchFile";
 
 type SearchQuery = {
   queryKey: QueryKey;
@@ -47,36 +51,35 @@ type SearchItemsProps = {
 };
 export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
   const t = useTranslate();
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [query, setQuery] = useState("");
-  const queryKey = useMemo(() => ["extfs-search-items", query], [query]);
-
-  const api = useAPI();
-  const { data, isFetching } = useQuery({
-    queryKey,
-    queryFn: async () =>
-      await api?.searchExtFSSearchItems({ q: query, limit: 10 }),
-    enabled,
-  });
 
   const setQueryDelay = useCallback(
     _.debounce(setQuery, 500, { maxWait: 1000 }),
     []
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    if (e === void 0 || e.target === void 0) return;
     const value = e.target.value;
     setQueryDelay(value);
   };
 
-  const { handleSubmit, register } = useForm<ExtFSSearchItemFields>();
+  const { handleSubmit, control } = useForm<ExtFSSearchItemFields>({
+    defaultValues: { query },
+  });
 
+  const [extfs, setExtFS] = useExtFS();
+  const api = useAPI();
   const { mutate: saveMutate, isPending: isSavePending } = useMutation({
     mutationFn: api?.saveExtFSSearchItem,
-    onSuccess: () => {
-      // TODO: redirect to search file mode
+
+    onSuccess: (data) => {
+      onEsc();
+      const state = newExtFSState(extfs, data.query);
+      setExtFS(state);
     },
   });
 
@@ -87,6 +90,8 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
     })();
     event.stopPropagation();
   };
+
+  const deferredQuery = useDeferredValue(query);
 
   return (
     <Fragment>
@@ -100,14 +105,28 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
         onSubmit={handleSave}
       >
         <SearchIcon />
-        <InputBase
-          placeholder={t("custom.placeholder.search-input")}
-          fullWidth
-          size="medium"
-          autoFocus
-          disabled={isSavePending}
-          {...register("query", { onChange: handleChange })}
+        <Controller
+          control={control}
+          rules={{
+            required: true,
+          }}
+          name="query"
+          render={({ field: { onChange, ...field_ } }) => (
+            <InputBase
+              placeholder={t("custom.placeholder.search-input")}
+              fullWidth
+              size="medium"
+              autoFocus
+              {...field_}
+              onChange={(event) => {
+                onChange(event);
+                handleChange(event);
+              }}
+              disabled={isSavePending}
+            />
+          )}
         />
+
         <ButtonBase onClick={onEsc}>
           <Chip
             label="esc"
@@ -118,24 +137,64 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
         </ButtonBase>
       </Stack>
       <Divider />
-      <LinearProgress sx={{ visibility: isFetching ? "visible" : "hidden" }} />
-      <div style={{ height: fullScreen ? "100%" : 680 }}>
-        <SearchContext.Provider value={{ queryKey }}>
-          <ListItems items={data || []} isFetching={isFetching} itemSize={68}>
-            <SearchItem />
-          </ListItems>
-        </SearchContext.Provider>
-      </div>
+      <SearchItemsResults
+        query={deferredQuery}
+        enabled={enabled}
+        onEsc={onEsc}
+      />
     </Fragment>
   );
 };
 
-export const SearchItem = () => {
+type SearchItemsResultsProps = {
+  onEsc: () => void;
+  enabled: boolean;
+  query: string;
+};
+const SearchItemsResults = memo(
+  ({ query, enabled, onEsc }: SearchItemsResultsProps) => {
+    const theme = useTheme();
+    const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+
+    const queryKey = useMemo(() => ["extfs-search-items", query], [query]);
+
+    const api = useAPI();
+    const { data, isFetching } = useQuery({
+      queryKey,
+      queryFn: async () =>
+        await api?.searchExtFSSearchItems({ q: query, limit: 10 }),
+      enabled,
+    });
+    return (
+      <Fragment>
+        <LinearProgress
+          sx={{ visibility: isFetching ? "visible" : "hidden" }}
+        />
+        <div style={{ height: fullScreen ? "100%" : 680 }}>
+          <SearchContext.Provider value={{ queryKey }}>
+            <ListItems items={data || []} isFetching={isFetching} itemSize={68}>
+              <SearchItem onClick={onEsc} />
+            </ListItems>
+          </SearchContext.Provider>
+        </div>
+      </Fragment>
+    );
+  }
+);
+
+type SearchItemProps = {
+  onClick: () => void;
+};
+export const SearchItem = ({ onClick }: SearchItemProps) => {
   const { style, item }: ListItemData<ExtFSSearchItem> = useListItems();
 
+  const [extfs, setExtFS] = useExtFS();
   const handleClick = () => {
-    // TODO: redirect to search file mode
+    const state = newExtFSState(extfs, item.query);
+    setExtFS(state);
+    onClick();
   };
+
   return (
     <ListItem style={style} disableGutters>
       <ListItemButton onClick={handleClick}>
@@ -161,12 +220,14 @@ const SearchItemRemoveAction = () => {
   const { mutate, isPending } = useMutation({
     mutationFn: api?.deleteExtFSSearchItem,
     onSuccess: () => {
-      queryClient.prefetchQuery({ queryKey });
+      queryClient.refetchQueries({ queryKey });
     },
   });
 
-  const handleDelete = async () => {
+  const handleDelete = async (event: React.MouseEvent) => {
+    event.preventDefault();
     mutate(item.id);
+    event.stopPropagation();
   };
 
   return (

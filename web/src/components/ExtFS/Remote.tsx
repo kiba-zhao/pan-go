@@ -3,8 +3,8 @@ import { useAPI } from "../../API";
 import type { ExtFSItemRecord } from "./Item";
 import { ExtFSItem, ExtFSItems, ExtFSItemTag, useExtFSItem } from "./Item";
 import { More, MoreHelpItem } from "./More";
-import { ExtFSRemoteFileState } from "./RemoteFile";
-import type { ExtFSSingleState } from "./State";
+import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
+import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
 
 import { useQuery } from "@tanstack/react-query";
@@ -15,12 +15,28 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import { useMemo } from "react";
 
 const ExtFSRemoteItemTagRoutePath = "/extfs/remote-item-tags";
-const ExtFSRemoteMode = "R";
+export const ExtFSRemoteMode = "R";
 const ExtFSRemoteQueryKey = ["extfs-remote-items"];
-export const ExtFSRemoteState = {
+const ExtFSRemoteState = {
   mode: ExtFSRemoteMode,
   queryKeyList: [ExtFSRemoteQueryKey],
 };
+
+type NewExtFSStateOpts = Pick<ExtFSRemoteItem, "peerId" | "name">;
+export function newExtFSState(
+  extfs: ExtFSState,
+  opts: NewExtFSStateOpts
+): ExtFSState {
+  const { parentItems } = extfs;
+  const state = {
+    ...ExtFSRemoteState,
+    peerId: opts.peerId,
+  };
+  return {
+    ...state,
+    parentItems: [...parentItems, { name: opts.name, state }],
+  } as ExtFSState;
+}
 
 export type ExtFSRemoteSingleState = {
   peerId: string;
@@ -57,16 +73,12 @@ export const RemoteItem = () => {
   const handleClick = () => {
     if (!item.available) return;
     if (item.fileType === "D") {
-      const { parentItems } = extfs;
-      const fileState = {
-        ...ExtFSRemoteFileState,
+      const state = newExtFSStateWithRemoteFile(extfs, {
         peerId: item.peerId,
         itemId: item.itemId,
-      };
-      setExtFS({
-        ...fileState,
-        parentItems: [...parentItems, { name: item.name, state: fileState }],
+        name: item.name,
       });
+      setExtFS(state);
       return;
     }
   };

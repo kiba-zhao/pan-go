@@ -62,9 +62,12 @@ module.exports = () => {
     count: { min: 1, max: 10 },
   });
 
+  const nodeRefers = generateNodeRefers({nodeItems,nodeFiles});
+  const remoteRefers = generateRemoteRefers({remoteItems,remoteFiles});
+
   const searchFiles = searchItems.reduce((files, item) => {
     const files_ = generateSearchFiles(
-      { nodeFiles, remoteFiles, remoteItems, nodeItems },
+      { nodeFiles, remoteFiles, remoteItems, nodeItems},
       item
     );
     return files.concat(files_);
@@ -83,6 +86,8 @@ module.exports = () => {
     "extfs-remote-files": remoteFiles,
     "extfs-search-items": searchItems,
     "extfs-search-files": searchFiles,
+    "extfs-node-refers":nodeRefers,
+    "extfs-remote-refers":remoteRefers,
   };
 };
 
@@ -300,7 +305,7 @@ function generateSearchFileWithNodeFile(nodeFile, item) {
     fileType: nodeFile.fileType,
     size: nodeFile.size,
     available: nodeFile.available,
-    reason: item.q,
+    reason: item.query,
     referId: nodeFile.id,
     referType: "NF",
     createdAt: faker.date.past(),
@@ -315,7 +320,7 @@ function generateSearchFileWithRemoteFile(remoteFile, item) {
     fileType: remoteFile.fileType,
     size: remoteFile.size,
     available: remoteFile.available,
-    reason: item.q,
+    reason: item.query,
     referId: remoteFile.id,
     referType: "RF",
     createdAt: faker.date.past(),
@@ -330,9 +335,9 @@ function generateSearchFileWithNodeItem(nodeItem, item) {
     fileType: nodeItem.fileType,
     size: nodeItem.size,
     available: nodeItem.available,
-    reason: item.q,
+    reason: item.query,
     referId: nodeItem.id.toString(),
-    referType: "N",
+    referType: "NI",
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   };
@@ -345,10 +350,58 @@ function generateSearchFileWithRemoteItem(remoteItem, item) {
     fileType: remoteItem.fileType,
     size: remoteItem.size,
     available: remoteItem.available,
-    reason: item.q,
+    reason: item.query,
     referId: remoteItem.id.toString(),
-    referType: "R",
+    referType: "RI",
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   };
+}
+
+function generateNodeRefers(ctx){
+  const {nodeItems,nodeFiles} = ctx;
+  return [].concat(
+    nodeItems.map(parseNodeReferWithNodeItem),
+    nodeFiles.map(parseNodeReferWithNodeFile)
+  )
+}
+
+function parseNodeReferWithNodeItem(nodeItem){
+  return {
+    id: nodeItem.id.toString(),
+    itemId: nodeItem.id,
+  }
+}
+
+function parseNodeReferWithNodeFile(nodeFile){
+  return {
+    id: nodeFile.id,
+    itemId: nodeFile.itemId,
+    filePath: nodeFile.filePath
+  }
+}
+
+function generateRemoteRefers(ctx){
+  const {remoteItems,remoteFiles} = ctx;
+  return [].concat(
+    remoteItems.map(parseRemoteReferWithRemoteItem),
+    remoteFiles.map(parseRemoteReferWithRemoteFile)
+  )
+}
+
+function parseRemoteReferWithRemoteItem(remoteItem){
+  return {
+    id: remoteItem.id,
+    peerId: remoteItem.peerId,
+    itemId: remoteItem.id,
+  }
+}
+
+function parseRemoteReferWithRemoteFile(remoteFile){
+  return {
+    id: remoteFile.id,
+    peerId: remoteFile.peerId,
+    itemId: remoteFile.itemId,
+    filePath: remoteFile.filePath
+  }
 }

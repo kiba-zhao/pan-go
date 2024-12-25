@@ -298,7 +298,42 @@ export type ExtFSSearchFile = {
   available: boolean;
   reason: string;
   referId: string;
-  referType: "N" | "NF" | "R" | "RF";
+  referType: "NI" | "NF" | "RI" | "RF";
   createdAt: string;
   updatedAt: string;
 };
+
+export type ExtFSSearchFileSearchCondition = {
+  q:string;
+}
+
+export async function searchExtFSSearchFiles(
+  condition: ExtFSSearchFileSearchCondition
+): Promise<ExtFSSearchFile[]> {
+  const [_, searchFiles] = await fetchMany(
+    withPath("extfs/search-files", "merge"),
+    withQuery(condition, "merge")
+  );
+  return searchFiles;
+}
+
+export type ExtFSNodeRefer = {
+  id: ExtFSSearchFile["referId"];
+  itemId: ExtFSNodeFile["itemId"]
+  filePath?: ExtFSNodeFile["filePath"]
+};
+
+export async function selectExtFSNodeRefer(id: ExtFSNodeRefer["id"]): Promise<ExtFSNodeRefer> {
+  return await fetchOne(withPath(`extfs/node-refers/${id}`, "merge"));
+}
+
+export type ExtFSRemoteRefer = {
+  id: ExtFSSearchFile["referId"];
+  peerId: ExtFSRemoteFile["peerId"];
+  itemId: ExtFSRemoteFile["itemId"];
+  filePath?: ExtFSRemoteFile["filePath"];
+};
+
+export async function selectExtFSRemoteRefer(id: ExtFSRemoteRefer["id"]): Promise<ExtFSRemoteRefer> {
+  return await fetchOne(withPath(`extfs/remote-refers/${id}`, "merge"));
+}

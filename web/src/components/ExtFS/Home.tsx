@@ -1,8 +1,11 @@
 import type { ExtFSItemRecord } from "./Item";
 import { ExtFSItem, ExtFSItems, ExtFSItemTag, useExtFSItem } from "./Item";
 import { More, MoreHelpItem } from "./More";
-import { ExtFSNodeState } from "./NodeItem";
-import { ExtFSRemoteState } from "./Remote";
+import { newExtFSState as newExtFSStateWithNodeItem } from "./NodeItem";
+import {
+  ExtFSRemoteState,
+  newExtFSState as newExtFSStateWithRemote,
+} from "./Remote";
 import { useExtFS } from "./State";
 
 import type { ExtFSRemoteNode } from "../../API";
@@ -86,15 +89,8 @@ const HomeItem = () => {
   );
   if (remoteNode !== void 0) {
     const handleRemoteClick = () => {
-      const { parentItems } = extfs;
-      const state = {
-        ...ExtFSRemoteState,
-        peerId: remoteNode.peerId,
-      };
-      setExtFS({
-        ...state,
-        parentItems: [...parentItems, { name: remoteNode.name, state }],
-      });
+      const state = newExtFSStateWithRemote(extfs, remoteNode);
+      setExtFS(state);
     };
 
     return (
@@ -122,13 +118,13 @@ const HomeItem = () => {
     );
   }
 
-  const handleLocalClick = () => {
-    setExtFS({
-      ...ExtFSNodeState,
-      parentItems: [{ name: localNode.name, state: ExtFSNodeState }],
-    });
-  };
   const localNode = item as ExtFSNode;
+
+  const handleLocalClick = () => {
+    const state = newExtFSStateWithNodeItem(extfs, localNode.name);
+    setExtFS(state);
+  };
+
   return (
     <ExtFSItem
       style={style}

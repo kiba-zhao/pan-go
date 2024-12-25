@@ -19,12 +19,19 @@ import { styled, useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
-import { ExtFSHomeState, HomeItems, HomeMore } from "./ExtFS/Home";
-import { ExtFSNodeFileState, NodeFileMore, NodeFiles } from "./ExtFS/NodeFile";
-import { ExtFSNodeState, NodeItems, NodeMore } from "./ExtFS/NodeItem";
-import { ExtFSRemoteState, RemoteItems, RemoteMore } from "./ExtFS/Remote";
 import {
-  ExtFSRemoteFileState,
+  ExtFSSearchFileMode,
+  SearchFileMore,
+  SearchFiles,
+  SearchNavigationBreadcrumbRoot,
+  SearchNavigationMenuRoot,
+} from "./ExtFS/SearchFile";
+import { ExtFSHomeState, HomeItems, HomeMore } from "./ExtFS/Home";
+import { ExtFSNodeFileMode, NodeFileMore, NodeFiles } from "./ExtFS/NodeFile";
+import { ExtFSNodeMode, NodeItems, NodeMore } from "./ExtFS/NodeItem";
+import { ExtFSRemoteMode, RemoteItems, RemoteMore } from "./ExtFS/Remote";
+import {
+  ExtFSRemoteFileMode,
   RemoteFileMore,
   RemoteFiles,
 } from "./ExtFS/RemoteFile";
@@ -65,15 +72,16 @@ const Home = () => {
   const [extfs, _] = useExtFS();
 
   const [ItemsElement, MoreElement] = useMemo(() => {
+    if (extfs.mode === ExtFSSearchFileMode)
+      return [<SearchFiles />, <SearchFileMore />];
     if (extfs.mode === ExtFSHomeState.mode)
       return [<HomeItems />, <HomeMore />];
-    if (extfs.mode === ExtFSNodeState.mode)
-      return [<NodeItems />, <NodeMore />];
-    if (extfs.mode === ExtFSNodeFileState.mode)
+    if (extfs.mode === ExtFSNodeMode) return [<NodeItems />, <NodeMore />];
+    if (extfs.mode === ExtFSNodeFileMode)
       return [<NodeFiles />, <NodeFileMore />];
-    if (extfs.mode === ExtFSRemoteState.mode)
+    if (extfs.mode === ExtFSRemoteMode)
       return [<RemoteItems />, <RemoteMore />];
-    if (extfs.mode === ExtFSRemoteFileState.mode)
+    if (extfs.mode === ExtFSRemoteFileMode)
       return [<RemoteFiles />, <RemoteFileMore />];
     return [];
   }, [extfs.mode]);
@@ -162,102 +170,6 @@ const Search = () => {
   );
 };
 
-// type SearchItemsProps = {
-//   onEsc: () => void;
-//   enabled: boolean;
-// };
-// const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
-//   const t = useTranslate();
-//   const theme = useTheme();
-//   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
-
-//   const [q, setQ] = useState("");
-
-//   const api = useAPI();
-//   const { data, isFetching } = useQuery({
-//     queryKey: ["extfs-search-items", q],
-//     queryFn: async () => await api?.searchExtFSSearchItems({ q }),
-//     enabled,
-//   });
-
-//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     setQ(e.target.value);
-//   };
-
-//   return (
-//     <Fragment>
-//       <Stack
-//         padding={1}
-//         component="form"
-//         spacing={0.5}
-//         direction="row"
-//         alignItems="center"
-//         justifyContent="space-between"
-//       >
-//         <SearchIcon />
-//         <InputBase
-//           placeholder={t("custom.placeholder.search-input")}
-//           fullWidth
-//           size="medium"
-//           onChange={handleChange}
-//           autoFocus
-//         />
-//         <ButtonBase onClick={onEsc}>
-//           <Chip
-//             label="esc"
-//             variant="outlined"
-//             sx={{ borderRadius: 1 }}
-//             size="small"
-//           />
-//         </ButtonBase>
-//       </Stack>
-//       <Divider />
-//       <List sx={{ pt: 0, ...(fullScreen ? {} : { height: 680, width: 552 }) }}>
-
-//         <ListItem disableGutters>
-//           <ListItemButton>
-//             <ListItemText
-//               primary="Keywords 1"
-//               sx={{ paddingRight: 5 }}
-//             ></ListItemText>
-//             <ListItemSecondaryAction>
-//               <IconButton size="small">
-//                 <ClearIcon fontSize="small" />
-//               </IconButton>
-//             </ListItemSecondaryAction>
-//           </ListItemButton>
-//         </ListItem>
-//         <ListItem disableGutters>
-//           <ListItemButton>
-//             <ListItemText
-//               primary="Keywords 2"
-//               sx={{ paddingRight: 5 }}
-//             ></ListItemText>
-//             <ListItemSecondaryAction>
-//               <IconButton size="small">
-//                 <ClearIcon fontSize="small" />
-//               </IconButton>
-//             </ListItemSecondaryAction>
-//           </ListItemButton>
-//         </ListItem>
-//         <ListItem disableGutters>
-//           <ListItemButton>
-//             <ListItemText
-//               primary="Keywords 3"
-//               sx={{ paddingRight: 5 }}
-//             ></ListItemText>
-//             <ListItemSecondaryAction>
-//               <IconButton size="small">
-//                 <ClearIcon fontSize="small" />
-//               </IconButton>
-//             </ListItemSecondaryAction>
-//           </ListItemButton>
-//         </ListItem>
-//       </List>
-//     </Fragment>
-//   );
-// };
-
 const Refresh = () => {
   const [extFS, _] = useExtFS();
   const { queryKeyList } = extFS;
@@ -302,6 +214,7 @@ const NavigationMoreItems = ({
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     setAnchorEl(event.currentTarget);
   };
+
   const handleClose = () => {
     setAnchorEl(null);
   };
@@ -349,6 +262,14 @@ const NavigationBar = ({
 
   const [extFS, setExtFS] = useExtFS();
 
+  const onParentClick = (parentItems: ExtFSParentItem[]) => {
+    const parentItem = parentItems.at(-1) as ExtFSParentItem;
+    setExtFS({ ...parentItem.state, parentItems });
+    handleClose();
+  };
+
+  const parentItems = extFS.parentItems;
+
   const handleHomeClick = () => {
     setExtFS({
       ...ExtFSHomeState,
@@ -357,13 +278,30 @@ const NavigationBar = ({
     handleClose();
   };
 
-  const onParentClick = (parentItems: ExtFSParentItem[]) => {
-    const parentItem = parentItems.at(-1) as ExtFSParentItem;
-    setExtFS({ ...parentItem.state, parentItems });
-    handleClose();
-  };
+  const MenuRoot =
+    parentItems.length > 0 &&
+    parentItems[0].state.mode === ExtFSSearchFileMode ? (
+      <SearchNavigationMenuRoot sx={{ width: anchorElWidth }} />
+    ) : (
+      <MenuItem onClick={handleHomeClick} sx={{ width: anchorElWidth }}>
+        ExtFS
+      </MenuItem>
+    );
 
-  const parentItems = extFS.parentItems;
+  const BreadcrumbsRoot =
+    parentItems.length > 0 &&
+    parentItems[0].state.mode === ExtFSSearchFileMode ? (
+      <SearchNavigationBreadcrumbRoot />
+    ) : (
+      <Link
+        underline="hover"
+        sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+        color="inherit"
+        onClick={handleHomeClick}
+      >
+        <ExtFSIcon sx={{ mr: 0.5 }} fontSize="inherit" />
+      </Link>
+    );
 
   return (
     <Fragment>
@@ -421,23 +359,13 @@ const NavigationBar = ({
             </MenuItem>
           ))
           .reverse()}
-
-        <MenuItem onClick={handleHomeClick} sx={{ width: anchorElWidth }}>
-          ExtFS
-        </MenuItem>
+        {MenuRoot}
       </Menu>
       <Breadcrumbs
         aria-label="breadcrumb"
         sx={{ display: { xs: "none", sm: "flex" } }}
       >
-        <Link
-          underline="hover"
-          sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
-          color="inherit"
-          onClick={handleHomeClick}
-        >
-          <ExtFSIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-        </Link>
+        {BreadcrumbsRoot}
         {parentItems.length > 1 ? (
           <Link
             underline="hover"
