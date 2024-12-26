@@ -1,6 +1,7 @@
 package nodeitem
 
 import (
+	"errors"
 	"os"
 )
 
@@ -13,10 +14,15 @@ type NodeItemInternalService interface {
 	TraverseAll(func(NodeItem) error) error
 	Select(uint) (NodeItem, error)
 	SelectByName(string) (NodeItem, error)
+	IsNotExist(error) bool
 }
 
 type NodeItemService struct {
 	NodeItemRepo NodeItemRepository
+}
+
+func (s *NodeItemService) IsNotExist(err error) bool {
+	return errors.Is(err, ErrNodeItemNotFound)
 }
 
 func (s *NodeItemService) SelectAll() (int64, []NodeItem, error) {

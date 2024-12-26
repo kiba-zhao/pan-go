@@ -139,7 +139,7 @@ func (s *AppNodeService) Update(id uint, fields AppNodeFields) (AppNode, error) 
 }
 
 func (s *AppNodeService) AccessWithPeerID(peerId peer.PeerID) error {
-	peerId_ := base64.StdEncoding.EncodeToString(peerId)
+	peerId_ := EncodePeerID(peerId)
 	node_, err := s.AppNodeRepo.SelectByPeerID(peerId_)
 	if err == nil && node_.Blocked {
 		err = ErrAppNodeBlocked
@@ -162,7 +162,7 @@ func (s *AppNodeService) TraverseAll(traverseFn func(model AppNode) error) error
 }
 
 func setPeerOnline(peerModule peer.PeerModule, model *AppNode) error {
-	peerId, err := base64.StdEncoding.DecodeString(model.PeerID)
+	peerId, err := DecodePeerID(model.PeerID)
 	if err == nil {
 		model.Online = peerModule.CanReach(peerId)
 	}
@@ -170,9 +170,17 @@ func setPeerOnline(peerModule peer.PeerModule, model *AppNode) error {
 }
 
 func purgeWithPeerID(peerModule peer.PeerModule, model *AppNode) error {
-	peerId, err := base64.StdEncoding.DecodeString(model.PeerID)
+	peerId, err := DecodePeerID(model.PeerID)
 	if err == nil {
 		err = peerModule.Purge(peerId)
 	}
 	return err
+}
+
+func EncodePeerID(peerId peer.PeerID) string {
+	return base64.StdEncoding.EncodeToString(peerId)
+}
+
+func DecodePeerID(peerId string) (peer.PeerID, error) {
+	return base64.StdEncoding.DecodeString(peerId)
 }

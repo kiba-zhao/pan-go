@@ -11,7 +11,7 @@ message RemoteFileRecord {
     string ID = 1;
     int64 CreatedAt = 2;
     int64 UpdatedAt = 3;
-    int32 ItemID = 4;
+    uint32 ItemID = 4;
     string Name = 5;
     string FileType = 6;
     string FilePath = 7;
@@ -21,12 +21,12 @@ message RemoteFileRecord {
 }
 
 message RemoteFileRecordSearchCondition {
-    int32 ItemID = 1;
+    uint32 ItemID = 1;
     optional string ParentPath = 2;
 }
 
 message RemoteFileRecordSelectCondition {
-    int32 ItemID = 1;
+    uint32 ItemID = 1;
     string ParentPath = 2;
     string Name = 3;
 }

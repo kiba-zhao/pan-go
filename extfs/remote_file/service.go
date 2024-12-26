@@ -2,26 +2,37 @@ package remotefile
 
 import (
 	"encoding/base64"
+	"encoding/binary"
+	"errors"
 	"pan/app/peer"
 	"time"
 
+	appnode "pan/app/app_node"
 	nodefile "pan/extfs/node_file"
 )
+
+var ErrRemoteFileInvalidID = errors.New("remotefile.ParseRemoteFileID Error: Invalid ID")
 
 type RemoteFileService struct {
 	RemoteFileBroker *RemoteFileBroker
 	NodeFileService  nodefile.NodeFileInternalService
 }
 
+func (s *RemoteFileService) Select(id string) (RemoteFile, error) {
+	// TODO: implement
+	return RemoteFile{}, nil
+	//
+}
+
 func (s *RemoteFileService) Search(condition RemoteFileSearchCondition) (total int64, items []RemoteFile, err error) {
 
-	peerId, err := base64.StdEncoding.DecodeString(condition.PeerID)
+	peerId, err := appnode.DecodePeerID(condition.PeerID)
 	if err != nil {
 		return
 	}
 
 	recordSearch := RemoteFileRecordSearchCondition{
-		ItemID:     int32(condition.ItemID),
+		ItemID:     uint32(condition.ItemID),
 		ParentPath: condition.ParentPath,
 	}
 
@@ -38,6 +49,7 @@ func (s *RemoteFileService) Search(condition RemoteFileSearchCondition) (total i
 		item.Available = record.Available
 		item.CreatedAt = time.Unix(record.CreatedAt, 0)
 		item.UpdatedAt = time.Unix(record.UpdatedAt, 0)
+		item.ID = GenerateRemoteFileID(peerId, item.ItemID, item.FilePath)
 
 		items = append(items, item)
 		return nil
@@ -62,7 +74,7 @@ func (s *RemoteFileService) SearchForTopic(condition *RemoteFileRecordSearchCond
 		record.ParentPath = item.ParentPath
 		record.Size = item.Size
 		record.FileType = item.FileType
-		record.ItemID = int32(item.ItemID)
+		record.ItemID = uint32(item.ItemID)
 		record.Available = item.Available
 		record.CreatedAt = item.CreatedAt.Unix()
 		record.UpdatedAt = item.UpdatedAt.Unix()
@@ -92,7 +104,7 @@ func (s *RemoteFileService) SelectForTopic(condition *RemoteFileRecordSelectCond
 	record.ParentPath = fileItem.ParentPath
 	record.Size = fileItem.Size
 	record.FileType = fileItem.FileType
-	record.ItemID = int32(fileItem.ItemID)
+	record.ItemID = uint32(fileItem.ItemID)
 	record.Available = fileItem.Available
 	record.CreatedAt = fileItem.CreatedAt.Unix()
 	record.UpdatedAt = fileItem.UpdatedAt.Unix()
@@ -117,4 +129,38 @@ func (s *RemoteFileService) TraverseRecordWithPeerID(traverseFn func(record *Rem
 
 func (s *RemoteFileService) SelectWithCondition(peerId peer.PeerID, condition *RemoteFileRecordSelectCondition) (*RemoteFileRecord, error) {
 	return s.RemoteFileBroker.Select(peerId, condition)
+}
+
+func GenerateRemoteFileID(peerId peer.PeerID, itemID uint, filePath string) string {
+	filePathBytes := []byte(filePath)
+	idBytes := make([]byte, 6+len(peerId)+len(filePathBytes))
+
+	// set peerId length + peerId
+	peerIdLen := len(peerId)
+	binary.BigEndian.PutUint16(idBytes, uint16(peerIdLen))
+	copy(idBytes[2:], peerId)
+
+	// set itemID
+	binary.BigEndian.PutUint32(idBytes[len(peerId)+2:], uint32(itemID))
+	// set filePath
+	copy(idBytes[len(peerId)+6:], filePathBytes)
+	return base64.StdEncoding.EncodeToString(idBytes)
+}
+
+func ParseRemoteFileID(id string) (peer.PeerID, uint, string, error) {
+	idBytes, err := base64.StdEncoding.DecodeString(id)
+	if err == nil && len(idBytes) < 6 {
+		err = ErrRemoteFileInvalidID
+	}
+	if err != nil {
+		return nil, 0, "", err
+	}
+	// parse peerId
+	peerIdLen := binary.BigEndian.Uint16(idBytes)
+	peerId := idBytes[2 : peerIdLen+2]
+	// parse itemID
+	itemId := binary.BigEndian.Uint32(idBytes[peerIdLen+2:])
+	// parse filePath
+	filePath := string(idBytes[peerIdLen+6:])
+	return peerId, uint(itemId), filePath, err
 }

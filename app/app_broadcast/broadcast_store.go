@@ -2,6 +2,7 @@ package appbroadcast
 
 import (
 	"encoding/base64"
+	appnode "pan/app/app_node"
 	"pan/app/broadcast"
 	"pan/app/peer"
 )
@@ -28,7 +29,7 @@ func (store *BroadcastStore) SelectOrCreate(info broadcast.BroadcastInfo) (broad
 
 func (store *BroadcastStore) SaveHighest(peerId peer.PeerID, heightest uint64) error {
 	var modelInfo AppBroadcastInfo
-	modelInfo.PeerID = base64.StdEncoding.EncodeToString(peerId)
+	modelInfo.PeerID = appnode.EncodePeerID(peerId)
 	modelInfo.Hightest = heightest
 
 	modelInfo, ok, err := store.Repo.SelectOrCreate(modelInfo)
@@ -44,12 +45,12 @@ func (store *BroadcastStore) SaveHighest(peerId peer.PeerID, heightest uint64) e
 }
 
 func (store *BroadcastStore) Delete(peerId peer.PeerID) error {
-	return store.Repo.DeleteByPeerID(base64.StdEncoding.EncodeToString(peerId))
+	return store.Repo.DeleteByPeerID(appnode.EncodePeerID(peerId))
 }
 
 func (store *BroadcastStore) Init(peerId peer.PeerID) error {
 	var modelInfo AppBroadcastInfo
-	modelInfo.PeerID = base64.StdEncoding.EncodeToString(peerId)
+	modelInfo.PeerID = appnode.EncodePeerID(peerId)
 	modelInfo.Hightest = 0
 
 	modelInfo, ok, err := store.Repo.SelectOrCreate(modelInfo)

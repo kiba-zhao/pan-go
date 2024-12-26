@@ -199,7 +199,7 @@ func (pn *peerModule) Do(ctx context.Context, peerId PeerID, request *Request) (
 		var content []byte
 		content, err = io.ReadAll(response)
 		if err == nil {
-			err = errors.New(string(content))
+			err = &PeerError{code: response.Code(), err: string(content)}
 		}
 	}
 

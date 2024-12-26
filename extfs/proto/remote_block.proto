@@ -4,7 +4,7 @@ package remoteblock;
 option go_package = "extfs/remote_block;remoteblock";
 
 message RemoteBlockSelectCondition {
-    int32 ItemID = 1;
+    uint32 ItemID = 1;
     string ParentPath = 2;
     string Name = 3;
     int64 Offset = 4;

@@ -117,7 +117,7 @@ func TestRemoteFileTopic(t *testing.T) {
 		nodeFileService.On("SelectWithCondition", mock.Anything).Once().Return(nodeFile, nil)
 
 		var condition remotefile.RemoteFileRecordSelectCondition
-		condition.ItemID = int32(nodeFile.ItemID)
+		condition.ItemID = uint32(nodeFile.ItemID)
 		condition.ParentPath = nodeFile.ParentPath
 		condition.Name = nodeFile.Name
 

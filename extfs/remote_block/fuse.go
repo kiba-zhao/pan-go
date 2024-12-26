@@ -14,7 +14,7 @@ import (
 
 type FUSERemoteFile interface {
 	PeerID() peer.PeerID
-	ItemID() int32
+	ItemID() uint32
 	ParentPath() string
 	Name() string
 }

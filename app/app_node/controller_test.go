@@ -174,7 +174,7 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		peerId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: false}
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerId), Blocked: false}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 
 		peerModule := &mockedPeer.MockPeerModule{}
@@ -204,7 +204,7 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		peerId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: true}
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerId), Blocked: true}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 
 		w := httptest.NewRecorder()
@@ -226,7 +226,7 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		peerId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: false}
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerId), Blocked: false}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Delete", item).Once().Return(nil)
 
@@ -250,7 +250,7 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		peerId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: true}
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerId), Blocked: true}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Delete", item).Once().Return(nil)
 
@@ -307,7 +307,7 @@ func TestAppNodeController(t *testing.T) {
 			PeerID:  base64.StdEncoding.EncodeToString([]byte("peer id 1")),
 			Blocked: &blocked,
 		}
-		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: false}
+		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: appnode.EncodePeerID(peerId), Blocked: false}
 		newItem := item
 		newItem.Name = fields.Name
 		newItem.Blocked = blocked
@@ -348,7 +348,7 @@ func TestAppNodeController(t *testing.T) {
 			PeerID:  base64.StdEncoding.EncodeToString([]byte("peer id 1")),
 			Blocked: &blocked,
 		}
-		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: base64.StdEncoding.EncodeToString(peerId), Blocked: false}
+		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: appnode.EncodePeerID(peerId), Blocked: false}
 		newItem := item
 		newItem.Name = fields.Name
 		newItem.Blocked = blocked

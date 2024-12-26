@@ -19,7 +19,7 @@ var ErrRemoteFileFUSENameConflict = errors.New("remotefile.FUSERemoteFile Error:
 
 type FUSERemoteFIleInfo interface {
 	PeerID() peer.PeerID
-	ItemID() int32
+	ItemID() uint32
 	GetRemoteFileAttr(context.Context, *fuse.AttrOut) syscall.Errno
 }
 
@@ -39,7 +39,7 @@ func (fuserfe *FUSERemoteFile) PeerID() peer.PeerID {
 	return fuserfe.FUSERemoteFIleInfo.PeerID()
 }
 
-func (fuserfe *FUSERemoteFile) ItemID() int32 {
+func (fuserfe *FUSERemoteFile) ItemID() uint32 {
 	return fuserfe.FUSERemoteFIleInfo.ItemID()
 }
 

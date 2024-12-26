@@ -8,7 +8,7 @@ message RemoteItemRecordList {
 }
 
 message RemoteItemRecord{
-    int32 ID = 1;
+    uint32 ID = 1;
     int64 CreatedAt = 2;
     int64 UpdatedAt = 3;
     string Name = 4;
@@ -18,6 +18,6 @@ message RemoteItemRecord{
   }
   
   message RemoteItemRecordSelectCondition {
-    optional int32 ID = 1;
+    optional uint32 ID = 1;
     optional string Name = 2;
 }

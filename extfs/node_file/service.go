@@ -2,25 +2,78 @@ package nodefile
 
 import (
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"os"
 	"path"
-	"strconv"
-	"strings"
 
 	nodeitem "pan/extfs/node_item"
 )
 
 var ErrNodeFileUnavailable = errors.New("nodefile.NodeFileService Error: Unavailable")
 var ErrNodeFileInvalidNodeItem = errors.New("nodefile.NodeFileService Error: Invalid Node Item")
+var ErrNodeFileInvalidID = errors.New("nodefile.NodeFileService Error: Invalid Node File ID")
 
 type NodeFileInternalService interface {
 	TraverseWithCondition(func(item NodeFile) error, NodeFileSearchCondition) error
 	SelectWithCondition(NodeFileSelectCondition) (NodeFile, error)
+	IsNotExist(err error) bool
 }
 
 type NodeFileService struct {
 	NodeItemService nodeitem.NodeItemInternalService
+}
+
+func (s *NodeFileService) IsNotExist(err error) bool {
+	if os.IsNotExist(err) {
+		return true
+	}
+	if errors.Is(err, ErrNodeFileUnavailable) {
+		return true
+	}
+	return s.NodeItemService.IsNotExist(err)
+}
+
+func (s *NodeFileService) Select(id string) (NodeFile, error) {
+	itemId, filePath, err := ParseNodeFileID(id)
+	if err != nil {
+		return NodeFile{}, err
+	}
+	nodeItem, err := s.NodeItemService.Select(itemId)
+	if err != nil {
+		return NodeFile{}, err
+	}
+	if nodeItem.FileType != nodeitem.FileTypeFolder {
+		return NodeFile{}, ErrNodeFileInvalidNodeItem
+	}
+	if !nodeItem.Available {
+		return NodeFile{}, ErrNodeFileUnavailable
+	}
+
+	realFilePath := path.Join(nodeItem.FilePath, filePath)
+
+	fileStat, err := os.Stat(realFilePath)
+	if err != nil {
+		return NodeFile{}, err
+	}
+
+	var fileItem NodeFile
+	fileItem.ID = id
+	fileItem.ItemID = nodeItem.ID
+	fileItem.Name = fileStat.Name()
+	if fileStat.IsDir() {
+		fileItem.FileType = nodeitem.FileTypeFolder
+	} else {
+		fileItem.FileType = nodeitem.FileTypeFile
+	}
+	fileItem.ParentPath = path.Dir(filePath)
+	fileItem.FilePath = filePath
+	fileItem.Size = fileStat.Size()
+	fileItem.UpdatedAt = fileStat.ModTime()
+	fileItem.CreatedAt = fileStat.ModTime()
+	fileItem.Available = true
+
+	return fileItem, nil
 }
 
 func (s *NodeFileService) Search(conditions NodeFileSearchCondition) (int64, []NodeFile, error) {
@@ -77,7 +130,7 @@ func (s *NodeFileService) SelectWithCondition(condition NodeFileSelectCondition)
 	fileItem.Available = true
 	fileItem.CreatedAt = fileStat.ModTime()
 	fileItem.UpdatedAt = fileStat.ModTime()
-	fileItem.ID = generateNodeFileID(fileItem.ItemID, fileItem.FilePath)
+	fileItem.ID = GenerateNodeFileID(fileItem.ItemID, fileItem.FilePath)
 
 	return fileItem, err
 
@@ -125,7 +178,7 @@ func (s *NodeFileService) TraverseWithCondition(traverseFn func(item NodeFile) e
 			item.ParentPath = *conditions.ParentPath
 			item.FilePath = path.Join(*conditions.ParentPath, item.Name)
 		}
-		item.ID = generateNodeFileID(item.ItemID, item.FilePath)
+		item.ID = GenerateNodeFileID(item.ItemID, item.FilePath)
 
 		item.Available = true
 		info, infoErr := file.Info()
@@ -143,9 +196,23 @@ func (s *NodeFileService) TraverseWithCondition(traverseFn func(item NodeFile) e
 	return err
 }
 
-const NodeFileSep = "_"
+func GenerateNodeFileID(itemId uint, filePath string) string {
+	filePathBytes := []byte(filePath)
+	idBytes := make([]byte, 4+len(filePathBytes))
+	binary.BigEndian.PutUint32(idBytes, uint32(itemId))
+	copy(idBytes[4:], filePathBytes)
+	return base64.StdEncoding.EncodeToString(idBytes)
+}
 
-func generateNodeFileID(itemId uint, filePath string) string {
-	idStr := strings.Join([]string{strconv.FormatUint(uint64(itemId), 10), filePath}, NodeFileSep)
-	return base64.StdEncoding.EncodeToString([]byte(idStr))
+func ParseNodeFileID(id string) (uint, string, error) {
+	idBytes, err := base64.StdEncoding.DecodeString(id)
+	if err == nil && len(idBytes) < 4 {
+		err = ErrNodeFileInvalidID
+	}
+	if err != nil {
+		return 0, "", err
+	}
+	itemId := binary.BigEndian.Uint32(idBytes)
+	filePath := string(idBytes[4:])
+	return uint(itemId), filePath, err
 }

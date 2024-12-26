@@ -2,9 +2,9 @@ package remotefile_test
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"net/http/httptest"
+	appnode "pan/app/app_node"
 	"pan/app/web"
 	nodeitem "pan/extfs/node_item"
 	remotefile "pan/extfs/remote_file"
@@ -69,7 +69,7 @@ func TestRemoteFileController(t *testing.T) {
 			assert.Equal(t, record.ItemID, condition.ItemID)
 		})
 
-		base64PeerID := base64.StdEncoding.EncodeToString(peerId)
+		base64PeerID := appnode.EncodePeerID(peerId)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/remote-files", nil)
 		q := req.URL.Query()

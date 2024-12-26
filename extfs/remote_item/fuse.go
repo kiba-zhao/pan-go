@@ -26,14 +26,14 @@ type RemoteItemServiceFUSEProvider interface {
 type FUSERemoteFileInfo struct {
 	provider RemoteItemServiceFUSEProvider
 	peerId   peer.PeerID
-	itemId   int32
+	itemId   uint32
 }
 
 func (fuserfe *FUSERemoteFileInfo) PeerID() peer.PeerID {
 	return fuserfe.peerId
 }
 
-func (fuserfe *FUSERemoteFileInfo) ItemID() int32 {
+func (fuserfe *FUSERemoteFileInfo) ItemID() uint32 {
 	return fuserfe.itemId
 }
 

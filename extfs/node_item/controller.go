@@ -81,7 +81,7 @@ func (c *NodeItemController) Select(ctx web.WebContext) {
 	}
 
 	nodeItem, err := c.NodeItemService.Select(uint(id))
-	if err == ErrNodeItemNotFound {
+	if c.NodeItemService.IsNotExist(err) {
 		ctx.AbortWithError(http.StatusNotFound, err)
 		return
 	}
