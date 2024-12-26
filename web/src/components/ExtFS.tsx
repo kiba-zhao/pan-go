@@ -29,7 +29,7 @@ import {
 import { ExtFSHomeState, HomeItems, HomeMore } from "./ExtFS/Home";
 import { ExtFSNodeFileMode, NodeFileMore, NodeFiles } from "./ExtFS/NodeFile";
 import { ExtFSNodeMode, NodeItems, NodeMore } from "./ExtFS/NodeItem";
-import { ExtFSRemoteMode, RemoteItems, RemoteMore } from "./ExtFS/Remote";
+import { ExtFSRemoteMode, RemoteItems, RemoteMore } from "./ExtFS/RemoteItem";
 import {
   ExtFSRemoteFileMode,
   RemoteFileMore,

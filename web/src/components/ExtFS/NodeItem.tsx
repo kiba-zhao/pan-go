@@ -38,7 +38,7 @@ export function newExtFSState(extfs: ExtFSState, name: string): ExtFSState {
 }
 
 export function newItemSettingsUrl(id: ExtFSNodeItem["id"]): string {
-  return `${ExtFSNodeItemTagRoutePath}/${id}`;
+  return `${ExtFSNodeItemRoutePath}/${id}`;
 }
 
 type NewExtFSStateReferOpts = Pick<ExtFSSearchFile, "name" | "referId">;

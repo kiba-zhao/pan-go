@@ -90,35 +90,45 @@ export const SearchFile = () => {
 
   const settingsUrl = useMemo(() => {
     // TODO: redirect to settings view
-    // if (item?.referType === "NI") return newItemSettingsUrlWithNodeItem(item.referId);
+    if (item?.referType === "NI")
+      return newItemSettingsUrlWithNodeItem(Number(item.referId));
     return "";
   }, [item?.referType, item?.referId]);
 
   const [extfs, setExtFS] = useExtFS();
+
   const api = useAPI();
   const handleClick = async () => {
     if (item.fileType === "D") {
       let state: ExtFSState | undefined;
-      switch (item?.referType) {
-        case "NI":
-        case "NF":
-          const nodeRefer = await api?.selectExtFSNodeRefer(item.referId);
-          if (nodeRefer !== void 0)
-            state = newExtFSStateWithNodeFile(extfs, {
-              ...nodeRefer,
-              name: item.name,
-            });
-          break;
-        case "RI":
-        case "RF":
-          const remoteRefer = await api?.selectExtFSRemoteRefer(item.referId);
-          if (remoteRefer !== void 0)
-            state = newExtFSStateWithRemoteFile(extfs, {
-              ...remoteRefer,
-              name: item.name,
-            });
-          break;
+      if (item?.referType === "NI") {
+        state = newExtFSStateWithNodeFile(extfs, {
+          name: item.name,
+          itemId: Number(item.referId),
+        });
+      } else if (item?.referType === "NF") {
+        const nodeFile = await api?.selectExtFSNodeFile(item.referId);
+        if (nodeFile !== void 0)
+          state = newExtFSStateWithNodeFile(extfs, {
+            ...nodeFile,
+            name: item.name,
+          });
+      } else if (item?.referType === "RI") {
+        const remoteItem = await api?.selectExtFSRemoteItem(item.referId);
+        if (remoteItem !== void 0)
+          state = newExtFSStateWithRemoteFile(extfs, {
+            ...remoteItem,
+            name: item.name,
+          });
+      } else if (item?.referType === "RF") {
+        const remoteFile = await api?.selectExtFSRemoteFile(item.referId);
+        if (remoteFile !== void 0)
+          state = newExtFSStateWithRemoteFile(extfs, {
+            ...remoteFile,
+            name: item.name,
+          });
       }
+
       if (state !== void 0) setExtFS(state);
     }
     // TODO: open a file

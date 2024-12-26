@@ -180,6 +180,10 @@ export async function searchExtFSNodeFiles({
   return nodeItems;
 }
 
+export async function selectExtFSNodeFile(id: ExtFSNodeFile["id"]):Promise<ExtFSNodeFile> {
+  return await fetchOne(withPath(`extfs/node-files/${id}`, "merge"));
+}
+
 export type ExtFSRemoteItemSearchCondition = {
   peerId: ExtFSRemoteNode["peerId"];
 };
@@ -204,6 +208,10 @@ export async function searchExtFSRemoteItems(
     withQuery(condition, "merge")
   );
   return remoteItems;
+}
+
+export async function selectExtFSRemoteItem(id : ExtFSRemoteItem["id"]):Promise<ExtFSRemoteItem> {
+  return await fetchOne(withPath(`extfs/remote-items/${id}`, "merge"));
 }
 
 export type ExtFSRemoteFileSearchCondition = {
@@ -242,6 +250,10 @@ export async function searchExtFSRemoteFiles({
   );
 
   return remotefiles;
+}
+
+export async function selectExtFSRemoteFile(id: ExtFSRemoteFile["id"]):Promise<ExtFSRemoteFile> {
+  return await fetchOne(withPath(`extfs/remote-files/${id}`, "merge"));
 }
 
 export type ExtFSSearchItemSearchCondition = {
@@ -315,25 +327,4 @@ export async function searchExtFSSearchFiles(
     withQuery(condition, "merge")
   );
   return searchFiles;
-}
-
-export type ExtFSNodeRefer = {
-  id: ExtFSSearchFile["referId"];
-  itemId: ExtFSNodeFile["itemId"]
-  filePath?: ExtFSNodeFile["filePath"]
-};
-
-export async function selectExtFSNodeRefer(id: ExtFSNodeRefer["id"]): Promise<ExtFSNodeRefer> {
-  return await fetchOne(withPath(`extfs/node-refers/${id}`, "merge"));
-}
-
-export type ExtFSRemoteRefer = {
-  id: ExtFSSearchFile["referId"];
-  peerId: ExtFSRemoteFile["peerId"];
-  itemId: ExtFSRemoteFile["itemId"];
-  filePath?: ExtFSRemoteFile["filePath"];
-};
-
-export async function selectExtFSRemoteRefer(id: ExtFSRemoteRefer["id"]): Promise<ExtFSRemoteRefer> {
-  return await fetchOne(withPath(`extfs/remote-refers/${id}`, "merge"));
 }

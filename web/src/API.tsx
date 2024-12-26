@@ -19,8 +19,6 @@ import type {
   ExtFSSearchItemSearchCondition,
   ExtFSSearchFile,
   ExtFSSearchFileSearchCondition,
-  ExtFSNodeRefer,
-  ExtFSRemoteRefer,
 } from "./api";
 import * as api from "./api";
 
@@ -37,8 +35,6 @@ export type {
   ExtFSSearchItem,
   ExtFSSearchItemFields,
   ExtFSSearchFile,
-  ExtFSNodeRefer,
-  ExtFSRemoteRefer,
 };
 
 interface AppSettingsAPI {
@@ -70,18 +66,21 @@ interface ExtFSNodeFileAPI {
   searchExtFSNodeFiles(
     condition: ExtFSNodeFileSearchCondition
   ): Promise<ExtFSNodeFile[]>;
+  selectExtFSNodeFile(id: ExtFSNodeFile["id"]): Promise<ExtFSNodeFile>;
 }
 
 interface ExtFSRemoteItemAPI {
   searchExtFSRemoteItems(
     condition: ExtFSRemoteItemSearchCondition
   ): Promise<ExtFSRemoteItem[]>;
+  selectExtFSRemoteItem(id: ExtFSRemoteItem["id"]): Promise<ExtFSRemoteItem>;
 }
 
 interface ExtFSRemoteFileAPI {
   searchExtFSRemoteFiles(
     condition: ExtFSRemoteFileSearchCondition
   ): Promise<ExtFSRemoteFile[]>;
+  selectExtFSRemoteFile(id: ExtFSRemoteFile["id"]): Promise<ExtFSRemoteFile>;
 }
 
 interface ExtFSSearchItemAPI {
@@ -98,14 +97,6 @@ interface ExtFSSearchFileAPI {
   ): Promise<ExtFSSearchFile[]>;
 }
 
-interface ExtFSNodeReferAPI {
-  selectExtFSNodeRefer(id: ExtFSNodeRefer["id"]): Promise<ExtFSNodeRefer>;
-}
-
-interface ExtFSRemoteReferAPI {
-  selectExtFSRemoteRefer(id: ExtFSRemoteRefer["id"]): Promise<ExtFSRemoteRefer>;
-}
-
 export type API = AppSettingsAPI &
   DiskFileAPI &
   ExtFSRemoteNodeAPI &
@@ -113,8 +104,6 @@ export type API = AppSettingsAPI &
   ExtFSNodeFileAPI &
   ExtFSRemoteItemAPI &
   ExtFSRemoteFileAPI &
-  ExtFSNodeReferAPI &
-  ExtFSRemoteReferAPI &
   ExtFSSearchItemAPI &
   ExtFSSearchFileAPI;
 

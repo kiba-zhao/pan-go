@@ -62,9 +62,6 @@ module.exports = () => {
     count: { min: 1, max: 10 },
   });
 
-  const nodeRefers = generateNodeRefers({nodeItems,nodeFiles});
-  const remoteRefers = generateRemoteRefers({remoteItems,remoteFiles});
-
   const searchFiles = searchItems.reduce((files, item) => {
     const files_ = generateSearchFiles(
       { nodeFiles, remoteFiles, remoteItems, nodeItems},
@@ -86,8 +83,6 @@ module.exports = () => {
     "extfs-remote-files": remoteFiles,
     "extfs-search-items": searchItems,
     "extfs-search-files": searchFiles,
-    "extfs-node-refers":nodeRefers,
-    "extfs-remote-refers":remoteRefers,
   };
 };
 
@@ -356,52 +351,4 @@ function generateSearchFileWithRemoteItem(remoteItem, item) {
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   };
-}
-
-function generateNodeRefers(ctx){
-  const {nodeItems,nodeFiles} = ctx;
-  return [].concat(
-    nodeItems.map(parseNodeReferWithNodeItem),
-    nodeFiles.map(parseNodeReferWithNodeFile)
-  )
-}
-
-function parseNodeReferWithNodeItem(nodeItem){
-  return {
-    id: nodeItem.id.toString(),
-    itemId: nodeItem.id,
-  }
-}
-
-function parseNodeReferWithNodeFile(nodeFile){
-  return {
-    id: nodeFile.id,
-    itemId: nodeFile.itemId,
-    filePath: nodeFile.filePath
-  }
-}
-
-function generateRemoteRefers(ctx){
-  const {remoteItems,remoteFiles} = ctx;
-  return [].concat(
-    remoteItems.map(parseRemoteReferWithRemoteItem),
-    remoteFiles.map(parseRemoteReferWithRemoteFile)
-  )
-}
-
-function parseRemoteReferWithRemoteItem(remoteItem){
-  return {
-    id: remoteItem.id,
-    peerId: remoteItem.peerId,
-    itemId: remoteItem.id,
-  }
-}
-
-function parseRemoteReferWithRemoteFile(remoteFile){
-  return {
-    id: remoteFile.id,
-    peerId: remoteFile.peerId,
-    itemId: remoteFile.itemId,
-    filePath: remoteFile.filePath
-  }
 }

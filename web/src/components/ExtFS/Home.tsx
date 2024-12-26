@@ -5,7 +5,7 @@ import { newExtFSState as newExtFSStateWithNodeItem } from "./NodeItem";
 import {
   ExtFSRemoteState,
   newExtFSState as newExtFSStateWithRemote,
-} from "./Remote";
+} from "./RemoteItem";
 import { useExtFS } from "./State";
 
 import type { ExtFSRemoteNode } from "../../API";
