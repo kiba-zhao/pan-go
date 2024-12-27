@@ -275,7 +275,7 @@ export async function searchExtFSSearchItems(
   const _limit = limit != void 0 ? limit.toString() : void 0;
   const [_, searchItems] = await fetchMany(
     withPath("extfs/search-items", "merge"),
-    withQuery(_limit ? { ...queries, _limit } : queries, "merge")
+    withQuery(_limit ? { ...queries,_end:_limit } : queries, "merge")
   );
   return searchItems;
 }
@@ -287,23 +287,8 @@ export async function deleteExtFSSearchItem(id: ExtFSSearchItem["id"]) {
   );
 }
 
-export type ExtFSSearchItemFields = Omit<
-  ExtFSSearchItem,
-  "id" | "createdAt" | "updatedAt"
->;
-
-export async function saveExtFSSearchItem(
-  fields: ExtFSSearchItemFields
-): Promise<ExtFSSearchItem> {
-  return await fetchOne(
-    withPath(`extfs/search-items`, "merge"),
-    withMethod("POST"),
-    withJSONBody(fields)
-  );
-}
-
 export type ExtFSSearchFile = {
-  id: string;
+  id: number;
   name: string;
   fileType: "F" | "D";
   size: number;

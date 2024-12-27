@@ -16,6 +16,7 @@ import (
 	remotefile "pan/extfs/remote_file"
 	remoteitem "pan/extfs/remote_item"
 	remotenode "pan/extfs/remote_node"
+	searchitem "pan/extfs/search_item"
 )
 
 func New() interface{} {
@@ -52,6 +53,7 @@ func (m *module) WebControllers() []web.WebController {
 			&remotenode.RemoteNodeController{},
 			&remoteitem.RemoteItemController{},
 			&remotefile.RemoteFileController{},
+			&searchitem.SearchItemController{},
 		}
 	})
 	return m.controllers
@@ -71,6 +73,7 @@ func (m *module) PeerAppModules() []peer.PeerAppModule {
 func (m *module) Models() []interface{} {
 	return []interface{}{
 		&nodeitem.NodeItem{},
+		&searchitem.SearchItem{},
 	}
 }
 
@@ -91,6 +94,7 @@ func (m *module) Components() []injection.Component {
 	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemService{})
 	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileService{})
 	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockService{})
+	components = sample.AppendSampleComponent(components, &searchitem.SearchItemService{})
 
 	// brokers
 	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemBroker{SamplePeer: m.sample})
@@ -99,6 +103,7 @@ func (m *module) Components() []injection.Component {
 
 	// repositories
 	components = sample.AppendSampleComponent(components, nodeitem.NewNodeItemRepository(m.sample.DB()))
+	components = sample.AppendSampleComponent(components, searchitem.NewSearchItemRepository(m.sample.DB()))
 
 	// controllers
 	for _, ctrl := range m.WebControllers() {

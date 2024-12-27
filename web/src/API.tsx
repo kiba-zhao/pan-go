@@ -15,7 +15,6 @@ import type {
   ExtFSRemoteItemSearchCondition,
   ExtFSRemoteNode,
   ExtFSSearchItem,
-  ExtFSSearchItemFields,
   ExtFSSearchItemSearchCondition,
   ExtFSSearchFile,
   ExtFSSearchFileSearchCondition,
@@ -33,7 +32,6 @@ export type {
   ExtFSRemoteItem,
   ExtFSRemoteNode,
   ExtFSSearchItem,
-  ExtFSSearchItemFields,
   ExtFSSearchFile,
 };
 
@@ -88,7 +86,6 @@ interface ExtFSSearchItemAPI {
     condition: ExtFSSearchItemSearchCondition
   ): Promise<ExtFSSearchItem[]>;
   deleteExtFSSearchItem(id: ExtFSSearchItem["id"]): Promise<void>;
-  saveExtFSSearchItem(fields: ExtFSSearchItemFields): Promise<ExtFSSearchItem>;
 }
 
 interface ExtFSSearchFileAPI {

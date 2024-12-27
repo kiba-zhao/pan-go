@@ -295,7 +295,7 @@ function generateSearchFiles(ctx, item) {
 
 function generateSearchFileWithNodeFile(nodeFile, item) {
   return {
-    id: faker.string.nanoid(),
+    id: faker.number.int({ min: 1, max: 999999 }),
     name: nodeFile.name,
     fileType: nodeFile.fileType,
     size: nodeFile.size,
@@ -310,7 +310,7 @@ function generateSearchFileWithNodeFile(nodeFile, item) {
 
 function generateSearchFileWithRemoteFile(remoteFile, item) {
   return {
-    id: faker.string.nanoid(),
+    id: faker.number.int({ min: 1, max: 999999 }),
     name: remoteFile.name,
     fileType: remoteFile.fileType,
     size: remoteFile.size,
@@ -325,7 +325,7 @@ function generateSearchFileWithRemoteFile(remoteFile, item) {
 
 function generateSearchFileWithNodeItem(nodeItem, item) {
   return {
-    id: faker.string.nanoid(),
+    id: faker.number.int({ min: 1, max: 999999 }),
     name: nodeItem.name,
     fileType: nodeItem.fileType,
     size: nodeItem.size,
@@ -340,7 +340,7 @@ function generateSearchFileWithNodeItem(nodeItem, item) {
 
 function generateSearchFileWithRemoteItem(remoteItem, item) {
   return {
-    id: faker.string.nanoid(),
+    id: faker.number.int({ min: 1, max: 999999 }),
     name: remoteItem.name,
     fileType: remoteItem.fileType,
     size: remoteItem.size,

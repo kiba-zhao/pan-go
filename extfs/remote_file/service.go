@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"pan/app/peer"
+	"path"
 	"time"
 
 	appnode "pan/app/app_node"
@@ -18,10 +19,47 @@ type RemoteFileService struct {
 	NodeFileService  nodefile.NodeFileInternalService
 }
 
+func (s *RemoteFileService) IsNotExist(err error) bool {
+	if peerErr, ok := err.(*peer.PeerError); ok && peerErr.Code() == peer.CodeNotFound {
+		return true
+	}
+	return s.NodeFileService.IsNotExist(err)
+}
+
 func (s *RemoteFileService) Select(id string) (RemoteFile, error) {
-	// TODO: implement
-	return RemoteFile{}, nil
-	//
+
+	peerId, itemId, filePath, err := ParseRemoteFileID(id)
+	if err != nil {
+		return RemoteFile{}, err
+	}
+
+	var condition RemoteFileRecordSelectCondition
+
+	condition.ItemID = uint32(itemId)
+	condition.ParentPath = path.Dir(filePath)
+	condition.Name = path.Base(filePath)
+
+	record, err := s.SelectWithCondition(peerId, &condition)
+	if err != nil {
+		return RemoteFile{}, err
+	}
+
+	var item RemoteFile
+
+	item.PeerID = id
+	item.ItemID = uint(record.ItemID)
+	item.Name = record.Name
+	item.FileType = record.FileType
+	item.FilePath = record.FilePath
+	item.ParentPath = record.ParentPath
+	item.Size = record.Size
+	item.Available = record.Available
+	item.CreatedAt = time.Unix(record.CreatedAt, 0)
+	item.UpdatedAt = time.Unix(record.UpdatedAt, 0)
+	item.ID = id
+
+	return item, nil
+
 }
 
 func (s *RemoteFileService) Search(condition RemoteFileSearchCondition) (total int64, items []RemoteFile, err error) {

@@ -30,9 +30,8 @@ import {
 
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm, Controller } from "react-hook-form";
 
-import type { ExtFSSearchItem, ExtFSSearchItemFields } from "../../API";
+import type { ExtFSSearchItem } from "../../API";
 import { useAPI } from "../../API";
 import type { ListItemData } from "../List/Item";
 import { ListItems, useListItems } from "../List/Item";
@@ -67,27 +66,12 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
     setQueryDelay(value);
   };
 
-  const { handleSubmit, control } = useForm<ExtFSSearchItemFields>({
-    defaultValues: { query },
-  });
-
   const [extfs, setExtFS] = useExtFS();
-  const api = useAPI();
-  const { mutate: saveMutate, isPending: isSavePending } = useMutation({
-    mutationFn: api?.saveExtFSSearchItem,
-
-    onSuccess: (data) => {
-      onEsc();
-      const state = newExtFSState(extfs, data.query);
-      setExtFS(state);
-    },
-  });
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
-    await handleSubmit(async (data) => {
-      await saveMutate(data);
-    })();
+    const state = newExtFSState(extfs, query);
+    setExtFS(state);
     event.stopPropagation();
   };
 
@@ -105,28 +89,13 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
         onSubmit={handleSave}
       >
         <SearchIcon />
-        <Controller
-          control={control}
-          rules={{
-            required: true,
-          }}
-          name="query"
-          render={({ field: { onChange, ...field_ } }) => (
-            <InputBase
-              placeholder={t("custom.placeholder.search-input")}
-              fullWidth
-              size="medium"
-              autoFocus
-              {...field_}
-              onChange={(event) => {
-                onChange(event);
-                handleChange(event);
-              }}
-              disabled={isSavePending}
-            />
-          )}
+        <InputBase
+          placeholder={t("custom.placeholder.search-input")}
+          fullWidth
+          size="medium"
+          autoFocus
+          onChange={handleChange}
         />
-
         <ButtonBase onClick={onEsc}>
           <Chip
             label="esc"
