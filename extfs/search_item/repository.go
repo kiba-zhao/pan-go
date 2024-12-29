@@ -11,8 +11,9 @@ var ErrSearchItemNotFound = errors.New("searchitem.SearchItemRepository Error: N
 
 type SearchItemRepository interface {
 	Save(SearchItem) (SearchItem, error)
-	Select(id uint) (SearchItem, error)
-	Delete(id uint) error
+	SelectOrCreate(SearchItem) (SearchItem, error)
+	Select(id uint64) (SearchItem, error)
+	Delete(id uint64) error
 	Search(SearchItemCondition) (int64, []SearchItem, error)
 }
 
@@ -36,7 +37,17 @@ func (repo *searchItemRepositoryImpl) Save(item SearchItem) (SearchItem, error) 
 	return item, results.Error
 }
 
-func (repo *searchItemRepositoryImpl) Select(id uint) (SearchItem, error) {
+func (repo *searchItemRepositoryImpl) SelectOrCreate(fields SearchItem) (SearchItem, error) {
+	db := repo.db
+	if db == nil {
+		return SearchItem{}, appSample.ErrSampleDBUnavailable
+	}
+	var item SearchItem
+	results := db.Where(fields).FirstOrCreate(&item)
+	return item, results.Error
+}
+
+func (repo *searchItemRepositoryImpl) Select(id uint64) (SearchItem, error) {
 	db := repo.db
 	if db == nil {
 		return SearchItem{}, appSample.ErrSampleDBUnavailable
@@ -49,7 +60,7 @@ func (repo *searchItemRepositoryImpl) Select(id uint) (SearchItem, error) {
 	return item, results.Error
 }
 
-func (repo *searchItemRepositoryImpl) Delete(id uint) error {
+func (repo *searchItemRepositoryImpl) Delete(id uint64) error {
 	db := repo.db
 	if db == nil {
 		return appSample.ErrSampleDBUnavailable

@@ -13,6 +13,7 @@ type SearchItemController struct {
 func (ctrl *SearchItemController) SetupToWeb(router web.WebRouter) error {
 	router.GET("/search-items", ctrl.Search)
 	router.DELETE("/search-items/:id", ctrl.Delete)
+	router.POST("/search-items", ctrl.Create)
 	return nil
 }
 
@@ -33,12 +34,12 @@ func (ctrl *SearchItemController) Search(ctx web.WebContext) {
 
 func (ctrl *SearchItemController) Delete(ctx web.WebContext) {
 	paramId := ctx.Param("id")
-	id, err := strconv.ParseUint(paramId, 10, 32)
+	id, err := strconv.ParseUint(paramId, 10, 64)
 	if err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-	err = ctrl.SearchItemService.Delete(uint(id))
+	err = ctrl.SearchItemService.Delete(id)
 	if ctrl.SearchItemService.IsNotExist(err) {
 		ctx.AbortWithError(http.StatusNotFound, err)
 		return
@@ -48,4 +49,18 @@ func (ctrl *SearchItemController) Delete(ctx web.WebContext) {
 		return
 	}
 	ctx.Status(http.StatusNoContent)
+}
+
+func (ctrl *SearchItemController) Create(ctx web.WebContext) {
+	var fields SearchItemFields
+	if err := ctx.ShouldBind(&fields); err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	searchItem, err := ctrl.SearchItemService.SelectOrCreate(fields)
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	ctx.JSON(http.StatusCreated, searchItem)
 }

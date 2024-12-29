@@ -12,13 +12,13 @@ func (s *SearchItemService) Search(conditions SearchItemCondition) (int64, []Sea
 	return s.SearchItemRepo.Search(conditions)
 }
 
-func (s *SearchItemService) Create(fields SearchItemFields) (SearchItem, error) {
+func (s *SearchItemService) SelectOrCreate(fields SearchItemFields) (SearchItem, error) {
 	var model SearchItem
 	model.Query = fields.Query
-	return s.SearchItemRepo.Save(model)
+	return s.SearchItemRepo.SelectOrCreate(model)
 }
 
-func (s *SearchItemService) Update(id uint, fields SearchItemFields) (SearchItem, error) {
+func (s *SearchItemService) Update(id uint64, fields SearchItemFields) (SearchItem, error) {
 	model, err := s.SearchItemRepo.Select(id)
 	if err != nil {
 		return model, err
@@ -29,6 +29,6 @@ func (s *SearchItemService) Update(id uint, fields SearchItemFields) (SearchItem
 	return s.SearchItemRepo.Save(model)
 }
 
-func (s *SearchItemService) Delete(id uint) error {
+func (s *SearchItemService) Delete(id uint64) error {
 	return s.SearchItemRepo.Delete(id)
 }

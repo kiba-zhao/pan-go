@@ -1,6 +1,7 @@
 package searchitem_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -69,7 +70,7 @@ func TestSearchItemController(t *testing.T) {
 		defer searchItemRepo.AssertExpectations(t)
 		ctrl.SearchItemService.SearchItemRepo = searchItemRepo
 
-		id := uint(1)
+		id := uint64(1)
 		searchItemRepo.On("Delete", id).Once().Return(nil)
 
 		w := httptest.NewRecorder()
@@ -79,5 +80,34 @@ func TestSearchItemController(t *testing.T) {
 
 		assert.Equal(t, 204, w.Code)
 
+	})
+
+	t.Run("POST /search-items", func(t *testing.T) {
+		app, ctrl := setup()
+
+		searchItemRepo := &mocked.MockSearchItemRepository{}
+		defer searchItemRepo.AssertExpectations(t)
+		ctrl.SearchItemService.SearchItemRepo = searchItemRepo
+
+		query := "query"
+		model := searchitem.SearchItem{Query: query}
+		newModel := model
+		newModel.ID = 1
+
+		searchItemRepo.On("SelectOrCreate", model).Once().Return(newModel, nil)
+
+		fields := searchitem.SearchItemFields{Query: query}
+		jsonData, _ := json.Marshal(fields)
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/search-items", bytes.NewReader(jsonData))
+		r.Header.Set("Content-Type", "application/json")
+		app.ServeHTTP(w, r)
+
+		assert.Equal(t, 201, w.Code)
+
+		var result searchitem.SearchItem
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NoError(t, err)
+		assert.Equal(t, newModel, result)
 	})
 }

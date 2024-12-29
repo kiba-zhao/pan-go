@@ -1,24 +1,24 @@
 import {
-  ExtFSItems,
-  ExtFSItemRecord,
-  useExtFSItem,
   ExtFSItem,
+  ExtFSItemRecord,
+  ExtFSItems,
   ExtFSItemSettings,
+  useExtFSItem,
 } from "./Item";
-import { ExtFSSingleState, useExtFS, ExtFSState } from "./State";
 import { More, MoreHelpItem } from "./More";
-import { newItemSettingsUrl as newItemSettingsUrlWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
+import { newItemSettingsUrl as newItemSettingsUrlWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
+import { ExtFSSingleState, ExtFSState, useExtFS } from "./State";
 
-import type { ExtFSSearchFile } from "../../API";
-import { useAPI } from "../../API";
 import { useQuery } from "@tanstack/react-query";
+import type { ExtFSSearchFile, ExtFSSearchItem } from "../../API";
+import { useAPI } from "../../API";
 
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
-import Link from "@mui/material/Link";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
+import Link from "@mui/material/Link";
 import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
 
 import { useMemo } from "react";
@@ -31,21 +31,25 @@ const ExtFSSearchFileState = {
 };
 
 export type ExtFSSearchFileSingleState = {
-  q: string;
   snapshot: ExtFSState;
-} & ExtFSSingleState;
+} & ExtFSSingleState &
+  Pick<ExtFSSearchFile, "searchId">;
 
-export function newExtFSState(extfs: ExtFSState, query: string): ExtFSState {
+export type ExtFSSearchFileStateOpts = Pick<ExtFSSearchItem, "id" | "query">;
+export function newExtFSState(
+  extfs: ExtFSState,
+  opts: ExtFSSearchFileStateOpts
+): ExtFSState {
   const { parentItems, ...state_ } = extfs;
   const { snapshot } = state_ as ExtFSSearchFileSingleState;
   const state = {
     ...ExtFSSearchFileState,
-    q: query,
+    searchId: opts.id,
     snapshot: snapshot || extfs,
   };
   return {
     ...state,
-    parentItems: [{ name: query, state: state }],
+    parentItems: [{ name: opts.query, state: state }],
   } as ExtFSState;
 }
 
@@ -61,11 +65,11 @@ function restoreExtFSState(extfs: ExtFSState): ExtFSState {
 
 export const SearchFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
-  const { q } = state as ExtFSSearchFileSingleState;
+  const { searchId } = state as ExtFSSearchFileSingleState;
   const api = useAPI();
   const { data: items, isFetching } = useQuery({
-    queryKey: [...ExtFSSearchFileQueryKey, q],
-    queryFn: async () => await api?.searchExtFSSearchFiles({ q }),
+    queryKey: [...ExtFSSearchFileQueryKey, searchId],
+    queryFn: async () => await api?.searchExtFSSearchFiles({ searchId }),
     enabled: state.mode === ExtFSSearchFileMode,
   });
 
@@ -86,14 +90,15 @@ export const SearchFile = () => {
       return (
         <InsertDriveFileIcon color={item.available ? "action" : "disabled"} />
       );
-  }, [item?.fileType, item?.referType]);
+  }, [item?.fileType]);
 
   const settingsUrl = useMemo(() => {
     // TODO: redirect to settings view
-    if (item?.referType === "NI")
-      return newItemSettingsUrlWithNodeItem(Number(item.referId));
+    if (item === void 0) return "";
+    if (item?.peerId === void 0 && item?.filePath === void 0)
+      return newItemSettingsUrlWithNodeItem(item.itemId);
     return "";
-  }, [item?.referType, item?.referId]);
+  }, [item?.peerId, item?.filePath, item?.itemId]);
 
   const [extfs, setExtFS] = useExtFS();
 
@@ -101,32 +106,17 @@ export const SearchFile = () => {
   const handleClick = async () => {
     if (item.fileType === "D") {
       let state: ExtFSState | undefined;
-      if (item?.referType === "NI") {
+      if (item?.peerId === void 0 && item?.filePath === void 0) {
         state = newExtFSStateWithNodeFile(extfs, {
           name: item.name,
-          itemId: Number(item.referId),
+          itemId: item.itemId,
         });
-      } else if (item?.referType === "NF") {
-        const nodeFile = await api?.selectExtFSNodeFile(item.referId);
-        if (nodeFile !== void 0)
-          state = newExtFSStateWithNodeFile(extfs, {
-            ...nodeFile,
-            name: item.name,
-          });
-      } else if (item?.referType === "RI") {
-        const remoteItem = await api?.selectExtFSRemoteItem(item.referId);
-        if (remoteItem !== void 0)
-          state = newExtFSStateWithRemoteFile(extfs, {
-            ...remoteItem,
-            name: item.name,
-          });
-      } else if (item?.referType === "RF") {
-        const remoteFile = await api?.selectExtFSRemoteFile(item.referId);
-        if (remoteFile !== void 0)
-          state = newExtFSStateWithRemoteFile(extfs, {
-            ...remoteFile,
-            name: item.name,
-          });
+      } else if (item?.peerId === void 0 && item?.filePath !== void 0) {
+        state = newExtFSStateWithNodeFile(extfs, item);
+      } else if (item?.peerId !== void 0 && item?.filePath === void 0) {
+        state = newExtFSStateWithRemoteFile(extfs, item);
+      } else if (item?.peerId !== void 0 && item?.filePath !== void 0) {
+        state = newExtFSStateWithRemoteFile(extfs, item);
       }
 
       if (state !== void 0) setExtFS(state);

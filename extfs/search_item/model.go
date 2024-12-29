@@ -12,7 +12,7 @@ type SearchItemFields struct {
 }
 
 type SearchItem struct {
-	ID        uint           `gorm:"primarykey" json:"id" form:"id"`
+	ID        uint64         `gorm:"primarykey" json:"id" form:"id"`
 	CreatedAt time.Time      `json:"createdAt" form:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt" form:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt" form:"deletedAt"`

@@ -20,23 +20,24 @@ import _ from "lodash";
 import {
   createContext,
   Fragment,
+  memo,
   useCallback,
   useContext,
+  useDeferredValue,
   useMemo,
   useState,
-  memo,
-  useDeferredValue,
 } from "react";
 
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Controller, useForm } from "react-hook-form";
 
-import type { ExtFSSearchItem } from "../../API";
+import type { ExtFSSearchItem, ExtFSSearchItemFields } from "../../API";
 import { useAPI } from "../../API";
 import type { ListItemData } from "../List/Item";
 import { ListItems, useListItems } from "../List/Item";
-import { useExtFS } from "./State";
 import { newExtFSState } from "./SearchFile";
+import { useExtFS } from "./State";
 
 type SearchQuery = {
   queryKey: QueryKey;
@@ -66,12 +67,28 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
     setQueryDelay(value);
   };
 
+  const { handleSubmit, control } = useForm<ExtFSSearchItemFields>({
+    defaultValues: { query },
+  });
+
   const [extfs, setExtFS] = useExtFS();
+
+  const api = useAPI();
+  const { mutate: saveMutate, isPending: isSavePending } = useMutation({
+    mutationFn: api?.saveExtFSSearchItem,
+
+    onSuccess: (data) => {
+      onEsc();
+      const state = newExtFSState(extfs, data);
+      setExtFS(state);
+    },
+  });
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
-    const state = newExtFSState(extfs, query);
-    setExtFS(state);
+    await handleSubmit(async (data) => {
+      await saveMutate(data);
+    })();
     event.stopPropagation();
   };
 
@@ -89,13 +106,28 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
         onSubmit={handleSave}
       >
         <SearchIcon />
-        <InputBase
-          placeholder={t("custom.placeholder.search-input")}
-          fullWidth
-          size="medium"
-          autoFocus
-          onChange={handleChange}
+        <Controller
+          control={control}
+          rules={{
+            required: true,
+          }}
+          name="query"
+          render={({ field: { onChange, ...field_ } }) => (
+            <InputBase
+              placeholder={t("custom.placeholder.search-input")}
+              fullWidth
+              size="medium"
+              autoFocus
+              {...field_}
+              onChange={(event) => {
+                onChange(event);
+                handleChange(event);
+              }}
+              disabled={isSavePending}
+            />
+          )}
         />
+
         <ButtonBase onClick={onEsc}>
           <Chip
             label="esc"
@@ -159,7 +191,7 @@ export const SearchItem = ({ onClick }: SearchItemProps) => {
 
   const [extfs, setExtFS] = useExtFS();
   const handleClick = () => {
-    const state = newExtFSState(extfs, item.query);
+    const state = newExtFSState(extfs, item);
     setExtFS(state);
     onClick();
   };

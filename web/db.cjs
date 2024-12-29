@@ -64,7 +64,7 @@ module.exports = () => {
 
   const searchFiles = searchItems.reduce((files, item) => {
     const files_ = generateSearchFiles(
-      { nodeFiles, remoteFiles, remoteItems, nodeItems},
+      { nodeFiles, remoteFiles, remoteItems, nodeItems },
       item
     );
     return files.concat(files_);
@@ -267,7 +267,7 @@ function generateExtFSRemoteFile(peerId, itemId, folders = ["/"]) {
 
 function generateSearchItem() {
   return {
-    id: faker.string.nanoid(),
+    id: faker.number.int({ min: 1, max: 999999 }),
     query: faker.word.words(),
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
@@ -300,9 +300,9 @@ function generateSearchFileWithNodeFile(nodeFile, item) {
     fileType: nodeFile.fileType,
     size: nodeFile.size,
     available: nodeFile.available,
-    reason: item.query,
-    referId: nodeFile.id,
-    referType: "NF",
+    itemId: nodeFile.itemId,
+    filePath: nodeFile.filePath,
+    searchId: item.id,
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   };
@@ -315,9 +315,10 @@ function generateSearchFileWithRemoteFile(remoteFile, item) {
     fileType: remoteFile.fileType,
     size: remoteFile.size,
     available: remoteFile.available,
-    reason: item.query,
-    referId: remoteFile.id,
-    referType: "RF",
+    peerId: remoteFile.peerId,
+    itemId: remoteFile.itemId,
+    filePath: remoteFile.filePath,
+    searchId: item.id,
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   };
@@ -330,9 +331,8 @@ function generateSearchFileWithNodeItem(nodeItem, item) {
     fileType: nodeItem.fileType,
     size: nodeItem.size,
     available: nodeItem.available,
-    reason: item.query,
-    referId: nodeItem.id.toString(),
-    referType: "NI",
+    itemId: nodeItem.id,
+    searchId: item.id,
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   };
@@ -345,9 +345,9 @@ function generateSearchFileWithRemoteItem(remoteItem, item) {
     fileType: remoteItem.fileType,
     size: remoteItem.size,
     available: remoteItem.available,
-    reason: item.query,
-    referId: remoteItem.id.toString(),
-    referType: "RI",
+    peerId: remoteItem.peerId,
+    itemId: remoteItem.id,
+    searchId: item.id,
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   };
