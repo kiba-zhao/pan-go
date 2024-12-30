@@ -19,6 +19,7 @@ import type {
   ExtFSSearchItem,
   ExtFSSearchItemFields,
   ExtFSSearchItemSearchCondition,
+  ExtFSSearchFileSearchResults,
 } from "./api";
 import * as api from "./api";
 
@@ -35,6 +36,7 @@ export type {
   ExtFSSearchFile,
   ExtFSSearchItem,
   ExtFSSearchItemFields,
+  ExtFSSearchFileSearchResults,
 };
 
 interface AppSettingsAPI {
@@ -95,9 +97,9 @@ interface ExtFSSearchItemAPI {
 }
 
 interface ExtFSSearchFileAPI {
-  searchExtFSSearchFiles(
+  searchExtFSSearchFileResults(
     condition: ExtFSSearchFileSearchCondition
-  ): Promise<ExtFSSearchFile[]>;
+  ): Promise<ExtFSSearchFileSearchResults>;
 }
 
 export type API = AppSettingsAPI &

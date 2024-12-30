@@ -21,7 +21,7 @@ export const useListItems = <T extends any>() =>
 
 export type ListItemsProps<T extends any> = {
   items: T[];
-  isFetching: boolean;
+  isFetching?: boolean;
   children: ReactNode;
   itemSize: number;
 };

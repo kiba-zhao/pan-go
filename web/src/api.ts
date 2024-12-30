@@ -326,15 +326,26 @@ export type ExtFSSearchFile = {
   Pick<ExtFSRemoteNode, "peerId">;
 
 export type ExtFSSearchFileSearchCondition = {
-  searchId: string;
-};
+  _start?: number;
+  _end?: number;
+} &Pick<ExtFSSearchFile, "searchId">;
 
-export async function searchExtFSSearchFiles(
+type SearchResults <T extends any> = [number, T[]];
+
+export type ExtFSSearchFileSearchResults = SearchResults<ExtFSSearchFile>;
+
+export async function searchExtFSSearchFileResults(
   condition: ExtFSSearchFileSearchCondition
-): Promise<ExtFSSearchFile[]> {
-  const [_, searchFiles] = await fetchMany(
+): Promise<ExtFSSearchFileSearchResults> {
+  
+  const { searchId,_start,_end,...params } = condition;
+  const condition_:Record<string,string> = {searchId: searchId.toString(),...params};
+  if (_start !== void 0 && _start >=0) condition_._start = _start.toString();
+  if (_end !== void 0 && _end >=0) condition_._end = _end.toString();
+
+  const [total, searchFiles] = await fetchMany(
     withPath("extfs/search-files", "merge"),
-    withQuery(condition, "merge")
+    withQuery(condition_, "merge")
   );
-  return searchFiles;
+  return [total,searchFiles];
 }

@@ -10,8 +10,9 @@ import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
 import { newItemSettingsUrl as newItemSettingsUrlWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
 import { ExtFSSingleState, ExtFSState, useExtFS } from "./State";
+import { ListItems } from "../List/Item";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import type { ExtFSSearchFile, ExtFSSearchItem } from "../../API";
 import { useAPI } from "../../API";
 
@@ -20,8 +21,9 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import Link from "@mui/material/Link";
 import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
+import LinearProgress from "@mui/material/LinearProgress";
 
-import { useMemo } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef } from "react";
 
 export const ExtFSSearchFileMode = "SF";
 const ExtFSSearchFileQueryKey = ["extfs-search-files"];
@@ -67,16 +69,69 @@ export const SearchFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
   const { searchId } = state as ExtFSSearchFileSingleState;
   const api = useAPI();
-  const { data: items, isFetching } = useQuery({
+  const {
+    data,
+    isFetching,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: [...ExtFSSearchFileQueryKey, searchId],
-    queryFn: async () => await api?.searchExtFSSearchFiles({ searchId }),
+    queryFn: async ({ pageParam }) =>
+      await api?.searchExtFSSearchFileResults({
+        searchId,
+        _start: pageParam,
+        _end: pageParam + 1000,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages, lastPageParam) => {
+      if (lastPage === void 0 || allPages.length <= 0) return lastPageParam;
+      const [total, _] = lastPage;
+      const count = allPages.reduce(
+        (counter, page) => counter + (page !== void 0 ? page[1].length : 0),
+        0
+      );
+      if (total < 0 || count < total) return count;
+      return void 0;
+    },
     enabled: state.mode === ExtFSSearchFileMode,
   });
 
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cleanInterval = useCallback(() => {
+    if (intervalRef.current === null) return;
+    clearInterval(intervalRef.current);
+    intervalRef.current = null;
+  }, []);
+  useEffect(() => {
+    if (hasNextPage && intervalRef.current === null) {
+      intervalRef.current = setInterval(() => {
+        if (hasNextPage) {
+          fetchNextPage();
+        } else {
+          cleanInterval();
+        }
+      }, 2000);
+    }
+    return cleanInterval;
+  }, [hasNextPage]);
+
+  const items = useMemo(() => {
+    const pages = data?.pages;
+    if (pages === void 0) return [];
+    return pages.flatMap((page) => (page ? page[1] : []));
+  }, [data?.pages]);
+
   return (
-    <ExtFSItems items={items || []} isFetching={isFetching}>
-      <SearchFile />
-    </ExtFSItems>
+    <Fragment>
+      <LinearProgress
+        sx={{ visibility: hasNextPage || isFetching ? "visible" : "hidden" }}
+      />
+      <ListItems items={items} itemSize={68}>
+        <SearchFile />
+      </ListItems>
+    </Fragment>
   );
 };
 
