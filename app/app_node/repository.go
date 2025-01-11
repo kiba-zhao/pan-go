@@ -3,10 +3,10 @@ package appnode
 import (
 	"errors"
 	"pan/app/sample"
+	"pan/app/web"
 	"strings"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 var ErrAppNodeNotFound = errors.New("appnode.AppNodeRepository Error: Not Found")
@@ -60,28 +60,8 @@ func (repo *peerNodeRepository) Search(conditions AppNodeSearchCondition) (int64
 		return total, nil, results.Error
 	}
 
-	if len(conditions.SortField) > 0 {
-		fields := strings.Split(conditions.SortField, ",")
-		orders := strings.Split(conditions.SortOrder, ",")
-		for i, field := range fields {
-			if len(strings.Trim(field, " ")) <= 0 {
-				continue
-			}
-			order := false
-			if len(orders) > i {
-				order = strings.ToLower(orders[i]) == "desc"
-			}
-			db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: field}, Desc: order})
-		}
-	}
-
-	if conditions.RangeStart > 0 {
-		db = db.Offset(conditions.RangeStart)
-	}
-
-	if conditions.RangeEnd > 0 {
-		db = db.Limit(conditions.RangeEnd - conditions.RangeStart)
-	}
+	db = db.Scopes(web.OrderByWithSortCondition(&conditions.SortCondition))
+	db = db.Scopes(web.PaginateWithRangeCondition(&conditions.RangeCondition))
 
 	var items []AppNode
 	results = db.Find(&items)

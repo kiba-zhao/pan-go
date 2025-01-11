@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"errors"
+	"iter"
 	"reflect"
 	"slices"
 	"sync"
@@ -152,4 +153,27 @@ func ModulesForType[T any](registry Registry) []T {
 		ts = append(ts, module.(T))
 	}
 	return ts
+}
+
+func SeqForType[T any](registry Registry) iter.Seq[T] {
+
+	t := reflect.TypeFor[T]()
+
+	return func(yield func(T) bool) {
+		modules, ok := registry.ModulesByType(t)
+		if !ok {
+			return
+		}
+
+		for _, module := range modules {
+			m, ok := module.(T)
+			if !ok {
+				continue
+			}
+			if !yield(m) {
+				return
+			}
+		}
+	}
+
 }

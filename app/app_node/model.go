@@ -15,8 +15,8 @@ type AppNodeFields struct {
 
 type AppNode struct {
 	ID        uint           `gorm:"primarykey" json:"id" form:"id"`
-	PeerID    string         `gorm:"size:255;uniqueIndex" json:"peerId" form:"peerId"`
-	Name      string         `gorm:"size:255;index" json:"name" form:"name"`
+	PeerID    string         `gorm:"size:256;uniqueIndex" json:"peerId" form:"peerId"`
+	Name      string         `gorm:"size:256;index" json:"name" form:"name"`
 	Blocked   bool           `gorm:"index" json:"blocked" form:"blocked"`
 	Online    bool           `gorm:"-:all" json:"online" form:"online"`
 	CreatedAt time.Time      `json:"createdAt" form:"createdAt"`
@@ -25,8 +25,8 @@ type AppNode struct {
 }
 
 type AppNodeSearchCondition struct {
-	web.RangeSearchCondition
-	web.SortSearchCondition
+	web.RangeCondition
+	web.SortCondition
 	Keyword string `form:"q" binding:"omitempty"`
 	Blocked *bool  `form:"blocked" binding:"omitempty"`
 	Online  *bool  `form:"online" binding:"omitempty"`

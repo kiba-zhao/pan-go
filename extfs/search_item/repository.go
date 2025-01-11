@@ -3,6 +3,7 @@ package searchitem
 import (
 	"errors"
 	appSample "pan/app/sample"
+	"pan/app/web"
 
 	"gorm.io/gorm"
 )
@@ -11,7 +12,8 @@ var ErrSearchItemNotFound = errors.New("searchitem.SearchItemRepository Error: N
 
 type SearchItemRepository interface {
 	Save(SearchItem) (SearchItem, error)
-	SelectOrCreate(SearchItem) (SearchItem, error)
+	Create(SearchItem) (SearchItem, error)
+	SelectOrCreate(SearchItem) (SearchItem, bool, error)
 	Select(id uint64) (SearchItem, error)
 	Delete(id uint64) error
 	Search(SearchItemCondition) (int64, []SearchItem, error)
@@ -37,14 +39,28 @@ func (repo *searchItemRepositoryImpl) Save(item SearchItem) (SearchItem, error) 
 	return item, results.Error
 }
 
-func (repo *searchItemRepositoryImpl) SelectOrCreate(fields SearchItem) (SearchItem, error) {
+func (repo *searchItemRepositoryImpl) Create(fields SearchItem) (SearchItem, error) {
 	db := repo.db
 	if db == nil {
 		return SearchItem{}, appSample.ErrSampleDBUnavailable
 	}
 	var item SearchItem
-	results := db.Where(fields).FirstOrCreate(&item)
+	results := db.Create(&item)
 	return item, results.Error
+}
+
+func (repo *searchItemRepositoryImpl) SelectOrCreate(item SearchItem) (SearchItem, bool, error) {
+	db := repo.db
+	if db == nil {
+		return item, false, appSample.ErrSampleDBUnavailable
+	}
+	db = db.Where("query = ?", item.Query)
+	db = db.Order("updated_at desc")
+	results := db.FirstOrCreate(&item)
+	if results.Error == nil {
+		return item, results.RowsAffected == 1, results.Error
+	}
+	return item, false, results.Error
 }
 
 func (repo *searchItemRepositoryImpl) Select(id uint64) (SearchItem, error) {
@@ -77,8 +93,11 @@ func (repo *searchItemRepositoryImpl) Search(condition SearchItemCondition) (int
 	if db == nil {
 		return 0, nil, appSample.ErrSampleDBUnavailable
 	}
+	if len(condition.Q) > 0 {
+		db = db.Where("query like ?", condition.Q+"%")
+	}
 	if len(condition.Query) > 0 {
-		db = db.Where("query like ?", condition.Query+"%")
+		db = db.Where("query = ?", condition.Query)
 	}
 
 	total := int64(0)
@@ -88,13 +107,7 @@ func (repo *searchItemRepositoryImpl) Search(condition SearchItemCondition) (int
 		return total, nil, results.Error
 	}
 
-	if condition.RangeStart > 0 {
-		db = db.Offset(condition.RangeStart)
-	}
-
-	if condition.RangeEnd > 0 {
-		db = db.Limit(condition.RangeEnd - condition.RangeStart)
-	}
+	db = db.Scopes(web.PaginateWithRangeCondition(&condition.RangeCondition))
 
 	var items []SearchItem
 	results = db.Order("updated_at desc").Find(&items)

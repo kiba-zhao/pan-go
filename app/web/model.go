@@ -1,11 +1,11 @@
 package web
 
-type RangeSearchCondition struct {
+type RangeCondition struct {
 	RangeStart int `form:"_start" binding:"omitempty"`
 	RangeEnd   int `form:"_end" binding:"omitempty"`
 }
 
-type SortSearchCondition struct {
+type SortCondition struct {
 	SortField string `form:"_sort" binding:"omitempty"`
 	SortOrder string `form:"_order" binding:"omitempty"`
 }

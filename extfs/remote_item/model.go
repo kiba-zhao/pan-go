@@ -10,6 +10,7 @@ type RemoteItem struct {
 	ItemID             uint      `json:"itemId" form:"itemId"`
 	Name               string    `json:"name" form:"name"`
 	FileType           string    `json:"fileType" form:"fileType"`
+	MimeType           string    `json:"mimeType" form:"mimeType"`
 	Size               int64     `json:"size" form:"size"`
 	Available          bool      `json:"available" form:"available"`
 	TagQuantity        uint      `json:"tagQuantity" form:"tagQuantity"`

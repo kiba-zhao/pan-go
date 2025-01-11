@@ -11,6 +11,7 @@ type RemoteFile struct {
 	Name               string    `json:"name" form:"name"`
 	FilePath           string    `json:"filePath" form:"filePath"`
 	FileType           string    `json:"fileType" form:"fileType"`
+	MimeType           string    `json:"mimeType" form:"mimeType"`
 	ParentPath         string    `json:"parentPath" form:"parentPath"`
 	Size               int64     `json:"size" form:"size"`
 	Available          bool      `json:"available" form:"available"`

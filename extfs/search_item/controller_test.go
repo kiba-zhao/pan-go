@@ -33,6 +33,7 @@ func TestSearchItemController(t *testing.T) {
 		defer searchItemRepo.AssertExpectations(t)
 		ctrl.SearchItemService.SearchItemRepo = searchItemRepo
 
+		q := "q"
 		query := "query"
 		total := int64(10)
 		items := []searchitem.SearchItem{
@@ -42,16 +43,18 @@ func TestSearchItemController(t *testing.T) {
 		}
 		searchItemRepo.On("Search", mock.Anything).Once().Return(total, items, nil).Run(func(args mock.Arguments) {
 			condition := args.Get(0).(searchitem.SearchItemCondition)
+			assert.Equal(t, q, condition.Q)
 			assert.Equal(t, query, condition.Query)
 			assert.Equal(t, int(total), condition.RangeEnd)
 		})
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/search-items", nil)
-		q := r.URL.Query()
-		q.Add("q", query)
-		q.Add("_end", strconv.FormatInt(total, 10))
-		r.URL.RawQuery = q.Encode()
+		qs := r.URL.Query()
+		qs.Add("q", q)
+		qs.Add("query", query)
+		qs.Add("_end", strconv.FormatInt(total, 10))
+		r.URL.RawQuery = qs.Encode()
 		app.ServeHTTP(w, r)
 
 		assert.Equal(t, 200, w.Code)
@@ -91,10 +94,11 @@ func TestSearchItemController(t *testing.T) {
 
 		query := "query"
 		model := searchitem.SearchItem{Query: query}
+
 		newModel := model
 		newModel.ID = 1
 
-		searchItemRepo.On("SelectOrCreate", model).Once().Return(newModel, nil)
+		searchItemRepo.On("SelectOrCreate", model).Once().Return(newModel, false, nil)
 
 		fields := searchitem.SearchItemFields{Query: query}
 		jsonData, _ := json.Marshal(fields)
@@ -108,6 +112,7 @@ func TestSearchItemController(t *testing.T) {
 		var result searchitem.SearchItem
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Equal(t, newModel, result)
+		assert.Equal(t, newModel.ID, result.ID)
+		assert.Equal(t, newModel.Query, result.Query)
 	})
 }

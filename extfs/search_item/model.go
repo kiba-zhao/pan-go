@@ -16,10 +16,11 @@ type SearchItem struct {
 	CreatedAt time.Time      `json:"createdAt" form:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt" form:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt" form:"deletedAt"`
-	Query     string         `gorm:"size:255;uniqueIndex" json:"query" form:"query"`
+	Query     string         `gorm:"size:256; uniqueIndex" json:"query" form:"query"`
 }
 
 type SearchItemCondition struct {
-	web.RangeSearchCondition
-	Query string `form:"q" binding:"omitempty"`
+	web.RangeCondition
+	Query string `form:"query" binding:"omitempty"`
+	Q     string `form:"q" binding:"omitempty"`
 }

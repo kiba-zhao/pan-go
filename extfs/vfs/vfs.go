@@ -13,24 +13,32 @@ type VFSFileSystem interface {
 	Unmount() error
 }
 
-func New(store injection.ComponentStore) interface{} {
-	return &VFS{store: store}
+func New(provider injection.ComponentStoreProvider) interface{} {
+	vfs := &VFS{}
+	vfs.provider = provider
+
+	config, err := appConfig.NewConfig[*VFSSettings]("extfs_vfs.toml")
+	if err != nil {
+		panic(err)
+	}
+	vfs.config = config
+
+	return vfs
 }
 
 type VFS struct {
 	VFSFileSystem VFSFileSystem
-	store         injection.ComponentStore
+	provider      injection.ComponentStoreProvider
 	locker        sync.Mutex
 	vfsSettings   *VFSSettings
 	needReload    bool
 	reloadChan    chan struct{}
 	reloadOnce    sync.Once
 	config        appConfig.Config[*VFSSettings]
-	modOnce       sync.Once
 }
 
 func (vfs *VFS) ComponentStore() injection.ComponentStore {
-	return vfs.store
+	return vfs.provider.ComponentStore()
 }
 
 func (vfs *VFS) Components() []injection.Component {
@@ -49,9 +57,6 @@ func (vfs *VFS) Components() []injection.Component {
 }
 
 func (vfs *VFS) Modules() []interface{} {
-	vfs.modOnce.Do(func() {
-		vfs.config = appConfig.NewConfig[*VFSSettings]("extfs.toml")
-	})
 	return []interface{}{
 		vfs.config,
 	}
@@ -60,6 +65,10 @@ func (vfs *VFS) Modules() []interface{} {
 func (vfs *VFS) OnConfigUpdated(settings appConfig.AppSettings) {
 	vfs.locker.Lock()
 	defer vfs.locker.Unlock()
+	if vfs.config == nil {
+		return
+	}
+
 	defaultsSettings := newDefaultsVFSSettings(settings)
 	vfs.config.SetDefaults(defaultsSettings)
 	vfsSettings, err := vfs.config.Load()

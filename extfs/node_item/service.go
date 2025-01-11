@@ -2,7 +2,9 @@ package nodeitem
 
 import (
 	"errors"
+	"net/http"
 	"os"
+	"strings"
 )
 
 const (
@@ -15,6 +17,7 @@ type NodeItemInternalService interface {
 	Select(uint) (NodeItem, error)
 	SelectByName(string) (NodeItem, error)
 	IsNotExist(error) bool
+	SelectAllWithEnabled(bool) ([]NodeItem, error)
 }
 
 type NodeItemService struct {
@@ -54,11 +57,15 @@ func (s *NodeItemService) Create(fields NodeItemFields) (NodeItem, error) {
 		nodeItem.FileType = FileTypeFolder
 	} else {
 		nodeItem.FileType = FileTypeFile
+		mimeType, err := GenerateMimeType(nodeItem.FilePath)
+		if err == nil {
+			nodeItem.MimeType = mimeType
+		}
 	}
 
 	nodeItem_, err := s.NodeItemRepo.Save(nodeItem)
 	if err == nil {
-		setNodeItemFieldsWithFileStat(&nodeItem_)
+		setNodeItemAvailableWithFileStat(&nodeItem_)
 	}
 	return nodeItem_, err
 }
@@ -82,11 +89,15 @@ func (s *NodeItemService) Update(fields NodeItemFields, id uint) (NodeItem, erro
 		nodeItem.FileType = FileTypeFolder
 	} else {
 		nodeItem.FileType = FileTypeFile
+		mimeType, err := GenerateMimeType(nodeItem.FilePath)
+		if err == nil {
+			nodeItem.MimeType = mimeType
+		}
 	}
 
 	nodeItem, err = s.NodeItemRepo.Save(nodeItem)
 	if err == nil {
-		setNodeItemFieldsWithFileStat(&nodeItem)
+		setNodeItemAvailableWithFileStat(&nodeItem)
 	}
 	return nodeItem, err
 }
@@ -96,7 +107,8 @@ func (s *NodeItemService) Select(id uint) (NodeItem, error) {
 	if err != nil {
 		return nodeItem, err
 	}
-	setNodeItemFieldsWithFileStat(&nodeItem)
+	setNodeItemAvailableWithFileStat(&nodeItem)
+	setNodeItemAvailableWithMimeType(&nodeItem)
 	return nodeItem, nil
 }
 
@@ -105,15 +117,21 @@ func (s *NodeItemService) SelectByName(name string) (NodeItem, error) {
 	if err != nil {
 		return nodeItem, err
 	}
-	setNodeItemFieldsWithFileStat(&nodeItem)
+	setNodeItemAvailableWithFileStat(&nodeItem)
+	setNodeItemAvailableWithMimeType(&nodeItem)
 	return nodeItem, nil
 }
 
 func (s *NodeItemService) TraverseAll(traverseFn func(NodeItem) error) error {
 	return s.NodeItemRepo.TraverseAll(func(nodeItem NodeItem) error {
-		setNodeItemFieldsWithFileStat(&nodeItem)
+		setNodeItemAvailableWithFileStat(&nodeItem)
+		setNodeItemAvailableWithMimeType(&nodeItem)
 		return traverseFn(nodeItem)
 	})
+}
+
+func (s *NodeItemService) SelectAllWithEnabled(enabled bool) ([]NodeItem, error) {
+	return s.NodeItemRepo.SelectAllWithEnabled(enabled)
 }
 
 func (s *NodeItemService) Delete(id uint) error {
@@ -125,7 +143,7 @@ func (s *NodeItemService) Delete(id uint) error {
 	return err
 }
 
-func setNodeItemFieldsWithFileStat(nodeItem *NodeItem) {
+func setNodeItemAvailableWithFileStat(nodeItem *NodeItem) {
 	nodeItem.Available = *nodeItem.Enabled
 	if !nodeItem.Available {
 		return
@@ -143,4 +161,30 @@ func setNodeItemFieldsWithFileStat(nodeItem *NodeItem) {
 	} else {
 		nodeItem.Available = nodeItem.FileType == FileTypeFile
 	}
+}
+
+func setNodeItemAvailableWithMimeType(nodeItem *NodeItem) {
+	if strings.Compare(nodeItem.FileType, FileTypeFile) != 0 {
+		return
+	}
+	if !nodeItem.Available {
+		return
+	}
+	mimeType, _ := GenerateMimeType(nodeItem.FilePath)
+	nodeItem.Available = strings.Compare(nodeItem.MimeType, mimeType) == 0
+}
+
+func GenerateMimeType(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	buffer := make([]byte, 512)
+	_, err = file.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+	fileType := http.DetectContentType(buffer)
+	return fileType, nil
 }

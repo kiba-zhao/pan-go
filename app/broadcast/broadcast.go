@@ -40,10 +40,10 @@ type BroadcastModule interface {
 	Reload()
 }
 
-func New(store injection.ComponentStore) BroadcastModule {
+func New(csProvider injection.ComponentStoreProvider) BroadcastModule {
 	module := &broadcastModule{}
 
-	agent := &broadcastAgent{store: store}
+	agent := &broadcastAgent{provider: csProvider}
 	agent.module = module
 	module.agent = agent
 

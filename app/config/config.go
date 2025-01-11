@@ -39,9 +39,8 @@ type configImpl[T any] struct {
 	isPtrType bool
 }
 
-func NewConfig[T any](name string) Config[T] {
+func NewConfig[T any](name string) (Config[T], error) {
 
-	// TODO: check T is a pointer
 	cfg := &configImpl[T]{}
 
 	t := reflect.TypeFor[T]()
@@ -50,34 +49,31 @@ func NewConfig[T any](name string) Config[T] {
 
 	rootPath, err := getConfigRootPath()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	cfg.viper.SetConfigFile(path.Join(rootPath, name))
 
-	return cfg
-}
-
-func (c *configImpl[T]) Init(registry runtime.Registry) error {
-	err := c.EnsureConfig()
+	err = cfg.EnsureConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = c.viper.ReadInConfig()
-	if _, ok := err.(*fs.PathError); ok {
+	err = cfg.viper.ReadInConfig()
+	if _, ok := err.(*fs.PathError); ok || os.IsNotExist(err) {
 		err = nil
 	}
 
-	if err != nil {
-		return err
-	}
+	return cfg, err
+}
+
+func (c *configImpl[T]) Init(registry runtime.Registry) error {
 
 	c.registryRW.Lock()
 	c.registry = registry
 	c.registryRW.Unlock()
 
 	// init settings
-	_, err = c.Load()
+	_, err := c.Load()
 	return err
 
 }
@@ -237,7 +233,11 @@ func onSettingsUpdated[T any](registry runtime.Registry, settings T) {
 
 func New() AppConfig {
 	settings := newDefaultSettings()
-	cfg := NewConfig[AppSettings]("pan.toml")
+	cfg, err := NewConfig[AppSettings]("pan.toml")
+	if err != nil {
+		panic(err)
+	}
 	cfg.SetDefaults(settings)
+
 	return cfg
 }

@@ -58,18 +58,12 @@ module.exports = () => {
     );
   }, []);
 
-  const searchItems = faker.helpers.multiple(generateSearchItem, {
+  const searchItems = faker.helpers.multiple(generateExtFSSearchItem, {
     count: { min: 1, max: 10 },
   });
 
-  const searchFiles = searchItems.reduce((files, item) => {
-    const files_ = generateSearchFiles(
-      { nodeFiles, remoteFiles, remoteItems, nodeItems },
-      item
-    );
-    return files.concat(files_);
-  }, []);
-
+  const searchFiles = [...nodeItems,...nodeFiles].map(generateNodeSearchFiles)
+  const remoteSearchFiles = [...remoteItems,...remoteFiles].map(generateRemoteSearchFiles)
   return {
     "app-disk-files": diskFiles,
     "app-settings": generateAppSettings(
@@ -83,6 +77,7 @@ module.exports = () => {
     "extfs-remote-files": remoteFiles,
     "extfs-search-items": searchItems,
     "extfs-search-files": searchFiles,
+    "extfs-remote-search-files": remoteSearchFiles,
   };
 };
 
@@ -183,11 +178,14 @@ function parseRemoteNode(node) {
 }
 
 function generateExtFSNodeItem() {
+  const fileType = faker.helpers.arrayElement(["F", "D"]);
+  const mimeType = fileType === "F"?faker.system.mimeType():"";
   return {
     id: faker.number.int({ min: 1, max: 999999 }),
     name: faker.word.sample(),
     filePath: faker.system.directoryPath(),
-    fileType: faker.helpers.arrayElement(["F", "D"]),
+    fileType,
+    mimeType,
     size: faker.number.int({ min: 1, max: 999999 }),
     enabled: faker.datatype.boolean(),
     available: faker.datatype.boolean(),
@@ -199,12 +197,15 @@ function generateExtFSNodeItem() {
 }
 
 function generateExtFSRemoteNodeItem(peerId) {
+  const fileType = faker.helpers.arrayElement(["F", "D"]);
+  const mimeType = fileType === "F"?faker.system.mimeType():"";
   return {
     id: faker.string.nanoid(),
     peerId,
     itemId: faker.number.int({ min: 1, max: 999999 }),
     name: faker.word.sample(),
-    fileType: faker.helpers.arrayElement(["F", "D"]),
+    fileType,
+    mimeType,
     size: faker.number.int({ min: 1, max: 999999 }),
     available: faker.datatype.boolean(),
     createdAt: faker.date.past(),
@@ -220,6 +221,7 @@ function generateExtFSNodeFile(itemId, folders = ["/"]) {
   const fileType = isDir ? "D" : "F";
   const name = isDir ? faker.word.sample() : faker.system.fileName();
   const filePath = path.join(folder, name);
+  const mimeType = isDir ? "" : faker.system.mimeType();
   if (isDir) {
     folders.push(filePath);
   }
@@ -229,6 +231,7 @@ function generateExtFSNodeFile(itemId, folders = ["/"]) {
     name,
     filePath,
     fileType,
+    mimeType,
     parentPath: folder,
     size: faker.number.int({ min: 1, max: 999999 }),
     available: true,
@@ -245,6 +248,7 @@ function generateExtFSRemoteFile(peerId, itemId, folders = ["/"]) {
   const fileType = isDir ? "D" : "F";
   const name = isDir ? faker.word.sample() : faker.system.fileName();
   const filePath = path.join(folder, name);
+  const mimeType = isDir ? "" : faker.system.mimeType();
   if (isDir) {
     folders.push(filePath);
   }
@@ -256,6 +260,7 @@ function generateExtFSRemoteFile(peerId, itemId, folders = ["/"]) {
     parentPath: folder,
     filePath,
     fileType,
+    mimeType,
     size: faker.number.int({ min: 1, max: 999999 }),
     available: true,
     createdAt: faker.date.past(),
@@ -265,7 +270,7 @@ function generateExtFSRemoteFile(peerId, itemId, folders = ["/"]) {
   };
 }
 
-function generateSearchItem() {
+function generateExtFSSearchItem() {
   return {
     id: faker.number.int({ min: 1, max: 999999 }),
     query: faker.word.words(),
@@ -274,81 +279,39 @@ function generateSearchItem() {
   };
 }
 
-function generateSearchFiles(ctx, item) {
-  const { nodeFiles, remoteFiles, remoteItems, nodeItems } = ctx;
-
-  return [].concat(
-    faker.helpers
-      .arrayElements(nodeFiles)
-      .map((_) => generateSearchFileWithNodeFile(_, item)),
-    faker.helpers
-      .arrayElements(remoteFiles)
-      .map((_) => generateSearchFileWithRemoteFile(_, item)),
-    faker.helpers
-      .arrayElements(nodeItems)
-      .map((_) => generateSearchFileWithNodeItem(_, item)),
-    faker.helpers
-      .arrayElements(remoteItems)
-      .map((_) => generateSearchFileWithRemoteItem(_, item))
-  );
-}
-
-function generateSearchFileWithNodeFile(nodeFile, item) {
+function generateNodeSearchFiles(nodefile){
   return {
     id: faker.number.int({ min: 1, max: 999999 }),
-    name: nodeFile.name,
-    fileType: nodeFile.fileType,
-    size: nodeFile.size,
-    available: nodeFile.available,
-    itemId: nodeFile.itemId,
-    filePath: nodeFile.filePath,
-    searchId: item.id,
+    itemId: nodefile.itemId,
+    name: nodefile.name,
+    fileType: nodefile.fileType,
+    size: nodefile.size,
+    available: nodefile.available,
+    filePath: nodefile.filePath,
+    mimeType: nodefile.mimeType,
+    available: nodefile.available,
+    score: faker.number.int({ min: 1, max: 10 }),
+    tokens: [nodefile.name],
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
-  };
+  }
 }
 
-function generateSearchFileWithRemoteFile(remoteFile, item) {
+function generateRemoteSearchFiles(remotefile){
   return {
     id: faker.number.int({ min: 1, max: 999999 }),
-    name: remoteFile.name,
-    fileType: remoteFile.fileType,
-    size: remoteFile.size,
-    available: remoteFile.available,
-    peerId: remoteFile.peerId,
-    itemId: remoteFile.itemId,
-    filePath: remoteFile.filePath,
-    searchId: item.id,
+    peerId: remotefile.peerId,
+    itemId: remotefile.itemId,
+    name: remotefile.name,
+    fileType: remotefile.fileType,
+    size: remotefile.size,
+    available: remotefile.available,
+    filePath: remotefile.filePath,
+    mimeType: remotefile.mimeType,
+    available: remotefile.available,
+    score: faker.number.int({ min: 1, max: 10 }),
+    tokens: [remotefile.name],
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
-  };
-}
-
-function generateSearchFileWithNodeItem(nodeItem, item) {
-  return {
-    id: faker.number.int({ min: 1, max: 999999 }),
-    name: nodeItem.name,
-    fileType: nodeItem.fileType,
-    size: nodeItem.size,
-    available: nodeItem.available,
-    itemId: nodeItem.id,
-    searchId: item.id,
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.past(),
-  };
-}
-
-function generateSearchFileWithRemoteItem(remoteItem, item) {
-  return {
-    id: faker.number.int({ min: 1, max: 999999 }),
-    name: remoteItem.name,
-    fileType: remoteItem.fileType,
-    size: remoteItem.size,
-    available: remoteItem.available,
-    peerId: remoteItem.peerId,
-    itemId: remoteItem.id,
-    searchId: item.id,
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.past(),
-  };
+  }
 }

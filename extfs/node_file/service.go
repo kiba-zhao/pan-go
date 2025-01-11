@@ -65,6 +65,7 @@ func (s *NodeFileService) Select(id string) (NodeFile, error) {
 		fileItem.FileType = nodeitem.FileTypeFolder
 	} else {
 		fileItem.FileType = nodeitem.FileTypeFile
+		setMimeType(&fileItem, realFilePath)
 	}
 	fileItem.ParentPath = path.Dir(filePath)
 	fileItem.FilePath = filePath
@@ -119,6 +120,7 @@ func (s *NodeFileService) SelectWithCondition(condition NodeFileSelectCondition)
 		fileItem.FileType = nodeitem.FileTypeFolder
 	} else {
 		fileItem.FileType = nodeitem.FileTypeFile
+		setMimeType(&fileItem, filePath)
 	}
 	fileItem.ParentPath = condition.ParentPath
 	if len(fileItem.ParentPath) > 0 {
@@ -170,6 +172,7 @@ func (s *NodeFileService) TraverseWithCondition(traverseFn func(item NodeFile) e
 			item.FileType = nodeitem.FileTypeFolder
 		} else {
 			item.FileType = nodeitem.FileTypeFile
+			setMimeType(&item, path.Join(filePath, item.Name))
 		}
 
 		if conditions.ParentPath == nil {
@@ -215,4 +218,12 @@ func ParseNodeFileID(id string) (uint, string, error) {
 	itemId := binary.BigEndian.Uint32(idBytes)
 	filePath := string(idBytes[4:])
 	return uint(itemId), filePath, err
+}
+
+func setMimeType(fileItem *NodeFile, filePath string) error {
+	mimeType, err := nodeitem.GenerateMimeType(filePath)
+	if err == nil {
+		fileItem.MimeType = mimeType
+	}
+	return err
 }

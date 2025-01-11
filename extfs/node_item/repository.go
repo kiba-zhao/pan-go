@@ -16,6 +16,7 @@ type NodeItemRepository interface {
 	SelectByName(string) (NodeItem, error)
 	Delete(NodeItem) error
 	TraverseAll(func(NodeItem) error) error
+	SelectAllWithEnabled(bool) ([]NodeItem, error)
 }
 
 type nodeItemRepository struct {
@@ -100,4 +101,14 @@ func (repo *nodeItemRepository) TraverseAll(traverseFn func(NodeItem) error) err
 	}
 	return err
 
+}
+
+func (repo *nodeItemRepository) SelectAllWithEnabled(enabled bool) ([]NodeItem, error) {
+	db := repo.db
+	if db == nil {
+		return []NodeItem{}, appSample.ErrSampleDBUnavailable
+	}
+	var items []NodeItem
+	results := db.Where("enabled = ?", enabled).Find(&items)
+	return items, results.Error
 }

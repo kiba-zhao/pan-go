@@ -49,6 +49,7 @@ func (s *RemoteItemService) Select(id string) (RemoteItem, error) {
 	item.ItemID = uint(record.ID)
 	item.Name = record.Name
 	item.FileType = record.FileType
+	item.MimeType = record.MimeType
 	item.Size = record.Size
 	item.Available = record.Available
 	item.CreatedAt = time.Unix(record.CreatedAt, 0)
@@ -70,6 +71,7 @@ func (s *RemoteItemService) Search(condition RemoteItemSearchCondition) (total i
 		item.ItemID = uint(record.ID)
 		item.Name = record.Name
 		item.FileType = record.FileType
+		item.MimeType = record.MimeType
 		item.Size = record.Size
 		item.Available = record.Available
 		item.CreatedAt = time.Unix(record.CreatedAt, 0)
@@ -97,6 +99,7 @@ func (s *RemoteItemService) SelectAllForTopic() (RemoteItemRecordList, error) {
 		record.ID = uint32(nodeItem.ID)
 		record.Name = nodeItem.Name
 		record.FileType = nodeItem.FileType
+		record.MimeType = nodeItem.MimeType
 		record.Size = nodeItem.Size
 		record.Available = nodeItem.Available
 		record.CreatedAt = nodeItem.CreatedAt.Unix()
@@ -125,6 +128,7 @@ func (s *RemoteItemService) SelectForTopic(condition *RemoteItemRecordSelectCond
 	record.ID = uint32(nodeItem.ID)
 	record.Name = nodeItem.Name
 	record.FileType = nodeItem.FileType
+	record.MimeType = nodeItem.MimeType
 	record.Size = nodeItem.Size
 	record.Available = nodeItem.Available
 	record.CreatedAt = nodeItem.CreatedAt.Unix()

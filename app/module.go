@@ -30,7 +30,7 @@ func New() interface{} {
 	sampleModule := sample.New(m)
 	m.sample = sampleModule
 
-	return runtime.NewModule(bootstrap.New(), config.New(), peer.New(), broadcast.New(m.store), quic.New(), web.New(), sampleModule)
+	return runtime.NewModule(bootstrap.New(), config.New(), peer.New(), broadcast.New(m), quic.New(), web.New(), sampleModule)
 }
 
 func Bootstrap() interface{} {

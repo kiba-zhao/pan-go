@@ -6,7 +6,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import Avatar from "@mui/material/Avatar";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
+import LinearProgress from "@mui/material/LinearProgress";
 import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
@@ -45,7 +45,7 @@ export const ExtFSItems = <T extends any>({
           justifyContent: "center",
         }}
       >
-        <CircularProgress />
+        <LinearProgress />
       </Box>
       <ListItems items={items} isFetching={isFetching} itemSize={68}>
         {children}

@@ -16,8 +16,9 @@ message RemoteFileRecord {
     string FileType = 6;
     string FilePath = 7;
     string ParentPath = 8;
-    int64 Size = 9;
-    bool Available = 10;
+    string MimeType = 9;
+    int64 Size = 10;
+    bool Available = 11;
 }
 
 message RemoteFileRecordSearchCondition {

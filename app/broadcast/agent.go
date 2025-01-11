@@ -39,8 +39,9 @@ type broadcastAgent struct {
 	PeerModule     peer.PeerModule
 	QuicPeerModule quic.QuicPeerModule
 	Store          BroadcastStore
-	store          injection.ComponentStore
-	module         *broadcastModule
+
+	provider injection.ComponentStoreProvider
+	module   *broadcastModule
 
 	registry   runtime.Registry
 	registryRW sync.RWMutex
@@ -52,7 +53,7 @@ type broadcastAgent struct {
 }
 
 func (agent *broadcastAgent) ComponentStore() injection.ComponentStore {
-	return agent.store
+	return agent.provider.ComponentStore()
 }
 
 func (agent *broadcastAgent) Components() []injection.Component {

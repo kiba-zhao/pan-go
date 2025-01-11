@@ -51,6 +51,7 @@ func (s *RemoteFileService) Select(id string) (RemoteFile, error) {
 	item.Name = record.Name
 	item.FileType = record.FileType
 	item.FilePath = record.FilePath
+	item.MimeType = record.MimeType
 	item.ParentPath = record.ParentPath
 	item.Size = record.Size
 	item.Available = record.Available
@@ -82,6 +83,7 @@ func (s *RemoteFileService) Search(condition RemoteFileSearchCondition) (total i
 		item.Name = record.Name
 		item.FileType = record.FileType
 		item.FilePath = record.FilePath
+		item.MimeType = record.MimeType
 		item.ParentPath = record.ParentPath
 		item.Size = record.Size
 		item.Available = record.Available
@@ -109,6 +111,7 @@ func (s *RemoteFileService) SearchForTopic(condition *RemoteFileRecordSearchCond
 		record.ID = item.ID
 		record.Name = item.Name
 		record.FilePath = item.FilePath
+		record.MimeType = item.MimeType
 		record.ParentPath = item.ParentPath
 		record.Size = item.Size
 		record.FileType = item.FileType
@@ -139,6 +142,7 @@ func (s *RemoteFileService) SelectForTopic(condition *RemoteFileRecordSelectCond
 	record.ID = fileItem.ID
 	record.Name = fileItem.Name
 	record.FilePath = fileItem.FilePath
+	record.MimeType = fileItem.MimeType
 	record.ParentPath = fileItem.ParentPath
 	record.Size = fileItem.Size
 	record.FileType = fileItem.FileType

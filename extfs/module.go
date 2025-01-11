@@ -7,11 +7,13 @@ import (
 	"pan/app/web"
 	"pan/runtime"
 
+	remotesearchfile "pan/extfs/remote_search_file"
 	"pan/extfs/vfs"
 	"sync"
 
 	nodefile "pan/extfs/node_file"
 	nodeitem "pan/extfs/node_item"
+	nodesearchfile "pan/extfs/node_search_file"
 	remoteblock "pan/extfs/remote_block"
 	remotefile "pan/extfs/remote_file"
 	remoteitem "pan/extfs/remote_item"
@@ -26,7 +28,7 @@ func New() interface{} {
 	sampleModule := sample.New(m)
 	m.sample = sampleModule
 
-	return runtime.NewModule(vfs.New(m.store), sampleModule)
+	return runtime.NewModule(vfs.New(m), nodesearchfile.New(m), sampleModule)
 }
 
 const moduleName = "extfs"
@@ -89,17 +91,20 @@ func (m *module) Components() []injection.Component {
 	// services
 	components = sample.AppendSampleInternalComponent[nodeitem.NodeItemInternalService](components, &nodeitem.NodeItemService{})
 	components = sample.AppendSampleInternalComponent[nodefile.NodeFileInternalService](components, &nodefile.NodeFileService{})
+	components = sample.AppendSampleInternalComponent[nodesearchfile.NodeSearchFileInternalService](components, &nodesearchfile.NodeSearchFileService{})
 
 	components = sample.AppendSampleComponent(components, &remotenode.RemoteNodeService{})
 	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemService{})
 	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileService{})
 	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockService{})
 	components = sample.AppendSampleComponent(components, &searchitem.SearchItemService{})
+	components = sample.AppendSampleComponent(components, &remotesearchfile.RemoteSearchFileService{})
 
 	// brokers
 	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemBroker{SamplePeer: m.sample})
 	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileBroker{SamplePeer: m.sample})
 	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockBroker{SamplePeer: m.sample})
+	components = sample.AppendSampleComponent(components, &remotesearchfile.RemoteSearchFileBroker{SamplePeer: m.sample})
 
 	// repositories
 	components = sample.AppendSampleComponent(components, nodeitem.NewNodeItemRepository(m.sample.DB()))

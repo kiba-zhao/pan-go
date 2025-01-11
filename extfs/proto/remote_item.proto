@@ -13,8 +13,9 @@ message RemoteItemRecord{
     int64 UpdatedAt = 3;
     string Name = 4;
     string FileType = 5;
-    int64 Size = 6;
-    bool Available = 7;
+    string MimeType = 6;
+    int64 Size = 7;
+    bool Available = 8;
   }
   
   message RemoteItemRecordSelectCondition {

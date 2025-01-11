@@ -44,6 +44,7 @@ func TestRemoteFileTopic(t *testing.T) {
 		nodeFile.Name = "test.txt"
 		nodeFile.Size = 123
 		nodeFile.FileType = nodeitem.FileTypeFile
+		nodeFile.MimeType = "text/plain"
 		nodeFile.ParentPath = "parentPath"
 		nodeFile.FilePath = "filePath"
 		nodeFile.Available = true
@@ -58,7 +59,7 @@ func TestRemoteFileTopic(t *testing.T) {
 			traverseFn := args.Get(0).(func(item nodefile.NodeFile) error)
 			traverseFn(nodeFile)
 			condition_ := args.Get(1).(nodefile.NodeFileSearchCondition)
-			assert.Equal(t, condition.ItemID, int32(condition_.ItemID))
+			assert.Equal(t, condition.ItemID, uint32(condition_.ItemID))
 			assert.Equal(t, *condition.ParentPath, *condition_.ParentPath)
 		})
 
@@ -89,6 +90,7 @@ func TestRemoteFileTopic(t *testing.T) {
 		assert.Equal(t, nodeFile.FileType, results.Items[0].FileType)
 		assert.Equal(t, nodeFile.ParentPath, results.Items[0].ParentPath)
 		assert.Equal(t, nodeFile.FilePath, results.Items[0].FilePath)
+		assert.Equal(t, nodeFile.MimeType, results.Items[0].MimeType)
 		assert.Equal(t, nodeFile.Available, results.Items[0].Available)
 		assert.Equal(t, nodeFile.CreatedAt.Unix(), results.Items[0].CreatedAt)
 		assert.Equal(t, nodeFile.UpdatedAt.Unix(), results.Items[0].UpdatedAt)
