@@ -1,7 +1,7 @@
+import { ListItems } from "../List/Item";
 import {
   ExtFSItem,
   ExtFSItemRecord,
-  ExtFSItems,
   ExtFSItemSettings,
   useExtFSItem,
 } from "./Item";
@@ -10,20 +10,18 @@ import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
 import { newItemSettingsUrl as newItemSettingsUrlWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
 import { ExtFSSingleState, ExtFSState, useExtFS } from "./State";
-import { ListItems } from "../List/Item";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
-import type { ExtFSSearchFile, ExtFSSearchItem } from "../../API";
-import { useAPI } from "../../API";
+import type { ExtFSSearchFile, ExtFSSearchItem } from "../../api";
+import { useAPI } from "../API";
 
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
+import LinearProgress from "@mui/material/LinearProgress";
 import Link from "@mui/material/Link";
 import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
-import LinearProgress from "@mui/material/LinearProgress";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef } from "react";
+import { Fragment, useMemo } from "react";
 
 export const ExtFSSearchFileMode = "SF";
 const ExtFSSearchFileQueryKey = ["extfs-search-files"];
@@ -35,9 +33,9 @@ const ExtFSSearchFileState = {
 export type ExtFSSearchFileSingleState = {
   snapshot: ExtFSState;
 } & ExtFSSingleState &
-  Pick<ExtFSSearchFile, "searchId">;
+  Pick<ExtFSSearchItem, "query">;
 
-export type ExtFSSearchFileStateOpts = Pick<ExtFSSearchItem, "id" | "query">;
+export type ExtFSSearchFileStateOpts = Pick<ExtFSSearchItem, "query">;
 export function newExtFSState(
   extfs: ExtFSState,
   opts: ExtFSSearchFileStateOpts
@@ -46,11 +44,11 @@ export function newExtFSState(
   const { snapshot } = state_ as ExtFSSearchFileSingleState;
   const state = {
     ...ExtFSSearchFileState,
-    searchId: opts.id,
     snapshot: snapshot || extfs,
   };
   return {
     ...state,
+    query: opts.query,
     parentItems: [{ name: opts.query, state: state }],
   } as ExtFSState;
 }
@@ -65,63 +63,67 @@ function restoreExtFSState(extfs: ExtFSState): ExtFSState {
   return extfs;
 }
 
+type ExtFSSearchFileData = { peerId: string } & ExtFSSearchFile;
+
 export const SearchFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
-  const { searchId } = state as ExtFSSearchFileSingleState;
+  const { query } = state as ExtFSSearchFileSingleState;
   const api = useAPI();
-  const {
-    data,
-    isFetching,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: [...ExtFSSearchFileQueryKey, searchId],
-    queryFn: async ({ pageParam }) =>
-      await api?.searchExtFSSearchFileResults({
-        searchId,
-        _start: pageParam,
-        _end: pageParam + 1000,
-      }),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages, lastPageParam) => {
-      if (lastPage === void 0 || allPages.length <= 0) return lastPageParam;
-      const [total, _] = lastPage;
-      const count = allPages.reduce(
-        (counter, page) => counter + (page !== void 0 ? page[1].length : 0),
-        0
-      );
-      if (total < 0 || count < total) return count;
-      return void 0;
-    },
-    enabled: state.mode === ExtFSSearchFileMode,
-  });
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cleanInterval = useCallback(() => {
-    if (intervalRef.current === null) return;
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  }, []);
-  useEffect(() => {
-    if (hasNextPage && intervalRef.current === null) {
-      intervalRef.current = setInterval(() => {
-        if (hasNextPage) {
-          fetchNextPage();
-        } else {
-          cleanInterval();
-        }
-      }, 2000);
-    }
-    return cleanInterval;
-  }, [hasNextPage]);
+  const { data: remotes, isFetching } = useQuery({});
+  // const {
+  //   data,
+  //   isFetching,
+  //   error,
+  //   fetchNextPage,
+  //   hasNextPage,
+  //   isFetchingNextPage,
+  // } = useInfiniteQuery({
+  //   queryKey: [...ExtFSSearchFileQueryKey, searchId],
+  //   queryFn: async ({ pageParam }) =>
+  //     await api?.searchExtFSSearchFileResults({
+  //       searchId,
+  //       _start: pageParam,
+  //       _end: pageParam + 1000,
+  //     }),
+  //   initialPageParam: 0,
+  //   getNextPageParam: (lastPage, allPages, lastPageParam) => {
+  //     if (lastPage === void 0 || allPages.length <= 0) return lastPageParam;
+  //     const [total, _] = lastPage;
+  //     const count = allPages.reduce(
+  //       (counter, page) => counter + (page !== void 0 ? page[1].length : 0),
+  //       0
+  //     );
+  //     if (total < 0 || count < total) return count;
+  //     return void 0;
+  //   },
+  //   enabled: state.mode === ExtFSSearchFileMode,
+  // });
 
-  const items = useMemo(() => {
-    const pages = data?.pages;
-    if (pages === void 0) return [];
-    return pages.flatMap((page) => (page ? page[1] : []));
-  }, [data?.pages]);
+  // const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // const cleanInterval = useCallback(() => {
+  //   if (intervalRef.current === null) return;
+  //   clearInterval(intervalRef.current);
+  //   intervalRef.current = null;
+  // }, []);
+  // useEffect(() => {
+  //   if (hasNextPage && intervalRef.current === null) {
+  //     intervalRef.current = setInterval(() => {
+  //       if (hasNextPage) {
+  //         fetchNextPage();
+  //       } else {
+  //         cleanInterval();
+  //       }
+  //     }, 2000);
+  //   }
+  //   return cleanInterval;
+  // }, [hasNextPage]);
+
+  // const items = useMemo(() => {
+  //   const pages = data?.pages;
+  //   if (pages === void 0) return [];
+  //   return pages.flatMap((page) => (page ? page[1] : []));
+  // }, [data?.pages]);
 
   return (
     <Fragment>
@@ -136,7 +138,7 @@ export const SearchFiles = () => {
 };
 
 export const SearchFile = () => {
-  const { style, item }: ExtFSItemRecord<ExtFSSearchFile> = useExtFSItem();
+  const { style, item }: ExtFSItemRecord<ExtFSSearchFileData> = useExtFSItem();
 
   const avatarIcon = useMemo(() => {
     if (item?.fileType === "D")

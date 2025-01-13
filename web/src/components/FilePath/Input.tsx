@@ -40,7 +40,8 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { FixedSizeList } from "react-window";
 
-import { DiskFile, useAPI } from "../../API";
+import type { DiskFile } from "../../api";
+import { useAPI } from "../API";
 import { basename, generateParents } from "./path";
 
 const SlideUPTransition = forwardRef(

@@ -1,5 +1,5 @@
-import type { ExtFSRemoteItem } from "../../API";
-import { useAPI } from "../../API";
+import type { ExtFSRemoteItem } from "../../api";
+import { useAPI } from "../API";
 import type { ExtFSItemRecord } from "./Item";
 import { ExtFSItem, ExtFSItems, ExtFSItemTag, useExtFSItem } from "./Item";
 import { More, MoreHelpItem } from "./More";

@@ -8,7 +8,7 @@ import {
 } from "react-admin";
 import { BrowserRouter, Route } from "react-router-dom";
 import { dataProvider } from "./api";
-import { APIProvider } from "./API";
+import { APIProvider } from "./components/API";
 import { useI18nProvider } from "./i18n";
 
 import {

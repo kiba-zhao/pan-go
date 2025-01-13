@@ -5,8 +5,8 @@ import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
 
 import { useQuery } from "@tanstack/react-query";
-import type { ExtFSRemoteFile } from "../../API";
-import { useAPI } from "../../API";
+import type { ExtFSRemoteFile } from "../../api";
+import { useAPI } from "../API";
 
 import { useMemo } from "react";
 

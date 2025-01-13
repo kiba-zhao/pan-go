@@ -21,8 +21,8 @@ import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 
-import type { AppSettingsFields } from "../API";
-import { useAPI } from "../API";
+import type { AppSettingsFields } from "../api";
+import { useAPI } from "./API";
 import {
   Dialog,
   DialogConfirmActions,

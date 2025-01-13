@@ -11,8 +11,8 @@ import { More, MoreHelpItem, MoreSettingsItem } from "./More";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
 
-import type { ExtFSNodeFile, ExtFSSearchFile, API } from "../../API";
-import { useAPI } from "../../API";
+import type { ExtFSNodeFile } from "../../api";
+import { useAPI } from "../API";
 
 import { useQuery } from "@tanstack/react-query";
 

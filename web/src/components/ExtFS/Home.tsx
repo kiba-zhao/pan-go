@@ -2,14 +2,11 @@ import type { ExtFSItemRecord } from "./Item";
 import { ExtFSItem, ExtFSItems, ExtFSItemTag, useExtFSItem } from "./Item";
 import { More, MoreHelpItem } from "./More";
 import { newExtFSState as newExtFSStateWithNodeItem } from "./NodeItem";
-import {
-  ExtFSRemoteState,
-  newExtFSState as newExtFSStateWithRemote,
-} from "./RemoteItem";
+import { newExtFSState as newExtFSStateWithRemote } from "./RemoteItem";
 import { useExtFS } from "./State";
 
-import type { ExtFSRemoteNode } from "../../API";
-import { useAPI } from "../../API";
+import type { ExtFSRemoteNode } from "../../api";
+import { useAPI } from "../API";
 import { AppNodeIcon } from "../AppNodes";
 import { APP_SETTINGS_QUERY_KEY } from "../AppSettings";
 

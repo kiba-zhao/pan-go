@@ -15,8 +15,8 @@ import Typography from "@mui/material/Typography";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
-import type { ExtFSNodeItem, ExtFSNodeItemFields } from "../API";
-import { useAPI } from "../API";
+import type { ExtFSNodeItem, ExtFSNodeItemFields } from "../api";
+import { useAPI } from "./API";
 import {
   Dialog,
   DialogConfirmActions,

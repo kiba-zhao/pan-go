@@ -32,8 +32,8 @@ import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 
-import type { ExtFSSearchItem, ExtFSSearchItemFields } from "../../API";
-import { useAPI } from "../../API";
+import type { ExtFSSearchItem, ExtFSSearchItemFields } from "../../api";
+import { useAPI } from "../API";
 import type { ListItemData } from "../List/Item";
 import { ListItems, useListItems } from "../List/Item";
 import { newExtFSState } from "./SearchFile";

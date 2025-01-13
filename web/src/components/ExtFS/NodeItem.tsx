@@ -1,5 +1,5 @@
-import type { ExtFSNodeItem, ExtFSSearchFile } from "../../API";
-import { useAPI } from "../../API";
+import type { ExtFSNodeItem, ExtFSSearchFile } from "../../api";
+import { useAPI } from "../API";
 import { ExtFSNodeItemRoutePath } from "../ExtFSNodeItem";
 import type { ExtFSItemRecord } from "./Item";
 import {
@@ -41,7 +41,7 @@ export function newItemSettingsUrl(id: ExtFSNodeItem["id"]): string {
   return `${ExtFSNodeItemRoutePath}/${id}`;
 }
 
-type NewExtFSStateReferOpts = Pick<ExtFSSearchFile, "name" | "referId">;
+type NewExtFSStateReferOpts = Pick<ExtFSSearchFile, "name">;
 export function newExtFSStateWithRefer(
   extfs: ExtFSState,
   opts: NewExtFSStateReferOpts
