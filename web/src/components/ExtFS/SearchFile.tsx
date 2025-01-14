@@ -10,6 +10,7 @@ import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
 import { newItemSettingsUrl as newItemSettingsUrlWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
 import { ExtFSSingleState, ExtFSState, useExtFS } from "./State";
+import { REMOTE_NODES_QUERY_KEY } from "./Home";
 
 import type { ExtFSSearchFile, ExtFSSearchItem } from "../../api";
 import { useAPI } from "../API";
@@ -21,7 +22,9 @@ import LinearProgress from "@mui/material/LinearProgress";
 import Link from "@mui/material/Link";
 import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
 
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState, useRef } from "react";
+
+import { useQuery } from "@tanstack/react-query";
 
 export const ExtFSSearchFileMode = "SF";
 const ExtFSSearchFileQueryKey = ["extfs-search-files"];
@@ -68,9 +71,21 @@ type ExtFSSearchFileData = { peerId: string } & ExtFSSearchFile;
 export const SearchFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
   const { query } = state as ExtFSSearchFileSingleState;
-  const api = useAPI();
 
-  const { data: remotes, isFetching } = useQuery({});
+  const [itemsPages, setItemsPages] = useState<ExtFSSearchFileData[][]>([]);
+
+  useEffect(() => {
+    if (query === void 0 || query.length <= 0) return;
+  }, [query]);
+
+  // const api = useAPI();
+
+  // const { data: remotes, isFetching } = useQuery({
+  //   queryKey: REMOTE_NODES_QUERY_KEY,
+  //   queryFn: async () => await api?.selectAllExtFSRemoteNodes(),
+  //   enabled: state.mode === ExtFSSearchFileMode && !!api,
+  // });
+
   // const {
   //   data,
   //   isFetching,
@@ -119,11 +134,10 @@ export const SearchFiles = () => {
   //   return cleanInterval;
   // }, [hasNextPage]);
 
-  // const items = useMemo(() => {
-  //   const pages = data?.pages;
-  //   if (pages === void 0) return [];
-  //   return pages.flatMap((page) => (page ? page[1] : []));
-  // }, [data?.pages]);
+  const items = useMemo(() => {
+    if (itemsPages.length <= 0) return [];
+    return itemsPages.flat();
+  }, [itemsPages]);
 
   return (
     <Fragment>

@@ -12,7 +12,7 @@ export interface ExtFSRemoteSearchFileAPI {
   ): Promise<ExtFSSearchFileSearchResults>;
 }
 
-type ExtFSRemoteSearchFileSearchCondition = ExtFSSearchFileSearchCondition &
+export type ExtFSRemoteSearchFileSearchCondition = ExtFSSearchFileSearchCondition &
   Pick<ExtFSRemoteNode, "peerId">;
 
 export async function searchExtFSRemoteSearchFileResults(

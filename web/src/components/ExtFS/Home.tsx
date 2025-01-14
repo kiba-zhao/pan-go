@@ -15,7 +15,7 @@ import { useMemo } from "react";
 
 import CloudIcon from "@mui/icons-material/Cloud";
 
-const REMOTE_NODES_QUERY_KEY = ["extfs-remote-nodes"];
+export const REMOTE_NODES_QUERY_KEY = ["extfs-remote-nodes"];
 const ExtFSHomeMode = "H";
 
 export const ExtFSHomeState = {
