@@ -1,14 +1,12 @@
 
-
-
+export type StoreListener = ()=>void
 export interface Store <T extends any> {
-    subscribe(listener:Function):Function
+    subscribe(listener:StoreListener):StoreListener
     getSnapshot():T
 }
 
 export type StoreContext<T extends any> = {
-    isGone:boolean
-    listeners:Function[]
+    listeners:StoreListener[]
     data:T
 }
 
@@ -19,7 +17,7 @@ export function newStore<T extends any>(ctx:StoreContext<T>):Store<T>{
     }
 }
 
-export function subscribe<T extends any>(ctx : StoreContext<T>,listener:Function):Function{
+export function subscribe<T extends any>(ctx : StoreContext<T>,listener:StoreListener):StoreListener{
     ctx.listeners = [...ctx.listeners, listener];
     return () => {
         ctx.listeners = ctx.listeners.filter(l => l !== listener);
@@ -31,15 +29,11 @@ export function getSnapshot<T extends any>(ctx : StoreContext<T>):T{
 }
 
 export function emitChange<T extends any>(ctx : StoreContext<T>) {
-    if (ctx.isGone) return
     for (const listener of ctx.listeners) {
         listener();
     }
 }
 
-export function revoke<T extends any>(ctx : StoreContext<T>){
-    ctx.isGone = true
-}
 
 export function initStoreContext<T extends any>(ctx : StoreContext<T>,data:T){
     ctx.data = data;

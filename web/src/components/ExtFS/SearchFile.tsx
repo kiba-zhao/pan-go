@@ -10,10 +10,12 @@ import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
 import { newItemSettingsUrl as newItemSettingsUrlWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
 import { ExtFSSingleState, ExtFSState, useExtFS } from "./State";
-import { REMOTE_NODES_QUERY_KEY } from "./Home";
+import { newSearchFileStore } from "./SearchFileStore";
+import type { SearchFileStore } from "./SearchFileStore";
 
 import type { ExtFSSearchFile, ExtFSSearchItem } from "../../api";
 import { useAPI } from "../API";
+import type { API } from "../../api";
 
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
@@ -22,9 +24,7 @@ import LinearProgress from "@mui/material/LinearProgress";
 import Link from "@mui/material/Link";
 import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
 
-import { Fragment, useEffect, useMemo, useState, useRef } from "react";
-
-import { useQuery } from "@tanstack/react-query";
+import { Fragment, useEffect, useMemo, useSyncExternalStore } from "react";
 
 export const ExtFSSearchFileMode = "SF";
 const ExtFSSearchFileQueryKey = ["extfs-search-files"];
@@ -35,10 +35,13 @@ const ExtFSSearchFileState = {
 
 export type ExtFSSearchFileSingleState = {
   snapshot: ExtFSState;
-} & ExtFSSingleState &
-  Pick<ExtFSSearchItem, "query">;
+  store: SearchFileStore;
+} & ExtFSSingleState;
 
-export type ExtFSSearchFileStateOpts = Pick<ExtFSSearchItem, "query">;
+export type ExtFSSearchFileStateOpts = { api: API } & Pick<
+  ExtFSSearchItem,
+  "query"
+>;
 export function newExtFSState(
   extfs: ExtFSState,
   opts: ExtFSSearchFileStateOpts
@@ -51,7 +54,7 @@ export function newExtFSState(
   };
   return {
     ...state,
-    query: opts.query,
+    store: newSearchFileStore(opts.query, opts.api),
     parentItems: [{ name: opts.query, state: state }],
   } as ExtFSState;
 }
@@ -70,81 +73,22 @@ type ExtFSSearchFileData = { peerId: string } & ExtFSSearchFile;
 
 export const SearchFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
-  const { query } = state as ExtFSSearchFileSingleState;
-
-  const [itemsPages, setItemsPages] = useState<ExtFSSearchFileData[][]>([]);
+  const { store } = state as ExtFSSearchFileSingleState;
+  const { files, isComplete } = useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot
+  );
 
   useEffect(() => {
-    if (query === void 0 || query.length <= 0) return;
-  }, [query]);
-
-  // const api = useAPI();
-
-  // const { data: remotes, isFetching } = useQuery({
-  //   queryKey: REMOTE_NODES_QUERY_KEY,
-  //   queryFn: async () => await api?.selectAllExtFSRemoteNodes(),
-  //   enabled: state.mode === ExtFSSearchFileMode && !!api,
-  // });
-
-  // const {
-  //   data,
-  //   isFetching,
-  //   error,
-  //   fetchNextPage,
-  //   hasNextPage,
-  //   isFetchingNextPage,
-  // } = useInfiniteQuery({
-  //   queryKey: [...ExtFSSearchFileQueryKey, searchId],
-  //   queryFn: async ({ pageParam }) =>
-  //     await api?.searchExtFSSearchFileResults({
-  //       searchId,
-  //       _start: pageParam,
-  //       _end: pageParam + 1000,
-  //     }),
-  //   initialPageParam: 0,
-  //   getNextPageParam: (lastPage, allPages, lastPageParam) => {
-  //     if (lastPage === void 0 || allPages.length <= 0) return lastPageParam;
-  //     const [total, _] = lastPage;
-  //     const count = allPages.reduce(
-  //       (counter, page) => counter + (page !== void 0 ? page[1].length : 0),
-  //       0
-  //     );
-  //     if (total < 0 || count < total) return count;
-  //     return void 0;
-  //   },
-  //   enabled: state.mode === ExtFSSearchFileMode,
-  // });
-
-  // const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // const cleanInterval = useCallback(() => {
-  //   if (intervalRef.current === null) return;
-  //   clearInterval(intervalRef.current);
-  //   intervalRef.current = null;
-  // }, []);
-  // useEffect(() => {
-  //   if (hasNextPage && intervalRef.current === null) {
-  //     intervalRef.current = setInterval(() => {
-  //       if (hasNextPage) {
-  //         fetchNextPage();
-  //       } else {
-  //         cleanInterval();
-  //       }
-  //     }, 2000);
-  //   }
-  //   return cleanInterval;
-  // }, [hasNextPage]);
-
-  const items = useMemo(() => {
-    if (itemsPages.length <= 0) return [];
-    return itemsPages.flat();
-  }, [itemsPages]);
+    return () => {
+      store.abort();
+    };
+  }, [store]);
 
   return (
     <Fragment>
-      <LinearProgress
-        sx={{ visibility: hasNextPage || isFetching ? "visible" : "hidden" }}
-      />
-      <ListItems items={items} itemSize={68}>
+      <LinearProgress sx={{ visibility: isComplete ? "hidden" : "visible" }} />
+      <ListItems items={files} itemSize={68}>
         <SearchFile />
       </ListItems>
     </Fragment>

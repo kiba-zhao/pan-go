@@ -79,7 +79,7 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
 
     onSuccess: (data) => {
       onEsc();
-      const state = newExtFSState(extfs, data);
+      const state = newExtFSState(extfs, { query: data.query, api });
       setExtFS(state);
     },
   });
@@ -189,9 +189,10 @@ type SearchItemProps = {
 export const SearchItem = ({ onClick }: SearchItemProps) => {
   const { style, item }: ListItemData<ExtFSSearchItem> = useListItems();
 
+  const api = useAPI();
   const [extfs, setExtFS] = useExtFS();
   const handleClick = () => {
-    const state = newExtFSState(extfs, item);
+    const state = newExtFSState(extfs, { query: item.query, api });
     setExtFS(state);
     onClick();
   };

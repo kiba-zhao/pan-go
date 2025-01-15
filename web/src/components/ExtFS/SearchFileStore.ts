@@ -1,6 +1,6 @@
 
 import type { Store,StoreContext } from "./Store";
-import { newStore,initStoreContext ,emitChange,revoke} from "./Store";
+import { newStore,initStoreContext ,emitChange} from "./Store";
 
 import type {API,ExtFSSearchFile,ExtFSSearchFileSearchCondition,ExtFSRemoteSearchFileSearchCondition} from "../../api"
 
@@ -19,9 +19,9 @@ type SearchFileContext =  {
     workers:Promise<void>[]
 }& StoreContext<SearchFileStoreData>
 
-interface SearchFileStore extends Store<SearchFileStoreData> {
+export interface SearchFileStore extends Store<SearchFileStoreData> {
     abort(reason?: any):void
-    
+    refresh():void
 }
 
 export function newSearchFileStore(query:string,api:API): SearchFileStore {
@@ -35,16 +35,12 @@ export function newSearchFileStore(query:string,api:API): SearchFileStore {
     const store = newStore(ctx);
     return {
         ...store,
-        abort :(reason?:any)=>abort(ctx,reason)
+        abort :(reason?:any)=>abort(ctx,reason),
+        refresh:()=>refresh(ctx,query,api)
     }
 }
 
-function isAbort(ctx:SearchFileContext):boolean{
-    return ctx.abortCtrl && ctx.abortCtrl.signal.aborted
-}
-
 function abort(ctx:SearchFileContext,reason?: any){
-    revoke(ctx)
     ctx.abortCtrl && ctx.abortCtrl.abort(reason)
 }
 
@@ -52,11 +48,10 @@ function refresh(ctx:SearchFileContext,query:string,api:API){
     ctx.abortCtrl = new AbortController()
     ctx.isSyncNodeComplete = false;
     ctx.isSyncRemoteComplete = false;
-    if (ctx.data.files.length>0){
-        ctx.data.files = [];
-    }
-    if (ctx.data.isComplete){
-        ctx.data.isComplete = false;
+    if (ctx.data.files.length>0 || ctx.data.isComplete){
+        const data = {} as SearchFileStoreData
+        data.files = [];
+        ctx.data = data;
     }
     ctx.workers = [
         syncFromNode(ctx,query,api),
@@ -66,12 +61,16 @@ function refresh(ctx:SearchFileContext,query:string,api:API){
 }
 
 async function syncFromNode(ctx:SearchFileContext,query:string,api:API){
+    const {data} = ctx;
     const generator = generateFromNode(query,api);
     for await (const files of generator) {
-        ctx.data.files = [...ctx.data.files,...files];
+        if (ctx.data !== data)
+            break
+        data.files = [...data.files,...files];
         emitChange(ctx);
     }
-    ctx.isSyncNodeComplete = ctx.abortCtrl.signal.aborted;
+    if (ctx.data !== data) return
+    ctx.isSyncNodeComplete = true;
     ctx.data.isComplete = ctx.isSyncNodeComplete && ctx.isSyncRemoteComplete;
     if (ctx.data.isComplete) {
         emitChange(ctx);
@@ -110,6 +109,7 @@ async function *generateFromNode(query:string,api:API):AsyncGenerator<ExtFSSearc
 }
 
 async function syncFromRemotes(ctx:SearchFileContext,query:string,api:API){
+    const {data} = ctx;
     const remotes = await api.selectAllExtFSRemoteNodes();
     if (remotes.length > 0) {
         const generators = {} as Record<string,AsyncGenerator<ExtFSSearchFile[]> | null>;
@@ -130,8 +130,10 @@ async function syncFromRemotes(ctx:SearchFileContext,query:string,api:API){
 
             // generate SearchFileItem
             const {value,done} = await generator.next()
+            if (ctx.data !== data)
+                break
             const files = (value as ExtFSSearchFile[]).map(_=>({..._,peerId}))
-            ctx.data.files = [...ctx.data.files,...files];
+            data.files = [...data.files,...files];
             emitChange(ctx);
             // 
 
@@ -145,6 +147,7 @@ async function syncFromRemotes(ctx:SearchFileContext,query:string,api:API){
         }
     }
 
+    if (ctx.data !== data) return
     ctx.isSyncRemoteComplete = true;
     ctx.data.isComplete = ctx.isSyncNodeComplete && ctx.isSyncRemoteComplete;
     if (ctx.data.isComplete) {

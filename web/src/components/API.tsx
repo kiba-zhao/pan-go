@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
 import type { API } from "../api";
 import * as api from "../api";
 
-const APIContext = createContext<API | null>(null);
+const APIContext = createContext<API>(api);
 
 export const useAPI = () => useContext(APIContext);
 
