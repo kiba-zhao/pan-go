@@ -19,7 +19,7 @@ import {
 } from "./components/AppNodes";
 import { AppSettings, AppSettingsRoutePath } from "./components/AppSettings";
 import Dashboard from "./components/Dashboard";
-import ExtFSHome, { ExtFSProvider, ExtFSRoutePath } from "./components/ExtFS";
+import ExtFSHome, { ExtFSRoutePath } from "./components/ExtFS";
 import {
   ExtFSNodeItemCreate,
   ExtFSNodeItemEdit,
@@ -46,45 +46,43 @@ export const App = () => {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <APIProvider>
-        <ExtFSProvider>
-          <Admin
-            disableTelemetry
-            theme={defaultTheme}
-            darkTheme={darkTheme}
-            dataProvider={dataProvider}
-            i18nProvider={i18nProvider}
-            catchAll={NotFound}
-            dashboard={Dashboard}
-            queryClient={queryClient}
-            layout={AppLayout}
-          >
-            <CustomRoutes>
-              <Route path={AppSettingsRoutePath} element={<AppSettings />} />
-              <Route path={ExtFSRoutePath} element={<ExtFSHome />} />
-              <Route
-                path={`${ExtFSNodeItemRoutePath}/create`}
-                element={<ExtFSNodeItemCreate />}
-              />
-              <Route
-                path={`${ExtFSNodeItemRoutePath}/:id`}
-                element={<ExtFSNodeItemEdit />}
-              />
-            </CustomRoutes>
-            <Resource
-              name={AppNodeRoutePath.substring(1)}
-              list={AppNodes}
-              create={AppNodeCreate}
-              edit={APPNodeEdit}
+        <Admin
+          disableTelemetry
+          theme={defaultTheme}
+          darkTheme={darkTheme}
+          dataProvider={dataProvider}
+          i18nProvider={i18nProvider}
+          catchAll={NotFound}
+          dashboard={Dashboard}
+          queryClient={queryClient}
+          layout={AppLayout}
+        >
+          <CustomRoutes>
+            <Route path={AppSettingsRoutePath} element={<AppSettings />} />
+            <Route path={ExtFSRoutePath} element={<ExtFSHome />} />
+            <Route
+              path={`${ExtFSNodeItemRoutePath}/create`}
+              element={<ExtFSNodeItemCreate />}
             />
-            <Resource
-              name={ExtFSTagRoutePath.substring(1)}
-              list={ExtFSTagList}
-              create={ExtFSTagCreate}
-              edit={ExtFSTagEdit}
-              show={ExtFSTagShow}
+            <Route
+              path={`${ExtFSNodeItemRoutePath}/:id`}
+              element={<ExtFSNodeItemEdit />}
             />
-          </Admin>
-        </ExtFSProvider>
+          </CustomRoutes>
+          <Resource
+            name={AppNodeRoutePath.substring(1)}
+            list={AppNodes}
+            create={AppNodeCreate}
+            edit={APPNodeEdit}
+          />
+          <Resource
+            name={ExtFSTagRoutePath.substring(1)}
+            list={ExtFSTagList}
+            create={ExtFSTagCreate}
+            edit={ExtFSTagEdit}
+            show={ExtFSTagShow}
+          />
+        </Admin>
       </APIProvider>
     </BrowserRouter>
   );

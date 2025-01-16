@@ -23,6 +23,9 @@ import SearchOffIcon from "@mui/icons-material/SearchOff";
 import LinearProgress from "@mui/material/LinearProgress";
 import Link from "@mui/material/Link";
 import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
+import IconButton from "@mui/material/IconButton";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import CloseIcon from "@mui/icons-material/Close";
 
 import { Fragment, useEffect, useMemo, useSyncExternalStore } from "react";
 
@@ -51,10 +54,10 @@ export function newExtFSState(
   const state = {
     ...ExtFSSearchFileState,
     snapshot: snapshot || extfs,
+    store: newSearchFileStore(opts.query, opts.api),
   };
   return {
     ...state,
-    store: newSearchFileStore(opts.query, opts.api),
     parentItems: [{ name: opts.query, state: state }],
   } as ExtFSState;
 }
@@ -78,12 +81,6 @@ export const SearchFiles = () => {
     store.subscribe,
     store.getSnapshot
   );
-
-  useEffect(() => {
-    return () => {
-      store.abort();
-    };
-  }, [store]);
 
   return (
     <Fragment>
@@ -194,5 +191,29 @@ export const SearchNavigationMenuRoot = ({
     <MenuItem onClick={handleClick} sx={sx}>
       Search Exit
     </MenuItem>
+  );
+};
+
+export const SearchFileRefresh = () => {
+  const [extfs, _] = useExtFS();
+  const { parentItems, ...state } = extfs;
+  const fileState = state as ExtFSSearchFileSingleState;
+
+  const { store } = fileState;
+  const { isComplete } = useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot
+  );
+  const handleClick = () => {
+    if (isComplete) {
+      store.refresh();
+    } else {
+      store.abort("cancelled");
+    }
+  };
+  return (
+    <IconButton onClick={handleClick}>
+      {isComplete ? <RefreshIcon /> : <CloseIcon />}
+    </IconButton>
   );
 };

@@ -1,5 +1,6 @@
 {
-  "/api/extfs/remote/:peerId/search-files": "/extfs-remote-search-files?peerId=:peerId&$1",
+  "/api/extfs/remote/:peerId/search-files": "/extfs-remote-search-files?peerId=:peerId",
+  "/api/extfs/remote/:peerId/search-files?*": "/extfs-remote-search-files?peerId=:peerId&$1",
   "/api/app/*": "/app-$1",
   "/api/extfs/*": "/extfs-$1"
 }

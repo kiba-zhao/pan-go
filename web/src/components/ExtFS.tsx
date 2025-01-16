@@ -25,6 +25,7 @@ import {
   SearchFiles,
   SearchNavigationBreadcrumbRoot,
   SearchNavigationMenuRoot,
+  SearchFileRefresh,
 } from "./ExtFS/SearchFile";
 import { ExtFSHomeState, HomeItems, HomeMore } from "./ExtFS/Home";
 import { ExtFSNodeFileMode, NodeFileMore, NodeFiles } from "./ExtFS/NodeFile";
@@ -97,14 +98,23 @@ const Home = () => {
       <Title title={t("custom.extfs.name")} />
       <TopBar>
         <Search />
-        <Refresh />
+        {extfs.mode === ExtFSSearchFileMode ? (
+          <SearchFileRefresh />
+        ) : (
+          <Refresh />
+        )}
         {MoreElement}
       </TopBar>
       {ItemsElement}
     </Paper>
   );
 };
-export default Home;
+const ExtFSHome = () => (
+  <ExtFSProvider>
+    <Home />
+  </ExtFSProvider>
+);
+export default ExtFSHome;
 
 const CustomButton = styled(ButtonBase)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
