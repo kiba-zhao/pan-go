@@ -10,6 +10,7 @@ import { useAPI } from "../API";
 
 import { useMemo } from "react";
 
+import CloudIcon from "@mui/icons-material/Cloud";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
@@ -93,6 +94,7 @@ export const RemoteFile = () => {
       avatarIcon={avatarIcon}
       onClick={handleClick}
       disabled={!item.available}
+      extIcon={<CloudIcon fontSize="small" />}
     >
       <ExtFSItemTag
         to={`${ExtFSRemoteFileTagRoutePath}/${item.id}`}

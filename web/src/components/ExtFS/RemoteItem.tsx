@@ -9,6 +9,7 @@ import { useExtFS } from "./State";
 
 import { useQuery } from "@tanstack/react-query";
 
+import CloudIcon from "@mui/icons-material/Cloud";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
@@ -91,6 +92,7 @@ export const RemoteItem = () => {
       avatarIcon={avatarIcon}
       onClick={handleClick}
       disabled={!item.available}
+      extIcon={<CloudIcon fontSize="small" />}
     >
       <ExtFSItemTag
         to={`${ExtFSRemoteItemTagRoutePath}/${item.id}`}

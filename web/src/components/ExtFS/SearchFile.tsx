@@ -26,6 +26,7 @@ import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
 import IconButton from "@mui/material/IconButton";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CloseIcon from "@mui/icons-material/Close";
+import CloudIcon from "@mui/icons-material/Cloud";
 
 import { Fragment, useEffect, useMemo, useSyncExternalStore } from "react";
 
@@ -144,6 +145,7 @@ export const SearchFile = () => {
       avatarIcon={avatarIcon}
       onClick={handleClick}
       disabled={!item.available}
+      extIcon={item.peerId !== void 0 ? <CloudIcon fontSize="small" /> : null}
     >
       <ExtFSItemSettings to={settingsUrl} />
     </ExtFSItem>
