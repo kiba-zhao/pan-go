@@ -48,8 +48,8 @@ func (s *RemoteSearchFileService) Search(peerId string, condition RemoteSearchFi
 		searchFile.Size = record.Size
 		searchFile.CreatedAt = time.Unix(record.CreatedAt, 0)
 		searchFile.UpdatedAt = time.Unix(record.UpdatedAt, 0)
-		if len(record.Score) > 0 {
-			searchFile.Score = int8(record.Score[0])
+		if record.Score > 0 {
+			searchFile.Score = uint(record.Score)
 		}
 		searchFile.Tokens = record.Tokens
 		searchFile.Available = record.Available
@@ -91,7 +91,7 @@ func (s *RemoteSearchFileService) SearchForTopic(condition *RemoteSearchFileReco
 		record.Size = searchFile.Size
 		record.CreatedAt = searchFile.CreatedAt.Unix()
 		record.UpdatedAt = searchFile.UpdatedAt.Unix()
-		record.Score = []byte{byte(searchFile.Score)}
+		record.Score = uint32(searchFile.Score)
 		record.Tokens = searchFile.Tokens
 		record.Available = searchFile.Available
 

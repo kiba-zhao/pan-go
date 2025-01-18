@@ -17,7 +17,7 @@ message RemoteSearchFileRecord {
     string FileType = 5;
     string MimeType = 6;
     repeated string Tokens = 7;
-    bytes Score = 8;
+    uint32 Score = 8;
     int64 Size = 9;
     bool Available = 10;
     int64 CreatedAt = 11;

@@ -17,7 +17,7 @@ type NodeSearchFile struct {
 	FileType  string    `json:"fileType" form:"fileType"`
 	MimeType  string    `json:"mimeType" form:"mimeType"`
 	Tokens    Tokens    `json:"tokens" form:"tokens"`
-	Score     int8      `json:"score" form:"score"`
+	Score     uint      `json:"score" form:"score"`
 	Size      int64     `json:"size" form:"size"`
 	Available bool      `gorm:"-:all" json:"available" form:"available"`
 	CreatedAt time.Time `json:"createdAt" form:"createdAt"`
