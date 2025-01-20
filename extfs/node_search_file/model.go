@@ -16,7 +16,7 @@ type NodeSearchFile struct {
 	FilePath  string    `json:"filePath" form:"filePath"`
 	FileType  string    `json:"fileType" form:"fileType"`
 	MimeType  string    `json:"mimeType" form:"mimeType"`
-	Tokens    Tokens    `json:"tokens" form:"tokens"`
+	Tokens    Tokens    `gorm:"type:text" json:"tokens" form:"tokens"`
 	Score     uint      `json:"score" form:"score"`
 	Size      int64     `json:"size" form:"size"`
 	Available bool      `gorm:"-:all" json:"available" form:"available"`

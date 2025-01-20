@@ -80,7 +80,7 @@ func (agent *agentImpl) DB() *gorm.DB {
 		if err != nil {
 			panic(err)
 		}
-		configPath := path.Dir(settings.DBPath)
+		configPath := settings.DBPath
 		_, err = os.Stat(configPath)
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(configPath, 0755)

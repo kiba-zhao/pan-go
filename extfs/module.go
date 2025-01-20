@@ -56,6 +56,8 @@ func (m *module) WebControllers() []web.WebController {
 			&remoteitem.RemoteItemController{},
 			&remotefile.RemoteFileController{},
 			&searchitem.SearchItemController{},
+			&nodesearchfile.NodeSearchFileController{},
+			&remotesearchfile.RemoteSearchFileController{},
 		}
 	})
 	return m.controllers
@@ -67,6 +69,7 @@ func (m *module) PeerAppModules() []peer.PeerAppModule {
 			&remoteitem.RemoteItemTopic{},
 			&remotefile.RemoteFileTopic{},
 			&remoteblock.RemoteBlockTopic{},
+			&remotesearchfile.RemoteSearchFileTopic{},
 		}
 	})
 	return m.peerAppModules

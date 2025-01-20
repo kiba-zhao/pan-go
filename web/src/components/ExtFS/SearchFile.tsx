@@ -14,7 +14,6 @@ import { newSearchFileStore } from "./SearchFileStore";
 import type { SearchFileStore } from "./SearchFileStore";
 
 import type { ExtFSSearchFile, ExtFSSearchItem } from "../../api";
-import { useAPI } from "../API";
 import type { API } from "../../api";
 
 import FolderIcon from "@mui/icons-material/Folder";
@@ -28,7 +27,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import CloseIcon from "@mui/icons-material/Close";
 import CloudIcon from "@mui/icons-material/Cloud";
 
-import { Fragment, useEffect, useMemo, useSyncExternalStore } from "react";
+import { Fragment, useMemo, useSyncExternalStore } from "react";
 
 export const ExtFSSearchFileMode = "SF";
 const ExtFSSearchFileQueryKey = ["extfs-search-files"];
@@ -115,7 +114,6 @@ export const SearchFile = () => {
 
   const [extfs, setExtFS] = useExtFS();
 
-  const api = useAPI();
   const handleClick = async () => {
     if (item.fileType === "D") {
       let state: ExtFSState | undefined;

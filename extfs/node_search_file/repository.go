@@ -11,6 +11,7 @@ import (
 
 var ErrNodeSearchFileDBUnavailable = errors.New("searchfile.NodeSearchFileRepository Error: Database unavailable")
 var ErrNodeSearchFileNotFound = errors.New("searchfile.NodeSearchFileRepository Error: Not Found")
+var ErrNodeSearchFileRepoUnavailable = errors.New("searchfile.NodeSearchFileRepository Error: Unavailable")
 
 func (NodeSearchFile) TableName() string {
 	return "node_file_rates"
@@ -78,6 +79,11 @@ func (repo *searchFileRepositoryImpl) Search(taskId uint64, condition web.RangeC
 	var model NodeSearchFile
 	db = db.Scopes(NodeSearchFileWithTaskID(&model, taskId))
 
+	migrator := db.Migrator()
+	if !migrator.HasTable(&model) {
+		return 0, nil, nil
+	}
+
 	total := int64(0)
 	results := db.Model(&NodeSearchFile{}).Count(&total)
 
@@ -95,10 +101,15 @@ func (repo *searchFileRepositoryImpl) Search(taskId uint64, condition web.RangeC
 func (repo *searchFileRepositoryImpl) Save(taskId uint64, searchFile NodeSearchFile) (NodeSearchFile, error) {
 	db := repo.db
 	if db == nil {
-		return searchFile, ErrNodeSearchFileDBUnavailable
+		return NodeSearchFile{}, ErrNodeSearchFileDBUnavailable
 	}
 
 	db = db.Scopes(NodeSearchFileWithTaskID(&searchFile, taskId))
+	migrator := db.Migrator()
+	if !migrator.HasTable(&NodeSearchFile{}) {
+		return NodeSearchFile{}, ErrNodeSearchFileRepoUnavailable
+	}
+
 	results := db.Save(&searchFile)
 	if results.Error == nil && results.RowsAffected != 1 {
 		return searchFile, ErrNodeSearchFileNotFound

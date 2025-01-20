@@ -99,10 +99,8 @@ func (repo *searchTaskRepositoryImpl) SelectOrCreate(task NodeSearchTask) (NodeS
 	db = db.Where("status = ?", task.Status)
 	db = db.Order("created_at desc")
 	results := db.FirstOrCreate(&task)
-	if results.Error == nil {
-		return task, results.RowsAffected == 1, results.Error
-	}
-	return task, false, results.Error
+	return task, results.RowsAffected == 1, results.Error
+
 }
 
 func (repo *searchTaskRepositoryImpl) Save(task NodeSearchTask) (NodeSearchTask, error) {

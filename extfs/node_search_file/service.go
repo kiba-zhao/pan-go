@@ -2,7 +2,7 @@ package nodesearchfile
 
 import (
 	"cmp"
-	"crypto/sha512"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -24,6 +24,10 @@ type NodeSearchFileService struct {
 	NodeSearchFileRepo   NodeSearchFileRepository
 	NodeSearchTaskRepo   NodeSearchTaskRepository
 	NodeSearchTaskWorker NodeSearchTaskWorker
+}
+
+func (s *NodeSearchFileService) IsNotExist(err error) bool {
+	return errors.Is(err, ErrNodeSearchTaskNotFound)
 }
 
 func (s *NodeSearchFileService) InitWithTaskID(taskId uint64) error {
@@ -50,9 +54,6 @@ func (s *NodeSearchFileService) Search(condition NodeSearchFileSearchCondition) 
 		task.Hash = genesearchFileTaskHash(task)
 		task.Status = NodeSearchTaskStatusPending
 		task, ok, err = s.NodeSearchTaskRepo.SelectOrCreate(task)
-		if err == nil && ok {
-			s.NodeSearchTaskWorker.Reload()
-		}
 	}
 
 	if err != nil {
@@ -60,6 +61,12 @@ func (s *NodeSearchFileService) Search(condition NodeSearchFileSearchCondition) 
 	}
 
 	etag = task.Hash
+	if err == nil && ok {
+		s.NodeSearchTaskWorker.Reload()
+		total = -1
+		return
+	}
+
 	total, searchFiles, err = s.NodeSearchFileRepo.Search(task.ID, condition.RangeCondition)
 	if err != nil {
 		return
@@ -67,7 +74,7 @@ func (s *NodeSearchFileService) Search(condition NodeSearchFileSearchCondition) 
 	if task.Status == NodeSearchTaskStatusPending {
 		total = -1
 	}
-	if len(searchFiles) <= 0 || len(condition.Hash) <= 0 || !ok {
+	if len(searchFiles) <= 0 || len(condition.Hash) <= 0 {
 		return
 	}
 
@@ -113,10 +120,10 @@ func binarySearchFuncWithNodeItem(item nodeitem.NodeItem, target uint) int {
 }
 
 func genesearchFileTaskHash(task NodeSearchTask) string {
-	queryBytes := []byte(task.Query)
-	hash := sha512.Sum512(queryBytes)
-	hashBytes := hash[:]
+	hashBytes := make([]byte, 16)
 
-	hashBytes = binary.BigEndian.AppendUint64(hashBytes, uint64(time.Now().Unix()))
+	binary.BigEndian.PutUint64(hashBytes, uint64(time.Now().Unix()))
+	rand.Read(hashBytes[8:])
+
 	return base64.StdEncoding.EncodeToString(hashBytes)
 }

@@ -8,11 +8,11 @@ import (
 var ErrInvalidTokens = errors.New("invalid tokens")
 
 func (t *Tokens) Scan(value interface{}) error {
-	bytes, ok := value.([]byte)
+	text, ok := value.(string)
 	if !ok {
 		return ErrInvalidTokens
 	}
-	*t = strings.Split(string(bytes), ",")
+	*t = strings.Split(text, ",")
 	return nil
 }
 

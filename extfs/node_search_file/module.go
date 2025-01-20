@@ -19,13 +19,16 @@ func New(provider injection.ComponentStoreProvider) interface{} {
 	m.config = config
 
 	m.worker = &ratingTaskWorkerImpl{}
-	return m
+
+	m.fileRater = &fileRaterImpl{}
+	return &m
 }
 
 type moduleImpl struct {
-	agent  Agent
-	config appConfig.Config[*NodeSearchFileSettings]
-	worker NodeSearchTaskWorker
+	agent     Agent
+	config    appConfig.Config[*NodeSearchFileSettings]
+	worker    NodeSearchTaskWorker
+	fileRater FileRater
 
 	provider injection.ComponentStoreProvider
 }
@@ -51,5 +54,6 @@ func (m *moduleImpl) Modules() []interface{} {
 		m.config,
 		m.agent,
 		m.worker,
+		m.fileRater,
 	}
 }

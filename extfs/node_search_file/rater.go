@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"mime"
 	"os"
-	nodeitem "pan/extfs/node_item"
 	"path"
 	"regexp"
 	"slices"
@@ -20,29 +19,42 @@ type fileRaterImpl struct {
 }
 
 func (fr *fileRaterImpl) Rate(filePath string, tokens []string) (uint, error) {
+	matchedCount := 0
 
-	score := uint(0)
-	stat, err := os.Stat(filePath)
-	if err != nil {
-		return score, err
+	_, filename := path.Split(filePath)
+	for _, token := range tokens {
+		if strings.Contains(filename, token) {
+			matchedCount++
+		}
 	}
 
-	if !stat.IsDir() {
-		mimeType, err := nodeitem.GenerateMimeType(filePath)
-		if err != nil {
-			return score, err
-		}
-
-		mimeTypeScore, err := rateWithMimeType(filePath, tokens, mimeType)
-		if err != nil {
-			return score, err
-		}
-		score += mimeTypeScore
-	}
-
-	score += rateWithFilePath(filePath, tokens)
-	return score, nil
+	return uint(matchedCount), nil
 }
+
+// func (fr *fileRaterImpl) Rate(filePath string, tokens []string) (uint, error) {
+
+// 	score := uint(0)
+// 	stat, err := os.Stat(filePath)
+// 	if err != nil {
+// 		return score, err
+// 	}
+
+// 	if !stat.IsDir() {
+// 		mimeType, err := nodeitem.GenerateMimeType(filePath)
+// 		if err != nil {
+// 			return score, err
+// 		}
+
+// 		mimeTypeScore, err := rateWithMimeType(filePath, tokens, mimeType)
+// 		if err != nil {
+// 			return score, err
+// 		}
+// 		score += mimeTypeScore
+// 	}
+
+// 	score += rateWithFilePath(filePath, tokens)
+// 	return score, nil
+// }
 
 func (fr *fileRaterImpl) Tokenize(text string) []string {
 	text = strings.Trim(text, " ")

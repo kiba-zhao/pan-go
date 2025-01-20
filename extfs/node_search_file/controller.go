@@ -28,11 +28,20 @@ func (c *NodeSearchFileController) Search(ctx web.WebContext) {
 	}
 
 	total, items, etag, err := c.NodeSearchFileService.Search(condition)
+
+	if c.NodeSearchFileService.IsNotExist(err) {
+		ctx.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+
 	if err != nil {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
+	if items == nil {
+		items = make([]NodeSearchFile, 0)
+	}
 	web.SetCountHeaderForWeb(ctx, total)
 	web.SetETagHeaderForWeb(ctx, etag)
 	ctx.JSON(http.StatusOK, items)
