@@ -16,7 +16,7 @@ func newDefaultSettings() *NodeSearchFileSettings {
 
 	settings.DBPath = os.TempDir()
 	settings.TaskNum = 5
-	// settings.Lifecycle = uint64(time.Minute * 20)
-	settings.Lifecycle = uint64(time.Second * 20)
+	settings.Lifecycle = uint64(time.Minute * 20)
+	// settings.Lifecycle = uint64(time.Second * 20)
 	return &settings
 }
