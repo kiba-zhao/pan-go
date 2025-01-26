@@ -15,11 +15,11 @@ var ErrNodeSearchTaskAborted = errors.New("nodesearchfile.Worker Error: Search T
 var ErrNoFileRater = errors.New("nodesearchfile.Worker Error: No File Rater")
 var ErrGernerateRateFailed = errors.New("nodesearchfile.Worker Error: Generate Rate Failed")
 
-type NodeSearchTaskWorker interface {
+type TaskWorker interface {
 	Reload()
 }
 
-type ratingTaskWorkerImpl struct {
+type taskWorkerImpl struct {
 	NodeItemService       nodeitem.NodeItemInternalService
 	NodeSearchTaskRepo    NodeSearchTaskRepository
 	NodeSearchFileService *NodeSearchFileService
@@ -34,14 +34,14 @@ type ratingTaskWorkerImpl struct {
 	tasksLocker sync.RWMutex
 }
 
-func (w *ratingTaskWorkerImpl) ReloadChan() chan struct{} {
+func (w *taskWorkerImpl) ReloadChan() chan struct{} {
 	w.reloadOnce.Do(func() {
 		w.reloadChan = make(chan struct{}, 1)
 	})
 	return w.reloadChan
 }
 
-func (w *ratingTaskWorkerImpl) Reload() {
+func (w *taskWorkerImpl) Reload() {
 	w.reloadLocker.Lock()
 	defer w.reloadLocker.Unlock()
 	if w.reload {
@@ -51,7 +51,7 @@ func (w *ratingTaskWorkerImpl) Reload() {
 	w.ReloadChan() <- struct{}{}
 }
 
-func (w *ratingTaskWorkerImpl) Ready(ctx context.Context) error {
+func (w *taskWorkerImpl) Ready(ctx context.Context) error {
 
 	var tasks []NodeSearchTask
 	var err error
@@ -107,7 +107,7 @@ func (w *ratingTaskWorkerImpl) Ready(ctx context.Context) error {
 	return err
 }
 
-func (w *ratingTaskWorkerImpl) RunTasks(tasks []NodeSearchTask) error {
+func (w *taskWorkerImpl) RunTasks(tasks []NodeSearchTask) error {
 
 	var err error
 	w.tasksLocker.Lock()
@@ -175,7 +175,7 @@ func (w *ratingTaskWorkerImpl) RunTasks(tasks []NodeSearchTask) error {
 	return err
 }
 
-func (w *ratingTaskWorkerImpl) NewNodeSearchFile(taskIdx int, item nodeitem.NodeItem, filePath string, raters []FileRater, ratersTokens []Tokens) (NodeSearchFile, error) {
+func (w *taskWorkerImpl) NewNodeSearchFile(taskIdx int, item nodeitem.NodeItem, filePath string, raters []FileRater, ratersTokens []Tokens) (NodeSearchFile, error) {
 
 	var rate NodeSearchFile
 
@@ -224,6 +224,11 @@ func (w *ratingTaskWorkerImpl) NewNodeSearchFile(taskIdx int, item nodeitem.Node
 
 	if rate.Score <= 0 {
 		return rate, ErrGernerateRateFailed
+	}
+
+	mimeType, err := nodeitem.GenerateMimeType(filePath)
+	if err == nil {
+		rate.MimeType = mimeType
 	}
 
 	return rate, nil

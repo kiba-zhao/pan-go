@@ -2,6 +2,7 @@ package nodesearchfile
 
 import (
 	"errors"
+	"time"
 
 	appSample "pan/app/sample"
 	"pan/app/web"
@@ -18,6 +19,9 @@ type NodeSearchTaskRepository interface {
 	UpdateWithStatus(uint8, NodeSearchTask) (NodeSearchTask, error)
 	SelectOrCreate(task NodeSearchTask) (NodeSearchTask, bool, error)
 	Save(task NodeSearchTask) (NodeSearchTask, error)
+	SearchWithLifecycle(lifecycle uint64) ([]NodeSearchTask, error)
+	DeleteWithIDs(ids ...uint64) error
+	Delete(NodeSearchTask) error
 }
 
 type searchTaskRepositoryImpl struct {
@@ -113,4 +117,36 @@ func (repo *searchTaskRepositoryImpl) Save(task NodeSearchTask) (NodeSearchTask,
 		return task, ErrNodeSearchTaskNotFound
 	}
 	return task, results.Error
+}
+
+func (repo *searchTaskRepositoryImpl) SearchWithLifecycle(lifecycle uint64) ([]NodeSearchTask, error) {
+	db := repo.db
+	if db == nil {
+		return nil, appSample.ErrSampleDBUnavailable
+	}
+	lifecycleAt := time.Now().Add(-time.Duration(lifecycle))
+	var tasks []NodeSearchTask
+	results := db.Where("status <> ?", NodeSearchTaskStatusPending).Where("updated_at <= ?", lifecycleAt).Find(&tasks)
+	return tasks, results.Error
+}
+
+func (repo *searchTaskRepositoryImpl) DeleteWithIDs(ids ...uint64) error {
+	db := repo.db
+	if db == nil {
+		return appSample.ErrSampleDBUnavailable
+	}
+	results := db.Delete(&NodeSearchTask{}, ids)
+	return results.Error
+}
+
+func (repo *searchTaskRepositoryImpl) Delete(task NodeSearchTask) error {
+	db := repo.db
+	if db == nil {
+		return appSample.ErrSampleDBUnavailable
+	}
+	results := db.Delete(&task)
+	if results.Error == nil && results.RowsAffected != 1 {
+		return ErrNodeSearchTaskNotFound
+	}
+	return results.Error
 }

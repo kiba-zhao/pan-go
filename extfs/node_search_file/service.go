@@ -20,10 +20,10 @@ type NodeSearchFileInternalService interface {
 }
 
 type NodeSearchFileService struct {
-	NodeItemService      nodeitem.NodeItemInternalService
-	NodeSearchFileRepo   NodeSearchFileRepository
-	NodeSearchTaskRepo   NodeSearchTaskRepository
-	NodeSearchTaskWorker NodeSearchTaskWorker
+	NodeItemService    nodeitem.NodeItemInternalService
+	NodeSearchFileRepo NodeSearchFileRepository
+	NodeSearchTaskRepo NodeSearchTaskRepository
+	TaskWorker         TaskWorker
 }
 
 func (s *NodeSearchFileService) IsNotExist(err error) bool {
@@ -62,7 +62,7 @@ func (s *NodeSearchFileService) Search(condition NodeSearchFileSearchCondition) 
 
 	etag = task.Hash
 	if err == nil && ok {
-		s.NodeSearchTaskWorker.Reload()
+		s.TaskWorker.Reload()
 		total = -1
 		return
 	}

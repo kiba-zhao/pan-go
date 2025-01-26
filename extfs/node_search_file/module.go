@@ -18,7 +18,8 @@ func New(provider injection.ComponentStoreProvider) interface{} {
 	config.SetDefaults(newDefaultSettings())
 	m.config = config
 
-	m.worker = &ratingTaskWorkerImpl{}
+	m.worker = &taskWorkerImpl{}
+	m.cleaner = &taskCleanerImpl{}
 
 	m.fileRater = &fileRaterImpl{}
 	return &m
@@ -27,7 +28,8 @@ func New(provider injection.ComponentStoreProvider) interface{} {
 type moduleImpl struct {
 	agent     Agent
 	config    appConfig.Config[*NodeSearchFileSettings]
-	worker    NodeSearchTaskWorker
+	worker    TaskWorker
+	cleaner   *taskCleanerImpl
 	fileRater FileRater
 
 	provider injection.ComponentStoreProvider
@@ -45,6 +47,7 @@ func (m *moduleImpl) Components() []injection.Component {
 
 	components = sample.AppendSampleComponent(components, m.agent)
 	components = sample.AppendSampleComponent(components, m.worker)
+	components = append(components, injection.NewComponent(m.cleaner, injection.ComponentNoneScope))
 
 	return components
 }
@@ -54,6 +57,7 @@ func (m *moduleImpl) Modules() []interface{} {
 		m.config,
 		m.agent,
 		m.worker,
+		m.cleaner,
 		m.fileRater,
 	}
 }
