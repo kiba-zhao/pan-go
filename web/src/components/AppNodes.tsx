@@ -111,7 +111,7 @@ export const AppNodes = () => {
       aside={<AppNodeFilters />}
     >
       <SimpleList<AppNode>
-        linkType="show"
+        // linkType="show"
         primaryText={<TextField source="name" />}
         secondaryText={(record) => (
           <BooleanField

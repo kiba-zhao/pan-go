@@ -6,7 +6,7 @@ import {
   ExtFSItem,
   ExtFSItems,
   ExtFSItemSettings,
-  ExtFSItemTag,
+  ExtFSItemOpen,
   useExtFSItem,
 } from "./Item";
 import { More, MoreHelpItem, MoreNewItem } from "./More";
@@ -20,7 +20,8 @@ import { useMemo } from "react";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
-const ExtFSNodeItemTagRoutePath = "/extfs/node-item-tags";
+import { useNavigate } from "react-router-dom";
+
 export const ExtFSNodeMode = "N";
 const ExtFSNodeQueryKey = ["extfs-node-items"];
 
@@ -67,6 +68,7 @@ export const NodeItems = () => {
 
 export const NodeItem = () => {
   const { style, item }: ExtFSItemRecord<ExtFSNodeItem> = useExtFSItem();
+  const navigate = useNavigate();
   const avatarIcon = useMemo(() => {
     if (item?.fileType === "D")
       return <FolderIcon color={item.available ? "primary" : "disabled"} />;
@@ -87,9 +89,15 @@ export const NodeItem = () => {
       setExtFS(state);
       return;
     }
+
+    navigate(`${ExtFSNodeItemRoutePath}/${item.id}/show`);
   };
 
   const settingsUrl = useMemo(() => newItemSettingsUrl(item.id), [item.id]);
+  // TODO: implement
+  const openUrl = useMemo(() => ``, [item.id]);
+  //
+
   return (
     <ExtFSItem
       style={style}
@@ -99,12 +107,7 @@ export const NodeItem = () => {
       onClick={handleClick}
       disabled={!item.available}
     >
-      <ExtFSItemTag
-        to={`${ExtFSNodeItemTagRoutePath}/${item.id}`}
-        disabled={!item.available}
-        quantity={item.tagQuantity}
-        pendingQuantity={item.pendingTagQuantity}
-      />
+      <ExtFSItemOpen to={openUrl} disabled={!item.available} />
       <ExtFSItemSettings to={settingsUrl} />
     </ExtFSItem>
   );

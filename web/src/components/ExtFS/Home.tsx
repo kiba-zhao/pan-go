@@ -1,5 +1,5 @@
 import type { ExtFSItemRecord } from "./Item";
-import { ExtFSItem, ExtFSItems, ExtFSItemTag, useExtFSItem } from "./Item";
+import { ExtFSItem, ExtFSItems, useExtFSItem } from "./Item";
 import { More, MoreHelpItem } from "./More";
 import { newExtFSState as newExtFSStateWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemote } from "./RemoteItem";
@@ -104,14 +104,7 @@ const HomeItem = () => {
         extIcon={<CloudIcon fontSize="small" />}
         disabled={!remoteNode.available}
         onClick={handleRemoteClick}
-      >
-        <ExtFSItemTag
-          to={`${ExtFSNodeTagRoutePath}/${remoteNode.peerId}`}
-          disabled={!remoteNode.available}
-          quantity={remoteNode.tagQuantity}
-          pendingQuantity={remoteNode.pendingTagQuantity}
-        />
-      </ExtFSItem>
+      ></ExtFSItem>
     );
   }
 

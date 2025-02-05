@@ -1,10 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Fragment } from "react";
 
-import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
+import { useTranslate } from "react-admin";
+
 import SettingsIcon from "@mui/icons-material/Settings";
 import Avatar from "@mui/material/Avatar";
-import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import LinearProgress from "@mui/material/LinearProgress";
 import IconButton from "@mui/material/IconButton";
@@ -14,6 +14,8 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import Tooltip from "@mui/material/Tooltip";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 import type { To } from "react-router-dom";
 import { Link as RouterLink } from "react-router-dom";
@@ -105,44 +107,31 @@ export const ExtFSItem = ({
 };
 
 type ExtFSItemLinkProps = {
+  title: React.ReactNode;
   to: To;
   children?: ReactNode;
   disabled?: boolean;
+  target?: React.HTMLAttributeAnchorTarget;
 };
-const ExtFSItemLink = ({ to, children, disabled }: ExtFSItemLinkProps) => {
-  return (
-    <IconButton
-      component={RouterLink}
-      to={to}
-      disabled={disabled}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {children}
-    </IconButton>
-  );
-};
-
-export type ExtFSItemTagProps = {
-  pendingQuantity?: number;
-  quantity?: number;
-} & Pick<ExtFSItemLinkProps, "to" | "disabled">;
-export const ExtFSItemTag = ({
+const ExtFSItemLink = ({
+  title,
   to,
+  children,
   disabled,
-  pendingQuantity,
-  quantity,
-}: ExtFSItemTagProps) => {
+  target,
+}: ExtFSItemLinkProps) => {
   return (
-    <ExtFSItemLink to={to} disabled={disabled}>
-      <Badge badgeContent={pendingQuantity}>
-        <Badge
-          badgeContent={quantity}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
-          <BookmarkBorderIcon />
-        </Badge>
-      </Badge>
-    </ExtFSItemLink>
+    <Tooltip title={title}>
+      <IconButton
+        component={RouterLink}
+        to={to}
+        target={target}
+        disabled={disabled}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </IconButton>
+    </Tooltip>
   );
 };
 
@@ -151,9 +140,29 @@ export type ExtFSItemSettingsProps = Pick<
   "to" | "disabled"
 >;
 export const ExtFSItemSettings = ({ to, disabled }: ExtFSItemSettingsProps) => {
+  const t = useTranslate();
   return (
-    <ExtFSItemLink to={to} disabled={disabled}>
+    <ExtFSItemLink
+      title={t("custom.button.settings")}
+      to={to}
+      disabled={disabled}
+    >
       <SettingsIcon />
+    </ExtFSItemLink>
+  );
+};
+
+export type ExtFSItemOpenProps = Pick<ExtFSItemLinkProps, "to" | "disabled">;
+export const ExtFSItemOpen = ({ to, disabled }: ExtFSItemOpenProps) => {
+  const t = useTranslate();
+  return (
+    <ExtFSItemLink
+      title={t("custom.button.open")}
+      to={to}
+      disabled={disabled}
+      target="_blank"
+    >
+      <OpenInNewIcon />
     </ExtFSItemLink>
   );
 };

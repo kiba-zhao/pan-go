@@ -24,14 +24,9 @@ import {
   ExtFSNodeItemCreate,
   ExtFSNodeItemEdit,
   ExtFSNodeItemRoutePath,
+  ExtFSNodeItemView,
 } from "./components/ExtFSNodeItem";
-import {
-  ExtFSTagCreate,
-  ExtFSTagEdit,
-  ExtFSTagList,
-  ExtFSTagRoutePath,
-  ExtFSTagShow,
-} from "./components/ExtFSTag";
+
 import { AppLayout } from "./components/Layout";
 import NotFound from "./components/NotFound";
 
@@ -68,19 +63,16 @@ export const App = () => {
               path={`${ExtFSNodeItemRoutePath}/:id`}
               element={<ExtFSNodeItemEdit />}
             />
+            <Route
+              path={`${ExtFSNodeItemRoutePath}/:id/show`}
+              element={<ExtFSNodeItemView />}
+            />
           </CustomRoutes>
           <Resource
             name={AppNodeRoutePath.substring(1)}
             list={AppNodes}
             create={AppNodeCreate}
             edit={APPNodeEdit}
-          />
-          <Resource
-            name={ExtFSTagRoutePath.substring(1)}
-            list={ExtFSTagList}
-            create={ExtFSTagCreate}
-            edit={ExtFSTagEdit}
-            show={ExtFSTagShow}
           />
         </Admin>
       </APIProvider>

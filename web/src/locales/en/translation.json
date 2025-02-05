@@ -58,6 +58,7 @@
     },
     "pagination": "{{total}} results",
     "button": {
+      "open": "Open",
       "settings": "Settings",
       "add": "Add",
       "revise": "Revise",
@@ -93,9 +94,9 @@
       "allowed": "Allowed",
       "refused": "Refused"
     },
-    "placeholder":{
-      "search":"Search ...",
-      "search-input":"What are you looking for ?"
+    "placeholder": {
+      "search": "Search ...",
+      "search-input": "What are you looking for ?"
     }
   }
 }

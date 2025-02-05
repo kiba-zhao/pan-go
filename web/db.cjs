@@ -1,5 +1,6 @@
 const { faker } = require("@faker-js/faker");
 const path = require("node:path");
+const mimeTypes = require('mime-types')
 
 module.exports = () => {
   const folders = ["/"];
@@ -179,10 +180,13 @@ function parseRemoteNode(node) {
 
 function generateExtFSNodeItem() {
   const fileType = faker.helpers.arrayElement(["F", "D"]);
-  const mimeType = fileType === "F"?faker.system.mimeType():"";
+  const mimeType = fileType === "F"?generateMimeType():"";
+  const extname = fileType === "F"?faker.system.fileExt(mimeType):"";
+  const name = fileType === "F" ? faker.system.commonFileName(extname): faker.system.fileName({extensionCount:0});
+
   return {
     id: faker.number.int({ min: 1, max: 999999 }),
-    name: faker.word.sample(),
+    name,
     filePath: faker.system.directoryPath(),
     fileType,
     mimeType,
@@ -198,12 +202,14 @@ function generateExtFSNodeItem() {
 
 function generateExtFSRemoteNodeItem(peerId) {
   const fileType = faker.helpers.arrayElement(["F", "D"]);
-  const mimeType = fileType === "F"?faker.system.mimeType():"";
+  const mimeType = fileType === "F"?generateMimeType():"";
+  const extname = fileType === "F"?faker.system.fileExt(mimeType):"";
+  const name = fileType === "F" ? faker.system.commonFileName(extname): faker.system.fileName({extensionCount:0});
   return {
     id: faker.string.nanoid(),
     peerId,
     itemId: faker.number.int({ min: 1, max: 999999 }),
-    name: faker.word.sample(),
+    name,
     fileType,
     mimeType,
     size: faker.number.int({ min: 1, max: 999999 }),
@@ -217,11 +223,13 @@ function generateExtFSRemoteNodeItem(peerId) {
 
 function generateExtFSNodeFile(itemId, folders = ["/"]) {
   const isDir = faker.datatype.boolean();
+  const mimeType = isDir ? "" : generateMimeType();
   const folder = faker.helpers.arrayElement(folders);
   const fileType = isDir ? "D" : "F";
-  const name = isDir ? faker.word.sample() : faker.system.fileName();
+  const extname = isDir?"":faker.system.fileExt(mimeType);
+  const name = isDir ? faker.system.fileName({extensionCount:0}):faker.system.commonFileName(extname);
   const filePath = path.join(folder, name);
-  const mimeType = isDir ? "" : faker.system.mimeType();
+
   if (isDir) {
     folders.push(filePath);
   }
@@ -244,11 +252,13 @@ function generateExtFSNodeFile(itemId, folders = ["/"]) {
 
 function generateExtFSRemoteFile(peerId, itemId, folders = ["/"]) {
   const isDir = faker.datatype.boolean();
+  const mimeType = isDir ? "" : generateMimeType();
   const folder = faker.helpers.arrayElement(folders);
   const fileType = isDir ? "D" : "F";
-  const name = isDir ? faker.word.sample() : faker.system.fileName();
+  const extname = isDir?"":faker.system.fileExt(mimeType);
+  const name = isDir ? faker.system.fileName({extensionCount:0}):faker.system.commonFileName(extname);
   const filePath = path.join(folder, name);
-  const mimeType = isDir ? "" : faker.system.mimeType();
+
   if (isDir) {
     folders.push(filePath);
   }
@@ -314,4 +324,15 @@ function generateRemoteSearchFiles(remotefile){
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   }
+}
+
+function generateMimeType() {
+  return faker.helpers.arrayElement([
+    "text/plain",
+    "text/html",
+    "application/pdf",
+    "application/json",
+    "application/xml",
+    "application/octet-stream",
+  ])
 }

@@ -19,6 +19,7 @@
     "i18next-resources-to-backend": "^1.2.0",
     "jsqr": "^1.4.0",
     "lodash": "^4.17.21",
+    "mime-types": "^2.1.35",
     "qrcode": "^1.5.3",
     "ra-data-json-server": "^5.1.1",
     "ra-data-simple-rest": "^5.1.1",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@faker-js/faker": "^8.4.1",
     "@types/lodash": "^4.17.13",
+    "@types/mime-types": "^2.1.4",
     "@types/node": "^20.11.24",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18.2.56",

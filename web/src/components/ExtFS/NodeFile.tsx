@@ -1,12 +1,6 @@
 import { ExtFSNodeItemRoutePath } from "../ExtFSNodeItem";
 import type { ExtFSItemRecord } from "./Item";
-import {
-  ExtFSItem,
-  ExtFSItems,
-  ExtFSItemSettings,
-  ExtFSItemTag,
-  useExtFSItem,
-} from "./Item";
+import { ExtFSItem, ExtFSItems, useExtFSItem, ExtFSItemOpen } from "./Item";
 import { More, MoreHelpItem, MoreSettingsItem } from "./More";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
@@ -20,9 +14,6 @@ import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
 import { useMemo } from "react";
-
-const ExtFSNodeFileRoutePath = "/extfs/node-files";
-const ExtFSNodeFileTagRoutePath = "/extfs/node-file-tags";
 
 export const ExtFSNodeFileMode = "NF";
 const ExtFSNodeFileQueryKey = ["extfs-node-files"];
@@ -94,6 +85,10 @@ export const NodeFile = () => {
     }
   };
 
+  // TODO: implement
+  const openUrl = useMemo(() => ``, [item.itemId, item.parentPath, item.name]);
+  //
+
   return (
     <ExtFSItem
       style={style}
@@ -103,13 +98,7 @@ export const NodeFile = () => {
       onClick={handleClick}
       disabled={!item.available}
     >
-      <ExtFSItemTag
-        to={`${ExtFSNodeFileTagRoutePath}/${item.id}`}
-        disabled={!item.available}
-        quantity={item.tagQuantity}
-        pendingQuantity={item.pendingTagQuantity}
-      />
-      <ExtFSItemSettings to={`${ExtFSNodeFileRoutePath}/${item.id}`} />
+      <ExtFSItemOpen to={openUrl} disabled={!item.available} />
     </ExtFSItem>
   );
 };

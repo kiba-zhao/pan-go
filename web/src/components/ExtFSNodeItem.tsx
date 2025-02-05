@@ -11,6 +11,7 @@ import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import CircleIcon from "@mui/icons-material/Circle";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
@@ -23,6 +24,7 @@ import {
   DialogConfirmContent,
 } from "./Feedback/Dialog";
 import { FilePathInput } from "./FilePath/Input";
+import NotFound from "./NotFound";
 
 export const ExtFSNodeItemRoutePath = "/extfs/local-node-items";
 export const ExtFSNodeItemCreate = () => <ExtFSNodeItemForm />;
@@ -297,4 +299,69 @@ export const ExtFSNodeItemEdit = () => {
   const { id } = useParams();
   const id_ = id ? parseInt(id) : void 0;
   return <ExtFSNodeItemForm id={id_ === void 0 || isNaN(id_) ? void 0 : id_} />;
+};
+
+export const ExtFSNodeItemView = () => {
+  const t = useTranslate();
+  const { id: paramId } = useParams();
+  const id = parseInt(paramId as string);
+
+  const api = useAPI();
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["extfs-node-item", id],
+    queryFn: () => api?.selectExtFSNodeItem(id as ExtFSNodeItem["id"]),
+    enabled: !isNaN(id),
+  });
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  return (
+    <Paper sx={{ padding: 3 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        alignItems={"flex-start"}
+        justifyContent={"flex-end"}
+      >
+        <Button
+          variant="contained"
+          size="small"
+          onClick={handleRefresh}
+          sx={{ display: id === void 0 ? "none" : "block" }}
+          disabled={isFetching}
+        >
+          {t("custom.button.refresh")}
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          sx={{ display: id === void 0 ? "none" : "block" }}
+          disabled={isFetching}
+          color="success"
+        >
+          {t("custom.button.open")}
+        </Button>
+      </Stack>
+      <Stack spacing={2} marginTop={2}>
+        <TextField
+          label={t("custom.extfs/local-node-items.fields.name")}
+          fullWidth
+          variant="filled"
+          value={data?.name || ""}
+        />
+        <TextField
+          label={t("custom.extfs/local-node-items.fields.filePath")}
+          fullWidth
+          variant="filled"
+          value={data?.filePath || ""}
+        />
+        <CircleIcon
+          fontSize="small"
+          color={data?.available ? "success" : "disabled"}
+        />
+      </Stack>
+    </Paper>
+  );
 };

@@ -1,5 +1,5 @@
 import type { ExtFSItemRecord } from "./Item";
-import { ExtFSItem, ExtFSItems, ExtFSItemTag, useExtFSItem } from "./Item";
+import { ExtFSItem, ExtFSItems, useExtFSItem, ExtFSItemOpen } from "./Item";
 import { More, MoreHelpItem } from "./More";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
@@ -14,7 +14,6 @@ import CloudIcon from "@mui/icons-material/Cloud";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
-const ExtFSRemoteFileTagRoutePath = "/extfs/remote-file-tags";
 export const ExtFSRemoteFileMode = "RF";
 const ExtFSRemoteFileQueryKey = ["extfs-remote-files"];
 const ExtFSRemoteFileState = {
@@ -86,6 +85,14 @@ export const RemoteFile = () => {
       return;
     }
   };
+
+  // TODO: implement
+  const openUrl = useMemo(
+    () => ``,
+    [item.peerId, item.itemId, item.parentPath, item.name]
+  );
+  //
+
   return (
     <ExtFSItem
       style={style}
@@ -96,12 +103,7 @@ export const RemoteFile = () => {
       disabled={!item.available}
       extIcon={<CloudIcon fontSize="small" />}
     >
-      <ExtFSItemTag
-        to={`${ExtFSRemoteFileTagRoutePath}/${item.id}`}
-        disabled={!item.available}
-        quantity={item.tagQuantity}
-        pendingQuantity={item.pendingTagQuantity}
-      />
+      <ExtFSItemOpen to={openUrl} disabled={!item.available} />
     </ExtFSItem>
   );
 };
