@@ -40,7 +40,6 @@ func TestReRemoteItemTopic(t *testing.T) {
 		nodeItem.ID = 1
 		nodeItem.Name = "test.txt"
 		nodeItem.FileType = nodeitem.FileTypeFile
-		nodeItem.MimeType = "text/plain"
 		nodeItem.Size = 123
 		nodeItem.Available = true
 		nodeItem.CreatedAt = time.Now()
@@ -73,7 +72,6 @@ func TestReRemoteItemTopic(t *testing.T) {
 		assert.Equal(t, uint32(nodeItem.ID), results.Items[0].ID)
 		assert.Equal(t, nodeItem.Name, results.Items[0].Name)
 		assert.Equal(t, nodeItem.FileType, results.Items[0].FileType)
-		assert.Equal(t, nodeItem.MimeType, results.Items[0].MimeType)
 		assert.Equal(t, nodeItem.Size, results.Items[0].Size)
 		assert.Equal(t, nodeItem.Available, results.Items[0].Available)
 		assert.Equal(t, nodeItem.CreatedAt.Unix(), results.Items[0].CreatedAt)
@@ -92,7 +90,6 @@ func TestReRemoteItemTopic(t *testing.T) {
 		nodeItem.ID = 1
 		nodeItem.Name = "test.txt"
 		nodeItem.FileType = nodeitem.FileTypeFile
-		nodeItem.MimeType = "text/plain"
 		nodeItem.Size = 123
 		nodeItem.Available = true
 		nodeItem.CreatedAt = time.Now()
@@ -125,7 +122,6 @@ func TestReRemoteItemTopic(t *testing.T) {
 		assert.Equal(t, uint32(nodeItem.ID), result.ID)
 		assert.Equal(t, nodeItem.Name, result.Name)
 		assert.Equal(t, nodeItem.FileType, result.FileType)
-		assert.Equal(t, nodeItem.MimeType, result.MimeType)
 		assert.Equal(t, nodeItem.Size, result.Size)
 		assert.Equal(t, nodeItem.Available, result.Available)
 		assert.Equal(t, nodeItem.CreatedAt.Unix(), result.CreatedAt)

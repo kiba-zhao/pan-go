@@ -1,4 +1,4 @@
-package remotefile_test
+package remoteitem_test
 
 import (
 	"context"
@@ -8,46 +8,44 @@ import (
 	"net/http/httptest"
 	appnode "pan/app/app_node"
 	"pan/app/web"
-	nodefile "pan/extfs/node_file"
-	nodeitem "pan/extfs/node_item"
-	remotefile "pan/extfs/remote_file"
+	mockedSample "pan/mocks/pan/app/sample"
 	"path"
-	"strconv"
 	"testing"
 	"time"
+
+	nodeitem "pan/extfs/node_item"
+	remoteitem "pan/extfs/remote_item"
+
+	mockedNodeItem "pan/mocks/pan/extfs/node_item"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/proto"
-
-	mockedSample "pan/mocks/pan/app/sample"
-	mockedNodeFile "pan/mocks/pan/extfs/node_file"
 )
 
-func TestRemoteFileController(t *testing.T) {
+func TestRemoteFileInfoController(t *testing.T) {
 
-	setup := func() (web.WebApp, *remotefile.RemoteFileController) {
-		ctrl := &remotefile.RemoteFileController{}
+	setup := func() (web.WebApp, *remoteitem.RemoteFileInfoController) {
 		app := web.NewWebApp()
+		ctrl := &remoteitem.RemoteFileInfoController{}
 		ctrl.SetupToWeb(app)
 
-		ctrl.RemoteFileService = &remotefile.RemoteFileService{}
-		ctrl.RemoteFileService.RemoteFileBroker = &remotefile.RemoteFileBroker{}
+		ctrl.RemoteFileInfoService = &remoteitem.RemoteFileInfoService{}
+		ctrl.RemoteFileInfoService.RemoteFileInfoBroker = &remoteitem.RemoteFileInfoBroker{}
 		return app, ctrl
 	}
 
-	t.Run("GET /remote-files/:id", func(t *testing.T) {
+	t.Run("GET /remote-items/:peerId/:id/file/*filepath", func(t *testing.T) {
 		app, ctrl := setup()
 
 		// mock SamplePeer
 		samplePeer := &mockedSample.MockSamplePeer{}
 		defer samplePeer.AssertExpectations(t)
-		ctrl.RemoteFileService.RemoteFileBroker.SamplePeer = samplePeer
+		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.SamplePeer = samplePeer
 		//
 
-		// mock response
-		peerId := []byte("peerId")
-		var record remotefile.RemoteFileRecord
+		peerIdBytes := []byte("peerId")
+		var record remoteitem.RemoteFileInfoRecord
 		record.ItemID = 1
 		record.Name = "test.txt"
 		record.Size = 123
@@ -57,38 +55,36 @@ func TestRemoteFileController(t *testing.T) {
 		record.CreatedAt = time.Now().Unix()
 		record.UpdatedAt = time.Now().Unix()
 		record.FilePath = path.Join(record.ParentPath, record.Name)
-		record.ID = nodefile.GenerateNodeFileID(uint(record.ItemID), record.FilePath)
 
 		resBody, err := proto.Marshal(&record)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", context.Background(), peerId, remotefile.SelectRemoteFile, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
-			resp := args.Get(3).(*remotefile.RemoteFileRecord)
+		samplePeer.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectRemoteFileInfo, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+			resp := args.Get(3).(*remoteitem.RemoteFileInfoRecord)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)
 
-			condition := args.Get(4).(*remotefile.RemoteFileRecordSelectCondition)
+			condition := args.Get(4).(*remoteitem.RemoteFileInfoRecordSelectCondition)
 			assert.Equal(t, record.ItemID, condition.ItemID)
-			assert.Equal(t, record.ParentPath, condition.ParentPath)
-			assert.Equal(t, record.Name, condition.Name)
+			assert.Equal(t, record.FilePath, condition.FilePath)
 		})
 
-		// mock NodeFileService
-		nodeFileService := &mockedNodeFile.MockNodeFileInternalService{}
-		defer nodeFileService.AssertExpectations(t)
-		ctrl.RemoteFileService.NodeFileService = nodeFileService
-		nodeFileService.On("IsNotExist", mock.Anything).Once().Return(false)
+		// mock NodeFileInfoService
+		nodeFileInfoService := &mockedNodeItem.MockNodeFileInfoInternalService{}
+		defer nodeFileInfoService.AssertExpectations(t)
+		ctrl.RemoteFileInfoService.NodeFileInfoService = nodeFileInfoService
+		nodeFileInfoService.On("IsNotExist", mock.Anything).Once().Return(false)
 		//
 
-		id := remotefile.GenerateRemoteFileID(peerId, uint(record.ItemID), record.FilePath)
+		peerId := appnode.EncodePeerID(peerIdBytes)
 
 		w := httptest.NewRecorder()
-		url := fmt.Sprintf("/remote-files/%s", id)
+		url := fmt.Sprintf("/remote-items/%s/%d/file/%s", peerId, record.ItemID, record.FilePath)
 		req := httptest.NewRequest("GET", url, nil)
 		app.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp remotefile.RemoteFile
+		var resp remoteitem.RemoteFileInfo
 		err = json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.Nil(t, err)
 
@@ -101,22 +97,21 @@ func TestRemoteFileController(t *testing.T) {
 		assert.Equal(t, record.CreatedAt, resp.CreatedAt.Unix())
 		assert.Equal(t, record.UpdatedAt, resp.UpdatedAt.Unix())
 		assert.Equal(t, record.FilePath, resp.FilePath)
-		assert.Equal(t, id, resp.ID)
+
 	})
 
-	t.Run("GET /remote-files?peerId=&itemId=", func(t *testing.T) {
-
+	t.Run("GET /remote-items/:peerId/:id/files/*filepath", func(t *testing.T) {
 		app, ctrl := setup()
 
 		// mock SamplePeer
 		samplePeer := &mockedSample.MockSamplePeer{}
 		defer samplePeer.AssertExpectations(t)
-		ctrl.RemoteFileService.RemoteFileBroker.SamplePeer = samplePeer
+		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.SamplePeer = samplePeer
 		//
 
 		// mock response
-		peerId := []byte("peerId")
-		var record remotefile.RemoteFileRecord
+		peerIdBytes := []byte("peerId")
+		var record remoteitem.RemoteFileInfoRecord
 		record.ID = "recordId"
 		record.ItemID = 1
 		record.Name = "test.txt"
@@ -128,31 +123,36 @@ func TestRemoteFileController(t *testing.T) {
 		record.CreatedAt = time.Now().Unix()
 		record.UpdatedAt = time.Now().Unix()
 
-		var recordList remotefile.RemoteFileRecordList
+		var recordList remoteitem.RemoteFileInfoRecordList
 		recordList.Items = append(recordList.Items, &record)
 		resBody, err := proto.Marshal(&recordList)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", context.Background(), peerId, remotefile.SearchRemoteFiles, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
-			resp := args.Get(3).(*remotefile.RemoteFileRecordList)
+		samplePeer.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SearchRemoteFileInfos, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+			resp := args.Get(3).(*remoteitem.RemoteFileInfoRecordList)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)
 
-			condition := args.Get(4).(*remotefile.RemoteFileRecordSearchCondition)
+			condition := args.Get(4).(*remoteitem.RemoteFileInfoRecordSearchCondition)
 			assert.Equal(t, record.ItemID, condition.ItemID)
+			assert.Equal(t, record.ParentPath, condition.ParentPath)
 		})
 
-		base64PeerID := appnode.EncodePeerID(peerId)
+		// mock NodeFileInfoService
+		nodeFileInfoService := &mockedNodeItem.MockNodeFileInfoInternalService{}
+		defer nodeFileInfoService.AssertExpectations(t)
+		ctrl.RemoteFileInfoService.NodeFileInfoService = nodeFileInfoService
+		nodeFileInfoService.On("IsNotExist", mock.Anything).Once().Return(false)
+		//
+
+		peerId := appnode.EncodePeerID(peerIdBytes)
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/remote-files", nil)
-		q := req.URL.Query()
-		q.Add("peerId", base64PeerID)
-		q.Add("itemId", strconv.FormatUint(uint64(record.ItemID), 10))
-		req.URL.RawQuery = q.Encode()
+		url := fmt.Sprintf("/remote-items/%s/%d/files/%s", peerId, record.ItemID, record.ParentPath)
+		req := httptest.NewRequest("GET", url, nil)
 		app.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
-		var results []remotefile.RemoteFile
+		var results []remoteitem.RemoteFileInfo
 		err = json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(results))
@@ -166,7 +166,5 @@ func TestRemoteFileController(t *testing.T) {
 		assert.Equal(t, record.Available, results[0].Available)
 		assert.Equal(t, record.CreatedAt, results[0].CreatedAt.Unix())
 		assert.Equal(t, record.UpdatedAt, results[0].UpdatedAt.Unix())
-
 	})
-
 }

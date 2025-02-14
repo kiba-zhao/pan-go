@@ -1,4 +1,4 @@
-package remotefile
+package remoteitem
 
 import (
 	"bytes"
@@ -8,17 +8,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type RemoteFileTopic struct {
-	RemoteFileService *RemoteFileService
+type RemoteFileInfoTopic struct {
+	RemoteFileInfoService *RemoteFileInfoService
 }
 
-func (topic *RemoteFileTopic) SetupToPeer(router peer.PeerRouter) error {
-	router.Handle(SearchRemoteFiles, topic.Search)
-	router.Handle(SelectRemoteFile, topic.Select)
+func (topic *RemoteFileInfoTopic) SetupToPeer(router peer.PeerRouter) error {
+	router.Handle(SearchRemoteFileInfos, topic.Search)
+	router.Handle(SelectRemoteFileInfo, topic.Select)
 	return nil
 }
 
-func (topic *RemoteFileTopic) Search(ctx *peer.Context, next peer.Next) error {
+func (topic *RemoteFileInfoTopic) Search(ctx *peer.Context, next peer.Next) error {
 
 	req := ctx.Request()
 	body, err := io.ReadAll(req)
@@ -27,14 +27,14 @@ func (topic *RemoteFileTopic) Search(ctx *peer.Context, next peer.Next) error {
 		return err
 	}
 
-	var condition RemoteFileRecordSearchCondition
+	var condition RemoteFileInfoRecordSearchCondition
 	err = proto.Unmarshal(body, &condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
 		return err
 	}
 
-	fileItemList, err := topic.RemoteFileService.SearchForTopic(&condition)
+	fileItemList, err := topic.RemoteFileInfoService.SearchForTopic(&condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeInternalError, err)
 		return err
@@ -50,7 +50,7 @@ func (topic *RemoteFileTopic) Search(ctx *peer.Context, next peer.Next) error {
 	return err
 }
 
-func (topic *RemoteFileTopic) Select(ctx *peer.Context, next peer.Next) error {
+func (topic *RemoteFileInfoTopic) Select(ctx *peer.Context, next peer.Next) error {
 
 	req := ctx.Request()
 	body, err := io.ReadAll(req)
@@ -59,14 +59,14 @@ func (topic *RemoteFileTopic) Select(ctx *peer.Context, next peer.Next) error {
 		return err
 	}
 
-	var condition RemoteFileRecordSelectCondition
+	var condition RemoteFileInfoRecordSelectCondition
 	err = proto.Unmarshal(body, &condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
 		return err
 	}
 
-	record, err := topic.RemoteFileService.SelectForTopic(&condition)
+	record, err := topic.RemoteFileInfoService.SelectForTopic(&condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeInternalError, err)
 		return err

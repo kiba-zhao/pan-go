@@ -1,4 +1,4 @@
-package remotefile_test
+package remoteitem_test
 
 import (
 	"bytes"
@@ -11,21 +11,20 @@ import (
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/proto"
 
-	nodefile "pan/extfs/node_file"
 	nodeitem "pan/extfs/node_item"
-	remotefile "pan/extfs/remote_file"
+	remoteitem "pan/extfs/remote_item"
 
-	mockedNodeFile "pan/mocks/pan/extfs/node_file"
+	mockedNodeItem "pan/mocks/pan/extfs/node_item"
 )
 
-func TestRemoteFileTopic(t *testing.T) {
+func TestRemoteFileInfoTopic(t *testing.T) {
 
-	setup := func() (*peer.App, *remotefile.RemoteFileTopic) {
-		ctrl := &remotefile.RemoteFileTopic{}
+	setup := func() (*peer.App, *remoteitem.RemoteFileInfoTopic) {
+		ctrl := &remoteitem.RemoteFileInfoTopic{}
 		app := peer.NewApp()
 		ctrl.SetupToPeer(app)
 
-		ctrl.RemoteFileService = &remotefile.RemoteFileService{}
+		ctrl.RemoteFileInfoService = &remoteitem.RemoteFileInfoService{}
 		return app, ctrl
 	}
 
@@ -34,39 +33,38 @@ func TestRemoteFileTopic(t *testing.T) {
 		app, ctrl := setup()
 
 		// mock NodeFileService
-		nodeFileService := mockedNodeFile.MockNodeFileInternalService{}
-		defer nodeFileService.AssertExpectations(t)
-		ctrl.RemoteFileService.NodeFileService = &nodeFileService
+		nodeFileInfoService := mockedNodeItem.MockNodeFileInfoInternalService{}
+		defer nodeFileInfoService.AssertExpectations(t)
+		ctrl.RemoteFileInfoService.NodeFileInfoService = &nodeFileInfoService
 
-		var nodeFile nodefile.NodeFile
-		nodeFile.ID = "nodeFileId"
+		var nodeFile nodeitem.NodeFileInfo
+
 		nodeFile.ItemID = 1
 		nodeFile.Name = "test.txt"
 		nodeFile.Size = 123
 		nodeFile.FileType = nodeitem.FileTypeFile
-		nodeFile.MimeType = "text/plain"
 		nodeFile.ParentPath = "parentPath"
 		nodeFile.FilePath = "filePath"
 		nodeFile.Available = true
 		nodeFile.CreatedAt = time.Now()
 		nodeFile.UpdatedAt = time.Now()
 
-		var condition remotefile.RemoteFileRecordSearchCondition
+		var condition remoteitem.RemoteFileInfoRecordSearchCondition
 		condition.ItemID = 1
-		condition.ParentPath = &nodeFile.ParentPath
+		condition.ParentPath = nodeFile.ParentPath
 
-		nodeFileService.On("TraverseWithCondition", mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
-			traverseFn := args.Get(0).(func(item nodefile.NodeFile) error)
+		nodeFileInfoService.On("TraverseWithCondition", mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+			traverseFn := args.Get(0).(func(item nodeitem.NodeFileInfo) error)
 			traverseFn(nodeFile)
-			condition_ := args.Get(1).(nodefile.NodeFileSearchCondition)
+			condition_ := args.Get(1).(nodeitem.NodeFileInfoSearchCondition)
 			assert.Equal(t, condition.ItemID, uint32(condition_.ItemID))
-			assert.Equal(t, *condition.ParentPath, *condition_.ParentPath)
+			assert.Equal(t, condition.ParentPath, condition_.ParentPath)
 		})
 
 		// request and response
 		reqBytes, err := proto.Marshal(&condition)
 		assert.Nil(t, err)
-		req := peer.NewRequest(remotefile.SearchRemoteFiles, bytes.NewReader(reqBytes))
+		req := peer.NewRequest(remoteitem.SearchRemoteFileInfos, bytes.NewReader(reqBytes))
 		reqReader := peer.MarshalRequest(req)
 		var ctx peer.Context
 		peer.InitContext(&ctx)
@@ -79,7 +77,7 @@ func TestRemoteFileTopic(t *testing.T) {
 		body, err := io.ReadAll(ctx)
 		assert.Nil(t, err)
 
-		var results remotefile.RemoteFileRecordList
+		var results remoteitem.RemoteFileInfoRecordList
 		err = proto.Unmarshal(body, &results)
 		assert.Nil(t, err)
 
@@ -90,7 +88,6 @@ func TestRemoteFileTopic(t *testing.T) {
 		assert.Equal(t, nodeFile.FileType, results.Items[0].FileType)
 		assert.Equal(t, nodeFile.ParentPath, results.Items[0].ParentPath)
 		assert.Equal(t, nodeFile.FilePath, results.Items[0].FilePath)
-		assert.Equal(t, nodeFile.MimeType, results.Items[0].MimeType)
 		assert.Equal(t, nodeFile.Available, results.Items[0].Available)
 		assert.Equal(t, nodeFile.CreatedAt.Unix(), results.Items[0].CreatedAt)
 		assert.Equal(t, nodeFile.UpdatedAt.Unix(), results.Items[0].UpdatedAt)
@@ -100,12 +97,12 @@ func TestRemoteFileTopic(t *testing.T) {
 		app, ctrl := setup()
 
 		// mock NodeFileService
-		nodeFileService := mockedNodeFile.MockNodeFileInternalService{}
-		defer nodeFileService.AssertExpectations(t)
-		ctrl.RemoteFileService.NodeFileService = &nodeFileService
+		nodeFileInfoService := mockedNodeItem.MockNodeFileInfoInternalService{}
+		defer nodeFileInfoService.AssertExpectations(t)
+		ctrl.RemoteFileInfoService.NodeFileInfoService = &nodeFileInfoService
 
-		var nodeFile nodefile.NodeFile
-		nodeFile.ID = "nodeFileId"
+		var nodeFile nodeitem.NodeFileInfo
+
 		nodeFile.ItemID = 1
 		nodeFile.Name = "test.txt"
 		nodeFile.Size = 123
@@ -116,17 +113,16 @@ func TestRemoteFileTopic(t *testing.T) {
 		nodeFile.CreatedAt = time.Now()
 		nodeFile.UpdatedAt = time.Now()
 
-		nodeFileService.On("SelectWithCondition", mock.Anything).Once().Return(nodeFile, nil)
+		nodeFileInfoService.On("Select", nodeFile.ItemID, nodeFile.FilePath).Once().Return(nodeFile, nil)
 
-		var condition remotefile.RemoteFileRecordSelectCondition
+		var condition remoteitem.RemoteFileInfoRecordSelectCondition
 		condition.ItemID = uint32(nodeFile.ItemID)
-		condition.ParentPath = nodeFile.ParentPath
-		condition.Name = nodeFile.Name
+		condition.FilePath = nodeFile.FilePath
 
 		// request and response
 		reqBytes, err := proto.Marshal(&condition)
 		assert.Nil(t, err)
-		req := peer.NewRequest(remotefile.SelectRemoteFile, bytes.NewReader(reqBytes))
+		req := peer.NewRequest(remoteitem.SelectRemoteFileInfo, bytes.NewReader(reqBytes))
 		reqReader := peer.MarshalRequest(req)
 		var ctx peer.Context
 		peer.InitContext(&ctx)
@@ -139,7 +135,7 @@ func TestRemoteFileTopic(t *testing.T) {
 		body, err := io.ReadAll(ctx)
 		assert.Nil(t, err)
 
-		var results remotefile.RemoteFileRecord
+		var results remoteitem.RemoteFileInfoRecord
 		err = proto.Unmarshal(body, &results)
 		assert.Nil(t, err)
 

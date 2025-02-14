@@ -1,4 +1,4 @@
-package remoteblock
+package remoteitem
 
 import (
 	"io"
@@ -7,16 +7,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type RemoteBlockTopic struct {
-	RemoteBlockService *RemoteBlockService
+type RemoteFileStreamTopic struct {
+	RemoteFileStreamService *RemoteFileStreamService
 }
 
-func (topic *RemoteBlockTopic) SetupToPeer(router peer.PeerRouter) error {
-	router.Handle(SelectRemoteBlock, topic.Select)
+func (topic *RemoteFileStreamTopic) SetupToPeer(router peer.PeerRouter) error {
 	return nil
 }
 
-func (topic *RemoteBlockTopic) Select(ctx *peer.Context, next peer.Next) error {
+func (topic *RemoteFileStreamTopic) Select(ctx *peer.Context, next peer.Next) error {
 	req := ctx.Request()
 	body, err := io.ReadAll(req)
 	if err != nil {
@@ -24,14 +23,14 @@ func (topic *RemoteBlockTopic) Select(ctx *peer.Context, next peer.Next) error {
 		return err
 	}
 
-	var condition RemoteBlockSelectCondition
+	var condition RemoteFileStreamSelectCondition
 	err = proto.Unmarshal(body, &condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
 		return err
 	}
 
-	res, err := topic.RemoteBlockService.SelectForTopic(&condition)
+	res, err := topic.RemoteFileStreamService.SelectForTopic(&condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeInternalError, err)
 		return err

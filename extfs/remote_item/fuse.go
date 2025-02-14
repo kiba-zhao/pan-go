@@ -13,56 +13,71 @@ import (
 	"github.com/hanwen/go-fuse/v2/fuse"
 
 	nodeitem "pan/extfs/node_item"
-	remotefile "pan/extfs/remote_file"
 )
 
-var ErrRemoteItemFUSENameConflict = errors.New("remotefile.FUSERemoteItem Error: Name Conflict")
+var ErrRemoteItemFUSENameConflict = errors.New("remoteitem.FUSERemoteItem Error: Name Conflict")
+
+type FUSERemoteInfo interface {
+	PeerID() peer.PeerID
+}
 
 type RemoteItemServiceFUSEProvider interface {
 	RemoteItemService() *RemoteItemService
-	remotefile.RemoteFileServiceFUSEProvider
+	RemoteFileInfoServiceFUSEProvider
 }
 
-type FUSERemoteFileInfo struct {
-	provider RemoteItemServiceFUSEProvider
-	peerId   peer.PeerID
-	itemId   uint32
+type FUSERemoteItem struct {
+	provider   RemoteItemServiceFUSEProvider
+	remoteInfo FUSERemoteInfo
+	itemId     uint
 }
 
-func (fuserfe *FUSERemoteFileInfo) PeerID() peer.PeerID {
-	return fuserfe.peerId
+func (fuseri *FUSERemoteItem) PeerID() peer.PeerID {
+	return fuseri.remoteInfo.PeerID()
 }
 
-func (fuserfe *FUSERemoteFileInfo) ItemID() uint32 {
-	return fuserfe.itemId
+func (fuseri *FUSERemoteItem) ItemID() uint {
+	return fuseri.itemId
 }
 
-func (fuserfe *FUSERemoteFileInfo) GetRemoteFileAttr(ctx context.Context, out *fuse.AttrOut) syscall.Errno {
+func (fuseri *FUSERemoteItem) GetRemoteFileAttr(ctx context.Context, out *fuse.AttrOut) syscall.Errno {
 	var condition RemoteItemRecordSelectCondition
-	id := fuserfe.ItemID()
+	id := uint32(fuseri.ItemID())
 	condition.ID = &id
-	remoteItemService := fuserfe.provider.RemoteItemService()
-	remoteNode, err := remoteItemService.SelectWithCondition(fuserfe.peerId, &condition)
+	remoteItemService := fuseri.provider.RemoteItemService()
+	remoteNodeItem, err := remoteItemService.SelectWithCondition(fuseri.PeerID(), &condition)
 	if err == nil {
-		mtime := time.Unix(remoteNode.UpdatedAt, 0)
-		out.SetTimes(nil, &mtime, nil)
-		out.Size = uint64(remoteNode.Size)
+
 	}
 	if err != nil {
 		return syscall.ENOENT
 	}
 
+	mtime := time.Unix(remoteNodeItem.UpdatedAt, 0)
+	out.SetTimes(nil, &mtime, nil)
+	out.Size = uint64(remoteNodeItem.Size)
 	out.Nlink = 1
+
+	switch remoteNodeItem.FileType {
+	case nodeitem.FileTypeFolder:
+		out.Mode = fuse.S_IFDIR
+	case nodeitem.FileTypeFile:
+		out.Mode = fuse.S_IFREG
+	}
 	return 0
 }
 
-type FUSERemoteItem struct {
+type FUSERemoteItemList struct {
 	fs.Inode
-	Provider RemoteItemServiceFUSEProvider
-	PeerID   peer.PeerID
+	provider RemoteItemServiceFUSEProvider
+	peerId   peer.PeerID
 }
 
-func (fuserni *FUSERemoteItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+func (fusernil *FUSERemoteItemList) PeerID() peer.PeerID {
+	return fusernil.peerId
+}
+
+func (fusernil *FUSERemoteItemList) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
 	out.Mode = fuse.S_IFDIR
 	out.Size = 4096
 	now := time.Now()
@@ -71,11 +86,11 @@ func (fuserni *FUSERemoteItem) Getattr(ctx context.Context, f fs.FileHandle, out
 	return fs.OK
 }
 
-func (fuserni *FUSERemoteItem) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
+func (fusernil *FUSERemoteItemList) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 
 	names := make([]string, 0)
 	dirs := make([]fuse.DirEntry, 0)
-	remoteItemService := fuserni.Provider.RemoteItemService()
+	remoteItemService := fusernil.provider.RemoteItemService()
 	err := remoteItemService.TraverseRecordWithPeerID(func(record *RemoteItemRecord) error {
 		idx, ok := slices.BinarySearch(names, record.Name)
 		if ok {
@@ -93,30 +108,30 @@ func (fuserni *FUSERemoteItem) Readdir(ctx context.Context) (fs.DirStream, sysca
 		}
 		dirs = append(dirs, dirEntry)
 		return nil
-	}, fuserni.PeerID)
+	}, fusernil.PeerID())
 
 	if err != nil {
 		return nil, syscall.ENOENT
 	}
 
 	releaseNames := make([]string, 0)
-	for n := range fuserni.Children() {
+	for n := range fusernil.Children() {
 		if _, ok := slices.BinarySearch(names, n); ok {
 			continue
 		}
 		releaseNames = append(releaseNames, n)
 	}
 	if len(releaseNames) > 0 {
-		fuserni.RmChild(releaseNames...)
+		fusernil.RmChild(releaseNames...)
 	}
 	return fs.NewListDirStream(dirs), 0
 }
 
-func (fuserni *FUSERemoteItem) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
+func (fusernil *FUSERemoteItemList) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
 	var condition RemoteItemRecordSelectCondition
 	condition.Name = &name
-	remoteItemService := fuserni.Provider.RemoteItemService()
-	record, err := remoteItemService.SelectWithCondition(fuserni.PeerID, &condition)
+	remoteItemService := fusernil.provider.RemoteItemService()
+	record, err := remoteItemService.SelectWithCondition(fusernil.PeerID(), &condition)
 	if err != nil {
 		return nil, syscall.ENOENT
 	}
@@ -129,18 +144,25 @@ func (fuserni *FUSERemoteItem) Lookup(ctx context.Context, name string, out *fus
 		mode = fuse.S_IFDIR
 	}
 
-	inode := fuserni.GetChild(name)
+	inode := fusernil.GetChild(name)
 	if inode != nil {
-		fuseRemoteFile, ok := inode.Operations().(*remotefile.FUSERemoteFile)
-		if ok && fuseRemoteFile.ItemID() == record.ID && inode.Mode() == mode {
+		fuseRemoteFile, ok := inode.Operations().(*FUSERemoteFile)
+		if ok && fuseRemoteFile.ItemID() == uint(record.ID) && inode.Mode() == mode {
 			return inode, fs.OK
 		}
-		fuserni.RmChild(name)
+		fusernil.RmChild(name)
 	}
 
-	fileInfo := &FUSERemoteFileInfo{peerId: fuserni.PeerID, itemId: record.ID, provider: fuserni.Provider}
-	remoteFile := &remotefile.FUSERemoteFile{Provider: fuserni.Provider, FUSERemoteFIleInfo: fileInfo}
-	inode = fuserni.NewInode(ctx, remoteFile, fs.StableAttr{Mode: mode})
+	itemInfo := &FUSERemoteItem{remoteInfo: fusernil, itemId: uint(record.ID), provider: fusernil.provider}
+	remoteFile := &FUSERemoteFile{provider: fusernil.provider, itemInfo: itemInfo}
+	inode = fusernil.NewInode(ctx, remoteFile, fs.StableAttr{Mode: mode})
 
 	return inode, fs.OK
+}
+
+func NewFUSENode(peerId peer.PeerID, provider RemoteItemServiceFUSEProvider) fs.InodeEmbedder {
+	var fuse FUSERemoteItemList
+	fuse.peerId = peerId
+	fuse.provider = provider
+	return &fuse
 }

@@ -52,14 +52,13 @@ func (c *NodeItemController) Update(ctx web.WebContext) {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-	paramId := ctx.Param("id")
-	id, err := strconv.ParseUint(paramId, 10, 32)
+	id, err := ExtractIdWithParam("id", ctx)
 	if err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	nodeItem, err := c.NodeItemService.Update(fields, uint(id))
+	nodeItem, err := c.NodeItemService.Update(fields, id)
 	if err == ErrNodeItemNotFound {
 		ctx.AbortWithError(http.StatusNotFound, err)
 		return
@@ -73,14 +72,13 @@ func (c *NodeItemController) Update(ctx web.WebContext) {
 
 func (c *NodeItemController) Select(ctx web.WebContext) {
 
-	paramId := ctx.Param("id")
-	id, err := strconv.ParseUint(paramId, 10, 32)
+	id, err := ExtractIdWithParam("id", ctx)
 	if err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	nodeItem, err := c.NodeItemService.Select(uint(id))
+	nodeItem, err := c.NodeItemService.Select(id)
 	if c.NodeItemService.IsNotExist(err) {
 		ctx.AbortWithError(http.StatusNotFound, err)
 		return
@@ -93,13 +91,13 @@ func (c *NodeItemController) Select(ctx web.WebContext) {
 }
 
 func (c *NodeItemController) Delete(ctx web.WebContext) {
-	paramId := ctx.Param("id")
-	id, err := strconv.ParseUint(paramId, 10, 32)
+
+	id, err := ExtractIdWithParam("id", ctx)
 	if err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-	err = c.NodeItemService.Delete(uint(id))
+	err = c.NodeItemService.Delete(id)
 	if err == ErrNodeItemNotFound {
 		ctx.AbortWithError(http.StatusNotFound, err)
 		return
@@ -109,4 +107,13 @@ func (c *NodeItemController) Delete(ctx web.WebContext) {
 		return
 	}
 	ctx.Status(http.StatusNoContent)
+}
+
+func ExtractIdWithParam(name string, ctx web.WebContext) (uint, error) {
+	paramId := ctx.Param(name)
+	id, err := strconv.ParseUint(paramId, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint(id), err
 }

@@ -118,8 +118,7 @@ func TestNodeItemController(t *testing.T) {
 		assert.Equal(t, newEntity.FilePath, result.FilePath)
 		assert.Equal(t, newEntity.FileType, result.FileType)
 		assert.Equal(t, stat.Size(), result.Size)
-		assert.Equal(t, newEntity.TagQuantity, result.TagQuantity)
-		assert.Equal(t, newEntity.PendingTagQuantity, result.PendingTagQuantity)
+
 	})
 
 	t.Run("DELETE /node-items/:id", func(t *testing.T) {
@@ -196,8 +195,7 @@ func TestNodeItemController(t *testing.T) {
 		assert.Equal(t, stat.Size(), result.Size)
 		assert.Equal(t, entity.UpdatedAt, result.UpdatedAt)
 		assert.Equal(t, entity.CreatedAt, result.CreatedAt)
-		assert.Equal(t, entity.TagQuantity, result.TagQuantity)
-		assert.Equal(t, entity.PendingTagQuantity, result.PendingTagQuantity)
+
 	})
 
 	t.Run("GET /node-items", func(t *testing.T) {

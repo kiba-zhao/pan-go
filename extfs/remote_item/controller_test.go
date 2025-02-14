@@ -33,7 +33,7 @@ func TestRemoteItemController(t *testing.T) {
 		return app, ctrl
 	}
 
-	t.Run("GET /remote-items/:id", func(t *testing.T) {
+	t.Run("GET /remote-items/:peerId/:id", func(t *testing.T) {
 		app, ctrl := setup()
 
 		// mock SamplePeer
@@ -43,7 +43,7 @@ func TestRemoteItemController(t *testing.T) {
 		//
 
 		// mock response
-		peerId := []byte("peerId")
+		peerIdBytes := []byte("peerId")
 		var record remoteitem.RemoteItemRecord
 		record.ID = 1
 		record.Name = "test.txt"
@@ -56,17 +56,17 @@ func TestRemoteItemController(t *testing.T) {
 		resBody, err := proto.Marshal(&record)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", context.Background(), peerId, remoteitem.SelectRemoteItem, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+		samplePeer.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectRemoteItem, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
 			resp := args.Get(3).(*remoteitem.RemoteItemRecord)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)
 		})
 		//
 
-		id := remoteitem.GenerateRemoteItemId(peerId, uint(record.ID))
+		peerId := appnode.EncodePeerID(peerIdBytes)
 
 		w := httptest.NewRecorder()
-		url := fmt.Sprintf("/remote-items/%s", id)
+		url := fmt.Sprintf("/remote-items/%s/%d", peerId, record.ID)
 		req := httptest.NewRequest("GET", url, nil)
 		app.ServeHTTP(w, req)
 
@@ -75,8 +75,7 @@ func TestRemoteItemController(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.Nil(t, err)
 
-		assert.Equal(t, id, resp.ID)
-		assert.Equal(t, appnode.EncodePeerID(peerId), resp.PeerID)
+		assert.Equal(t, peerId, resp.PeerID)
 		assert.Equal(t, uint(record.ID), resp.ItemID)
 		assert.Equal(t, record.Name, resp.Name)
 		assert.Equal(t, record.FileType, resp.FileType)
@@ -86,7 +85,7 @@ func TestRemoteItemController(t *testing.T) {
 		assert.Equal(t, time.Unix(record.UpdatedAt, 0), resp.UpdatedAt)
 	})
 
-	t.Run("GET /remote-items?peerId=", func(t *testing.T) {
+	t.Run("GET /remote-items/:peerId", func(t *testing.T) {
 
 		app, ctrl := setup()
 
@@ -97,7 +96,7 @@ func TestRemoteItemController(t *testing.T) {
 		//
 
 		// mock response
-		peerId := []byte("peerId")
+		peerIdBytes := []byte("peerId")
 		var record remoteitem.RemoteItemRecord
 		record.ID = 1
 		record.Name = "test.txt"
@@ -112,18 +111,16 @@ func TestRemoteItemController(t *testing.T) {
 		resBody, err := proto.Marshal(&recordList)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", context.Background(), peerId, remoteitem.SelectAllRemoteItems, mock.Anything, nil).Once().Return(nil).Run(func(args mock.Arguments) {
+		samplePeer.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectAllRemoteItems, mock.Anything, nil).Once().Return(nil).Run(func(args mock.Arguments) {
 			resp := args.Get(3).(*remoteitem.RemoteItemRecordList)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)
 		})
 
-		base64PeerID := appnode.EncodePeerID(peerId)
+		peerId := appnode.EncodePeerID(peerIdBytes)
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/remote-items", nil)
-		q := req.URL.Query()
-		q.Add("peerId", base64PeerID)
-		req.URL.RawQuery = q.Encode()
+		url := fmt.Sprintf("/remote-items/%s", peerId)
+		req := httptest.NewRequest("GET", url, nil)
 		app.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
@@ -133,7 +130,7 @@ func TestRemoteItemController(t *testing.T) {
 		assert.Equal(t, 1, len(results))
 
 		assert.Equal(t, uint(record.ID), results[0].ItemID)
-		assert.Equal(t, base64PeerID, results[0].PeerID)
+		assert.Equal(t, peerId, results[0].PeerID)
 		assert.Equal(t, record.Name, results[0].Name)
 		assert.Equal(t, record.FileType, results[0].FileType)
 		assert.Equal(t, record.Size, results[0].Size)

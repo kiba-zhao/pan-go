@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"pan/app/web"
+	nodeitem "pan/extfs/node_item"
 )
 
 type RemoteItemController struct {
@@ -11,19 +12,19 @@ type RemoteItemController struct {
 }
 
 func (ctrl *RemoteItemController) SetupToWeb(router web.WebRouter) error {
-	router.GET("/remote-items", ctrl.Search)
-	router.GET("/remote-items/:id", ctrl.Select)
+	router.GET("/remote-items/:peerId", ctrl.Search)
+	router.GET("/remote-items/:peerId/:id", ctrl.Select)
 	return nil
 }
 
 func (ctrl *RemoteItemController) Search(ctx web.WebContext) {
-	var condition RemoteItemSearchCondition
-	if err := ctx.ShouldBind(&condition); err != nil {
+	peerId, err := ExtractPeerIdWithParam("peerId", ctx)
+	if err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	total, items, err := ctrl.RemoteItemService.Search(condition)
+	total, items, err := ctrl.RemoteItemService.Search(peerId)
 	if err != nil {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -33,8 +34,19 @@ func (ctrl *RemoteItemController) Search(ctx web.WebContext) {
 }
 
 func (c *RemoteItemController) Select(ctx web.WebContext) {
-	paramId := ctx.Param("id")
-	remoteItem, err := c.RemoteItemService.Select(paramId)
+	peerId, err := ExtractPeerIdWithParam("peerId", ctx)
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	id, err := nodeitem.ExtractIdWithParam("id", ctx)
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	remoteItem, err := c.RemoteItemService.Select(peerId, id)
 	if errors.Is(err, ErrRemoteItemInvalidID) {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
@@ -48,4 +60,12 @@ func (c *RemoteItemController) Select(ctx web.WebContext) {
 		return
 	}
 	ctx.JSON(http.StatusOK, remoteItem)
+}
+
+func ExtractPeerIdWithParam(name string, ctx web.WebContext) (string, error) {
+	peerId := ctx.Param("peerId")
+	if len(peerId) <= 0 {
+		return "", errors.New("invalid peer id")
+	}
+	return peerId, nil
 }

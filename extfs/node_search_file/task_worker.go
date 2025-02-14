@@ -226,7 +226,7 @@ func (w *taskWorkerImpl) NewNodeSearchFile(taskIdx int, item nodeitem.NodeItem, 
 		return rate, ErrGernerateRateFailed
 	}
 
-	mimeType, err := nodeitem.GenerateMimeType(filePath)
+	mimeType, err := nodeitem.GenerateMimeTypeWithFilePath(filePath)
 	if err == nil {
 		rate.MimeType = mimeType
 	}

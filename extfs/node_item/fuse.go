@@ -17,7 +17,7 @@ type NodeItemServiceFUSEProvider interface {
 
 type FUSENodeItem struct {
 	fs.Inode
-	Provider NodeItemServiceFUSEProvider
+	provider NodeItemServiceFUSEProvider
 }
 
 func (fuseni *FUSENodeItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
@@ -32,7 +32,7 @@ func (fuseni *FUSENodeItem) Getattr(ctx context.Context, f fs.FileHandle, out *f
 func (fuseni *FUSENodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 	dirs := make([]fuse.DirEntry, 0)
 	names := make([]string, 0)
-	nodeItemService := fuseni.Provider.NodeItemService()
+	nodeItemService := fuseni.provider.NodeItemService()
 	err := nodeItemService.TraverseAll(func(nodeItem NodeItem) error {
 		idx, ok := slices.BinarySearch(names, nodeItem.Name)
 		if ok {
@@ -69,7 +69,7 @@ func (fuseni *FUSENodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.
 }
 
 func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
-	nodeItemService := fuseni.Provider.NodeItemService()
+	nodeItemService := fuseni.provider.NodeItemService()
 	nodeItem, err := nodeItemService.SelectByName(name)
 	if err != nil || !nodeItem.Available {
 		return nil, syscall.ENOENT
@@ -101,4 +101,10 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 	inode = fuseni.NewInode(ctx, itemNode, fs.StableAttr{Mode: mode})
 
 	return inode, fs.OK
+}
+
+func NewFUSENode(provider NodeItemServiceFUSEProvider) fs.InodeEmbedder {
+	var fuse FUSENodeItem
+	fuse.provider = provider
+	return &fuse
 }

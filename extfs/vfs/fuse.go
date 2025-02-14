@@ -10,8 +10,6 @@ import (
 	"github.com/hanwen/go-fuse/v2/fuse"
 
 	nodeitem "pan/extfs/node_item"
-	remoteblock "pan/extfs/remote_block"
-	remotefile "pan/extfs/remote_file"
 	remoteitem "pan/extfs/remote_item"
 	remotenode "pan/extfs/remote_node"
 )
@@ -26,12 +24,12 @@ func (fusesp *FUSEServiceProvider) LocalName() string {
 	return fusesp.FUSEFileSystem.settings.LocalName
 }
 
-func (fusesp *FUSEServiceProvider) RemoteBlockService() *remoteblock.RemoteBlockService {
-	return fusesp.FUSEFileSystem.RemoteBlockService
+func (fusesp *FUSEServiceProvider) RemoteFileStreamService() *remoteitem.RemoteFileStreamService {
+	return fusesp.FUSEFileSystem.RemoteFileStreamService
 }
 
-func (fusesp *FUSEServiceProvider) RemoteFileService() *remotefile.RemoteFileService {
-	return fusesp.FUSEFileSystem.RemoteFileService
+func (fusesp *FUSEServiceProvider) RemoteFileInfoService() *remoteitem.RemoteFileInfoService {
+	return fusesp.FUSEFileSystem.RemoteFileInfoService
 }
 
 func (fusesp *FUSEServiceProvider) RemoteItemService() *remoteitem.RemoteItemService {
@@ -47,22 +45,22 @@ func (fusesp *FUSEServiceProvider) NodeItemService() *nodeitem.NodeItemService {
 }
 
 type FUSEFileSystem struct {
-	RemoteBlockService *remoteblock.RemoteBlockService
-	RemoteFileService  *remotefile.RemoteFileService
-	RemoteItemService  *remoteitem.RemoteItemService
-	RemoteNodeService  *remotenode.RemoteNodeService
-	NodeItemService    *nodeitem.NodeItemService
-	server             *fuse.Server
-	settings           *VFSSettings
-	rw                 sync.RWMutex
-	root               fs.InodeEmbedder
-	once               sync.Once
+	RemoteFileStreamService *remoteitem.RemoteFileStreamService
+	RemoteFileInfoService   *remoteitem.RemoteFileInfoService
+	RemoteItemService       *remoteitem.RemoteItemService
+	RemoteNodeService       *remotenode.RemoteNodeService
+	NodeItemService         *nodeitem.NodeItemService
+	server                  *fuse.Server
+	settings                *VFSSettings
+	rw                      sync.RWMutex
+	root                    fs.InodeEmbedder
+	once                    sync.Once
 }
 
 func (fusefs *FUSEFileSystem) Root() fs.InodeEmbedder {
 	fusefs.once.Do(func() {
 		provider := &FUSEServiceProvider{FUSEFileSystem: fusefs}
-		fusefs.root = &remotenode.FUSERemoteNode{Provider: provider}
+		fusefs.root = remotenode.NewFUSENode(provider)
 	})
 	return fusefs.root
 }

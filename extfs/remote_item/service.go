@@ -1,8 +1,6 @@
 package remoteitem
 
 import (
-	"encoding/base64"
-	"encoding/binary"
 	"errors"
 	appnode "pan/app/app_node"
 	"pan/app/peer"
@@ -29,14 +27,14 @@ func (s *RemoteItemService) IsNotExist(err error) bool {
 	return s.NodeItemService.IsNotExist(err)
 }
 
-func (s *RemoteItemService) Select(id string) (RemoteItem, error) {
+func (s *RemoteItemService) Select(peerId string, itemId uint) (RemoteItem, error) {
 
-	itemId, peerId, err := ParseRemoteItemId(id)
+	peerIdBytes, err := appnode.DecodePeerID(peerId)
 	if err != nil {
 		return RemoteItem{}, err
 	}
 	itemId32 := uint32(itemId)
-	record, err := s.SelectWithCondition(peerId, &RemoteItemRecordSelectCondition{ID: &itemId32})
+	record, err := s.SelectWithCondition(peerIdBytes, &RemoteItemRecordSelectCondition{ID: &itemId32})
 
 	if err != nil {
 		return RemoteItem{}, err
@@ -44,12 +42,10 @@ func (s *RemoteItemService) Select(id string) (RemoteItem, error) {
 
 	var item RemoteItem
 
-	item.ID = id
-	item.PeerID = appnode.EncodePeerID(peerId)
+	item.PeerID = peerId
 	item.ItemID = uint(record.ID)
 	item.Name = record.Name
 	item.FileType = record.FileType
-	item.MimeType = record.MimeType
 	item.Size = record.Size
 	item.Available = record.Available
 	item.CreatedAt = time.Unix(record.CreatedAt, 0)
@@ -58,8 +54,8 @@ func (s *RemoteItemService) Select(id string) (RemoteItem, error) {
 	return item, nil
 }
 
-func (s *RemoteItemService) Search(condition RemoteItemSearchCondition) (total int64, items []RemoteItem, err error) {
-	peerId, err := appnode.DecodePeerID(condition.PeerID)
+func (s *RemoteItemService) Search(peerId string) (total int64, items []RemoteItem, err error) {
+	peerIdBytes, err := appnode.DecodePeerID(peerId)
 	if err != nil {
 		return
 	}
@@ -67,20 +63,18 @@ func (s *RemoteItemService) Search(condition RemoteItemSearchCondition) (total i
 	err = s.TraverseRecordWithPeerID(func(record *RemoteItemRecord) error {
 		var item RemoteItem
 
-		item.PeerID = condition.PeerID
+		item.PeerID = peerId
 		item.ItemID = uint(record.ID)
 		item.Name = record.Name
 		item.FileType = record.FileType
-		item.MimeType = record.MimeType
 		item.Size = record.Size
 		item.Available = record.Available
 		item.CreatedAt = time.Unix(record.CreatedAt, 0)
 		item.UpdatedAt = time.Unix(record.UpdatedAt, 0)
 
-		item.ID = GenerateRemoteItemId(peerId, item.ItemID)
 		items = append(items, item)
 		return nil
-	}, peerId)
+	}, peerIdBytes)
 
 	if err != nil {
 		return
@@ -99,7 +93,6 @@ func (s *RemoteItemService) SelectAllForTopic() (RemoteItemRecordList, error) {
 		record.ID = uint32(nodeItem.ID)
 		record.Name = nodeItem.Name
 		record.FileType = nodeItem.FileType
-		record.MimeType = nodeItem.MimeType
 		record.Size = nodeItem.Size
 		record.Available = nodeItem.Available
 		record.CreatedAt = nodeItem.CreatedAt.Unix()
@@ -128,7 +121,6 @@ func (s *RemoteItemService) SelectForTopic(condition *RemoteItemRecordSelectCond
 	record.ID = uint32(nodeItem.ID)
 	record.Name = nodeItem.Name
 	record.FileType = nodeItem.FileType
-	record.MimeType = nodeItem.MimeType
 	record.Size = nodeItem.Size
 	record.Available = nodeItem.Available
 	record.CreatedAt = nodeItem.CreatedAt.Unix()
@@ -153,24 +145,4 @@ func (s *RemoteItemService) TraverseRecordWithPeerID(traverseFn func(record *Rem
 
 func (s *RemoteItemService) SelectWithCondition(peerId peer.PeerID, condition *RemoteItemRecordSelectCondition) (*RemoteItemRecord, error) {
 	return s.RemoteItemBroker.Select(peerId, condition)
-}
-
-func GenerateRemoteItemId(peerId peer.PeerID, itemId uint) string {
-	idBytes := make([]byte, 4+len(peerId))
-	binary.BigEndian.PutUint32(idBytes, uint32(itemId))
-	copy(idBytes[4:], peerId)
-	return base64.StdEncoding.EncodeToString(idBytes)
-}
-
-func ParseRemoteItemId(id string) (uint, peer.PeerID, error) {
-	idBytes, err := base64.StdEncoding.DecodeString(id)
-	if err == nil && len(idBytes) < 4 {
-		err = ErrRemoteItemInvalidID
-	}
-	if err != nil {
-		return 0, nil, err
-	}
-	itemId := binary.BigEndian.Uint32(idBytes)
-	peerId := idBytes[4:]
-	return uint(itemId), peerId, err
 }

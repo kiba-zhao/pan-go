@@ -11,11 +11,8 @@ import (
 	"pan/extfs/vfs"
 	"sync"
 
-	nodefile "pan/extfs/node_file"
 	nodeitem "pan/extfs/node_item"
 	nodesearchfile "pan/extfs/node_search_file"
-	remoteblock "pan/extfs/remote_block"
-	remotefile "pan/extfs/remote_file"
 	remoteitem "pan/extfs/remote_item"
 	remotenode "pan/extfs/remote_node"
 	searchitem "pan/extfs/search_item"
@@ -50,11 +47,18 @@ func (m *module) WebControllers() []web.WebController {
 	m.controllersOnce.Do(func() {
 
 		m.controllers = []web.WebController{
+			// nodeitem controllers
 			&nodeitem.NodeItemController{},
-			&nodefile.NodeFileController{},
+			&nodeitem.NodeFileInfoController{},
+			&nodeitem.NodeFileStreamController{},
+
+			// remotenode controllers
 			&remotenode.RemoteNodeController{},
 			&remoteitem.RemoteItemController{},
-			&remotefile.RemoteFileController{},
+			&remoteitem.RemoteFileInfoController{},
+			&remoteitem.RemoteFileStreamController{},
+
+			// search controllers
 			&searchitem.SearchItemController{},
 			&nodesearchfile.NodeSearchFileController{},
 			&remotesearchfile.RemoteSearchFileController{},
@@ -67,8 +71,8 @@ func (m *module) PeerAppModules() []peer.PeerAppModule {
 	m.peerAppModulesOnce.Do(func() {
 		m.peerAppModules = []peer.PeerAppModule{
 			&remoteitem.RemoteItemTopic{},
-			&remotefile.RemoteFileTopic{},
-			&remoteblock.RemoteBlockTopic{},
+			&remoteitem.RemoteFileInfoTopic{},
+			&remoteitem.RemoteFileStreamTopic{},
 			&remotesearchfile.RemoteSearchFileTopic{},
 		}
 	})
@@ -93,20 +97,22 @@ func (m *module) Components() []injection.Component {
 
 	// services
 	components = sample.AppendSampleInternalComponent[nodeitem.NodeItemInternalService](components, &nodeitem.NodeItemService{})
-	components = sample.AppendSampleInternalComponent[nodefile.NodeFileInternalService](components, &nodefile.NodeFileService{})
+	components = sample.AppendSampleInternalComponent[nodeitem.NodeFilePathInternalService](components, &nodeitem.NodeFilePathService{})
+	components = sample.AppendSampleInternalComponent[nodeitem.NodeFileInfoInternalService](components, &nodeitem.NodeFileInfoService{})
+
 	components = sample.AppendSampleInternalComponent[nodesearchfile.NodeSearchFileInternalService](components, &nodesearchfile.NodeSearchFileService{})
 
 	components = sample.AppendSampleComponent(components, &remotenode.RemoteNodeService{})
 	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemService{})
-	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileService{})
-	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockService{})
+	components = sample.AppendSampleComponent(components, &remoteitem.RemoteFileInfoService{})
+	components = sample.AppendSampleComponent(components, &remoteitem.RemoteFileStreamService{})
 	components = sample.AppendSampleComponent(components, &searchitem.SearchItemService{})
 	components = sample.AppendSampleComponent(components, &remotesearchfile.RemoteSearchFileService{})
 
 	// brokers
 	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemBroker{SamplePeer: m.sample})
-	components = sample.AppendSampleComponent(components, &remotefile.RemoteFileBroker{SamplePeer: m.sample})
-	components = sample.AppendSampleComponent(components, &remoteblock.RemoteBlockBroker{SamplePeer: m.sample})
+	components = sample.AppendSampleComponent(components, &remoteitem.RemoteFileInfoBroker{SamplePeer: m.sample})
+	components = sample.AppendSampleComponent(components, &remoteitem.RemoteFileStreamBroker{SamplePeer: m.sample})
 	components = sample.AppendSampleComponent(components, &remotesearchfile.RemoteSearchFileBroker{SamplePeer: m.sample})
 
 	// repositories

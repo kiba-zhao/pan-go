@@ -80,12 +80,11 @@ func TestNodeItemRepo(t *testing.T) {
 		item.Name = "node item name"
 		item.FilePath = "node item file path"
 		item.FileType = nodeitem.FileTypeFolder
-		item.MimeType = "node item mime type"
 		item.Enabled = &enabled
 		item.CreatedAt = time.Now()
 		item.UpdatedAt = time.Now()
 
-		mock.ExpectExec("INSERT INTO `node_items`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), item.Name, item.FilePath, item.FileType, item.MimeType, item.Enabled).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("INSERT INTO `node_items`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), item.Name, item.FilePath, item.FileType, item.Enabled).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err := repo.Save(item)
 		assert.Nil(t, err)
@@ -93,11 +92,10 @@ func TestNodeItemRepo(t *testing.T) {
 		assert.Equal(t, item.Name, result.Name)
 		assert.Equal(t, item.FilePath, result.FilePath)
 		assert.Equal(t, item.FileType, result.FileType)
-		assert.Equal(t, item.MimeType, result.MimeType)
 		assert.Equal(t, *item.Enabled, *result.Enabled)
 
 		item.ID = 123
-		mock.ExpectExec("UPDATE `node_items`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), item.Name, item.FilePath, item.FileType, item.MimeType, item.Enabled, item.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("UPDATE `node_items`").WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), item.Name, item.FilePath, item.FileType, item.Enabled, item.ID).WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err = repo.Save(item)
 		assert.Nil(t, err)
@@ -105,7 +103,6 @@ func TestNodeItemRepo(t *testing.T) {
 		assert.Equal(t, item.Name, result.Name)
 		assert.Equal(t, item.FilePath, result.FilePath)
 		assert.Equal(t, item.FileType, result.FileType)
-		assert.Equal(t, item.MimeType, result.MimeType)
 		assert.Equal(t, *item.Enabled, *result.Enabled)
 	})
 
