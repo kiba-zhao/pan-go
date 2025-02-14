@@ -35,7 +35,7 @@ module.exports = () => {
 
   const nodeFiles = nodeItems.reduce((arr, item) => {
     if (!item.available || item.fileType !== "D") return arr;
-    const folders = ["/"];
+    const folders = [""];
     return arr.concat(
       faker.helpers.multiple(
         generateExtFSNodeFile.bind(this, item.id, folders),
@@ -48,7 +48,7 @@ module.exports = () => {
 
   const remoteFiles = remoteItems.reduce((arr, item) => {
     if (!item.available || item.fileType !== "D") return arr;
-    const folders = ["/"];
+    const folders = [""];
     return arr.concat(
       faker.helpers.multiple(
         generateExtFSRemoteFile.bind(this, item.peerId, item.itemId, folders),
@@ -173,8 +173,6 @@ function parseRemoteNode(node) {
     available: node.online,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
-    tagQuantity: 0,
-    pendingTagQuantity: 0,
   };
 }
 
@@ -195,8 +193,6 @@ function generateExtFSNodeItem() {
     available: faker.datatype.boolean(),
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
-    tagQuantity: 0,
-    pendingTagQuantity: 0,
   };
 }
 
@@ -216,19 +212,17 @@ function generateExtFSRemoteNodeItem(peerId) {
     available: faker.datatype.boolean(),
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
-    tagQuantity: 0,
-    pendingTagQuantity: 0,
   };
 }
 
-function generateExtFSNodeFile(itemId, folders = ["/"]) {
+function generateExtFSNodeFile(itemId, folders = [""]) {
   const isDir = faker.datatype.boolean();
   const mimeType = isDir ? "" : generateMimeType();
   const folder = faker.helpers.arrayElement(folders);
   const fileType = isDir ? "D" : "F";
   const extname = isDir?"":faker.system.fileExt(mimeType);
   const name = isDir ? faker.system.fileName({extensionCount:0}):faker.system.commonFileName(extname);
-  const filePath = path.join(folder, name);
+  const filePath = folder.length > 0 ? path.join(folder, name):name;
 
   if (isDir) {
     folders.push(filePath);
@@ -245,19 +239,17 @@ function generateExtFSNodeFile(itemId, folders = ["/"]) {
     available: true,
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
-    tagQuantity: 0,
-    pendingTagQuantity: 0,
   };
 }
 
-function generateExtFSRemoteFile(peerId, itemId, folders = ["/"]) {
+function generateExtFSRemoteFile(peerId, itemId, folders = [""]) {
   const isDir = faker.datatype.boolean();
   const mimeType = isDir ? "" : generateMimeType();
   const folder = faker.helpers.arrayElement(folders);
   const fileType = isDir ? "D" : "F";
   const extname = isDir?"":faker.system.fileExt(mimeType);
   const name = isDir ? faker.system.fileName({extensionCount:0}):faker.system.commonFileName(extname);
-  const filePath = path.join(folder, name);
+  const filePath = folder.length > 0 ? path.join(folder, name):name;
 
   if (isDir) {
     folders.push(filePath);
@@ -275,8 +267,6 @@ function generateExtFSRemoteFile(peerId, itemId, folders = ["/"]) {
     available: true,
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
-    tagQuantity: 0,
-    pendingTagQuantity: 0,
   };
 }
 

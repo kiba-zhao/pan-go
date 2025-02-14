@@ -23,8 +23,6 @@ export type ExtFSNodeItem = {
   createdAt: string;
   updatedAt: string;
   deletedAt: string;
-  tagQuantity: number;
-  pendingTagQuantity: number;
 };
 
 export type ExtFSNodeItemFields = Omit<

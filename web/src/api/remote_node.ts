@@ -12,8 +12,6 @@ export type ExtFSRemoteNode = {
   available: boolean;
   createdAt: string;
   updatedAt: string;
-  tagQuantity: number;
-  pendingTagQuantity: number;
 };
 
 export async function selectAllExtFSRemoteNodes(): Promise<ExtFSRemoteNode[]> {
