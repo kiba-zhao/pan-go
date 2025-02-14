@@ -11,8 +11,8 @@ type RemoteFileInfoController struct {
 }
 
 func (ctrl *RemoteFileInfoController) SetupToWeb(router web.WebRouter) error {
-	router.GET("/remote-nodes/:peerId/remote-items/:id/_files", ctrl.Search)
-	router.GET("/remote-nodes/:peerId/remote-items/:id/_files/*filepath", ctrl.Select)
+	router.GET("/remotes/:peerId/remote-items/:id/_files", ctrl.Search)
+	router.GET("/remotes/:peerId/remote-items/:id/_files/*filepath", ctrl.Select)
 	return nil
 }
 

@@ -11,7 +11,7 @@ type RemoteFileStreamController struct {
 }
 
 func (ctrl *RemoteFileStreamController) SetupToWeb(router web.WebRouter) error {
-	router.GET("/remote-nodes/:peerId/remote-items/:id/_stream/*filepath", ctrl.Select)
+	router.GET("/remotes/:peerId/remote-items/:id/_stream/*filepath", ctrl.Select)
 	return nil
 }
 
