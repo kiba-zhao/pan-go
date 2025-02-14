@@ -10,8 +10,8 @@ type NodeFileInfoController struct {
 }
 
 func (c *NodeFileInfoController) SetupToWeb(router web.WebRouter) error {
-	router.GET("/node-items/:id/files/*filepath", c.Search)
-	router.GET("/node-items/:id/file/*filepath", c.Select)
+	router.GET("/node-items/:id/_files", c.Search)
+	router.GET("/node-items/:id/_files/*filepath", c.Select)
 	return nil
 }
 
@@ -22,9 +22,10 @@ func (c *NodeFileInfoController) Search(ctx web.WebContext) {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-	filePath := ctx.Param("filepath")
 
-	total, infos, err := c.NodeFileInfoService.Search(id, filePath[1:])
+	parentPath := ctx.Query("parentPath")
+
+	total, infos, err := c.NodeFileInfoService.Search(id, parentPath)
 	if c.NodeFileInfoService.IsNotExist(err) {
 		ctx.AbortWithError(http.StatusNotFound, err)
 		return

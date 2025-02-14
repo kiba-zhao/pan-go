@@ -10,7 +10,7 @@ type NodeFileStreamController struct {
 }
 
 func (c *NodeFileStreamController) SetupToWeb(router web.WebRouter) error {
-	router.GET("/node-items/:id/stream/*filepath", c.Select)
+	router.GET("/node-items/:id/_stream/*filepath", c.Select)
 	return nil
 }
 

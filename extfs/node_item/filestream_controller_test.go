@@ -35,7 +35,7 @@ func TestNodeFileStreamController(t *testing.T) {
 		return os.RemoveAll(dir)
 	}
 
-	t.Run("GET /node-items/:id/stream/*filepath", func(t *testing.T) {
+	t.Run("GET /node-items/:id/_stream/*filepath", func(t *testing.T) {
 		web, ctrl := setup()
 
 		filePath, err := setupTemp("extfs-node-item-streams")
@@ -62,7 +62,7 @@ func TestNodeFileStreamController(t *testing.T) {
 		nodeItemService.On("Select", itemId).Once().Return(nodeItem, nil)
 		nodeItemService.On("IsNotExist", mock.Anything).Once().Return(false)
 
-		url := fmt.Sprintf("/node-items/%d/stream/%s", itemId, filename)
+		url := fmt.Sprintf("/node-items/%d/_stream/%s", itemId, filename)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", url, nil)
 		web.ServeHTTP(w, req)
@@ -74,7 +74,7 @@ func TestNodeFileStreamController(t *testing.T) {
 
 	})
 
-	t.Run("GET /node-items/:id/stream/*filepath with Range", func(t *testing.T) {
+	t.Run("GET /node-items/:id/_stream/*filepath with Range", func(t *testing.T) {
 		web, ctrl := setup()
 
 		filePath, err := setupTemp("extfs-node-item-streams")
@@ -101,7 +101,7 @@ func TestNodeFileStreamController(t *testing.T) {
 		nodeItemService.On("Select", itemId).Once().Return(nodeItem, nil)
 		nodeItemService.On("IsNotExist", mock.Anything).Once().Return(false)
 
-		url := fmt.Sprintf("/node-items/%d/stream/%s", itemId, filename)
+		url := fmt.Sprintf("/node-items/%d/_stream/%s", itemId, filename)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", url, nil)
 		req.Header.Set("Range", "bytes=0-2000")

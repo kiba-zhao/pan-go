@@ -35,7 +35,7 @@ func TestRemoteFileInfoController(t *testing.T) {
 		return app, ctrl
 	}
 
-	t.Run("GET /remote-items/:peerId/:id/file/*filepath", func(t *testing.T) {
+	t.Run("GET /remote-nodes/:peerId/remote-items/:id/_files/*filepath", func(t *testing.T) {
 		app, ctrl := setup()
 
 		// mock SamplePeer
@@ -79,7 +79,7 @@ func TestRemoteFileInfoController(t *testing.T) {
 		peerId := appnode.EncodePeerID(peerIdBytes)
 
 		w := httptest.NewRecorder()
-		url := fmt.Sprintf("/remote-items/%s/%d/file/%s", peerId, record.ItemID, record.FilePath)
+		url := fmt.Sprintf("/remote-nodes/%s/remote-items/%d/_files/%s", peerId, record.ItemID, record.FilePath)
 		req := httptest.NewRequest("GET", url, nil)
 		app.ServeHTTP(w, req)
 
@@ -100,7 +100,7 @@ func TestRemoteFileInfoController(t *testing.T) {
 
 	})
 
-	t.Run("GET /remote-items/:peerId/:id/files/*filepath", func(t *testing.T) {
+	t.Run("GET /remote-nodes/:peerId/remote-items/:id/_files?parentPath=", func(t *testing.T) {
 		app, ctrl := setup()
 
 		// mock SamplePeer
@@ -147,8 +147,11 @@ func TestRemoteFileInfoController(t *testing.T) {
 
 		peerId := appnode.EncodePeerID(peerIdBytes)
 		w := httptest.NewRecorder()
-		url := fmt.Sprintf("/remote-items/%s/%d/files/%s", peerId, record.ItemID, record.ParentPath)
+		url := fmt.Sprintf("/remote-nodes/%s/remote-items/%d/_files", peerId, record.ItemID)
 		req := httptest.NewRequest("GET", url, nil)
+		q := req.URL.Query()
+		q.Add("parentPath", record.ParentPath)
+		req.URL.RawQuery = q.Encode()
 		app.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)

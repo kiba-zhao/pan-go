@@ -11,8 +11,8 @@ type RemoteFileInfoController struct {
 }
 
 func (ctrl *RemoteFileInfoController) SetupToWeb(router web.WebRouter) error {
-	router.GET("/remote-items/:peerId/:id/files/*filepath", ctrl.Search)
-	router.GET("/remote-items/:peerId/:id/file/*filepath", ctrl.Select)
+	router.GET("/remote-nodes/:peerId/remote-items/:id/_files", ctrl.Search)
+	router.GET("/remote-nodes/:peerId/remote-items/:id/_files/*filepath", ctrl.Select)
 	return nil
 }
 
@@ -29,9 +29,9 @@ func (ctrl *RemoteFileInfoController) Search(ctx web.WebContext) {
 		return
 	}
 
-	filePath := ctx.Param("filepath")
+	parentPath := ctx.Query("parentPath")
 
-	total, infos, err := ctrl.RemoteFileInfoService.Search(peerId, id, filePath[1:])
+	total, infos, err := ctrl.RemoteFileInfoService.Search(peerId, id, parentPath)
 	if ctrl.RemoteFileInfoService.IsNotExist(err) {
 		ctx.AbortWithError(http.StatusNotFound, err)
 		return

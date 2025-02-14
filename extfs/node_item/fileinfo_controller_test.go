@@ -7,7 +7,6 @@ import (
 	"os"
 	"pan/app/web"
 	"path/filepath"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,7 +36,7 @@ func TestNodeFileInfoController(t *testing.T) {
 		return os.RemoveAll(dir)
 	}
 
-	t.Run("GET /node-items/:id/file/:filepath", func(t *testing.T) {
+	t.Run("GET /node-items/:id/_files/:filepath", func(t *testing.T) {
 		web, ctrl := setup()
 
 		filePath, err := setupTemp("extfs-node-item-files")
@@ -59,7 +58,7 @@ func TestNodeFileInfoController(t *testing.T) {
 		nodeFilePathService.On("Select", itemId, filename).Once().Return(fullpath, nil)
 		nodeFilePathService.On("IsNotExist", mock.Anything).Once().Return(false)
 
-		url := fmt.Sprintf("/node-items/%d/file/%s", itemId, filename)
+		url := fmt.Sprintf("/node-items/%d/_files/%s", itemId, filename)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", url, nil)
 		web.ServeHTTP(w, req)
@@ -76,7 +75,7 @@ func TestNodeFileInfoController(t *testing.T) {
 
 	})
 
-	t.Run("GET /node-items/:id/files/:filepath", func(t *testing.T) {
+	t.Run("GET /node-items/:id/_files?parentPath=?", func(t *testing.T) {
 
 		web, ctrl := setup()
 
@@ -96,15 +95,16 @@ func TestNodeFileInfoController(t *testing.T) {
 		ctrl.NodeFileInfoService.NodeFilePathService = nodeFilePathService
 
 		itemId := uint(1)
+		parentPath := ""
 
 		nodeFilePathService.On("IsNotExist", mock.Anything).Once().Return(false)
-		nodeFilePathService.On("Select", itemId, "").Once().Return(filePath, nil)
+		nodeFilePathService.On("Select", itemId, parentPath).Once().Return(filePath, nil)
 
 		w := httptest.NewRecorder()
-		url := fmt.Sprintf("/node-items/%d/files/", itemId)
+		url := fmt.Sprintf("/node-items/%d/_files", itemId)
 		req := httptest.NewRequest("GET", url, nil)
 		q := req.URL.Query()
-		q.Add("itemId", strconv.Itoa(int(itemId)))
+		q.Add("parentPath", parentPath)
 		req.URL.RawQuery = q.Encode()
 		web.ServeHTTP(w, req)
 

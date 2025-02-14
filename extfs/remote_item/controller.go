@@ -12,8 +12,8 @@ type RemoteItemController struct {
 }
 
 func (ctrl *RemoteItemController) SetupToWeb(router web.WebRouter) error {
-	router.GET("/remote-items/:peerId", ctrl.Search)
-	router.GET("/remote-items/:peerId/:id", ctrl.Select)
+	router.GET("/remote-nodes/:peerId/remote-items", ctrl.Search)
+	router.GET("/remote-nodes/:peerId/remote-items/:id", ctrl.Select)
 	return nil
 }
 

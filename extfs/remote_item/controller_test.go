@@ -33,7 +33,7 @@ func TestRemoteItemController(t *testing.T) {
 		return app, ctrl
 	}
 
-	t.Run("GET /remote-items/:peerId/:id", func(t *testing.T) {
+	t.Run("GET /remote-nodes/:peerId/remote-items/:id", func(t *testing.T) {
 		app, ctrl := setup()
 
 		// mock SamplePeer
@@ -66,7 +66,7 @@ func TestRemoteItemController(t *testing.T) {
 		peerId := appnode.EncodePeerID(peerIdBytes)
 
 		w := httptest.NewRecorder()
-		url := fmt.Sprintf("/remote-items/%s/%d", peerId, record.ID)
+		url := fmt.Sprintf("/remote-nodes/%s/remote-items/%d", peerId, record.ID)
 		req := httptest.NewRequest("GET", url, nil)
 		app.ServeHTTP(w, req)
 
@@ -85,7 +85,7 @@ func TestRemoteItemController(t *testing.T) {
 		assert.Equal(t, time.Unix(record.UpdatedAt, 0), resp.UpdatedAt)
 	})
 
-	t.Run("GET /remote-items/:peerId", func(t *testing.T) {
+	t.Run("GET /remote-nodes/:peerId/remote-items", func(t *testing.T) {
 
 		app, ctrl := setup()
 
@@ -119,7 +119,7 @@ func TestRemoteItemController(t *testing.T) {
 
 		peerId := appnode.EncodePeerID(peerIdBytes)
 		w := httptest.NewRecorder()
-		url := fmt.Sprintf("/remote-items/%s", peerId)
+		url := fmt.Sprintf("/remote-nodes/%s/remote-items", peerId)
 		req := httptest.NewRequest("GET", url, nil)
 		app.ServeHTTP(w, req)
 
