@@ -48,7 +48,7 @@ export const RemoteItems = () => {
   const api = useAPI();
   const { data: items, isFetching } = useQuery({
     queryKey: [...ExtFSRemoteQueryKey, { peerId }],
-    queryFn: async () => await api?.searchExtFSRemoteItems({ peerId }),
+    queryFn: async () => await api?.searchExtFSRemoteItems(peerId),
     enabled: state.mode === ExtFSRemoteMode,
   });
   return (

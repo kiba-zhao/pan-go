@@ -9,23 +9,24 @@ import type {
 
 export interface ExtFSRemoteSearchFileAPI {
   searchExtFSRemoteSearchFileResults(
+    peerId: ExtFSRemoteNode["peerId"],
     condition: ExtFSRemoteSearchFileSearchCondition,
     opts?:ExtFSRemoteSearchFileSearchOpts
   ): Promise<ExtFSSearchFileSearchResults>;
 }
 
-export type ExtFSRemoteSearchFileSearchCondition = ExtFSSearchFileSearchCondition &
-  Pick<ExtFSRemoteNode, "peerId">;
+export type ExtFSRemoteSearchFileSearchCondition = ExtFSSearchFileSearchCondition;
 
 export type ExtFSRemoteSearchFileSearchOpts = {
   signal?: AbortSignal;
 }
 
 export async function searchExtFSRemoteSearchFileResults(
+  peerId: ExtFSRemoteNode["peerId"],
   condition: ExtFSRemoteSearchFileSearchCondition,
   opts?:ExtFSRemoteSearchFileSearchOpts
 ): Promise<ExtFSSearchFileSearchResults> {
-  const { peerId, _start, _end, ...params } = condition;
+  const { _start, _end, ...params } = condition;
   const condition_: Record<string, string> = {
     ...params,
   };
@@ -39,7 +40,7 @@ export async function searchExtFSRemoteSearchFileResults(
 
   const [etag, total, searchFiles] = await fetchMany(
     ...handles,
-    withPath(`extfs/remote/${peerId}/search-files`, "merge"),
+    withPath(`extfs/remotes/${peerId}/search-files`, "merge"),
     withQuery(condition_, "merge"),
     withResponds([ETagHeaderRespond], "merge"),
   );

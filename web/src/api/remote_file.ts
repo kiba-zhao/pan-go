@@ -4,29 +4,32 @@ import type { ExtFSRemoteItem } from "./remote_item";
 
 export interface ExtFSRemoteFileAPI {
   searchExtFSRemoteFiles(
+    peerId: ExtFSRemoteFile["peerId"],
+    itemId: ExtFSRemoteFile["itemId"],
     condition: ExtFSRemoteFileSearchCondition
   ): Promise<ExtFSRemoteFile[]>;
-  selectExtFSRemoteFile(id: ExtFSRemoteFile["id"]): Promise<ExtFSRemoteFile>;
+  selectExtFSRemoteFile(
+    peerId: ExtFSRemoteFile["peerId"],
+    itemId: ExtFSRemoteFile["itemId"],
+    filePath: ExtFSRemoteFile["filePath"]
+  ): Promise<ExtFSRemoteFile>;
 }
 
-export type ExtFSRemoteFileSearchCondition = {
-  parentPath?: string;
-} & Pick<ExtFSRemoteItem, "peerId" | "itemId">;
+export type ExtFSRemoteFileSearchCondition = Partial<Pick<ExtFSRemoteFile,"parentPath">>
 
 export type ExtFSRemoteFile = {
-  id: string;
   parentPath: string;
 } & Omit<ExtFSRemoteItem, "id">;
 
-export async function searchExtFSRemoteFiles({
-  itemId,
-  parentPath,
-  ...opts
-}: ExtFSRemoteFileSearchCondition): Promise<ExtFSRemoteFile[]> {
+export async function searchExtFSRemoteFiles(
+  peerId: ExtFSRemoteFile["peerId"],
+  itemId: ExtFSRemoteFile["itemId"],
+  {parentPath,...opts}: ExtFSRemoteFileSearchCondition
+): Promise<ExtFSRemoteFile[]> {
   const [_, remotefiles] = await fetchMany(
-    withPath("extfs/remote-files", "merge"),
+    withPath(`extfs/remotes/${peerId}/remote-items/${itemId}/_files`, "merge"),
     withQuery(
-      { itemId: itemId.toString(), parentPath: parentPath || "/", ...opts },
+      { parentPath: parentPath || "", ...opts },
       "merge"
     )
   );
@@ -35,7 +38,9 @@ export async function searchExtFSRemoteFiles({
 }
 
 export async function selectExtFSRemoteFile(
-  id: ExtFSRemoteFile["id"]
+  peerId: ExtFSRemoteFile["peerId"],
+  itemId: ExtFSRemoteFile["itemId"],
+  filePath: ExtFSRemoteFile["filePath"]
 ): Promise<ExtFSRemoteFile> {
-  return await fetchOne(withPath(`extfs/remote-files/${id}`, "merge"));
+  return await fetchOne(withPath(`extfs/remotes/${peerId}/remote-items/${itemId}/_files/${filePath}`, "merge"));
 }

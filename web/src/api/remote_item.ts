@@ -5,14 +5,14 @@ import type { ExtFSRemoteNode } from "./remote_node";
 
 export interface ExtFSRemoteItemAPI {
   searchExtFSRemoteItems(
-    condition: ExtFSRemoteItemSearchCondition
+    peerId: ExtFSRemoteItem["peerId"],
   ): Promise<ExtFSRemoteItem[]>;
-  selectExtFSRemoteItem(id: ExtFSRemoteItem["id"]): Promise<ExtFSRemoteItem>;
+  selectExtFSRemoteItem(
+    peerId: ExtFSRemoteItem["peerId"],
+    itemId: ExtFSRemoteItem["itemId"]
+  ): Promise<ExtFSRemoteItem>;
 }
 
-export type ExtFSRemoteItemSearchCondition = {
-  peerId: ExtFSRemoteNode["peerId"];
-};
 export type ExtFSRemoteItem = {
   id: string;
   peerId: ExtFSRemoteNode["peerId"];
@@ -20,17 +20,17 @@ export type ExtFSRemoteItem = {
 } & Omit<ExtFSNodeItem, "id" | "enabled">;
 
 export async function searchExtFSRemoteItems(
-  condition: ExtFSRemoteItemSearchCondition
+  peerId: ExtFSRemoteItem["peerId"],
 ): Promise<ExtFSRemoteItem[]> {
   const [_, remoteItems] = await fetchMany(
-    withPath("extfs/remote-items", "merge"),
-    withQuery(condition, "merge")
+    withPath(`extfs/remotes/${peerId}/remote-items`, "merge"),
   );
   return remoteItems;
 }
 
 export async function selectExtFSRemoteItem(
-  id: ExtFSRemoteItem["id"]
+  peerId: ExtFSRemoteItem["peerId"],
+  itemId: ExtFSRemoteItem["itemId"]
 ): Promise<ExtFSRemoteItem> {
-  return await fetchOne(withPath(`extfs/remote-items/${id}`, "merge"));
+  return await fetchOne(withPath(`extfs/remotes/${peerId}/remote-items/${itemId}`, "merge"));
 }

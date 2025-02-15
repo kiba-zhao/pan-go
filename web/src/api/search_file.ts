@@ -15,7 +15,7 @@ export type ExtFSSearchFile = {
   id: number;
   score: number;
   tokens: string[];
-} & Omit<ExtFSNodeFile, "id" | "tagQuantity" | "pendingTagQuantity">;
+} & Omit<ExtFSNodeFile, "id">;
 
 export type ExtFSSearchFileSearchCondition = {
   _start?: number;

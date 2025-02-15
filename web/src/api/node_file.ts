@@ -4,37 +4,35 @@ import type { ExtFSNodeItem } from "./node_item";
 
 export interface ExtFSNodeFileAPI {
   searchExtFSNodeFiles(
+    itemId: ExtFSNodeFile["itemId"],
     condition: ExtFSNodeFileSearchCondition
   ): Promise<ExtFSNodeFile[]>;
-  selectExtFSNodeFile(id: ExtFSNodeFile["id"]): Promise<ExtFSNodeFile>;
+  selectExtFSNodeFile(
+    itemId:ExtFSNodeFile["itemId"],
+    filePath:ExtFSNodeFile["filePath"]
+  ): Promise<ExtFSNodeFile>;
 }
 
-export type ExtFSNodeFileSearchCondition = {
-  itemId: ExtFSNodeFile["itemId"];
-  parentPath?: string;
-};
+export type ExtFSNodeFileSearchCondition = Partial<Pick<ExtFSNodeFile,"parentPath">>
 export type ExtFSNodeFile = {
-  id: string;
   itemId: ExtFSNodeItem["id"];
   parentPath: string;
 } & Omit<ExtFSNodeItem, "id" | "enabled">;
-export async function searchExtFSNodeFiles({
-  itemId,
-  parentPath,
-  ...opts
-}: ExtFSNodeFileSearchCondition): Promise<ExtFSNodeFile[]> {
+export async function searchExtFSNodeFiles(
+  itemId: ExtFSNodeFile["itemId"],
+  {parentPath,...opts}: ExtFSNodeFileSearchCondition): Promise<ExtFSNodeFile[]> {
   const [_, nodeItems] = await fetchMany(
-    withPath("extfs/node-files", "merge"),
+    withPath(`extfs/node-items/${itemId}/_files`, "merge"),
     withQuery(
-      { itemId: itemId.toString(), parentPath: parentPath || "/", ...opts },
+      { parentPath: parentPath || "", ...opts },
       "merge"
     )
   );
   return nodeItems;
 }
-
 export async function selectExtFSNodeFile(
-  id: ExtFSNodeFile["id"]
+  itemId:ExtFSNodeFile["itemId"],
+  filePath:ExtFSNodeFile["filePath"]
 ): Promise<ExtFSNodeFile> {
-  return await fetchOne(withPath(`extfs/node-files/${id}`, "merge"));
+  return await fetchOne(withPath(`extfs/node-items/${itemId}/_files/${filePath}`, "merge"));
 }

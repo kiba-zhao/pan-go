@@ -118,9 +118,6 @@ async function *generateSearchFiles(query:string,api:API,signal:AbortSignal,peer
     condition.query = query
     condition._start = 0
     condition._end = 100
-    if (peerId){
-        (condition as ExtFSRemoteSearchFileSearchCondition).peerId = peerId
-    }
     let err;
 
     let hash:string;
@@ -129,7 +126,7 @@ async function *generateSearchFiles(query:string,api:API,signal:AbortSignal,peer
     while(true) {
         try{
             if (peerId) {
-                [hash,total,files] = await api.searchExtFSRemoteSearchFileResults(condition as ExtFSRemoteSearchFileSearchCondition,{signal});
+                [hash,total,files] = await api.searchExtFSRemoteSearchFileResults(peerId,condition as ExtFSRemoteSearchFileSearchCondition,{signal});
 
             }else{
                 [hash,total,files] = await api.searchExtFSSearchFileResults(condition,{signal});

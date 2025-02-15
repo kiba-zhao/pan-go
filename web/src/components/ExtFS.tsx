@@ -166,16 +166,20 @@ const Search = () => {
       >
         <SearchIcon />
       </IconButton>
-      <Dialog
-        fullScreen={fullScreen}
-        open={open}
-        onClose={onClose}
-        PaperProps={{
-          sx: fullScreen ? {} : { width: "100%", overflowX: "hidden" },
-        }}
-      >
-        <SearchItems onEsc={onClose} enabled={open} />
-      </Dialog>
+      {open ? (
+        <Dialog
+          fullScreen={fullScreen}
+          open={open}
+          onClose={onClose}
+          PaperProps={{
+            sx: fullScreen ? {} : { width: "100%", overflowX: "hidden" },
+          }}
+        >
+          <SearchItems onEsc={onClose} enabled={open} />
+        </Dialog>
+      ) : (
+        void 0
+      )}
     </Fragment>
   );
 };
@@ -387,7 +391,18 @@ const NavigationBar = ({
         ) : (
           void 0
         )}
-        {parentItems.length > 2 ? (
+        {parentItems.length > 2 && parentItems.length < 4 ? (
+          <Link
+            underline="hover"
+            color="inherit"
+            onClick={() => onParentClick(parentItems.slice(0, 2))}
+          >
+            {parentItems.at(1)?.name}
+          </Link>
+        ) : (
+          void 0
+        )}
+        {parentItems.length > 3 ? (
           <NavigationMoreItems
             items={parentItems.slice(1, -1)}
             onParentClick={(items) => onParentClick([parentItems[0], ...items])}

@@ -35,8 +35,6 @@ export type ExtFSNodeItemFields = Omit<
   | "fileType"
   | "mimeType"
   | "size"
-  | "tagQuantity"
-  | "pendingTagQuantity"
 >;
 
 export async function selectAllExtFSNodeItems(): Promise<ExtFSNodeItem[]> {

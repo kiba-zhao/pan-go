@@ -1,6 +1,6 @@
 {
-  "/api/extfs/remote-search-files/:peerId": "/extfs-remote-search-files?peerId=:peerId",
-  "/api/extfs/remote-search-files/:peerId?*": "/extfs-remote-search-files?peerId=:peerId&$1",
+  "/api/extfs/remotes/:peerId/search-files": "/extfs-remote-search-files?peerId=:peerId",
+  "/api/extfs/remotes/:peerId/search-files?*": "/extfs-remote-search-files?peerId=:peerId&$1",
   "/api/extfs/node-items/:id/_files": "/extfs-node-files?itemId=:id",
   "/api/extfs/node-items/:id/_files?*": "/extfs-node-files?itemId=:id&$2",
   "/api/extfs/node-items/:id/_files/*": "/extfs-node-files?itemId=:id&filePath=$2&_take=1",

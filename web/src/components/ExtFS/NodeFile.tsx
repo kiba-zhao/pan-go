@@ -52,7 +52,7 @@ export const NodeFiles = () => {
   const { data: items, isFetching } = useQuery({
     queryKey: [...ExtFSNodeFileQueryKey, { itemId, parentPath }],
     queryFn: async () =>
-      await api?.searchExtFSNodeFiles({ itemId, parentPath }),
+      await api?.searchExtFSNodeFiles(itemId, { parentPath }),
     enabled: state.mode === ExtFSNodeFileMode,
   });
 
