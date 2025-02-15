@@ -13,7 +13,7 @@ type RemoteSearchFileController struct {
 }
 
 func (c *RemoteSearchFileController) SetupToWeb(router web.WebRouter) error {
-	router.GET("/remote/:peerId/search-files", c.Search)
+	router.GET("/remotes/:peerId/search-files", c.Search)
 	return nil
 }
 
