@@ -50,6 +50,16 @@
         "filePath": "Disk Path Selector"
       }
     },
+    "extfs/browse-files": {
+      "name": "View File",
+      "error": "Error",
+      "disabled": "Access Denied",
+      "disabled_desc": "Refuse access {{fileName}} ({{fileSize}}) file",
+      "success": "Just a minute",
+      "success_desc": "Open <Link>{{fileName}} ({{fileSize}})</Link> directly.",
+      "success_countdown": "Automatically redirecting in <Typography> {{countDown}} </Typography> seconds.",
+      "success_delay_end": "Open {{fileName}} ({{fileSize}}) immediately."
+    },
     "settings": {
       "name": "Settings"
     },

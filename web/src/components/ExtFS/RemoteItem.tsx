@@ -6,6 +6,7 @@ import { More, MoreHelpItem } from "./More";
 import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
+import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -16,7 +17,7 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import { useMemo } from "react";
 
 export const ExtFSRemoteMode = "R";
-const ExtFSRemoteQueryKey = ["extfs-remote-items"];
+export const ExtFSRemoteQueryKey = ["extfs-remote-items"];
 const ExtFSRemoteState = {
   mode: ExtFSRemoteMode,
   queryKeyList: [ExtFSRemoteQueryKey],
@@ -83,9 +84,13 @@ export const RemoteItem = () => {
     }
   };
 
-  // TODO: implement
-  const openUrl = useMemo(() => ``, [item.peerId, item.itemId]);
-  //
+  const openUrl = useMemo(() => {
+    const searchParams = new URLSearchParams({
+      peerId: item.peerId,
+      itemId: item.itemId.toString(),
+    });
+    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+  }, [item.peerId, item.itemId]);
 
   return (
     <ExtFSItem

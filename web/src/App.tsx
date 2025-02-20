@@ -27,6 +27,9 @@ import {
   ExtFSNodeItemView,
 } from "./components/ExtFSNodeItem";
 
+import ExtFSBrowseFile, {
+  RoutePath as ExtFSBrowseFileRoutePath,
+} from "./components/ExtFSBrowseFile";
 import { AppLayout } from "./components/Layout";
 import NotFound from "./components/NotFound";
 
@@ -55,6 +58,11 @@ export const App = () => {
           <CustomRoutes>
             <Route path={AppSettingsRoutePath} element={<AppSettings />} />
             <Route path={ExtFSRoutePath} element={<ExtFSHome />} />
+
+            <Route
+              path={ExtFSBrowseFileRoutePath}
+              element={<ExtFSBrowseFile />}
+            />
             <Route
               path={`${ExtFSNodeItemRoutePath}/create`}
               element={<ExtFSNodeItemCreate />}

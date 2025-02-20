@@ -10,6 +10,7 @@ export * from "./api/remote_search_file";
 export * from "./api/search_file";
 export * from "./api/search_item";
 
+import type { BaseAPI } from "./api/base";
 import type { AppSettingsAPI } from "./api/app_settings";
 import type { DiskFileAPI } from "./api/disk_file";
 import type { ExtFSNodeFileAPI } from "./api/node_file";
@@ -21,7 +22,8 @@ import type { ExtFSRemoteSearchFileAPI } from "./api/remote_search_file";
 import type { ExtFSSearchFileAPI } from "./api/search_file";
 import type { ExtFSSearchItemAPI } from "./api/search_item";
 
-export type API = AppSettingsAPI &
+export type API = BaseAPI&
+  AppSettingsAPI &
   DiskFileAPI &
   ExtFSRemoteNodeAPI &
   ExtFSNodeItemAPI &

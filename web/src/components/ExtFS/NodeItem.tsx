@@ -13,6 +13,7 @@ import { More, MoreHelpItem, MoreNewItem } from "./More";
 import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
 import type { ExtFSState } from "./State";
 import { useExtFS } from "./State";
+import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -23,7 +24,7 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import { useNavigate } from "react-router-dom";
 
 export const ExtFSNodeMode = "N";
-const ExtFSNodeQueryKey = ["extfs-node-items"];
+export const ExtFSNodeQueryKey = ["extfs-node-items"];
 
 const ExtFSNodeState = {
   mode: ExtFSNodeMode,
@@ -94,9 +95,13 @@ export const NodeItem = () => {
   };
 
   const settingsUrl = useMemo(() => newItemSettingsUrl(item.id), [item.id]);
-  // TODO: implement
-  const openUrl = useMemo(() => ``, [item.id]);
-  //
+
+  const openUrl = useMemo(() => {
+    const searchParams = new URLSearchParams({
+      itemId: item.id.toString(),
+    });
+    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+  }, [item.id]);
 
   return (
     <ExtFSItem

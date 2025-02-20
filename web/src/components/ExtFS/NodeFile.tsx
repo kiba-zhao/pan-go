@@ -4,6 +4,7 @@ import { ExtFSItem, ExtFSItems, useExtFSItem, ExtFSItemOpen } from "./Item";
 import { More, MoreHelpItem, MoreSettingsItem } from "./More";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
+import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 
 import type { ExtFSNodeFile } from "../../api";
 import { useAPI } from "../API";
@@ -16,7 +17,7 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import { useMemo } from "react";
 
 export const ExtFSNodeFileMode = "NF";
-const ExtFSNodeFileQueryKey = ["extfs-node-files"];
+export const ExtFSNodeFileQueryKey = ["extfs-node-files"];
 const ExtFSNodeFileState = {
   mode: ExtFSNodeFileMode,
   queryKeyList: [ExtFSNodeFileQueryKey],
@@ -85,9 +86,13 @@ export const NodeFile = () => {
     }
   };
 
-  // TODO: implement
-  const openUrl = useMemo(() => ``, [item.itemId, item.parentPath, item.name]);
-  //
+  const openUrl = useMemo(() => {
+    const searchParams = new URLSearchParams({
+      itemId: item.itemId.toString(),
+      filePath: item.filePath,
+    });
+    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+  }, [item.itemId, item.filePath]);
 
   return (
     <ExtFSItem

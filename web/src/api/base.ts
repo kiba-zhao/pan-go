@@ -15,3 +15,9 @@ export const dataProvider = jsonServerProvider(ROOT_PATH);
 export const ETagHeaderRespond = withHeaderRespond("ETag");
 
 export type ETagSearchResults<T extends any> = [string, number, T[]];
+
+export const RootPath = () => ROOT_PATH;
+
+export interface BaseAPI {
+  RootPath: () => string;
+}

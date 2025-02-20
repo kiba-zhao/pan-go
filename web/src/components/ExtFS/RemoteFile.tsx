@@ -3,6 +3,7 @@ import { ExtFSItem, ExtFSItems, useExtFSItem, ExtFSItemOpen } from "./Item";
 import { More, MoreHelpItem } from "./More";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
+import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 
 import { useQuery } from "@tanstack/react-query";
 import type { ExtFSRemoteFile } from "../../api";
@@ -15,7 +16,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
 export const ExtFSRemoteFileMode = "RF";
-const ExtFSRemoteFileQueryKey = ["extfs-remote-files"];
+export const ExtFSRemoteFileQueryKey = ["extfs-remote-files"];
 const ExtFSRemoteFileState = {
   mode: ExtFSRemoteFileMode,
   queryKeyList: [ExtFSRemoteFileQueryKey],
@@ -87,10 +88,14 @@ export const RemoteFile = () => {
   };
 
   // TODO: implement
-  const openUrl = useMemo(
-    () => ``,
-    [item.peerId, item.itemId, item.parentPath, item.name]
-  );
+  const openUrl = useMemo(() => {
+    const searchParams = new URLSearchParams({
+      peerId: item.peerId,
+      itemId: item.itemId.toString(),
+      filePath: item.filePath,
+    });
+    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+  }, [item.peerId, item.itemId, item.filePath]);
   //
 
   return (
