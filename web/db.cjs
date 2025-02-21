@@ -282,12 +282,12 @@ function generateExtFSSearchItem() {
 function generateNodeSearchFiles(nodefile){
   return {
     id: faker.number.int({ min: 1, max: 999999 }),
-    itemId: nodefile.itemId,
+    itemId: nodefile.itemId === void 0?nodefile.id:nodefile.itemId,
     name: nodefile.name,
     fileType: nodefile.fileType,
     size: nodefile.size,
     available: nodefile.available,
-    filePath: nodefile.filePath,
+    filePath: nodefile.itemId === void 0?"":nodefile.filePath,
     mimeType: nodefile.mimeType,
     available: nodefile.available,
     score: faker.number.int({ min: 1, max: 10 }),

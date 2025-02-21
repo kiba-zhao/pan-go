@@ -4,6 +4,7 @@ import {
   ExtFSItemRecord,
   ExtFSItemSettings,
   useExtFSItem,
+  ExtFSItemOpen,
 } from "./Item";
 import { More, MoreHelpItem } from "./More";
 import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
@@ -12,6 +13,7 @@ import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
 import { ExtFSSingleState, ExtFSState, useExtFS } from "./State";
 import { newSearchFileStore } from "./SearchFileStore";
 import type { SearchFileStore } from "./SearchFileStore";
+import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 
 import type { ExtFSSearchFile, ExtFSSearchItem } from "../../api";
 import type { API } from "../../api";
@@ -135,6 +137,19 @@ export const SearchFile = () => {
     // TODO: open a file
   };
 
+  const openUrl = useMemo(() => {
+    const searchParams = new URLSearchParams({
+      itemId: item.itemId.toString(),
+    });
+    if (item.peerId !== void 0 && item.peerId.length > 0) {
+      searchParams.set("peerId", item.peerId);
+    }
+    if (item.filePath !== void 0 && item.filePath.length > 0) {
+      searchParams.set("filePath", item.filePath);
+    }
+    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+  }, [item.peerId, item.itemId, item.filePath]);
+
   return (
     <ExtFSItem
       style={style}
@@ -145,6 +160,7 @@ export const SearchFile = () => {
       disabled={!item.available}
       extIcon={item.peerId !== void 0 ? <CloudIcon fontSize="small" /> : null}
     >
+      <ExtFSItemOpen to={openUrl} disabled={!item.available} />
       <ExtFSItemSettings to={settingsUrl} />
     </ExtFSItem>
   );

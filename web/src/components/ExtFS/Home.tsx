@@ -70,7 +70,6 @@ export const HomeItems = () => {
   );
 };
 
-const ExtFSNodeTagRoutePath = "/extfs/node-tags"; // TODO: not implement
 const HomeItem = () => {
   const { style, item }: ExtFSItemRecord<ExtFSNode | ExtFSRemoteNode> =
     useExtFSItem();

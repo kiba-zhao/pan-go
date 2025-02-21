@@ -10,7 +10,7 @@ import { Fragment, useMemo, useState, useEffect } from "react";
 import { Trans } from "react-i18next";
 
 import { Title, useTranslate } from "react-admin";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import NotFound from "./NotFound";
@@ -181,15 +181,13 @@ const ExtFSBrowseFileViewWithSuccess = ({
 }) => {
   const t = useTranslate();
 
-  const navigate = useNavigate();
-
   const [countDown, setCountDown] = useState(6);
   useEffect(() => {
     if (countDown > 0) {
       const ret = setTimeout(() => setCountDown(countDown - 1), 1000);
       return () => clearTimeout(ret);
     }
-    navigate(linkProps.href || "");
+    location.replace(linkProps.href || "");
   });
 
   return (

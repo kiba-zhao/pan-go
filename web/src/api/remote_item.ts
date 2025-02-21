@@ -1,4 +1,4 @@
-import { withPath, withQuery } from "fetch-utils";
+import { withPath } from "fetch-utils";
 import { fetchMany, fetchOne } from "./base";
 import type { ExtFSNodeItem } from "./node_item";
 import type { ExtFSRemoteNode } from "./remote_node";
