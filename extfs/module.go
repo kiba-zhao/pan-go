@@ -95,17 +95,19 @@ func (m *module) Components() []injection.Component {
 	// base
 	components := []injection.Component{}
 
-	// services
+	// node-items services
 	components = sample.AppendSampleInternalComponent[nodeitem.NodeItemInternalService](components, &nodeitem.NodeItemService{})
 	components = sample.AppendSampleInternalComponent[nodeitem.NodeFilePathInternalService](components, &nodeitem.NodeFilePathService{})
 	components = sample.AppendSampleInternalComponent[nodeitem.NodeFileInfoInternalService](components, &nodeitem.NodeFileInfoService{})
 
-	components = sample.AppendSampleInternalComponent[nodesearchfile.NodeSearchFileInternalService](components, &nodesearchfile.NodeSearchFileService{})
-
+	// remote-nodes services
 	components = sample.AppendSampleComponent(components, &remotenode.RemoteNodeService{})
 	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemService{})
-	components = sample.AppendSampleComponent(components, &remoteitem.RemoteFileInfoService{})
+	components = sample.AppendSampleInternalComponent[remoteitem.RemoteFileInfoInternalService](components, &remoteitem.RemoteFileInfoService{})
 	components = sample.AppendSampleComponent(components, &remoteitem.RemoteFileStreamService{})
+
+	// search file services
+	components = sample.AppendSampleInternalComponent[nodesearchfile.NodeSearchFileInternalService](components, &nodesearchfile.NodeSearchFileService{})
 	components = sample.AppendSampleComponent(components, &searchitem.SearchItemService{})
 	components = sample.AppendSampleComponent(components, &remotesearchfile.RemoteSearchFileService{})
 

@@ -12,6 +12,7 @@ type RemoteFileStreamTopic struct {
 }
 
 func (topic *RemoteFileStreamTopic) SetupToPeer(router peer.PeerRouter) error {
+	router.Handle(SelectRemoteFileStream, topic.Select)
 	return nil
 }
 

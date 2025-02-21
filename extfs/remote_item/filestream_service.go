@@ -43,6 +43,7 @@ func (s *RemoteFileStreamService) ReadWithPeerID(peerId []byte, itemId uint, fil
 	}
 
 	var reader RemoteFileStreamReader
+	reader.peerId = peerId
 	reader.service = s
 	reader.record = record
 	return &reader, nil
