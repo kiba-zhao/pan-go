@@ -128,6 +128,8 @@ func (pn *peerModule) Modules() []interface{} {
 
 func (pn *peerModule) Serve(stream PeerStream, target PeerID) error {
 
+	defer stream.Close()
+
 	var app PeerApp
 	pn.appLocker.RLock()
 	if pn.app != nil {
@@ -159,9 +161,6 @@ func (pn *peerModule) Serve(stream PeerStream, target PeerID) error {
 
 	reader := MarshalResponse(&ctx.Response)
 	_, resErr := io.Copy(stream, reader)
-	if resErr == nil {
-		resErr = stream.Close()
-	}
 
 	if err == nil && resErr != nil {
 		err = resErr
