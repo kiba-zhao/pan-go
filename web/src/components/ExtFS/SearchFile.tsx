@@ -1,33 +1,32 @@
+import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 import { ListItems } from "../List/Item";
 import {
   ExtFSItem,
+  ExtFSItemOpen,
   ExtFSItemRecord,
   ExtFSItemSettings,
   useExtFSItem,
-  ExtFSItemOpen,
 } from "./Item";
 import { More, MoreHelpItem } from "./More";
 import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
 import { newItemSettingsUrl as newItemSettingsUrlWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
-import { ExtFSSingleState, ExtFSState, useExtFS } from "./State";
-import { newSearchFileStore } from "./SearchFileStore";
 import type { SearchFileStore } from "./SearchFileStore";
-import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
+import { newSearchFileStore } from "./SearchFileStore";
+import { ExtFSSingleState, ExtFSState, useExtFS } from "./State";
 
-import type { ExtFSSearchFile, ExtFSSearchItem } from "../../api";
-import type { API } from "../../api";
+import type { API, ExtFSSearchFile, ExtFSSearchItem } from "../../api";
 
+import CloseIcon from "@mui/icons-material/Close";
+import CloudIcon from "@mui/icons-material/Cloud";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
+import IconButton from "@mui/material/IconButton";
 import LinearProgress from "@mui/material/LinearProgress";
 import Link from "@mui/material/Link";
 import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
-import IconButton from "@mui/material/IconButton";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import CloseIcon from "@mui/icons-material/Close";
-import CloudIcon from "@mui/icons-material/Cloud";
 
 import { Fragment, useMemo, useSyncExternalStore } from "react";
 
@@ -150,6 +149,10 @@ export const SearchFile = () => {
     return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
   }, [item.peerId, item.itemId, item.filePath]);
 
+  const openHidden = useMemo(() => {
+    return item.fileType !== "F";
+  }, [item.fileType]);
+
   return (
     <ExtFSItem
       style={style}
@@ -160,7 +163,11 @@ export const SearchFile = () => {
       disabled={!item.available}
       extIcon={item.peerId !== void 0 ? <CloudIcon fontSize="small" /> : null}
     >
-      <ExtFSItemOpen to={openUrl} disabled={!item.available} />
+      <ExtFSItemOpen
+        to={openUrl}
+        disabled={!item.available}
+        hidden={openHidden}
+      />
       <ExtFSItemSettings to={settingsUrl} />
     </ExtFSItem>
   );
