@@ -2,6 +2,8 @@ package remoteitem
 
 import (
 	"context"
+	"errors"
+	"io"
 	"sync"
 	"syscall"
 
@@ -31,7 +33,7 @@ func (fuserfr *FUSERemoteFileStreamReader) Read(ctx context.Context, dest []byte
 	}
 
 	n, err := fuserfr.reader.Read(dest)
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, syscall.ENOENT
 	}
 
