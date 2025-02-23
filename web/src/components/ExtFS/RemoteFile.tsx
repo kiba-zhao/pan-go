@@ -1,9 +1,9 @@
+import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 import type { ExtFSItemRecord } from "./Item";
-import { ExtFSItem, ExtFSItems, useExtFSItem, ExtFSItemOpen } from "./Item";
+import { ExtFSItem, ExtFSItemOpen, ExtFSItems, useExtFSItem } from "./Item";
 import { More, MoreHelpItem } from "./More";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
-import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 
 import { useQuery } from "@tanstack/react-query";
 import type { ExtFSRemoteFile } from "../../api";
@@ -87,7 +87,6 @@ export const RemoteFile = () => {
     }
   };
 
-  // TODO: implement
   const openUrl = useMemo(() => {
     const searchParams = new URLSearchParams({
       peerId: item.peerId,
@@ -96,7 +95,10 @@ export const RemoteFile = () => {
     });
     return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
   }, [item.peerId, item.itemId, item.filePath]);
-  //
+
+  const openHidden = useMemo(() => {
+    return item.fileType !== "F";
+  }, [item.fileType]);
 
   return (
     <ExtFSItem
@@ -108,7 +110,11 @@ export const RemoteFile = () => {
       disabled={!item.available}
       extIcon={<CloudIcon fontSize="small" />}
     >
-      <ExtFSItemOpen to={openUrl} disabled={!item.available} />
+      <ExtFSItemOpen
+        to={openUrl}
+        disabled={!item.available}
+        hidden={openHidden}
+      />
     </ExtFSItem>
   );
 };

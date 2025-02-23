@@ -1,24 +1,24 @@
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import LinearProgress from "@mui/material/LinearProgress";
-import Link from "@mui/material/Link";
 import type { LinkProps } from "@mui/material/Link";
-import Alert from "@mui/material/Alert";
-import AlertTitle from "@mui/material/AlertTitle";
+import Link from "@mui/material/Link";
 
-import { Fragment, useMemo, useState, useEffect } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Trans } from "react-i18next";
 
+import { useQuery } from "@tanstack/react-query";
 import { Title, useTranslate } from "react-admin";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 
-import NotFound from "./NotFound";
-import { ExtFSNodeQueryKey } from "./ExtFS/NodeItem";
-import { ExtFSNodeFileQueryKey } from "./ExtFS/NodeFile";
-import { ExtFSRemoteQueryKey } from "./ExtFS/RemoteItem";
-import { ExtFSRemoteFileQueryKey } from "./ExtFS/RemoteFile";
 import { useAPI } from "./API";
+import { ExtFSNodeFileQueryKey } from "./ExtFS/NodeFile";
+import { ExtFSNodeQueryKey } from "./ExtFS/NodeItem";
+import { ExtFSRemoteFileQueryKey } from "./ExtFS/RemoteFile";
+import { ExtFSRemoteQueryKey } from "./ExtFS/RemoteItem";
+import NotFound from "./NotFound";
 
 export const RoutePath = "/extfs/browse-files";
 
@@ -86,6 +86,7 @@ function convertFileSize(size: number) {
 type ExtFSBrowseFileViewProps = {
   fileName: string;
   fileSize: number;
+  fileType: string;
   disabled: boolean;
   error: Error | null;
   isLoading: boolean;
@@ -93,6 +94,7 @@ type ExtFSBrowseFileViewProps = {
 const ExtFSBrowseFileView = ({
   fileName,
   fileSize,
+  fileType,
   disabled,
   error,
   isLoading,
@@ -113,6 +115,16 @@ const ExtFSBrowseFileView = ({
       return {
         title: t("custom.extfs/browse-files.disabled"),
         desc: t("custom.extfs/browse-files.disabled_desc", {
+          fileName,
+          fileSize: fileSizeStr,
+        }),
+      };
+    }
+
+    if (fileType !== "F") {
+      return {
+        title: t("custom.extfs/browse-files.invalid"),
+        desc: t("custom.extfs/browse-files.invalid_desc", {
           fileName,
           fileSize: fileSizeStr,
         }),
@@ -175,7 +187,7 @@ const ExtFSBrowseFileViewWithSuccess = ({
   ...linkProps
 }: Omit<
   ExtFSBrowseFileViewProps,
-  "fileSize" | "disabled" | "error" | "isLoading"
+  "fileSize" | "disabled" | "error" | "isLoading" | "fileType"
 > & {
   fileSize: string;
 }) => {
@@ -239,6 +251,7 @@ const ExtFSBrowseFileWithRemoteItem = ({
     <ExtFSBrowseFileView
       fileName={data?.name || ""}
       fileSize={data?.size || 0}
+      fileType={data?.fileType || ""}
       isLoading={isFetching}
       disabled={!data?.available}
       error={error}
@@ -265,6 +278,7 @@ const ExtFSBrowseFileWithNodeItem = ({
     <ExtFSBrowseFileView
       fileName={data?.name || ""}
       fileSize={data?.size || 0}
+      fileType={data?.fileType || ""}
       isLoading={isFetching}
       disabled={!data?.available}
       error={error}
@@ -290,6 +304,7 @@ const ExtFSBrowseFileWithRemoteFile = ({
     <ExtFSBrowseFileView
       fileName={data?.name || ""}
       fileSize={data?.size || 0}
+      fileType={data?.fileType || ""}
       isLoading={isFetching}
       disabled={!data?.available}
       error={error}
@@ -317,6 +332,7 @@ const ExtFSBrowseFileWithNodeFile = ({
     <ExtFSBrowseFileView
       fileName={data?.name || ""}
       fileSize={data?.size || 0}
+      fileType={data?.fileType || ""}
       isLoading={isFetching}
       disabled={!data?.available}
       error={error}

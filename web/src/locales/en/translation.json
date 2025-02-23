@@ -55,6 +55,8 @@
       "error": "Error",
       "disabled": "Access Denied",
       "disabled_desc": "Refuse access {{fileName}} ({{fileSize}}) file",
+      "invalid": "Failed",
+      "invalid_desc": "{{fileName}} ({{fileSize}}) access is not yet supported.",
       "success": "Just a minute",
       "success_desc": "Open <Link>{{fileName}} ({{fileSize}})</Link> directly.",
       "success_countdown": "Automatically redirecting in <Typography> {{countDown}} </Typography> seconds.",

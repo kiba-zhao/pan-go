@@ -3,19 +3,19 @@ import { Fragment } from "react";
 
 import { useTranslate } from "react-admin";
 
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SettingsIcon from "@mui/icons-material/Settings";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
-import LinearProgress from "@mui/material/LinearProgress";
 import IconButton from "@mui/material/IconButton";
+import LinearProgress from "@mui/material/LinearProgress";
 import ListItem from "@mui/material/ListItem";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import Typography from "@mui/material/Typography";
 
 import type { To } from "react-router-dom";
 import { Link as RouterLink } from "react-router-dom";
@@ -152,9 +152,12 @@ export const ExtFSItemSettings = ({ to, disabled }: ExtFSItemSettingsProps) => {
   );
 };
 
-export type ExtFSItemOpenProps = Pick<ExtFSItemLinkProps, "to" | "disabled">;
-export const ExtFSItemOpen = ({ to, disabled }: ExtFSItemOpenProps) => {
+export type ExtFSItemOpenProps = Pick<ExtFSItemLinkProps, "to" | "disabled"> & {
+  hidden?: boolean;
+};
+export const ExtFSItemOpen = ({ to, disabled, hidden }: ExtFSItemOpenProps) => {
   const t = useTranslate();
+  if (hidden) return;
   return (
     <ExtFSItemLink
       title={t("custom.button.open")}

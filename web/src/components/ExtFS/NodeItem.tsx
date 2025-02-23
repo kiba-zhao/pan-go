@@ -1,19 +1,19 @@
 import type { ExtFSNodeItem, ExtFSSearchFile } from "../../api";
 import { useAPI } from "../API";
+import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 import { ExtFSNodeItemRoutePath } from "../ExtFSNodeItem";
 import type { ExtFSItemRecord } from "./Item";
 import {
   ExtFSItem,
+  ExtFSItemOpen,
   ExtFSItems,
   ExtFSItemSettings,
-  ExtFSItemOpen,
   useExtFSItem,
 } from "./Item";
 import { More, MoreHelpItem, MoreNewItem } from "./More";
 import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
 import type { ExtFSState } from "./State";
 import { useExtFS } from "./State";
-import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -103,6 +103,10 @@ export const NodeItem = () => {
     return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
   }, [item.id]);
 
+  const openHidden = useMemo(() => {
+    return item.fileType !== "F";
+  }, [item.fileType]);
+
   return (
     <ExtFSItem
       style={style}
@@ -112,7 +116,11 @@ export const NodeItem = () => {
       onClick={handleClick}
       disabled={!item.available}
     >
-      <ExtFSItemOpen to={openUrl} disabled={!item.available} />
+      <ExtFSItemOpen
+        to={openUrl}
+        disabled={!item.available}
+        hidden={openHidden}
+      />
       <ExtFSItemSettings to={settingsUrl} />
     </ExtFSItem>
   );

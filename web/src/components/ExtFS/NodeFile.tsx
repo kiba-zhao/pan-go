@@ -1,10 +1,10 @@
+import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 import { ExtFSNodeItemRoutePath } from "../ExtFSNodeItem";
 import type { ExtFSItemRecord } from "./Item";
-import { ExtFSItem, ExtFSItems, useExtFSItem, ExtFSItemOpen } from "./Item";
+import { ExtFSItem, ExtFSItemOpen, ExtFSItems, useExtFSItem } from "./Item";
 import { More, MoreHelpItem, MoreSettingsItem } from "./More";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
-import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 
 import type { ExtFSNodeFile } from "../../api";
 import { useAPI } from "../API";
@@ -94,6 +94,10 @@ export const NodeFile = () => {
     return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
   }, [item.itemId, item.filePath]);
 
+  const openHidden = useMemo(() => {
+    return item.fileType !== "F";
+  }, [item.fileType]);
+
   return (
     <ExtFSItem
       style={style}
@@ -103,7 +107,11 @@ export const NodeFile = () => {
       onClick={handleClick}
       disabled={!item.available}
     >
-      <ExtFSItemOpen to={openUrl} disabled={!item.available} />
+      <ExtFSItemOpen
+        to={openUrl}
+        disabled={!item.available}
+        hidden={openHidden}
+      />
     </ExtFSItem>
   );
 };
