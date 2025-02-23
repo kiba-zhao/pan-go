@@ -1,6 +1,7 @@
 package nodeitem
 
 import (
+	"errors"
 	"net/http"
 	"pan/app/web"
 )
@@ -22,14 +23,19 @@ func (ctrl *NodeFileStreamController) Select(ctx web.WebContext) {
 	}
 	filePath := ctx.Param("filepath")
 
-	realFilePath, err := ctrl.NodeFilePathService.Select(id, filePath[1:])
+	realFilePath, err := ctrl.NodeFilePathService.SelectWithoutFolder(id, filePath[1:])
 	if ctrl.NodeFilePathService.IsNotExist(err) {
 		ctx.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, ErrNodeFilePathWithoutFolder) {
+		ctx.AbortWithError(http.StatusForbidden, err)
 		return
 	}
 	if err != nil {
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
+
 	ctx.File(realFilePath)
 }

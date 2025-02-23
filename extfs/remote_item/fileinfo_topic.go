@@ -24,29 +24,26 @@ func (topic *RemoteFileInfoTopic) Search(ctx *peer.Context, next peer.Next) erro
 	body, err := io.ReadAll(req)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
-		return err
+		return nil
 	}
 
 	var condition RemoteFileInfoRecordSearchCondition
 	err = proto.Unmarshal(body, &condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
-		return err
+		return nil
 	}
 
 	fileItemList, err := topic.RemoteFileInfoService.SearchForTopic(&condition)
 	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
 		return err
 	}
 
 	buffer, err := proto.Marshal(fileItemList)
-	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
-		return err
+	if err == nil {
+		ctx.Respond(bytes.NewReader(buffer))
 	}
 
-	ctx.Respond(bytes.NewReader(buffer))
 	return err
 }
 
@@ -63,21 +60,18 @@ func (topic *RemoteFileInfoTopic) Select(ctx *peer.Context, next peer.Next) erro
 	err = proto.Unmarshal(body, &condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
-		return err
+		return nil
 	}
 
 	record, err := topic.RemoteFileInfoService.SelectForTopic(&condition)
 	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
 		return err
 	}
 
 	buffer, err := proto.Marshal(record)
-	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
-		return err
+	if err == nil {
+		ctx.Respond(bytes.NewReader(buffer))
 	}
 
-	ctx.Respond(bytes.NewReader(buffer))
 	return err
 }

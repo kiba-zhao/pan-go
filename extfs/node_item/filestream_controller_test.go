@@ -114,4 +114,40 @@ func TestNodeFileStreamController(t *testing.T) {
 
 	})
 
+	t.Run("GET /node-items/:id/_stream/*filepath Failed with Folder", func(t *testing.T) {
+		web, ctrl := setup()
+
+		filePath, err := setupTemp("extfs-node-item-streams")
+		assert.Nil(t, err)
+		defer teardownTemp(filePath)
+
+		filename := "test.json"
+		fullpath := filepath.Join(filePath, filename)
+		fileBytes := []byte("{\"name\":\"this is test json\"}")
+		err = os.WriteFile(fullpath, fileBytes, 0644)
+		assert.Nil(t, err)
+
+		nodeItemService := &mockedNodeItem.MockNodeItemInternalService{}
+		defer nodeItemService.AssertExpectations(t)
+		ctrl.NodeFilePathService.NodeItemService = nodeItemService
+
+		itemId := uint(1)
+		var nodeItem nodeitem.NodeItem
+		nodeItem.ID = itemId
+		nodeItem.FilePath = filePath
+		nodeItem.FileType = nodeitem.FileTypeFolder
+		nodeItem.Available = true
+
+		nodeItemService.On("Select", itemId).Once().Return(nodeItem, nil)
+		nodeItemService.On("IsNotExist", mock.Anything).Once().Return(false)
+
+		url := fmt.Sprintf("/node-items/%d/_stream/", itemId)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", url, nil)
+		web.ServeHTTP(w, req)
+
+		assert.Equal(t, 403, w.Code)
+
+	})
+
 }

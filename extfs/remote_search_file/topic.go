@@ -22,28 +22,25 @@ func (t *RemoteSearchFileTopic) Search(ctx *peer.Context, next peer.Next) error 
 	body, err := io.ReadAll(req)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
-		return err
+		return nil
 	}
 
 	var condition RemoteSearchFileRecordSearchCondition
 	err = proto.Unmarshal(body, &condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
-		return err
+		return nil
 	}
 
 	list, err := t.RemoteSearchFileService.SearchForTopic(&condition)
 	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
 		return err
 	}
 
 	buffer, err := proto.Marshal(list)
-	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
-		return err
+	if err == nil {
+		ctx.Respond(bytes.NewReader(buffer))
 	}
 
-	ctx.Respond(bytes.NewReader(buffer))
 	return err
 }

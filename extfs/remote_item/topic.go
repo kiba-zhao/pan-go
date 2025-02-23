@@ -22,17 +22,14 @@ func (topic *RemoteItemTopic) SelectAll(ctx *peer.Context, next peer.Next) error
 
 	recordList, err := topic.RemoteItemService.SelectAllForTopic()
 	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
 		return err
 	}
 
 	buffer, err := proto.Marshal(&recordList)
-	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
-		return err
+	if err == nil {
+		ctx.Respond(bytes.NewReader(buffer))
 	}
 
-	ctx.Respond(bytes.NewReader(buffer))
 	return err
 }
 
@@ -41,28 +38,25 @@ func (topic *RemoteItemTopic) Select(ctx *peer.Context, next peer.Next) error {
 	body, err := io.ReadAll(req)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
-		return err
+		return nil
 	}
 
 	var condition RemoteItemRecordSelectCondition
 	err = proto.Unmarshal(body, &condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
-		return err
+		return nil
 	}
 
 	record, err := topic.RemoteItemService.SelectForTopic(&condition)
 	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
 		return err
 	}
 
 	buffer, err := proto.Marshal(record)
-	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
-		return err
+	if err == nil {
+		ctx.Respond(bytes.NewReader(buffer))
 	}
 
-	ctx.Respond(bytes.NewReader(buffer))
 	return err
 }

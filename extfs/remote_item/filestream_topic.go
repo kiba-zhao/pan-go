@@ -1,8 +1,10 @@
 package remoteitem
 
 import (
+	"errors"
 	"io"
 	"pan/app/peer"
+	nodeitem "pan/extfs/node_item"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -21,22 +23,25 @@ func (topic *RemoteFileStreamTopic) Select(ctx *peer.Context, next peer.Next) er
 	body, err := io.ReadAll(req)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
-		return err
+		return nil
 	}
 
 	var condition RemoteFileStreamSelectCondition
 	err = proto.Unmarshal(body, &condition)
 	if err != nil {
 		ctx.ThrowError(peer.CodeBadRequest, err)
-		return err
+		return nil
 	}
 
 	res, err := topic.RemoteFileStreamService.SelectForTopic(&condition)
-	if err != nil {
-		ctx.ThrowError(peer.CodeInternalError, err)
-		return err
+	if errors.Is(err, nodeitem.ErrNodeFilePathWithoutFolder) {
+		ctx.ThrowError(peer.CodeForbidden, err)
+		return nil
 	}
 
-	ctx.Respond(res)
+	if err == nil {
+		ctx.Respond(res)
+	}
+
 	return err
 }

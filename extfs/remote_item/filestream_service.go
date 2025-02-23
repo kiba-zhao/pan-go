@@ -50,7 +50,7 @@ func (s *RemoteFileStreamService) ReadWithPeerID(peerId []byte, itemId uint, fil
 }
 
 func (s *RemoteFileStreamService) SelectForTopic(condition *RemoteFileStreamSelectCondition) (io.ReadCloser, error) {
-	filePath, err := s.FilePathService.Select(uint(condition.ItemID), condition.FilePath)
+	filePath, err := s.FilePathService.SelectWithoutFolder(uint(condition.ItemID), condition.FilePath)
 	if err != nil {
 		return nil, err
 	}

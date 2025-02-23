@@ -15,6 +15,7 @@ const (
 	CodeInternalError = 500
 	CodeNotFound      = 404
 	CodeBadRequest    = 400
+	CodeForbidden     = 403
 )
 
 var ErrPeerModuleUnavailable = errors.New("peer.PeerModule Error: Unavailable")
