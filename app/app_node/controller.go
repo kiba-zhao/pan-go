@@ -17,6 +17,7 @@ func (c *AppNodeController) SetupToWeb(router web.WebRouter) error {
 	router.DELETE("/nodes/:id", c.Delete)
 	router.POST("/nodes", c.Create)
 	router.PATCH("/nodes/:id", c.Update)
+	router.PUT("/nodes/:id", c.Update)
 	return nil
 }
 
