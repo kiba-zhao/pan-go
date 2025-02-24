@@ -19,6 +19,7 @@ import { ExtFSNodeQueryKey } from "./ExtFS/NodeItem";
 import { ExtFSRemoteFileQueryKey } from "./ExtFS/RemoteFile";
 import { ExtFSRemoteQueryKey } from "./ExtFS/RemoteItem";
 import NotFound from "./NotFound";
+import { useBrowser } from "./Global/Browser";
 
 export const RoutePath = "/extfs/browse-files";
 
@@ -192,6 +193,7 @@ const ExtFSBrowseFileViewWithSuccess = ({
   fileSize: string;
 }) => {
   const t = useTranslate();
+  const browser = useBrowser();
 
   const [countDown, setCountDown] = useState(6);
   useEffect(() => {
@@ -199,7 +201,8 @@ const ExtFSBrowseFileViewWithSuccess = ({
       const ret = setTimeout(() => setCountDown(countDown - 1), 1000);
       return () => clearTimeout(ret);
     }
-    location.replace(linkProps.href || "");
+    const { window } = browser || {};
+    if (window) window.location.replace(linkProps.href || "");
   });
 
   return (

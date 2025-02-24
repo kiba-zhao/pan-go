@@ -5,7 +5,7 @@ import type { QRCode as JSQRCode } from "jsqr";
 import jsQR from "jsqr";
 import type { QRCodeRenderersOptions } from "qrcode";
 import { toCanvas } from "qrcode";
-import { useBrower } from "../Global/Brower";
+import { useBrowser } from "../Global/Browser";
 import {
   DEFAULT_BASE,
   TranslateProvider,
@@ -113,13 +113,13 @@ type CameraVideoProps = {
 };
 const CameraVideo = ({ onChanged, hidden }: CameraVideoProps) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const brower = useBrower();
+  const browser = useBrowser();
   const cancelRef = useRef<number | null>(null);
 
   const destructor = useCallback((stream: MediaStream) => {
     stream.getTracks().forEach((track) => track.stop());
-    if (!brower || !videoRef.current) return;
-    const window = brower.window;
+    if (!browser || !videoRef.current) return;
+    const window = browser.window;
     if (cancelRef.current) {
       window.cancelAnimationFrame(cancelRef.current);
       cancelRef.current = null;
@@ -127,9 +127,9 @@ const CameraVideo = ({ onChanged, hidden }: CameraVideoProps) => {
   }, []);
 
   const next = useCallback(() => {
-    if (!brower || !videoRef.current) return;
+    if (!browser || !videoRef.current) return;
     const video = videoRef.current;
-    const window = brower.window;
+    const window = browser.window;
 
     const cancelId = window.requestAnimationFrame(() => {
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
@@ -144,9 +144,9 @@ const CameraVideo = ({ onChanged, hidden }: CameraVideoProps) => {
   }, []);
 
   useEffect(() => {
-    if (!brower || !videoRef.current) return;
+    if (!browser || !videoRef.current) return;
     const video = videoRef.current;
-    const window = brower.window;
+    const window = browser.window;
     const { navigator } = window;
 
     const promise = navigator.mediaDevices

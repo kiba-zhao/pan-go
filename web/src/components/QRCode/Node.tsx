@@ -3,7 +3,7 @@ import type { QRScanChangedEvent } from "./Base";
 import { QRCode, QRFileScan, QRProvider, QRScan } from "./Base";
 
 import type { ReactNode } from "react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import ImageIcon from "@mui/icons-material/Image";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
@@ -12,6 +12,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import Stack from "@mui/material/Stack";
+import { useBrowser } from "../Global/Browser";
 
 export type NodeQRCodeValue = {
   name: string;
@@ -46,8 +47,20 @@ export const NodeQRCode = ({
   );
 };
 
-const InternalQRScan = ({ onQRScan }: NodeQRScanProps) => {
+const InternalQRScan = (props: NodeQRScanProps) => {
+  const { onQRScan } = props;
   const t = useTranslate();
+
+  const browser = useBrowser();
+  const [available, setAvailable] = useState(false);
+  useEffect(() => {
+    const { window } = browser || {};
+    if (!window) return;
+    navigator.mediaDevices.enumerateDevices().then((devices) => {
+      const hasWebcam = devices.some((_) => _.kind === "videoinput");
+      if (hasWebcam !== available) setAvailable(hasWebcam);
+    });
+  }, [props]);
 
   const [open, setOpen] = useState(false);
   const onOpen = () => setOpen(true);
@@ -59,6 +72,7 @@ const InternalQRScan = ({ onQRScan }: NodeQRScanProps) => {
     event.invalid = false;
     setOpen(false);
   };
+
   return (
     <Fragment>
       <Button
@@ -66,19 +80,22 @@ const InternalQRScan = ({ onQRScan }: NodeQRScanProps) => {
         size="small"
         startIcon={<QrCodeScannerIcon />}
         onClick={onOpen}
+        disabled={!available}
       >
         {t("button.qrscan")}
       </Button>
-      <Dialog open={open} onClose={onClose}>
-        <DialogActions>
-          <Button size="small" onClick={onClose}>
-            {t("button.close")}
-          </Button>
-        </DialogActions>
-        <DialogContent>
-          <QRScan onChanged={onChanged} width="400" height="300" />
-        </DialogContent>
-      </Dialog>
+      {available && open && (
+        <Dialog open={open} onClose={onClose}>
+          <DialogActions>
+            <Button size="small" onClick={onClose}>
+              {t("button.close")}
+            </Button>
+          </DialogActions>
+          <DialogContent>
+            <QRScan onChanged={onChanged} width="400" height="300" />
+          </DialogContent>
+        </Dialog>
+      )}
     </Fragment>
   );
 };
@@ -124,7 +141,8 @@ function parseNodeQRCodeValue(value: string): NodeQRCodeValue | undefined {
   if (!URL.canParse(value)) return;
   const url = new URL(value);
   if (url.protocol.slice(0, -1) !== import.meta.env.VITE_APP_NAME) return;
-  if (url.pathname !== "//app/node") return;
+  if (url.host !== "app") return;
+  if (url.pathname !== "/nodes") return;
   const peerId = url.searchParams.get("peerId");
   const name = url.searchParams.get("name");
   if (!peerId || peerId.length <= 0 || !name || name.length <= 0) return;
@@ -133,5 +151,5 @@ function parseNodeQRCodeValue(value: string): NodeQRCodeValue | undefined {
 
 function toNodeQRCodeUrl({ name, peerId }: NodeQRCodeValue): string {
   const query = new URLSearchParams({ peerId, name });
-  return `${import.meta.env.VITE_APP_NAME}://app/node?${query.toString()}`;
+  return `${import.meta.env.VITE_APP_NAME}://app/nodes?${query.toString()}`;
 }
