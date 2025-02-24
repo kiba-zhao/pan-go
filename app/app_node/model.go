@@ -15,7 +15,7 @@ type AppNodeFields struct {
 
 type AppNode struct {
 	ID        uint           `gorm:"primarykey" json:"id" form:"id"`
-	PeerID    string         `gorm:"size:256;uniqueIndex" json:"peerId" form:"peerId"`
+	PeerID    string         `gorm:"size:256;index" json:"peerId" form:"peerId"`
 	Name      string         `gorm:"size:256;index" json:"name" form:"name"`
 	Blocked   bool           `gorm:"index" json:"blocked" form:"blocked"`
 	Online    bool           `gorm:"-:all" json:"online" form:"online"`
