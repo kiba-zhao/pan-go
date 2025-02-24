@@ -44,7 +44,9 @@ func (pn *peerNetwork) Purge(peerId PeerID) error {
 	for _, module := range modules {
 		peerNetwork := module.(PeerNetwork)
 		err := peerNetwork.Purge(peerId)
-		logger.Default().Log(context.Background(), logger.LevelError, err.Error())
+		if err != nil {
+			logger.Default().Log(context.Background(), logger.LevelError, err.Error())
+		}
 	}
 	return nil
 }

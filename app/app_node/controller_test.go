@@ -2,7 +2,6 @@ package appnode_test
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -39,9 +38,9 @@ func TestAppNodeController(t *testing.T) {
 		total := int64(10)
 		peerIds := [][]byte{[]byte("peer id 1"), []byte("peer id 2"), []byte("peer id 3")}
 		items := []appnode.AppNode{
-			{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerIds[0]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: base64.StdEncoding.EncodeToString(peerIds[1]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: base64.StdEncoding.EncodeToString(peerIds[2]), Blocked: true},
+			{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerIds[0]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[1]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[2]), Blocked: true},
 		}
 		peerNodeRepo.On("Search", appnode.AppNodeSearchCondition{}).Once().Return(total, items, nil)
 
@@ -86,9 +85,9 @@ func TestAppNodeController(t *testing.T) {
 		total := int64(10)
 		peerIds := [][]byte{[]byte("peer id 1"), []byte("peer id 2"), []byte("peer id 3")}
 		items := []appnode.AppNode{
-			{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerIds[0]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: base64.StdEncoding.EncodeToString(peerIds[1]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: base64.StdEncoding.EncodeToString(peerIds[2]), Blocked: true},
+			{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerIds[0]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[1]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[2]), Blocked: true},
 		}
 		peerNodeRepo.On("Search", condition).Once().Return(total, items, nil)
 
@@ -140,9 +139,9 @@ func TestAppNodeController(t *testing.T) {
 		total := int64(10)
 		peerIds := [][]byte{[]byte("peer id 1"), []byte("peer id 2"), []byte("peer id 3")}
 		items := []appnode.AppNode{
-			{ID: 1, Name: "peer node1", PeerID: base64.StdEncoding.EncodeToString(peerIds[0]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: base64.StdEncoding.EncodeToString(peerIds[1]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: base64.StdEncoding.EncodeToString(peerIds[2]), Blocked: true},
+			{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerIds[0]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[1]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[2]), Blocked: true},
 		}
 		peerNodeRepo.On("Search", condition).Once().Return(total, items, nil)
 
@@ -272,7 +271,7 @@ func TestAppNodeController(t *testing.T) {
 		blocked := true
 		fields := appnode.AppNodeFields{
 			Name:    "peer node1",
-			PeerID:  base64.StdEncoding.EncodeToString([]byte("peer id 1")),
+			PeerID:  appnode.EncodePeerID([]byte("peer id 1")),
 			Blocked: &blocked,
 		}
 		item := appnode.AppNode{Name: fields.Name, PeerID: fields.PeerID, Blocked: blocked}
@@ -304,7 +303,7 @@ func TestAppNodeController(t *testing.T) {
 		peerId := []byte("peer id")
 		fields := appnode.AppNodeFields{
 			Name:    "peer node1",
-			PeerID:  base64.StdEncoding.EncodeToString([]byte("peer id 1")),
+			PeerID:  appnode.EncodePeerID([]byte("peer id 1")),
 			Blocked: &blocked,
 		}
 		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: appnode.EncodePeerID(peerId), Blocked: false}
@@ -345,7 +344,7 @@ func TestAppNodeController(t *testing.T) {
 		peerId := []byte("peer id")
 		fields := appnode.AppNodeFields{
 			Name:    "peer node1",
-			PeerID:  base64.StdEncoding.EncodeToString([]byte("peer id 1")),
+			PeerID:  appnode.EncodePeerID([]byte("peer id 1")),
 			Blocked: &blocked,
 		}
 		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: appnode.EncodePeerID(peerId), Blocked: false}

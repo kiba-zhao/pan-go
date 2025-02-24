@@ -178,9 +178,9 @@ func purgeWithPeerID(peerModule peer.PeerModule, model *AppNode) error {
 }
 
 func EncodePeerID(peerId peer.PeerID) string {
-	return base64.StdEncoding.EncodeToString(peerId)
+	return base64.RawURLEncoding.EncodeToString(peerId)
 }
 
 func DecodePeerID(peerId string) (peer.PeerID, error) {
-	return base64.StdEncoding.DecodeString(peerId)
+	return base64.RawURLEncoding.DecodeString(peerId)
 }

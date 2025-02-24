@@ -2,7 +2,6 @@ package appnode_test
 
 import (
 	"database/sql"
-	"encoding/base64"
 	appnode "pan/app/app_node"
 	"testing"
 	"time"
@@ -39,7 +38,7 @@ func TestAppNodeRepo(t *testing.T) {
 		var peerNode appnode.AppNode
 		peerNode.ID = 123
 		peerNode.Name = "peer node name"
-		peerNode.PeerID = base64.StdEncoding.EncodeToString([]byte("peer node id"))
+		peerNode.PeerID = appnode.EncodePeerID([]byte("peer node id"))
 		peerNode.Blocked = true
 		peerNode.CreatedAt = time.Now()
 		peerNode.UpdatedAt = time.Now()
@@ -58,7 +57,7 @@ func TestAppNodeRepo(t *testing.T) {
 		var peerNode appnode.AppNode
 		peerNode.ID = 123
 		peerNode.Name = "peer node name"
-		peerNode.PeerID = base64.StdEncoding.EncodeToString([]byte("peer node id"))
+		peerNode.PeerID = appnode.EncodePeerID([]byte("peer node id"))
 		peerNode.Blocked = true
 		peerNode.CreatedAt = time.Now()
 		peerNode.UpdatedAt = time.Now()
@@ -78,7 +77,7 @@ func TestAppNodeRepo(t *testing.T) {
 		var peerNode appnode.AppNode
 		peerNode.ID = 123
 		peerNode.Name = "peer node name"
-		peerNode.PeerID = base64.StdEncoding.EncodeToString([]byte("peer node id"))
+		peerNode.PeerID = appnode.EncodePeerID([]byte("peer node id"))
 		peerNode.Blocked = true
 		peerNode.CreatedAt = time.Now()
 		peerNode.UpdatedAt = time.Now()
@@ -96,7 +95,7 @@ func TestAppNodeRepo(t *testing.T) {
 		var peerNode appnode.AppNode
 		peerNode.ID = 123
 		peerNode.Name = "peer node name"
-		peerNode.PeerID = base64.StdEncoding.EncodeToString([]byte("peer node id"))
+		peerNode.PeerID = appnode.EncodePeerID([]byte("peer node id"))
 		peerNode.Blocked = true
 		peerNode.CreatedAt = time.Now()
 		peerNode.UpdatedAt = time.Now()
@@ -119,7 +118,7 @@ func TestAppNodeRepo(t *testing.T) {
 
 		var peerNode appnode.AppNode
 		peerNode.Name = "peer node name"
-		peerNode.PeerID = base64.StdEncoding.EncodeToString([]byte("peer node id"))
+		peerNode.PeerID = appnode.EncodePeerID([]byte("peer node id"))
 		peerNode.Blocked = true
 		peerNode.CreatedAt = time.Now()
 		peerNode.UpdatedAt = time.Now()

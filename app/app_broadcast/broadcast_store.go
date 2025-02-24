@@ -1,7 +1,6 @@
 package appbroadcast
 
 import (
-	"encoding/base64"
 	appnode "pan/app/app_node"
 	"pan/app/broadcast"
 	"pan/app/peer"
@@ -14,7 +13,7 @@ type BroadcastStore struct {
 
 func (store *BroadcastStore) SelectOrCreate(info broadcast.BroadcastInfo) (broadcast.BroadcastInfo, error) {
 	var modelInfo AppBroadcastInfo
-	modelInfo.PeerID = base64.StdEncoding.EncodeToString(info.PeerID)
+	modelInfo.PeerID = appnode.EncodePeerID(info.PeerID)
 	modelInfo.Hightest = info.Heightest
 
 	modelInfo, _, err := store.Repo.SelectOrCreate(modelInfo)

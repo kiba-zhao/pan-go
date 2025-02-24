@@ -125,5 +125,5 @@ func genesearchFileTaskHash(task NodeSearchTask) string {
 	binary.BigEndian.PutUint64(hashBytes, uint64(time.Now().Unix()))
 	rand.Read(hashBytes[8:])
 
-	return base64.StdEncoding.EncodeToString(hashBytes)
+	return base64.RawURLEncoding.EncodeToString(hashBytes)
 }

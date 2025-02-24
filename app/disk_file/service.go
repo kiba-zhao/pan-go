@@ -126,6 +126,6 @@ func getFileType(isDir bool) string {
 }
 
 func encodeFilePath(filePath string) string {
-	encoded := base64.StdEncoding.EncodeToString([]byte(filePath))
+	encoded := base64.RawURLEncoding.EncodeToString([]byte(filePath))
 	return encoded
 }

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/base64"
 	"path"
 
 	appbroadcast "pan/app/app_broadcast"
@@ -136,7 +135,8 @@ func (m *module) PeerID() string {
 	if settings == nil || !settings.Available() {
 		return ""
 	}
-	return base64.StdEncoding.EncodeToString(settings.PeerID())
+
+	return appnode.EncodePeerID(settings.PeerID())
 }
 
 func (m *module) Modules() []interface{} {

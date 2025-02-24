@@ -1,7 +1,6 @@
 package remotenode_test
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"net/http/httptest"
 	"pan/app/peer"
@@ -55,14 +54,14 @@ func TestRemoteNodeController(t *testing.T) {
 
 		firstNode := appnode.AppNode{}
 		firstNode.ID = 1
-		firstNode.PeerID = base64.StdEncoding.EncodeToString(firstPeerID)
+		firstNode.PeerID = appnode.EncodePeerID(firstPeerID)
 		firstNode.Name = "first-node"
 		firstNode.Blocked = false
 		firstNode.Online = true
 
 		secondNode := appnode.AppNode{}
 		secondNode.ID = 2
-		secondNode.PeerID = base64.StdEncoding.EncodeToString(secondPeerID)
+		secondNode.PeerID = appnode.EncodePeerID(secondPeerID)
 		secondNode.Name = "second-node"
 		secondNode.Blocked = false
 		secondNode.Online = true

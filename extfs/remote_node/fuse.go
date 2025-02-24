@@ -3,8 +3,8 @@ package remotenode
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
+	appnode "pan/app/app_node"
 	nodeitem "pan/extfs/node_item"
 	remoteitem "pan/extfs/remote_item"
 	"slices"
@@ -103,7 +103,7 @@ func (fusern *FUSERemoteNode) Lookup(ctx context.Context, name string, out *fuse
 		return nil, syscall.ENOENT
 	}
 
-	peerId, err := base64.StdEncoding.DecodeString(remote.PeerID)
+	peerId, err := appnode.DecodePeerID(remote.PeerID)
 	if err != nil {
 		return nil, syscall.ENOENT
 	}
