@@ -253,6 +253,7 @@ func (qm *quicPeerModule) Dial(ctx context.Context, peerId peer.PeerID) (QuicCon
 	var locker sync.Mutex
 	var dialConn QuicConn
 	dialCtx, dialCancel := context.WithCancelCause(ctx)
+	defer dialCancel(nil)
 
 outer_loop:
 	for _, addr := range addrs {
@@ -294,6 +295,7 @@ outer_loop:
 	if dialConn != nil {
 		return dialConn, nil
 	}
+
 	return dialConn, dialCtx.Err()
 }
 
@@ -383,7 +385,7 @@ func (qm *quicPeerModule) Serve(conn quic.Connection, peerId peer.PeerID) (QuicC
 			err = qm.PeerModule.Access(connPeerID)
 		}
 		if err != nil {
-			conn.CloseWithError(quic.ApplicationErrorCode(0), "")
+			conn.CloseWithError(quic.ApplicationErrorCode(0), err.Error())
 			return nil, err
 		}
 		serveConn, _ = qm.connMgr.SelectOrStore(&quicConn{Connection: conn, peerId: connPeerID, mgr: qm.connMgr})
