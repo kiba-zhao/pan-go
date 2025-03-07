@@ -1,3 +1,6 @@
+// Package peer provides p2p functionality for Pan.
+//
+// It is used to define p2p functionality in the application
 package peer
 
 import (
@@ -31,14 +34,19 @@ type PeerRouter = AppHandleGroup
 type PeerContext = AppContext
 type PeerNext = Next
 
+// PeerAppModule is a module for the p2p application
+//
+// The module that implements this interface will be obtained by the application from the runtime and loaded into the p2p engine
 type PeerAppModule interface {
 	SetupToPeer(PeerRouter) error
 }
 
+// PeerScopeModule is a module that provides a scope for the p2p application
 type PeerScopeModule interface {
 	PeerScope() []byte
 }
 
+// PeerAppModuleProvider is a module that provides multiple PeerAppModules
 type PeerAppModuleProvider interface {
 	PeerAppModules() []PeerAppModule
 }
@@ -53,11 +61,13 @@ var (
 	ContextPeerID = []byte("PeerID")
 )
 
+// PeerGuard is a module that provides access control and security features within the p2p module
 type PeerGuard interface {
 	Enabled() bool
 	Access(PeerID) error
 }
 
+// PeerModule is the main interface for the p2p module
 type PeerModule interface {
 	CanReach(PeerID) bool
 	Purge(PeerID) error
@@ -69,6 +79,11 @@ type PeerModule interface {
 	Access(PeerID) error
 }
 
+// New creates a new p2p application module.
+//
+// The module implements the PeerModule interface and is used to manage p2p connections.
+//
+// The module is also a runtime.Module, and can be used to load components into the p2p engine.
 func New() interface{} {
 	module := &peerModule{}
 	network := &peerNetwork{peerModule: module}
@@ -86,6 +101,9 @@ type peerModule struct {
 	network        PeerNetwork
 }
 
+// Init initializes the peer module with the provided registry.
+//
+// It sets the module's registry and does not return an error.
 func (pn *peerModule) Init(registry runtime.Registry) error {
 
 	pn.registryLocker.Lock()
@@ -95,6 +113,14 @@ func (pn *peerModule) Init(registry runtime.Registry) error {
 	return nil
 }
 
+// Defer reloads the peer modules.
+//
+// It is called by the runtime to reload the peer modules after the application has finished initializing.
+//
+// The function first checks if the registry is available, and if it is not, an error is returned.
+// If the registry is available, the function calls ReloadModules to reload the peer modules.
+//
+// ReloadModules is a no-op if the registry is not available.
 func (pn *peerModule) Defer() error {
 	pn.registryLocker.RLock()
 	registry := pn.registry
@@ -106,6 +132,14 @@ func (pn *peerModule) Defer() error {
 	return pn.ReloadModules()
 }
 
+// EngineTypes returns a slice of reflect.Type representing the various engine types
+// associated with the peer module. These types include:
+//
+//   - PeerNetwork: Represents the network aspect of the peer module.
+//   - PeerAppModule: Represents a module for the p2p application.
+//   - PeerAppModuleProvider: Provides multiple PeerAppModules.
+//   - PeerGuard: Provides access control and security features within the peer module.
+
 func (pn *peerModule) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[PeerNetwork](),
@@ -115,18 +149,23 @@ func (pn *peerModule) EngineTypes() []reflect.Type {
 	}
 }
 
+// Components returns a slice of injection.Component representing the components
+// provided by the peer module. Currently, the only component provided is the
+// PeerModule itself, which is scoped externally.
 func (pn *peerModule) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent[PeerModule](pn, injection.ComponentExternalScope),
 	}
 }
 
+// Modules returns sub-modules of the peer module.
 func (pn *peerModule) Modules() []interface{} {
 	return []interface{}{
 		pn.PeerSettings(),
 	}
 }
 
+// Serve handles p2p streams of connections
 func (pn *peerModule) Serve(stream PeerStream, target PeerID) error {
 
 	defer stream.Close()
@@ -170,14 +209,17 @@ func (pn *peerModule) Serve(stream PeerStream, target PeerID) error {
 	return err
 }
 
+// CanReach checks if a peer is reachable
 func (pn *peerModule) CanReach(peerId PeerID) bool {
 	return pn.network.CanReach(peerId)
 }
 
+// Purge purges a peer with the given peerId
 func (pn *peerModule) Purge(peerId PeerID) error {
 	return pn.network.Purge(peerId)
 }
 
+// Do sends a request to a peer and returns the response
 func (pn *peerModule) Do(ctx context.Context, peerId PeerID, request *Request) (*Response, error) {
 
 	reqReader := MarshalRequest(request)
@@ -211,6 +253,7 @@ func (pn *peerModule) Do(ctx context.Context, peerId PeerID, request *Request) (
 	return response, err
 }
 
+// Request sends a request to a peer and returns the response
 func (pn *peerModule) Request(ctx context.Context, peerId PeerID, name RequestName, body io.Reader, headerItems ...HeaderItem) (*Response, error) {
 	request := NewRequest(name, body)
 	if len(headerItems) > 0 {
@@ -221,6 +264,7 @@ func (pn *peerModule) Request(ctx context.Context, peerId PeerID, name RequestNa
 	return pn.Do(ctx, peerId, request)
 }
 
+// PeerNetworks returns a slice of PeerNetwork modules loaded into the p2p engine
 func (pn *peerModule) PeerNetworks() []interface{} {
 	pn.registryLocker.RLock()
 	registry := pn.registry
@@ -234,6 +278,9 @@ func (pn *peerModule) PeerNetworks() []interface{} {
 	return modules
 }
 
+// PeerSettings returns the current peer settings.
+//
+// The settings are initialized on first call and never changed.
 func (pn *peerModule) PeerSettings() PeerSettings {
 	pn.settingsOnce.Do(func() {
 		pn.settings = &peerSettings{}
@@ -241,6 +288,16 @@ func (pn *peerModule) PeerSettings() PeerSettings {
 	return pn.settings
 }
 
+// ReloadModules reloads the peer application modules from the registry.
+//
+// It traverses the registry, looking for modules that implement the PeerAppModule,
+// PeerAppModuleProvider, and PeerScopeModule interfaces. For each module,
+// it calls the SetupToPeer method to set up the peer application.
+//
+// If any error occurs during the reloading process, it will be returned.
+//
+// If the reloading process is successful, the peer application will be updated
+// with the new modules.
 func (pn *peerModule) ReloadModules() error {
 	pn.registryLocker.RLock()
 	registry := pn.registry
@@ -282,6 +339,14 @@ func (pn *peerModule) ReloadModules() error {
 	return err
 }
 
+// Access checks if a peer is allowed to access the p2p network.
+//
+// It traverses the registry, looking for modules that implement the PeerGuard interface.
+// For each module, it checks if the module is enabled and if the peer is allowed to
+// access the p2p network. If any error occurs during the checking process, it will be
+// returned.
+//
+// If the checking process is successful, the peer is allowed to access the p2p network.
 func (pn *peerModule) Access(peerId PeerID) error {
 	pn.registryLocker.RLock()
 	defer pn.registryLocker.RUnlock()

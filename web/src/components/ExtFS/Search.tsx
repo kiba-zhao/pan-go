@@ -49,6 +49,21 @@ type SearchItemsProps = {
   onEsc: () => void;
   enabled: boolean;
 };
+/**
+ * SearchItems Component
+ *
+ * This component provides a search input field that allows users to perform
+ * searches within the application. It utilizes debouncing to optimize the
+ * searching process, updating the query state with a delay after user input.
+ * The component also handles form submission for saving search queries and
+ * provides a button to clear the search input.
+ *
+ * @param {Function} onEsc - Callback function to execute when the escape button is clicked.
+ * @param {boolean} enabled - Determines whether the search results should be displayed.
+ *
+ * @returns {JSX.Element} A JSX element containing the search input and related actions.
+ */
+
 export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
   const t = useTranslate();
 
@@ -152,6 +167,12 @@ type SearchItemsResultsProps = {
   enabled: boolean;
   query: string;
 };
+
+/**
+ * SearchItemsResults Component
+ *
+ * List of items that match the search query.
+ */
 const SearchItemsResults = memo(
   ({ query, enabled, onEsc }: SearchItemsResultsProps) => {
     const theme = useTheme();
@@ -186,6 +207,14 @@ const SearchItemsResults = memo(
 type SearchItemProps = {
   onClick: () => void;
 };
+/**
+ * A component that renders a single search item in a list.
+ *
+ * @param {SearchItemProps} props - The props for the component.
+ * @param {() => void} props.onClick - The function to be called when the list item is clicked.
+ *
+ * @returns {ReactElement} A JSX element representing the list item.
+ */
 export const SearchItem = ({ onClick }: SearchItemProps) => {
   const { style, item }: ListItemData<ExtFSSearchItem> = useListItems();
 
@@ -212,6 +241,14 @@ export const SearchItem = ({ onClick }: SearchItemProps) => {
   );
 };
 
+/**
+ * A component that renders a button to remove a search item.
+ *
+ * @returns {ReactElement} A JSX element representing the button.
+ *
+ * @example
+ * <SearchItemRemoveAction />
+ */
 const SearchItemRemoveAction = () => {
   const { item }: ListItemData<ExtFSSearchItem> = useListItems();
 

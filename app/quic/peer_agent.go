@@ -1,3 +1,6 @@
+// Define peer agent for quic
+//
+// It is used to manage the connections and streams between the local node and the remote node.
 package quic
 
 import (
@@ -75,6 +78,13 @@ type quicPeerAgent struct {
 	locker         sync.Mutex
 }
 
+// Follow processes the given QuicConn by searching for associated receptions
+// in the agent's matrix using the connection's peer ID. If any receptions are
+// found, it deletes the first reception from the matrix and sends the connection
+// through the reception's channel. The function then spawns a goroutine to
+// handle the connection with acceptQuicConn. The method acquires a lock to
+// ensure thread-safe access to the matrix.
+
 func (agent *quicPeerAgent) Follow(conn QuicConn) error {
 
 	agent.locker.Lock()
@@ -91,6 +101,10 @@ func (agent *quicPeerAgent) Follow(conn QuicConn) error {
 	return nil
 }
 
+// Greet sends a QuicConnFlagGreet message over the given connection
+// containing the public addresses of the local node. If the local node
+// has no public addresses, the function returns immediately. The method
+// simply marshals a QuicGreet message and calls doQuicConn with the result.
 func (agent *quicPeerAgent) Greet(conn QuicConn) error {
 	addrs := agent.Broadcast.PublicAddrs()
 	if len(addrs) <= 0 {
@@ -108,6 +122,9 @@ func (agent *quicPeerAgent) Greet(conn QuicConn) error {
 	return doQuicConn(conn, QuicConnFlagGreet, bytes.NewReader(data))
 }
 
+// AcceptGreet handles a QuicConnFlagGreet message sent by the peer, by unmarshaling
+// the message and adding the remote addresses to the peer routing table. The method
+// returns an error if the message unmarshaling fails.
 func (agent *quicPeerAgent) AcceptGreet(stream quic.ReceiveStream, conn QuicConn) error {
 	defer stream.CancelRead(quic.StreamErrorCode(quic.NoError))
 
@@ -155,6 +172,14 @@ func (agent *quicPeerAgent) cancelInvite(reception *quicReception) {
 	agent.matrix = deleteReception(agent.matrix, reception)
 }
 
+// Invite sends a QuicConnFlagInvite message over the given connection.
+// The message signals that the local node is willing to connect to the
+// remote node. The method then waits for a QuicConnFlagDeclineInvite or
+// QuicConnFlagGreet message from the remote node. If a QuicConnFlagGreet
+// message is received, the method returns a new connection to the remote
+// node. If a QuicConnFlagDeclineInvite message is received or if the
+// remote node does not respond within 6 seconds, the method returns an
+// error.
 func (agent *quicPeerAgent) Invite(conn QuicConn) (QuicConn, error) {
 
 	var reception quicReception
@@ -182,6 +207,10 @@ func (agent *quicPeerAgent) Invite(conn QuicConn) (QuicConn, error) {
 	return conn_, err
 }
 
+// AcceptInvite handles a QuicConnFlagInvite message sent by the peer, by
+// dialing to the peer using the quicPeerModule. If the dialing fails, the
+// method sends a QuicConnFlagDeclineInvite message to the peer and returns
+// the error.
 func (agent *quicPeerAgent) AcceptInvite(stream quic.ReceiveStream, conn QuicConn) error {
 	defer stream.CancelRead(quic.StreamErrorCode(quic.NoError))
 	_, err := agent.quicPeerModule.Dial(context.Background(), conn.PeerID())
@@ -191,10 +220,17 @@ func (agent *quicPeerAgent) AcceptInvite(stream quic.ReceiveStream, conn QuicCon
 	return err
 }
 
+// DeclineInvite sends a QuicConnFlagDeclineInvite message over the given connection.
+// This message tells the remote node that the local node is not willing to connect
+// to the remote node.
 func (agent *quicPeerAgent) DeclineInvite(conn QuicConn) error {
 	return doQuicConn(conn, QuicConnFlagDeclineInvite, nil)
 }
 
+// AcceptDeclineInvite handles a QuicConnFlagDeclineInvite message sent by the peer, by
+// sending a nil value to all the channels that are waiting for a QuicConn object
+// from the peer. This method ensures that the state of the agent is consistent
+// with the peer's decision not to connect to the local node.
 func (agent *quicPeerAgent) AcceptDeclineInvite(stream quic.ReceiveStream, conn QuicConn) error {
 	defer stream.CancelRead(quic.StreamErrorCode(quic.NoError))
 	agent.locker.Lock()

@@ -1,3 +1,6 @@
+/**
+ * ExtFSNodeItem Page Definition File
+ */
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useTranslate } from "react-admin";
 
@@ -26,7 +29,27 @@ import {
 import { FilePathInput } from "./FilePath/Input";
 
 export const ExtFSNodeItemRoutePath = "/extfs/local-node-items";
+
+/**
+ * Component for creating a new ExtFSNodeItem Panel
+ *
+ * @returns {JSX.Element} The JSX element representing the ExtFSNodeItem Panel
+ */
 export const ExtFSNodeItemCreate = () => <ExtFSNodeItemForm />;
+
+/**
+ * SaveButton Component
+ *
+ * A button component that triggers a save action. It optionally
+ * displays a confirmation dialog before executing the save action.
+ *
+ * @param {Object} props - The properties for the SaveButton component.
+ * @param {Function} props.onSave - The function to call when the save action is triggered.
+ * @param {boolean} [props.needConfirm] - Whether a confirmation dialog is needed before saving.
+ * @param {boolean} [props.disabled] - Whether the button is disabled.
+ *
+ * @returns {JSX.Element} A JSX element representing the save button with optional confirmation dialog.
+ */
 
 const SaveButton = ({
   onSave,
@@ -81,6 +104,19 @@ const SaveButton = ({
   );
 };
 
+/**
+ * DeleteButton Component
+ *
+ * A button component that triggers a delete action. It optionally
+ * displays a confirmation dialog before executing the delete action.
+ *
+ * @param {Object} props - The properties for the DeleteButton component.
+ * @param {Function} props.onDelete - The function to call when the delete action is triggered.
+ * @param {boolean} [props.disabled] - Whether the button is disabled.
+ * @param {boolean} [props.hidden] - Whether the button is hidden.
+ *
+ * @returns {JSX.Element} A JSX element representing the delete button with optional confirmation dialog.
+ */
 const DeleteButton = ({
   onDelete,
   disabled,
@@ -129,6 +165,14 @@ const DeleteButton = ({
   );
 };
 
+/**
+ * Component for submitting a local node item fields.
+ *
+ * @param {{ id?: ExtFSNodeItem["id"] }} props
+ * @prop {ExtFSNodeItem["id"]|undefined} id - id of the node item, if undefined, create a new one
+ *
+ * @returns {JSX.Element} a JSX element representing the form
+ */
 const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
   const t = useTranslate();
   const navigate = useNavigate();
@@ -294,12 +338,37 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
   );
 };
 
+/**
+ * Component for editing an ExtFS node item.
+ *
+ * This component uses the URL parameter `id` to determine whether
+ * an existing node item is being edited or a new one is being created.
+ * It parses the `id` from the URL and passes it to the `ExtFSNodeItemForm`
+ * component. If the `id` is not present or invalid, a new node item form
+ * is rendered.
+ *
+ * @returns {JSX.Element} A form for editing or creating an ExtFS node item.
+ */
+
 export const ExtFSNodeItemEdit = () => {
   const { id } = useParams();
   const id_ = id ? parseInt(id) : void 0;
   return <ExtFSNodeItemForm id={id_ === void 0 || isNaN(id_) ? void 0 : id_} />;
 };
 
+/**
+ * Component for viewing an ExtFS node item.
+ *
+ * This component renders a form displaying the `name` and `filePath` of an
+ * ExtFS node item, along with a "Refresh" and "Open" button. The "Refresh"
+ * button will retrieve the latest data for the node item from the API. The
+ * "Open" button will open the node item in a new window.
+ *
+ * The component will only render if the `id` parameter is present in the URL
+ * and is a valid number.
+ *
+ * @returns {JSX.Element} A form for viewing an ExtFS node item.
+ */
 export const ExtFSNodeItemView = () => {
   const t = useTranslate();
   const { id: paramId } = useParams();

@@ -1,3 +1,8 @@
+/**
+ * ExtFSBrowseFile Page Definition File
+ *
+ * Components used for browsing files
+ */
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import Card from "@mui/material/Card";
@@ -23,6 +28,18 @@ import { useBrowser } from "./Global/Browser";
 
 export const RoutePath = "/extfs/browse-files";
 
+/**
+ * ExtFSBrowseFile Component
+ *
+ * Component that renders a file or a directory,
+ * depending on the presence of the filePath parameter
+ *
+ * @param {number} itemId id of the item in url query
+ * @param {string} peerId id of the peer in url query (if any)
+ * @param {string} filePath path to the file or directory in url query
+ *
+ * @returns {JSX.Element} a JSX element representing the file or directory
+ */
 const ExtFSBrowseFile = () => {
   const [query, _] = useSearchParams();
   const { peerId, itemId, filePath } = useMemo(
@@ -59,6 +76,13 @@ type ExtFSBrowseFileQueryParams = {
   filePath: string;
 };
 
+/**
+ * Parse URL query parameters into a ExtFSBrowseFileQueryParams object
+ *
+ * @param {URLSearchParams} query the URL query parameters to parse
+ *
+ * @returns {ExtFSBrowseFileQueryParams} an object containing the parsed query parameters
+ */
 function parseQueryParams(query: URLSearchParams): ExtFSBrowseFileQueryParams {
   const params = {} as ExtFSBrowseFileQueryParams;
   params.peerId = query.get("peerId") || "";
@@ -71,9 +95,24 @@ function parseQueryParams(query: URLSearchParams): ExtFSBrowseFileQueryParams {
 
 export default ExtFSBrowseFile;
 
+/**
+ * Calculate 1024 to the power of a given number
+ *
+ * @param {number} num the power to which 1024 should be raised
+ *
+ * @returns {number} 1024 to the power of num
+ */
 function pow1024(num: number) {
   return Math.pow(1024, num);
 }
+
+/**
+ * Converts a file size from bytes to a human-readable string format.
+ *
+ * @param {number} size - The file size in bytes.
+ * @returns {string} The file size formatted as a string with appropriate units (B, KB, MB, GB, or TB).
+ *                   Returns an empty string if the size is not provided or invalid.
+ */
 
 function convertFileSize(size: number) {
   if (!size) return "";
@@ -92,6 +131,21 @@ type ExtFSBrowseFileViewProps = {
   error: Error | null;
   isLoading: boolean;
 } & Pick<LinkProps, "href">;
+/**
+ * ExtFSBrowseFileView Component
+ *
+ * Browse page view for displaying file of extfs
+ *
+ * @param {string} fileName name of the file
+ * @param {number} fileSize size of the file in bytes
+ * @param {string} fileType type of the file ("F" for files and "D" for directories)
+ * @param {boolean} disabled if true, the file is disabled
+ * @param {Error | null} error error that occurred while fetching the file
+ * @param {boolean} isLoading if true, the file is loading
+ * @param {LinkProps} linkProps props to pass to the Link component
+ *
+ * @returns {JSX.Element} a JSX element representing the file or directory
+ */
 const ExtFSBrowseFileView = ({
   fileName,
   fileSize,
@@ -167,6 +221,14 @@ const ExtFSBrowseFileView = ({
   );
 };
 
+/**
+ * Component to render an error message for ExtFSBrowseFile
+ *
+ * @param {{ title: string, desc: string }} props
+ * @prop {string} title - error title
+ * @prop {string} desc - error description
+ * @returns {JSX.Element} a JSX element representing the error message
+ */
 const ExtFSBrowseFileViewWithError = ({
   title,
   desc,
@@ -182,6 +244,14 @@ const ExtFSBrowseFileViewWithError = ({
   );
 };
 
+/**
+ * ExtFSBrowseFile Component with fetch file info success
+ *
+ * @param {{ fileName: string, fileSize: string }} props
+ * @prop {string} fileName - name of the file
+ * @prop {string} fileSize - size of the file
+ * @returns {JSX.Element} a JSX element representing the success message
+ */
 const ExtFSBrowseFileViewWithSuccess = ({
   fileName,
   fileSize,
@@ -239,6 +309,15 @@ type ExtFSBrowseFileWithRemoteItemProps = Omit<
   ExtFSBrowseFileQueryParams,
   "filePath"
 >;
+/**
+ * ExtFSBrowseFile Component with fetch remote item info
+ *
+ * @param {{ peerId: string, itemId: number }} props
+ * @prop {string} peerId - id of the peer in url query
+ * @prop {number} itemId - id of the item in url query
+ *
+ * @returns {JSX.Element} a JSX element representing the file or directory
+ */
 const ExtFSBrowseFileWithRemoteItem = ({
   peerId,
   itemId,
@@ -267,6 +346,14 @@ type ExtFSBrowseFileWithNodeItemProps = Omit<
   ExtFSBrowseFileWithRemoteItemProps,
   "peerId"
 >;
+/**
+ * ExtFSBrowseFile Component with fetch node item info
+ *
+ * @param {{ itemId: number }} props
+ * @prop {number} itemId - id of the item in url query
+ *
+ * @returns {JSX.Element} a JSX element representing the file or directory
+ */
 const ExtFSBrowseFileWithNodeItem = ({
   itemId,
 }: ExtFSBrowseFileWithNodeItemProps) => {
@@ -291,6 +378,17 @@ const ExtFSBrowseFileWithNodeItem = ({
 };
 
 type ExtFSBrowseFileWithRemoteFileProps = ExtFSBrowseFileQueryParams;
+/**
+ * ExtFSBrowseFile Component with fetch remote file info
+ *
+ * @param {{ peerId: string, itemId: number, filePath: string }} props
+ * @prop {string} peerId - id of the peer in url query
+ * @prop {number} itemId - id of the item in url query
+ * @prop {string} filePath - path to the file in url query
+ *
+ * @returns {JSX.Element} a JSX element representing the file or directory
+ */
+
 const ExtFSBrowseFileWithRemoteFile = ({
   peerId,
   itemId,
@@ -320,6 +418,15 @@ type ExtFSBrowseFileWithNodeFileProps = Omit<
   ExtFSBrowseFileWithRemoteFileProps,
   "peerId"
 >;
+/**
+ * ExtFSBrowseFile Component with fetch node file info
+ *
+ * @param {{ itemId: number, filePath: string }} props
+ * @prop {number} itemId - id of the item in url query
+ * @prop {string} filePath - path to the file in url query
+ *
+ * @returns {JSX.Element} a JSX element representing the file or directory
+ */
 const ExtFSBrowseFileWithNodeFile = ({
   itemId,
   filePath,

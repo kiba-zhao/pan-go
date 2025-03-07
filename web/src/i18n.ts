@@ -1,3 +1,8 @@
+/**
+ * i18next Provider for React Admin
+ * 
+ * @see https://react.i18next.com/
+ */
 import i18next from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import resourcesToBackend from "i18next-resources-to-backend";

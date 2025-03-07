@@ -1,3 +1,4 @@
+// Define node search file task cleaner
 package nodesearchfile
 
 import (
@@ -10,6 +11,13 @@ type taskCleanerImpl struct {
 	NodeSearchFileService *NodeSearchFileService
 	Agent                 Agent
 }
+
+// Ready executes the cleanup routine for node search file tasks based on their
+// lifecycle. It continuously checks for tasks that have exceeded their lifecycle
+// duration and deletes their associated search files. The function listens for
+// context cancellation to gracefully terminate the cleanup process. It returns
+// an error if the context is canceled or if an error occurs during task
+// retrieval or deletion.
 
 func (c *taskCleanerImpl) Ready(ctx context.Context) error {
 	var err error

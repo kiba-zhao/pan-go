@@ -1,3 +1,4 @@
+// Define Peer Settings
 package peer
 
 import (
@@ -26,14 +27,24 @@ import (
 var ErrPeerSettingsUnavailable = errors.New("peer.PeerSettings Error: Unavailable")
 
 type PeerSettings interface {
+
+	// id of peer
 	PeerID() PeerID
+	// public key of peer
 	PubKey() any
+	// private key of peer
 	PrivKey() crypto.PrivateKey
+	// certificate of peer
 	Certificate() tls.Certificate
+	// if peer settings is available
 	Available() bool
 }
 
+// PeerSettingsListener is a listener for peer settings updates
 type PeerSettingsListener interface {
+	// OnPeerSettingsUpdated is called when the peer settings are updated.
+	//
+	// The function is called with the new peer settings.
 	OnPeerSettingsUpdated(PeerSettings)
 }
 
@@ -49,6 +60,9 @@ type peerSettings struct {
 	hashCode   []byte
 }
 
+// Init initializes the peer settings with the given registry.
+//
+// It sets the registry and does not return an error.
 func (ns *peerSettings) Init(registry runtime.Registry) error {
 
 	ns.registryRW.Lock()
@@ -58,11 +72,20 @@ func (ns *peerSettings) Init(registry runtime.Registry) error {
 	return ns.Generate()
 }
 
+// Components returns a slice of injection.Component representing the components
+// provided by the peer settings. Currently, the only component provided is the
+// PeerSettings itself, which is scoped internally.
 func (ns *peerSettings) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(ns, injection.ComponentNoneScope),
 	}
 }
+
+// Generate initializes and updates the peer settings by parsing fields from the
+// configuration path. If parsing fails due to a path error, it generates the fields.
+// It notifies all registered PeerSettingsListeners about the updates. The function
+// returns an error if the registry is unavailable or if any error occurs during the
+// parsing or generation of fields.
 
 func (ns *peerSettings) Generate() error {
 	ns.registryRW.RLock()
@@ -89,6 +112,11 @@ func (ns *peerSettings) Generate() error {
 
 	return err
 }
+
+// GenerateFields generates a pair of EC private key and certificate and writes them to the paths
+// derived from the configPath. It then updates the peer settings with the generated key pair and
+// notifies all registered PeerSettingsListeners about the updates. The function returns an error if
+// any error occurs during the generation or writing of the key pair.
 func (ns *peerSettings) GenerateFields(configPath string) error {
 
 	caPrivkey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
@@ -174,6 +202,12 @@ func (ns *peerSettings) GenerateFields(configPath string) error {
 	return err
 }
 
+// ParseFields reads the private key and certificate from the given configPath and
+// loads the peer settings from them. If the peer settings are already loaded and
+// the hash of the private key and certificate matches the one stored in the peer
+// settings, the function returns nil without doing anything. Otherwise, it will
+// load the peer settings from the given files and store the hash of the private key
+// and certificate in the peer settings. If any error occurs, it is returned.
 func (ns *peerSettings) ParseFields(configPath string) error {
 
 	privKeyPath, certificatePath := generatePrivKeyPathAndCertificatePath(configPath)
@@ -226,23 +260,33 @@ func (ns *peerSettings) ParseFields(configPath string) error {
 	return err
 }
 
+// PeerID returns the peer ID of the peer settings, which is the marshaled bytes of
+// the public key of the peer's certificate.
 func (ns *peerSettings) PeerID() PeerID {
 	ns.locker.RLock()
 	defer ns.locker.RUnlock()
 	return ns.peerId
 }
 
+// PubKey returns the public key of the peer's certificate, which is used to
+// identify the peer.
 func (ns *peerSettings) PubKey() any {
 	ns.locker.RLock()
 	defer ns.locker.RUnlock()
 	return ns.pubKey
 }
 
+// PrivKey returns the private key of the peer's certificate, which is used to
+// decrypt encrypted messages and sign messages.
 func (ns *peerSettings) PrivKey() crypto.PrivateKey {
 	ns.locker.RLock()
 	defer ns.locker.RUnlock()
 	return ns.privKey
 }
+
+// Certificate returns the TLS certificate of the peer's settings,
+// which is used for establishing secure connections and authenticating
+// the peer within the p2p network.
 
 func (ns *peerSettings) Certificate() tls.Certificate {
 
@@ -251,18 +295,27 @@ func (ns *peerSettings) Certificate() tls.Certificate {
 	return ns.cert
 }
 
+// Available returns true if the peer settings have been loaded and the hash of the
+// private key and certificate has been stored, and false otherwise.
 func (ns *peerSettings) Available() bool {
 	ns.locker.RLock()
 	defer ns.locker.RUnlock()
 	return ns.hashCode != nil
 }
 
+// EngineTypes returns a slice of reflect.Type representing the various engine types
+// associated with the peer settings module. These types include:
+//
+//   - PeerSettingsListener: Represents a listener for peer settings updates.
 func (ns *peerSettings) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[PeerSettingsListener](),
 	}
 }
 
+// generatePrivKeyPathAndCertificatePath generates the paths for the private key and
+// certificate of the peer settings based on the given root path. The private key is
+// stored as "key.pem" and the certificate is stored as "cert.pem" in the root path.
 func generatePrivKeyPathAndCertificatePath(rootPath string) (string, string) {
 
 	return path.Join(rootPath, "key.pem"), path.Join(rootPath, "cert.pem")

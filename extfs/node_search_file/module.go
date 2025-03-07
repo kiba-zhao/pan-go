@@ -1,3 +1,4 @@
+// Define runtime module for node search file
 package nodesearchfile
 
 import (
@@ -6,6 +7,12 @@ import (
 	"pan/app/sample"
 )
 
+// New creates a new runtime module for node search file.
+//
+// It takes a component store provider to create the virtual file system.
+// It will load the configuration from "extfs_searchfile.toml" file.
+// If the configuration file does not exist, it will panic with an error.
+// If the configuration file exists but is invalid, it will panic with an error.
 func New(provider injection.ComponentStoreProvider) interface{} {
 	var m moduleImpl
 	m.provider = provider
@@ -35,10 +42,22 @@ type moduleImpl struct {
 	provider injection.ComponentStoreProvider
 }
 
+// ComponentStore returns the component store that the module uses to
+// store its components. This is the same component store that is
+// passed to the module's constructor.
 func (m *moduleImpl) ComponentStore() injection.ComponentStore {
 	return m.provider.ComponentStore()
 }
 
+// Components returns a slice of injection.Component representing the components
+// provided by the module. It includes the configuration, agent, task worker, task
+// cleaner, and file rater. The components are scoped as follows:
+//
+//   - configuration: internal scope
+//   - agent: sample scope
+//   - task worker: sample scope
+//   - task cleaner: none scope
+//   - file rater: none scope
 func (m *moduleImpl) Components() []injection.Component {
 
 	components := []injection.Component{
@@ -52,6 +71,9 @@ func (m *moduleImpl) Components() []injection.Component {
 	return components
 }
 
+// Modules returns a slice of sub-modules.
+//
+// The sub-modules are the configuration, agent, task worker, task cleaner, and file rater.
 func (m *moduleImpl) Modules() []interface{} {
 	return []interface{}{
 		m.config,

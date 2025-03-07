@@ -1,3 +1,4 @@
+// Define logger for pan
 package logger
 
 import (
@@ -69,6 +70,12 @@ func replaceAttr(groups []string, a slog.Attr) slog.Attr {
 	return a
 }
 
+// New returns a new logger with the given level.
+//
+// The returned logger is a text-based logger that writes to os.Stdout.
+// The logger is configured to replace attributes according to the
+// replaceAttr function, which customizes the output string and level
+// key for the logger.
 func New(level slog.Level) Logger {
 	th := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level:       level,
@@ -77,9 +84,21 @@ func New(level slog.Level) Logger {
 	return slog.New(th)
 }
 
+// Default returns the default logger.
+//
+// The default logger is initialized with the level Info by default, but can be
+// changed by setting the trace-log flag. The default logger is also used by
+// the testing package to log test failures.
 func Default() Logger {
 	return slog.Default()
 }
+
+// init initializes the logger for the application. It sets up the default
+// trace log level, parses command-line flags to determine the desired log
+// level, and configures the logger accordingly. The trace-log flag, if
+// provided, specifies the log level to use, with possible values including
+// TRACE, DEBUG, INFO, NOTICE, WARNING, ERROR, and EMERGENCY. The logger is
+// then set as the default logger for the application.
 
 func init() {
 

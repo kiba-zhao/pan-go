@@ -1,3 +1,4 @@
+// Define file info model
 package nodeitem
 
 import "time"

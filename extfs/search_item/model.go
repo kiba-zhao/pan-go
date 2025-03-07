@@ -1,3 +1,4 @@
+// Define search item model
 package searchitem
 
 import (

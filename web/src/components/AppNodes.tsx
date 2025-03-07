@@ -1,3 +1,6 @@
+/**
+ * App Node Page Definition
+ */
 import {
   BooleanField,
   BooleanInput,
@@ -48,6 +51,12 @@ type AppNode = {
   updatedAt: Date;
 };
 
+/**
+ * A filter component for app nodes that filters by their online and blocked
+ * status.
+ *
+ * @returns A React element representing the filter component.
+ */
 const AppNodeStatFilter = () => {
   // const t = useTranslate();
   return (
@@ -67,6 +76,20 @@ const AppNodeStatFilter = () => {
   );
 };
 
+/**
+ * A component that renders the filters for the app nodes list.
+ *
+ * The component renders a Card containing the following components:
+ * - SavedQueriesList: a list of saved queries
+ * - FilterLiveSearch: a live search filter
+ * - AppNodeStatFilter: a filter for the online and blocked status of the app
+ *   nodes
+ *
+ * The component is displayed on the left of the list when the screen size is
+ * sm (small) or larger, and is not displayed otherwise.
+ *
+ * @returns A React element representing the filter component.
+ */
 const AppNodeFilters = () => {
   return (
     <Box
@@ -102,6 +125,23 @@ const AppNodeSimpleFilters = [
   />,
 ];
 
+/**
+ * Page Component of AppNodes
+ *
+ * The AppNodes component renders a list of application nodes with pagination
+ * and filtering capabilities. It uses an InfiniteList to display the nodes
+ * and includes filters for searching and filtering by node status.
+ *
+ * Each node is displayed using a SimpleList, showing the node's name, online
+ * status, and last updated timestamp. The online status is represented with
+ * icons indicating whether the node is online or offline.
+ *
+ * The component also provides an aside section for additional filters to refine
+ * the list of displayed nodes, including saved queries and live search.
+ *
+ * @returns A React element representing the app nodes list.
+ */
+
 export const AppNodes = () => {
   // const t = useTranslate();
   return (
@@ -129,6 +169,14 @@ export const AppNodes = () => {
   );
 };
 
+/**
+ * AppNodeCreateActions
+ *
+ * A custom actions component for the app nodes create page that
+ * renders a list button to return to the list of app nodes.
+ *
+ * @returns {ReactElement} A React element representing the actions
+ */
 const AppNodeCreateActions = () => {
   return (
     <TopToolbar>
@@ -137,6 +185,28 @@ const AppNodeCreateActions = () => {
   );
 };
 
+/**
+ * Page components for creating new AppNodes
+ *
+ * A Create component for the app nodes resource that renders a form with
+ * input fields for the name and peerId fields of the app node, and a boolean
+ * input for the blocked field.
+ *
+ * The component also renders an AppNodeQRScan component, which is a QR code
+ * scanner for the app node's peerId. The AppNodeQRScan component is displayed
+ * on the left side of the form, and the input fields are displayed on the right
+ * side.
+ *
+ * The component is wrapped in a Create component, which is a special type of
+ * component provided by react-admin that renders a form with a submit button
+ * to create a record in the app nodes resource.
+ *
+ * The component also renders a ListButton component, which is a button that
+ * when clicked, redirects the user to the list of app nodes.
+ *
+ * @returns {ReactElement} A React element representing the create form for
+ * the app nodes resource.
+ */
 export const AppNodeCreate = () => (
   <Create actions={<AppNodeCreateActions />}>
     <SimpleForm>
@@ -165,11 +235,37 @@ export const AppNodeCreate = () => (
   </Create>
 );
 
+/**
+ * QRCode Component of AppNode
+ *
+ * A component that renders a QR code for the app node's peerId. It uses
+ * the `useWatch` hook from `react-hook-form` to get the values of the
+ * `name` and `peerId` fields from the form context.
+ *
+ * @returns {ReactElement} A React element representing the QR code.
+ */
 const AppNodeQRCode = () => {
   const name = useWatch({ name: "name" });
   const peerId = useWatch({ name: "peerId" });
   return <NodeQRCode name={name} peerId={peerId} />;
 };
+
+/**
+ * QR Scan Component of AppNode
+ *
+ * A component that integrates QR code scanning functionality for app nodes.
+ * It uses the `useFormContext` hook from `react-hook-form` to set the values
+ * of the `peerId` and `name` fields in the form context when a QR code is
+ * scanned.
+ *
+ * The component renders a stack layout containing the AppNodeQRCode component
+ * and two QR scanning components: NodeQRScan and NodeFileQRScan. Both scanners
+ * share the same `onQRScan` callback function, which updates the form fields
+ * upon successful QR code scanning.
+ *
+ * @returns {ReactElement} A React element representing the QR scan interface
+ * for app nodes.
+ */
 
 const AppNodeQRScan = () => {
   const { setValue } = useFormContext();
@@ -200,6 +296,24 @@ const AppNodeQRScan = () => {
   );
 };
 
+/**
+ * Page components for editing AppNodes
+ *
+ * The AppNodeEdit component renders a form for editing an application node.
+ * It uses an Edit component from react-admin to wrap a SimpleForm that
+ * displays the fields for the app node. The form is configured with
+ * mutationMode="pessimistic" to prevent data loss when the user navigates
+ * away from the form before submitting the changes.
+ *
+ * The component renders a stack layout containing the AppNodeQRCode
+ * component and another stack layout with input fields for the app node.
+ * The input fields include the name, peerId, blocked, online, createdAt,
+ * and updatedAt fields. The peerId field is marked as read-only and the
+ * online field is marked as read-only.
+ *
+ * @returns {ReactElement} A React element representing the edit form for
+ * the app nodes resource.
+ */
 export const APPNodeEdit = () => (
   <Edit mutationMode="pessimistic">
     <SimpleForm>

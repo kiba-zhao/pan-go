@@ -1,3 +1,6 @@
+/**
+ * ExtFSSearchItem API Definition File
+ */
 import { withJSONBody, withMethod, withPath, withQuery } from "fetch-utils";
 import { fetchMany, fetchOne } from "./base";
 
@@ -29,6 +32,12 @@ export type ExtFSSearchItemFields = Omit<
   "id" | "createdAt" | "updatedAt" | "deletedAt"
 >;
 
+/**
+ * Search ExtFSSearchItem with condition
+ *
+ * @param condition
+ * @returns array of ExtFSSearchItem
+ */
 export async function searchExtFSSearchItems(
   condition: ExtFSSearchItemSearchCondition
 ): Promise<ExtFSSearchItem[]> {
@@ -41,6 +50,11 @@ export async function searchExtFSSearchItems(
   return searchItems;
 }
 
+/**
+ * Delete ExtFSSearchItem with id
+ *
+ * @param id id of ExtFSSearchItem
+ */
 export async function deleteExtFSSearchItem(id: ExtFSSearchItem["id"]) {
   return await fetchOne(
     withPath(`extfs/search-items/${id}`, "merge"),
@@ -48,6 +62,13 @@ export async function deleteExtFSSearchItem(id: ExtFSSearchItem["id"]) {
   );
 }
 
+/**
+ * update ExtFSSearchItem with id
+ *
+ * @param fields fields of ExtFSSearchItem
+ * @param id id of ExtFSSearchItem
+ * @returns ExtFSSearchItem
+ */
 export async function saveExtFSSearchItem(
   fields: ExtFSSearchItemFields,
   id?: ExtFSSearchItem["id"]

@@ -1,3 +1,4 @@
+// Define node search file model
 package nodesearchfile
 
 import (

@@ -1,3 +1,4 @@
+// Define app broadcast model
 package appbroadcast
 
 import (

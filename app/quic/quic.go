@@ -1,3 +1,4 @@
+// Package quic provides the quic module
 package quic
 
 func New() interface{} {

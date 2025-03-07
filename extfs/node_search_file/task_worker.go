@@ -1,3 +1,6 @@
+// Define node search file task worker
+//
+// It is responsible for generating search files for node search tasks.
 package nodesearchfile
 
 import (
@@ -16,6 +19,10 @@ var ErrNoFileRater = errors.New("nodesearchfile.Worker Error: No File Rater")
 var ErrGernerateRateFailed = errors.New("nodesearchfile.Worker Error: Generate Rate Failed")
 
 type TaskWorker interface {
+	// Reload triggers the reloading process for the task worker. It ensures that
+	// the necessary components are reinitialized or refreshed to reflect any updates
+	// or changes. This method is typically used when configurations or dependencies
+	// are updated and the worker needs to adapt to those changes.
 	Reload()
 }
 
@@ -34,12 +41,20 @@ type taskWorkerImpl struct {
 	tasksLocker sync.RWMutex
 }
 
+// ReloadChan returns a channel that receives a signal when the task worker needs to be reloaded.
+//
+// It is used by the task scheduler to reload the task worker.
 func (w *taskWorkerImpl) ReloadChan() chan struct{} {
 	w.reloadOnce.Do(func() {
 		w.reloadChan = make(chan struct{}, 1)
 	})
 	return w.reloadChan
 }
+
+// Reload triggers the reloading process for the task worker.
+//
+// It locks the reloadLocker to ensure thread-safety, checks if the reload flag is already set,
+// and if not, sets the flag to true and sends a signal to the reload channel to initiate the reload.
 
 func (w *taskWorkerImpl) Reload() {
 	w.reloadLocker.Lock()
@@ -107,6 +122,11 @@ func (w *taskWorkerImpl) Ready(ctx context.Context) error {
 	return err
 }
 
+// RunTasks runs the given node search tasks. It retrieves node items, uses file raters to
+// generate ratings for the items, and saves the results to the database. It returns an error
+// if any issues occur during the process. If a task is aborted, it returns ErrNodeSearchTaskAborted.
+// If no file rater is available, it returns ErrNoFileRater. If generating a rating fails, it
+// returns ErrGernerateRateFailed.
 func (w *taskWorkerImpl) RunTasks(tasks []NodeSearchTask) error {
 
 	var err error
@@ -175,6 +195,13 @@ func (w *taskWorkerImpl) RunTasks(tasks []NodeSearchTask) error {
 	return err
 }
 
+// NewNodeSearchFile creates a new NodeSearchFile object based on the given item and
+// file path. It also rates the file using the given raters and tokens.
+//
+// It returns the new NodeSearchFile object and an error if any issues occur. If the
+// task is not pending, it returns ErrNodeSearchTaskAborted. If no file rater is
+// available, it returns ErrNoFileRater. If the file rating fails, it returns
+// ErrGernerateRateFailed.
 func (w *taskWorkerImpl) NewNodeSearchFile(taskIdx int, item nodeitem.NodeItem, filePath string, raters []FileRater, ratersTokens []Tokens) (NodeSearchFile, error) {
 
 	var rate NodeSearchFile

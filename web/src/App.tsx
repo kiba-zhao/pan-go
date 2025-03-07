@@ -1,3 +1,9 @@
+/**
+ * App Component
+ *
+ * root component of the application
+ */
+
 import { QueryClient } from "@tanstack/react-query";
 import {
   Admin,

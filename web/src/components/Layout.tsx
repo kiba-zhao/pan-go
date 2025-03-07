@@ -1,3 +1,6 @@
+/**
+ * Layout Component Definition File
+ */
 import {
   AppBar as AdminAppBar,
   Layout,
@@ -13,6 +16,16 @@ import { AppNodeIcon, AppNodeRoutePath } from "./AppNodes";
 import { AppSettingsIcon, AppSettingsRoutePath } from "./AppSettings";
 import { ExtFSIcon, ExtFSRoutePath } from "./ExtFS";
 
+/**
+ * AppMenu
+ *
+ * Menu component for AppLayout
+ *
+ * This menu is composed of all the main sections of the application.
+ *
+ *
+ * @returns {ReactElement} The menu element
+ */
 const AppMenu = () => {
   const t = useTranslate();
   return (
@@ -37,6 +50,15 @@ const AppMenu = () => {
   );
 };
 
+/**
+ * AppBar
+ *
+ * Top Bar for AppLayout
+ *
+ *
+ * @param {AppBarProps} props The AppBar props
+ * @returns {ReactElement} The AppBar element
+ */
 const AppBar = () => (
   <AdminAppBar
     toolbar={
@@ -49,6 +71,23 @@ const AppBar = () => (
   ></AdminAppBar>
 );
 
+/**
+ * AppLayout
+ *
+ * Layout for App
+ *
+ * @example
+ * import { AppLayout } from "./Layout";
+ *
+ * const App = () => (
+ *   <Admin dataProvider={dataProvider} layout={AppLayout}>
+ *     ...
+ *   </Admin>
+ * );
+ *
+ * @param {LayoutProps} props The layout props
+ * @returns {ReactElement} The layout element
+ */
 export const AppLayout = (props: LayoutProps) => (
   <Layout {...props} appBar={AppBar} menu={AppMenu} />
 );

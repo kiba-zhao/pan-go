@@ -1,3 +1,4 @@
+// Define app settings for the application
 package config
 
 import (

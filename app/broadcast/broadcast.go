@@ -1,3 +1,4 @@
+// Package broadcast provides the broadcast engine
 package broadcast
 
 import (
@@ -16,30 +17,69 @@ import (
 var ErrBroadcastModuleServeUnavailable = errors.New("broadcast.BroadcastModule Error: Serve Unavailable")
 var ErrBroadcastDeliverNoAddrs = errors.New("broadcast.BroadcastModule Error: Deliver No Addrs")
 
+// BroadcastServeAddrsProvider is the broadcast serve addrs provider
 type BroadcastServeAddrsProvider interface {
+	// BroadcastServeAddrs returns the list of addresses that the broadcast module can serve.
 	BroadcastServeAddrs() []string
 }
 
+// BroadcastDeliverAddrsProvider is the broadcast deliver addrs provider
 type BroadcastDeliverAddrsProvider interface {
+	// BroadcastDeliverAddrs returns the list of addresses that the broadcast module can deliver.
 	BroadcastDeliverAddrs() []string
 }
 
+// BroadcastPublicAddrsProvider is the broadcast public addrs provider
 type BroadcastPublicAddrsProvider interface {
+	// BroadcastPublicAddrs returns the list of addresses that the broadcast module can deliver.
 	BroadcastPublicAddrs() []string
 }
 
+// BroadcastServeModule is the broadcast serve module
 type BroadcastServeModule interface {
+	// ServeBroadcast serves the broadcast message to the peer.
 	ServeBroadcast([]byte, string) error
 }
 
+// BroadcastModule is the broadcast module
 type BroadcastModule interface {
+	// Serve handles the broadcasting of a message.
+	// Returns an error if the broadcast module is unavailable or if there is an issue serving the broadcast.
 	Serve([]byte, string) error
+	// Deliver broadcasts a message to the peers.
+	//
+	// The message is delivered to the peers whose addresses are in the parameter list.
+	// If the parameter list is empty, the message is delivered to all online peers.
+	//
+	// Returns an error if the broadcast module is unavailable or if there is an issue delivering the broadcast.
 	Deliver([]byte, ...string) error
+	// ServeAddrs returns the list of addresses that the broadcast module can serve.
+	//
+	// This function is called by the runtime to get the list of addresses that the
+	// broadcast module can serve. The addresses are used to serve the broadcast
+	// message when the Serve method is called.
 	ServeAddrs() []string
+	// DeliverAddrs returns the list of addresses that the broadcast module can deliver.
+	//
+	// The addresses are used to deliver the broadcast message when the Deliver method is called.
+	// If the parameter list is empty, the message is delivered to all online peers.
 	DeliverAddrs() []string
+	// Reload reloads the broadcast module.
+	//
+	// It is called by the runtime to reload the broadcast module after the application has finished initializing.
 	Reload()
 }
 
+// New creates a new broadcast module.
+//
+// The module implements the BroadcastModule interface and is used to manage broadcast messages.
+//
+// The module is also a runtime.Module, and can be used to load components into the broadcast engine.
+//
+// The module is initialized with the given ComponentStoreProvider, which is used to get the ComponentStore.
+// The ComponentStore is used to store components that are injected into other components.
+//
+// The module is responsible for managing the broadcast engine and providing the necessary methods to serve and deliver broadcast messages.
 func New(csProvider injection.ComponentStoreProvider) BroadcastModule {
 	module := &broadcastModule{}
 

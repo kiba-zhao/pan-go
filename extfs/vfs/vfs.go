@@ -1,3 +1,6 @@
+// Package vfs
+//
+// It is a virtual file system for extfs
 package vfs
 
 import (
@@ -8,11 +11,22 @@ import (
 	"sync"
 )
 
+// VFSFileSystem is a virtual file system
 type VFSFileSystem interface {
+	// Mount mounts the virtual file system using the given settings.
+	// It returns an error if the settings are invalid or if the mount fails.
 	Mount(VFSSettings) error
+	// Unmount unmounts the virtual file system.
+	// It returns an error if the unmount fails.
 	Unmount() error
 }
 
+// New creates a new virtual file system.
+//
+// It takes a component store provider to create the virtual file system.
+// It will load the configuration from "extfs_vfs.toml" file.
+// If the configuration file does not exist, it will panic with an error.
+// If the configuration file exists but is invalid, it will panic with an error.
 func New(provider injection.ComponentStoreProvider) interface{} {
 	vfs := &VFS{}
 	vfs.provider = provider

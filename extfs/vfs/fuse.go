@@ -20,6 +20,7 @@ type FUSEServiceProvider struct {
 	FUSEFileSystem *FUSEFileSystem
 }
 
+// LocalName returns the local name of this FUSE service provider.
 func (fusesp *FUSEServiceProvider) LocalName() string {
 	return fusesp.FUSEFileSystem.settings.LocalName
 }
@@ -57,6 +58,7 @@ type FUSEFileSystem struct {
 	once                    sync.Once
 }
 
+// Root returns the root node of the FUSE file system.
 func (fusefs *FUSEFileSystem) Root() fs.InodeEmbedder {
 	fusefs.once.Do(func() {
 		provider := &FUSEServiceProvider{FUSEFileSystem: fusefs}
@@ -65,6 +67,13 @@ func (fusefs *FUSEFileSystem) Root() fs.InodeEmbedder {
 	return fusefs.root
 }
 
+// Mount mounts the FUSE file system.
+//
+// It takes a VFSSettings object as parameter and
+// returns an error if the settings are invalid or if the mount fails.
+// If the FUSE file system has already been mounted, it returns ErrFUSEUnavailable.
+//
+// The mount path is created if it does not exist.
 func (fusefs *FUSEFileSystem) Mount(settings VFSSettings) error {
 	fusefs.rw.Lock()
 	defer fusefs.rw.Unlock()
@@ -91,6 +100,10 @@ func (fusefs *FUSEFileSystem) Mount(settings VFSSettings) error {
 	return err
 }
 
+// Unmount unmounts the FUSE file system.
+//
+// It returns an error if the unmount fails. If the FUSE file system has already been unmounted,
+// it returns nil.
 func (fusefs *FUSEFileSystem) Unmount() error {
 
 	fusefs.rw.RLock()

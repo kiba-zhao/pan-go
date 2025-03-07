@@ -20,8 +20,20 @@ export type ExtFSState = {
 
 const ExtFSContext = createReducerContext<ExtFSState>();
 
+/**
+ * Hook to access the ExtFS state.
+ * @returns {ExtFSState} The current state of the ExtFS context.
+ */
 export const useExtFS = () => useReducerState(ExtFSContext);
 
+/**
+ * Provider for ExtFS state.
+ *
+ * @param {{ value: ExtFSState, children: ReactNode }} props
+ * @prop {ExtFSState} value - Initial value of the ExtFS state.
+ * @prop {ReactNode} children - Children components to render.
+ * @returns {ReactElement} Element with reducer state and dispatch context.
+ */
 export const ExtFSProvider = ({
   value,
   children,

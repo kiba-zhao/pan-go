@@ -1,3 +1,9 @@
+/**
+ * vite environment variables
+ * 
+ * @see https://vite.dev/config/shared-options.html#define
+ */
+
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {

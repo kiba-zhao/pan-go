@@ -1,3 +1,4 @@
+// Define peer module for quic
 package quic
 
 import (
@@ -74,14 +75,44 @@ func serveQuicConn(conn QuicConn, peerModule peer.PeerModule) error {
 }
 
 type QuicPeerModule interface {
+	// Extends peer.PeerNetwork
 	peer.PeerNetwork
+	// PeerSettings returns the current peer settings from the PeerModule.
+	// It retrieves settings such as the peer's ID, public key, private key, and certificate.
+	// The settings are initialized on the first call and remain unchanged thereafter.
+	// If the PeerModule is unavailable, it returns nil.
 	PeerSettings() peer.PeerSettings
+	// Serve handles an incoming QUIC connection, validating the connection
+	// and the peer ID, and returns a QuicConn. If the connection is invalid or
+	// the PeerModule is unavailable, it closes the connection and returns an error.
+	// It delegates the connection handling to the agent's Follow method and runs
+	// the serveQuicConn function for managing streams.
 	Serve(quic.Connection, peer.PeerID) (QuicConn, error)
+	// Do sends a request over the given QuicConn and returns the resulting quic.Stream.
+	// It reads data from the provided io.Reader and writes it to a newly opened stream
+	// on the connection. The function returns an error if the connection is unavailable
+	// or if there is an issue opening or writing to the stream.
 	Do(context.Context, QuicConn, io.Reader) (quic.Stream, error)
+	// Lookup looks up a QuicConn from the module's connection store
+	// by the given peer ID. If the connection is not found, it returns nil.
 	Lookup(peer.PeerID) QuicConn
+	// Dial establishes a connection to a peer identified by the given peer ID.
+	// It returns a QuicConn representing the connection to the peer, or an error
+	// if the connection attempt fails. The function attempts to dial the peer
+	// multiple times and uses the peer module's settings to configure the
+	// connection. If the peer module is unavailable or the settings are invalid,
+	// it returns an error.
 	Dial(context.Context, peer.PeerID) (QuicConn, error)
+	// Route establishes a route to a peer using the given peer ID and address.
+	// If the route does not exist, it attempts to create a new one. The function
+	// locks the route during modification to ensure thread safety. If needGreet is true,
+	// the function ensures that a greeting is sent to the peer after establishing the route.
+	// It returns an error if any step in the process fails, such as issues accessing
+	// the peer or establishing a connection.
 	Route(peer.PeerID, string, bool) error
+	// Invite invites a peer create a connection to the current peer.
 	Invite(peer.PeerID) (QuicConn, error)
+	// Reload reloads the peer settings from the PeerModule.
 	Reload()
 }
 

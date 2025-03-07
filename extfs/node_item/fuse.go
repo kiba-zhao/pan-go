@@ -12,6 +12,7 @@ import (
 )
 
 type NodeItemServiceFUSEProvider interface {
+	// NodeItemService returns the node item service.
 	NodeItemService() *NodeItemService
 }
 
@@ -20,6 +21,11 @@ type FUSENodeItem struct {
 	provider NodeItemServiceFUSEProvider
 }
 
+// Getattr returns the attributes of the current node item.
+// It always returns a directory with a size of 4096 bytes, and the
+// current time as the last modified time. The number of hard links to
+// the file is always 1.
+// It implements the Getattr method of the fs.Inode interface.
 func (fuseni *FUSENodeItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
 	out.Mode = fuse.S_IFDIR
 	out.Size = 4096
@@ -29,6 +35,11 @@ func (fuseni *FUSENodeItem) Getattr(ctx context.Context, f fs.FileHandle, out *f
 	return fs.OK
 }
 
+// Readdir returns a directory stream containing the node items as subdirectories.
+// If any node item has the same name as an existing child node, an error is returned.
+// The returned directory stream is released by calling RmChild on the FUSENodeItem instance with
+// the names of the node items that are not in the returned stream.
+// It implements the Readdir method of the fs.Inode interface.
 func (fuseni *FUSENodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 	dirs := make([]fuse.DirEntry, 0)
 	names := make([]string, 0)
@@ -68,6 +79,13 @@ func (fuseni *FUSENodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.
 	return fs.NewListDirStream(dirs), 0
 }
 
+// Lookup searches for a child inode with the given name in the current node item.
+// If the name matches the local node, it ensures the inode represents a local node
+// and returns it. If the name corresponds to a remote node, it retrieves the
+// corresponding remote node information and creates a new inode for it if necessary.
+// Returns the found inode and fs.OK on success, or nil and ENOENT if the name
+// does not correspond to any known node.
+// It implements the Lookup method of the fs.Inode interface.
 func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
 	nodeItemService := fuseni.provider.NodeItemService()
 	nodeItem, err := nodeItemService.SelectByName(name)
@@ -102,6 +120,10 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 
 	return inode, fs.OK
 }
+
+// NewFUSENode creates a new FUSENodeItem with the provided NodeItemServiceFUSEProvider.
+// It initializes the FUSENodeItem's provider field with the given provider
+// and returns a pointer to the new FUSENodeItem as an fs.InodeEmbedder.
 
 func NewFUSENode(provider NodeItemServiceFUSEProvider) fs.InodeEmbedder {
 	var fuse FUSENodeItem

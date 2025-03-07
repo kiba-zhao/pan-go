@@ -1,3 +1,6 @@
+// Define packet buffer for broadcast
+//
+// It is used to cache broadcast messages.
 package broadcast
 
 import (
@@ -18,6 +21,7 @@ type PacketBuffer struct {
 	wg      sync.WaitGroup
 }
 
+// HashCode returns the address of the packet buffer as the hash code.
 func (bpb *PacketBuffer) HashCode() string {
 	return bpb.addr
 }

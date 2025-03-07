@@ -11,6 +11,19 @@ type RemoteSearchFileService struct {
 	RemoteSearchFileBroker *RemoteSearchFileBroker
 }
 
+// Search sends a request to search for remote search files based on the given peer ID and search condition.
+// It utilizes the RemoteSearchFileBroker to perform the request and returns a list of remote search file records
+// or an error if the request fails.
+//
+// Parameters:
+//   - peerId: The ID of the peer to which the search request is sent.
+//   - condition: The search condition used to filter the remote search files.
+//
+// Returns:
+//   - The total number of search results.
+//   - A list of remote search file records.
+//   - An ETag of the search result.
+//   - An error if the search request fails.
 func (s *RemoteSearchFileService) Search(peerId string, condition RemoteSearchFileSearchCondition) (total int64, searchFiles []RemoteSearchFile, etag string, err error) {
 	peerIdBytes, err := appnode.DecodePeerID(peerId)
 	if err != nil {
@@ -60,6 +73,14 @@ func (s *RemoteSearchFileService) Search(peerId string, condition RemoteSearchFi
 	return
 }
 
+// SearchForTopic searches for remote search files based on the given condition.
+//
+// Parameters:
+//   - condition: The search condition used to filter the remote search files.
+//
+// Returns:
+//   - A pointer to a RemoteSearchFileRecordList containing the search results.
+//   - An error if the search request fails.
 func (s *RemoteSearchFileService) SearchForTopic(condition *RemoteSearchFileRecordSearchCondition) (*RemoteSearchFileRecordList, error) {
 	var condition_ nodesearchfile.NodeSearchFileSearchCondition
 

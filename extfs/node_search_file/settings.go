@@ -1,3 +1,4 @@
+// Define node search file settings
 package nodesearchfile
 
 import (

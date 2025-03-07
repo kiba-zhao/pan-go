@@ -1,3 +1,4 @@
+// Define vfs settings
 package vfs
 
 import (

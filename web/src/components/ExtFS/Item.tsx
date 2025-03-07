@@ -1,3 +1,6 @@
+/**
+ * ExtFS Item Component Definition File
+ */
 import type { CSSProperties, ReactNode } from "react";
 import { Fragment } from "react";
 
@@ -32,6 +35,22 @@ export type ExtFSItemsProps<T extends any> = {
   isFetching: ListItemsProps<T>["isFetching"];
   children: ListItemsProps<T>["children"];
 };
+/**
+ * ExtFSItems Component
+ *
+ * This component renders a list of items with a loading indicator.
+ *
+ * @template T - The type of the items in the list.
+ *
+ * @param {ExtFSItemsProps<T>} props - The props for the component.
+ * @param {T[]} props.items - The list of items to be displayed.
+ * @param {boolean} props.isFetching - Flag indicating if the data is currently being fetched.
+ * @param {ReactNode} props.children - The children elements to be rendered within the ListItems.
+ *
+ * @returns {JSX.Element} A JSX element that contains a loading indicator when fetching
+ *                        and a list of items when data is available.
+ */
+
 export const ExtFSItems = <T extends any>({
   items,
   isFetching,
@@ -66,6 +85,24 @@ export type ExtFSItemProps = {
   disabled?: boolean;
   children?: ReactNode;
 };
+/**
+ * ExtFSItem Component
+ *
+ * This component renders a single item of a list with an optional avatar and
+ * extended icon.
+ *
+ * @param {ExtFSItemProps} props - The props for the component.
+ * @param {CSSProperties} props.style - The style for the list item.
+ * @param {() => void} props.onClick - The function to be called when the list item is clicked.
+ * @param {string} props.primary - The primary text of the list item.
+ * @param {string} props.secondary - The secondary text of the list item.
+ * @param {ReactNode} props.avatarIcon - The icon to be displayed as the avatar of the list item.
+ * @param {ReactNode} props.extIcon - The extended icon to be displayed next to the primary text.
+ * @param {boolean} props.disabled - Flag indicating if the list item is disabled.
+ * @param {ReactNode} props.children - The children elements to be rendered within the ListItemButton.
+ *
+ * @returns {JSX.Element} A JSX element representing a list item with an avatar and optional extended icon.
+ */
 export const ExtFSItem = ({
   style,
   onClick,
@@ -113,6 +150,21 @@ type ExtFSItemLinkProps = {
   disabled?: boolean;
   target?: React.HTMLAttributeAnchorTarget;
 };
+/**
+ * ExtFSItemLink Component
+ *
+ * This component renders a link button with a tooltip.
+ * It is used within the `ExtFSItem` component to provide a link to a settings page.
+ *
+ * @param {ExtFSItemLinkProps} props - The props for the component.
+ * @param {ReactNode} props.title - The text to be displayed in the tooltip.
+ * @param {To} props.to - The target URL of the link.
+ * @param {ReactNode} props.children - The children elements to be rendered within the IconButton.
+ * @param {boolean} props.disabled - Flag indicating if the link button is disabled.
+ * @param {React.HTMLAttributeAnchorTarget} props.target - The target attribute for the link.
+ *
+ * @returns {JSX.Element} A JSX element representing a link button with a tooltip.
+ */
 const ExtFSItemLink = ({
   title,
   to,
@@ -139,6 +191,18 @@ export type ExtFSItemSettingsProps = Pick<
   ExtFSItemLinkProps,
   "to" | "disabled"
 >;
+/**
+ * ExtFSItemSettings Component
+ *
+ * This component renders a link button with a tooltip.
+ * It is used within the `ExtFSItem` component to provide a link to a settings page.
+ *
+ * @param {ExtFSItemSettingsProps} props - The props for the component.
+ * @param {To} props.to - The target URL of the link.
+ * @param {boolean} props.disabled - Flag indicating if the link button is disabled.
+ *
+ * @returns {JSX.Element} A JSX element representing a link button with a tooltip.
+ */
 export const ExtFSItemSettings = ({ to, disabled }: ExtFSItemSettingsProps) => {
   const t = useTranslate();
   return (
@@ -155,6 +219,20 @@ export const ExtFSItemSettings = ({ to, disabled }: ExtFSItemSettingsProps) => {
 export type ExtFSItemOpenProps = Pick<ExtFSItemLinkProps, "to" | "disabled"> & {
   hidden?: boolean;
 };
+/**
+ * ExtFSItemOpen Component
+ *
+ * This component renders a link button with a tooltip.
+ * It is used within the `ExtFSItem` component to provide a link to open a file or directory
+ * in a new tab.
+ *
+ * @param {ExtFSItemOpenProps} props - The props for the component.
+ * @param {To} props.to - The target URL of the link.
+ * @param {boolean} props.disabled - Flag indicating if the link button is disabled.
+ * @param {boolean} [props.hidden] - Flag indicating if the component should not be rendered.
+ *
+ * @returns {JSX.Element} A JSX element representing a link button with a tooltip.
+ */
 export const ExtFSItemOpen = ({ to, disabled, hidden }: ExtFSItemOpenProps) => {
   const t = useTranslate();
   if (hidden) return;

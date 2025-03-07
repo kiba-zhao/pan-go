@@ -1,3 +1,4 @@
+// Define peer server for quic
 package quic
 
 import (
@@ -19,6 +20,10 @@ type quicPeerServer struct {
 	address        string
 }
 
+// Shutdown closes the quic listener and cleans up the quicPeerServer.
+// Note that any new incoming connections will be closed immediately.
+// Shutdown will return ErrQuicPeerServerUnavailable if the quicPeerServer
+// is not available anymore.
 func (qs *quicPeerServer) Shutdown() error {
 	qs.locker.RLock()
 	ln := qs.ln
@@ -32,6 +37,14 @@ func (qs *quicPeerServer) Shutdown() error {
 	qs.locker.Unlock()
 	return ln.Close()
 }
+
+// ListenAndServe starts a QUIC server and listens for incoming connections.
+// It authenticates clients using the server's TLS certificate and handles
+// client connections using the associated quicPeerModule. The function will
+// return an error if the server is unavailable, the peer settings are
+// unavailable, or if there is an issue with accepting connections. It
+// gracefully shuts down when the context is canceled or when the server
+// encounters an internal error.
 
 func (qs *quicPeerServer) ListenAndServe(ctx context.Context) error {
 

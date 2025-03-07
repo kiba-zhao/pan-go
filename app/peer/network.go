@@ -1,3 +1,4 @@
+// Define peer network
 package peer
 
 import (
@@ -19,6 +20,10 @@ type peerNetwork struct {
 	peerModule *peerModule
 }
 
+// CanReach checks if the given peerId is reachable by any of the peer networks
+// associated with the peer module. It returns true if at least one peer network
+// can reach the specified peerId, otherwise it returns false.
+
 func (pn *peerNetwork) CanReach(peerId PeerID) bool {
 
 	modules := pn.peerModule.PeerNetworks()
@@ -35,6 +40,12 @@ func (pn *peerNetwork) CanReach(peerId PeerID) bool {
 	return false
 }
 
+// Purge is a no-op if there are no peer networks associated with the peer module.
+//
+// It iterates over the peer networks and calls their Purge method with the given
+// peerId. If any error occurs during the iteration, it is logged at the error level.
+//
+// The function does not return an error.
 func (pn *peerNetwork) Purge(peerId PeerID) error {
 	modules := pn.peerModule.PeerNetworks()
 	if len(modules) <= 0 {
@@ -51,6 +62,16 @@ func (pn *peerNetwork) Purge(peerId PeerID) error {
 	return nil
 }
 
+// RoundTrip sends a request to a peer and returns the response.
+//
+// It iterates over the peer networks and calls their RoundTrip method with the given
+// peerId and reader. If any error occurs during the iteration, it is returned.
+//
+// If at least one peer network can reach the specified peerId, the response is
+// returned. Otherwise, ErrPeerNetworkUnavailable is returned.
+//
+// If the given context is canceled or the request reader has been read before, the
+// iteration is stopped and the last error is returned.
 func (pn *peerNetwork) RoundTrip(ctx context.Context, peerId PeerID, reader io.Reader) (io.ReadCloser, error) {
 
 	modules := pn.peerModule.PeerNetworks()

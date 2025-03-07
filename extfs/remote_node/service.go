@@ -1,3 +1,6 @@
+// Define Remote Node service
+//
+// It realizes the function of remote nodes
 package remotenode
 
 import (
@@ -8,6 +11,11 @@ type RemoteNodeService struct {
 	AppNodeExternalService appnode.AppNodeExternalService
 }
 
+// SelectAll returns a list of remote nodes
+//
+// The returned list only contains remote nodes which are available.
+// The total count of remote nodes is not returned currently.
+// The tag quantity of each remote node is not returned currently.
 func (s *RemoteNodeService) SelectAll() (int64, []RemoteNode, error) {
 
 	remotes := make([]RemoteNode, 0)
@@ -25,6 +33,10 @@ func (s *RemoteNodeService) SelectAll() (int64, []RemoteNode, error) {
 	return 0, remotes, err
 }
 
+// SelectByName returns the remote node with given name
+//
+// The returned remote node is only available if the real app node is not blocked and is online.
+// The tag quantity of the remote node is not returned currently.
 func (s *RemoteNodeService) SelectByName(name string) (RemoteNode, error) {
 	model, err := s.AppNodeExternalService.SelectByName(name)
 	if err != nil {

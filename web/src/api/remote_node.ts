@@ -1,3 +1,6 @@
+/**
+ * ExtFSRemoteNode API Definition File
+ */
 import { withPath } from "fetch-utils";
 import { fetchMany } from "./base";
 
@@ -14,6 +17,11 @@ export type ExtFSRemoteNode = {
   updatedAt: string;
 };
 
+/**
+ * Select all remote nodes.
+ *
+ * @returns A list of remote nodes.
+ */
 export async function selectAllExtFSRemoteNodes(): Promise<ExtFSRemoteNode[]> {
   const [_, remoteNodes] = await fetchMany(
     withPath("extfs/remote-nodes", "merge")

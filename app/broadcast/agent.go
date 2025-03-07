@@ -1,3 +1,6 @@
+// Define broadcast agent for broadcast
+//
+// The broadcast agent is used to serve and deliver broadcast messages.
 package broadcast
 
 import (
@@ -52,6 +55,10 @@ type broadcastAgent struct {
 	needReload   bool
 }
 
+// ComponentStore returns the ComponentStore associated with the broadcast agent.
+//
+// This method retrieves the ComponentStore from the agent's provider,
+// allowing access to the map of components that are injected into other components.
 func (agent *broadcastAgent) ComponentStore() injection.ComponentStore {
 	return agent.provider.ComponentStore()
 }
@@ -69,6 +76,12 @@ func (agent *broadcastAgent) EngineTypes() []reflect.Type {
 	}
 }
 
+// PublicAddrs returns the list of public addresses that the broadcast agent can use.
+//
+// The addresses are used to broadcast messages publicly.
+//
+// The addresses are retrieved from the registry, and the list is deduplicated
+// before being returned.
 func (agent *broadcastAgent) PublicAddrs() []string {
 	agent.registryRW.RLock()
 	registry := agent.registry
@@ -110,6 +123,14 @@ func (agent *broadcastAgent) ReloadChan() chan struct{} {
 	return agent.reloadChan
 }
 
+// Reload reloads the broadcast agent.
+//
+// It is called by the runtime to reload the broadcast agent after the application has finished initializing.
+//
+// The function first checks if the registry is available, and if it is not, an error is returned.
+// If the registry is available, the function calls ReloadModules to reload the broadcast agent.
+//
+// ReloadModules is a noop if the registry is not available.
 func (agent *broadcastAgent) Reload() {
 	agent.reloadLocker.Lock()
 	defer agent.reloadLocker.Unlock()
@@ -120,6 +141,8 @@ func (agent *broadcastAgent) Reload() {
 	agent.ReloadChan() <- struct{}{}
 }
 
+// ServeBroadcast serves the broadcast message to the peer.
+// Returns an error if the broadcast agent is unavailable or if there is an issue serving the broadcast.
 func (agent *broadcastAgent) ServeBroadcast(payload []byte, addr string) error {
 	if len(payload) <= 0 {
 		return nil
@@ -133,6 +156,12 @@ func (agent *broadcastAgent) ServeBroadcast(payload []byte, addr string) error {
 	return err
 }
 
+// DeliverOnline sends the online message to the peers.
+//
+// The message is sent to the peers whose addresses are in the parameter list.
+// If the parameter list is empty, the message is sent to all online peers.
+//
+// Returns an error if the broadcast agent is unavailable or if there is an issue delivering the online message.
 func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 
 	settings := agent.PeerModule.PeerSettings()
@@ -237,6 +266,11 @@ func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 	return nil
 }
 
+// AcceptOnline accepts an online message from a peer.
+//
+// The message is verified and the peer is routed to the quic peer module.
+//
+// Returns an error if the message is invalid or if there is an issue routing the peer.
 func (agent *broadcastAgent) AcceptOnline(payload []byte, addr string) error {
 	settings := agent.PeerModule.PeerSettings()
 	if !settings.Available() {
@@ -285,6 +319,18 @@ func (agent *broadcastAgent) AcceptOnline(payload []byte, addr string) error {
 	return agent.QuicPeerModule.Route(msg.PeerId, msgAddr, true)
 }
 
+// Ready prepares the broadcast agent to operate within the given context.
+//
+// The method manages the lifecycle of the broadcast agent, handling context cancellation,
+// reload signals, and delivery of online messages to peers. It stops any ongoing delivery
+// when the context is done or when a reload is triggered and restarts it if necessary.
+//
+// The method initializes the broadcast store with the peer ID and ensures that the peer
+// settings are available before proceeding. It runs the StartDelivery method in a
+// separate goroutine, which continues to deliver online messages until the context is canceled.
+//
+// Returns an error if the context is canceled or if there is an issue initializing the store.
+
 func (agent *broadcastAgent) Ready(ctx context.Context) error {
 
 	var cancel context.CancelCauseFunc
@@ -326,6 +372,16 @@ func (agent *broadcastAgent) Ready(ctx context.Context) error {
 	return err
 }
 
+// StartDelivery starts delivering online messages to peers.
+//
+// The method is designed to be run in its own goroutine and will
+// continue to deliver online messages until the context is canceled.
+//
+// The method will wait for 30 seconds between each delivery, unless
+// the context is canceled before the next delivery can be made.
+//
+// If an error occurs while delivering the online message, the method
+// will stop and return the error.
 func (agent *broadcastAgent) StartDelivery(ctx context.Context) {
 loop:
 	for {
@@ -342,6 +398,12 @@ loop:
 	}
 }
 
+// StopDelivery stops the delivery of online messages to peers.
+//
+// The method cancels the context that was passed to the StartDelivery method.
+// If the context is already canceled, the method does nothing.
+//
+// The method is safe to call multiple times.
 func (agent *broadcastAgent) StopDelivery(cancel context.CancelCauseFunc) {
 	if cancel != nil {
 		cancel(ErrBroadcastAgentDeliverExit)

@@ -1,3 +1,4 @@
+// Define node item model
 package nodeitem
 
 import (

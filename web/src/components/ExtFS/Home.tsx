@@ -1,3 +1,6 @@
+/**
+ * ExtFS Home Component Definition File
+ */
 import type { ExtFSItemRecord } from "./Item";
 import { ExtFSItem, ExtFSItems, useExtFSItem } from "./Item";
 import { More, MoreHelpItem } from "./More";
@@ -27,6 +30,15 @@ type ExtFSNode = {
   name: string;
   peerId: string;
 };
+/**
+ * @function HomeItems
+ * @description
+ * A component that renders ExtFS items for the home route.
+ * @returns {JSX.Element} An element that renders a list of items.
+ * @example
+ * import { HomeItems } from "./Home";
+ * <HomeItems />
+ */
 export const HomeItems = () => {
   const [extfs, _] = useExtFS();
   const api = useAPI();
@@ -70,6 +82,13 @@ export const HomeItems = () => {
   );
 };
 
+/**
+ * A component that renders a list item for the home route.
+ * @returns {JSX.Element} An element that renders a list item.
+ * @example
+ * import { HomeItem } from "./Home";
+ * <HomeItem />
+ */
 const HomeItem = () => {
   const { style, item }: ExtFSItemRecord<ExtFSNode | ExtFSRemoteNode> =
     useExtFSItem();
@@ -125,6 +144,15 @@ const HomeItem = () => {
   );
 };
 
+/**
+ * @function HomeMore
+ * @description
+ * A component that renders a More component for the home route.
+ * @returns {JSX.Element} An element that renders a More component.
+ * @example
+ * import { HomeMore } from "./Home";
+ * <HomeMore />
+ */
 export const HomeMore = () => {
   return (
     <More>

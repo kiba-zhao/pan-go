@@ -1,3 +1,4 @@
+// Define app broadcast repository
 package appbroadcast
 
 import (
@@ -10,8 +11,28 @@ import (
 var ErrAppBroadcastInfoNotFound = errors.New("appbroadcast.AppBroadcastInfoRepository Error: Not Found")
 
 type AppBroadcastInfoRepository interface {
+	// SelectOrCreate selects or creates a AppBroadcastInfo from the store.
+	//
+	// If the peerID exists in the store, the function returns the associated AppBroadcastInfo.
+	// If the peerID does not exist, the function creates a new AppBroadcastInfo with the
+	// given AppBroadcastInfo and returns it. If there is an error with the store,
+	// the function returns an error.
+	//
 	SelectOrCreate(baseInfo AppBroadcastInfo) (AppBroadcastInfo, bool, error)
+	// UpdateHeightest updates the heightest for the given AppBroadcastInfo.
+	//
+	// If the given AppBroadcastInfo exists in the store and the heightest is higher
+	// than the current heightest, the function updates the heightest for the peerId.
+	// If there is an error with the store, the function returns an error.
+	//
+	//
 	UpdateHeightest(info AppBroadcastInfo) (AppBroadcastInfo, error)
+	// DeleteByPeerID deletes the AppBroadcastInfo associated with the given peerId.
+	//
+	// If the peerId does not exist in the store, the function returns an error.
+	// If there is an error with the store, the function returns an error.
+	//
+	//
 	DeleteByPeerID(peerId string) error
 }
 

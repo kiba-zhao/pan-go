@@ -1,3 +1,8 @@
+// Package web provides a web application framework for Pan.
+//
+// It is based on the Gin web framework.
+// It is used to define web functionality in the application
+
 package web
 
 import (
@@ -21,30 +26,70 @@ type WebApp = *gin.Engine
 type WebRouter = gin.IRouter
 type WebContext = *gin.Context
 
+// NewWebApp creates a new web application.
+//
+// It creates a new Gin Engine which can be used as a WebApp.
 func NewWebApp() WebApp {
 	return gin.New()
 }
 
+// WebAppModule is a module for the web application.
+//
+// The module that implements this interface will be obtained by the application from the runtime and loaded into the gin engine
 type WebAppModule interface {
+
+	// SetupToWeb sets up the web application
+	//
+	// Example:
+	// type MyModule struct {}
+	//
+	// func (m *MyModule) SetupToWeb(app WebApp) error {
+	// app.GET("/my-module", m.MyMethod)
+	// app.NoRoute(m.noRoute)
+	// ...
+	// return nil
+	// }
 	SetupToWeb(WebApp) error
 }
 
+// WebAppModuleProvider is a module that provides multiple WebAppModules
 type WebAppModuleProvider interface {
 	WebAppModules() []WebAppModule
 }
 
+// WebController is a controller for the web application
+//
+// The module that implements this interface will be obtained by the application from the runtime and loaded into the gin engine
+// It is used to define web api in the application
 type WebController interface {
+	// SetupToWeb sets up the controller for the web application
+	//
+	// Example:
+	// type MyController struct {}
+	//
+	// func (c *MyController) SetupToWeb(r WebRouter) error {
+	// 	r.GET("/my-controller", c.MyMethod)
+	//  ...
+	// 	return nil
+	// }
+	//
+
 	SetupToWeb(WebRouter) error
 }
 
+// WebScopeModule is a module that provides a scope for the web application
 type WebScopeModule interface {
 	WebScope() string
 }
 
+// WebControllerProvider is a module that provides multiple WebControllers
 type WebControllerProvider interface {
 	WebControllers() []WebController
 }
 
+// New creates a new runtime engine module.
+//
+// It returns a *webModule, which implements runtime.Module.
 func New() interface{} {
 	return &webModule{}
 }
@@ -60,6 +105,9 @@ type webModule struct {
 	needReload bool
 }
 
+// ReloadChan returns a channel that receives a signal when the web module needs to be reloaded.
+//
+// It is used by the http server to reload the web module.
 func (w *webModule) ReloadChan() chan struct{} {
 
 	w.reloadOnce.Do(func() {
@@ -69,6 +117,12 @@ func (w *webModule) ReloadChan() chan struct{} {
 	return w.reloadChan
 }
 
+// OnConfigUpdated updates the web module configuration.
+//
+// It is called when the configuration of the engine is updated.
+//
+// It checks if the web address is changed, and if so, updates the address and
+// triggers a reload by sending a signal to the reload channel.
 func (w *webModule) OnConfigUpdated(settings config.AppSettings) {
 	w.locker.Lock()
 	defer w.locker.Unlock()
@@ -87,6 +141,10 @@ func (w *webModule) OnConfigUpdated(settings config.AppSettings) {
 	w.ReloadChan() <- struct{}{}
 }
 
+// Init initializes the web module with the provided registry.
+// It sets the module's registry and then attempts to reload modules.
+// Returns an error if the module reloading fails.
+
 func (w *webModule) Init(registry runtime.Registry) error {
 	w.locker.Lock()
 	w.registry = registry
@@ -95,10 +153,22 @@ func (w *webModule) Init(registry runtime.Registry) error {
 	return w.ReloadModules()
 }
 
+// Defer triggers the reloading of modules for the web module.
+//
+// It calls ReloadModules, which reloads the web module's components.
+// Returns an error if reloading fails.
+
 func (w *webModule) Defer() error {
 	return w.ReloadModules()
 }
 
+// EngineTypes returns a slice of types for the web module's engine types.
+//
+// These are:
+//
+//   - WebAppModule
+//   - WebAppModuleProvider
+//   - WebControllerProvider
 func (w *webModule) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[WebAppModule](),
@@ -107,6 +177,13 @@ func (w *webModule) EngineTypes() []reflect.Type {
 	}
 }
 
+// ServeHTTP implements the http.Handler interface.
+//
+// It serves the web application's http requests by calling the ServeHTTP method
+// on the underlying Gin Engine.
+//
+// If the web application is not available (i.e., the app is nil), it returns an
+// HTTP error with the status code 500.
 func (w *webModule) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	w.appLocker.RLock()
@@ -120,6 +197,16 @@ func (w *webModule) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// ReloadModules reloads the web application modules from the registry.
+//
+// It traverses the registry, looking for modules that implement the WebAppModule,
+// WebAppModuleProvider, and WebControllerProvider interfaces. For each module,
+// it calls the SetupToWeb method to set up the web application.
+//
+// If any error occurs during the reloading process, it will be returned.
+//
+// If the reloading process is successful, the web application will be updated
+// with the new modules.
 func (w *webModule) ReloadModules() error {
 	w.locker.Lock()
 	registry := w.registry
@@ -173,6 +260,18 @@ func (w *webModule) ReloadModules() error {
 	return err
 }
 
+// Ready starts the web server and waits for it to exit.
+//
+// It takes a context, and listens for the Done signal. When the context is done,
+// it shuts down the web server and waits for it to exit.
+//
+// It also listens for the reload signal, which triggers a reload of the web
+// application modules from the registry.
+//
+// If the reloading process fails, it returns the error. Otherwise, it starts the
+// web server and waits for it to exit.
+//
+// If the web server exits with an error, it logs the error and returns it.
 func (w *webModule) Ready(ctx context.Context) error {
 
 	var wg sync.WaitGroup

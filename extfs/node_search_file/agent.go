@@ -34,6 +34,9 @@ type agentImpl struct {
 	provider injection.ComponentStoreProvider
 }
 
+// FileRaters returns a slice of all file raters registered in the component store.
+//
+// It returns an empty slice if the component store is not initialized yet.
 func (agent *agentImpl) FileRaters() []FileRater {
 	agent.registryRW.RLock()
 	registry := agent.registry
@@ -47,12 +50,19 @@ func (agent *agentImpl) FileRaters() []FileRater {
 	return raters
 }
 
+// Settings returns the current settings of the node search file agent.
+//
+// It returns a copy of the current settings. If the agent's configuration is
+// updated, the returned settings will not be updated.
 func (agent *agentImpl) Settings() NodeSearchFileSettings {
 	agent.settingsRW.RLock()
 	defer agent.settingsRW.RUnlock()
 	return agent.settings
 }
 
+// OnConfigUpdated updates the agent's settings with the given settings.
+//
+// It updates the agent's local copy of the settings and does not return an error.
 func (agent *agentImpl) OnConfigUpdated(settings *NodeSearchFileSettings) {
 	agent.settingsRW.Lock()
 	defer agent.settingsRW.Unlock()
@@ -74,6 +84,14 @@ func (agent *agentImpl) EngineTypes() []reflect.Type {
 	}
 }
 
+// DB returns the Gorm DB instance used by the agent.
+//
+// It initializes the database by attempting to create the database file in the
+// path specified by the DBPath setting. If the path does not exist, it creates
+// the directory recursively with 0755 permissions. If the database file already
+// exists, it is used without modification. If the database file does not exist,
+// it creates a new database using the given path and sets up the necessary
+// tables using AutoMigrate. It returns the initialized Gorm DB instance.
 func (agent *agentImpl) DB() *gorm.DB {
 	agent.dbOnce.Do(func() {
 		settings, err := agent.Config.Read()
@@ -96,6 +114,9 @@ func (agent *agentImpl) DB() *gorm.DB {
 	return agent.db
 }
 
+// ComponentStore returns the component store that the agent uses to
+// store its components. This is the same component store that is
+// passed to the agent's constructor.
 func (agent *agentImpl) ComponentStore() injection.ComponentStore {
 	return agent.provider.ComponentStore()
 }

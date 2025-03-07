@@ -9,9 +9,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// SamplePeer is sample interface for peer
 type SamplePeer interface {
+	// Do sends a request to a peer with the provided context, peer ID, and request.
+	// It returns the response from the peer and any error encountered during the process.
 	Do(context.Context, peer.PeerID, *peer.Request) (*peer.Response, error)
+	// Request sends a request to a peer with the provided context, peer ID, request name, and request body.
+	// The request body is a proto.Message and is marshaled into a *peer.Request before being sent.
+	// The request headers may be set by providing a list of peer.HeaderItem.
+	// It returns the response from the peer and any error encountered during the process.
+	//
 	Request(context.Context, peer.PeerID, peer.RequestName, proto.Message, ...peer.HeaderItem) (*peer.Response, error)
+	// RequestWithProto sends a request to a peer with the provided context, peer ID, request name,
+	// and request body, and expects a response. The request body and expected response are
+	// proto.Messages. The request body is marshaled into a *peer.Request before being sent.
+	// The request headers may be set by providing a list of peer.HeaderItem. It returns an error
+	// if the request fails or the response cannot be unmarshaled into the provided proto.Message.
 	RequestWithProto(context.Context, peer.PeerID, peer.RequestName, proto.Message, proto.Message, ...peer.HeaderItem) error
 }
 

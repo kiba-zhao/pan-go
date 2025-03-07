@@ -1,3 +1,6 @@
+// Package config provides the configuration engine
+//
+// The configuration engine is used to manage the configuration of the application
 package config
 
 import (
@@ -18,15 +21,52 @@ const DefaultRootName = "." + PackageName
 
 type AppConfig = Config[AppSettings]
 
+// ConfigListener is a listener for config updates
+// It is called when the config is updated
 type ConfigListener[T any] interface {
+	// OnConfigUpdated is called when the config is updated.
+	//
+	// The function is called with the new config settings.
 	OnConfigUpdated(settings T)
 }
 
+// Config is the configuration engine
 type Config[T any] interface {
+	// SetDefaults sets the default values of the configuration
+	//
+	// The function sets the default values of the configuration based on the given settings.
+	// The settings are expected to be a struct with fields that are tagged with the
+	// "default" tag. The value of the tag is the default value of the field.
+	//
+	// The function is called with the settings as an argument.
+	// It does not return an error.
 	SetDefaults(settings T)
+	// Read  the configuration settings from the underlying storage.
+	//
+	// It returns the settings as a value of type T and an error if any occurs
+	// during the reading process. If the configuration is stored as a pointer
+	// type, the settings will be unmarshalled into a new instance. If it is stored
+	// as a value type, the settings will be unmarshalled directly.
+	// An error is returned if the unmarshalling process fails.
 	Read() (settings T, err error)
+	// Load loads the configuration settings from the underlying storage and
+	// notifies all registered config listeners about the updates.
+	//
+	// It returns the settings as a value of type T and an error if any occurs
+	// during the loading process. If the configuration is stored as a pointer
+	// type, the settings will be unmarshalled into a new instance. If it is stored
+	// as a value type, the settings will be unmarshalled directly.
+	// An error is returned if the unmarshalling process fails.
 	Load() (settings T, err error)
+	// Save the given configuration settings to the underlying storage.
+	//
+	// It marshals the given settings to JSON and saves them to the file specified
+	// by ConfigFilePath. An error is returned if the marshalling or saving process fails.
 	Save(settings T) error
+	// ConfigFilePath returns the path to the configuration file.
+	//
+	// The path is determined by the configuration name passed to NewConfig and
+	// the root path of the application, which can be set using the environment
 	ConfigFilePath() string
 }
 
@@ -39,6 +79,21 @@ type configImpl[T any] struct {
 	isPtrType bool
 }
 
+// NewConfig creates a new configuration engine with the given name.
+//
+// The name parameter determines the filename of the configuration file, which
+// is stored in the root path of the application. The root path is determined by
+// the environment variable "PAN_ROOT_PATH" or the default root path if the
+// environment variable is not set.
+//
+// The function returns the configuration engine and an error if any occurs
+// during the creation process. If the configuration file does not exist, the
+// function will create it with default values and return nil for the error.
+//
+// The configuration engine can be used to read and write configuration settings.
+// The settings are stored as a value of type T. If T is a pointer type, the
+// settings will be marshalled into a new instance. If T is a value type, the
+// settings will be marshalled directly.
 func NewConfig[T any](name string) (Config[T], error) {
 
 	cfg := &configImpl[T]{}
@@ -173,6 +228,9 @@ func (c *configImpl[T]) Save(settings T) error {
 	return err
 }
 
+// EnsureConfig ensures that the configuration directory exists.
+// It creates the directory if it does not exist.
+// It returns an error if any error occurs during the creation process.
 func (c *configImpl[T]) EnsureConfig() error {
 	configFilePath := c.ConfigFilePath()
 	configDirPath := path.Dir(configFilePath)
@@ -184,6 +242,10 @@ func (c *configImpl[T]) EnsureConfig() error {
 	return err
 }
 
+// ConfigFilePath returns the path to the configuration file.
+//
+// The path is determined by the configuration name passed to NewConfig and
+// the root path of the application, which can be set using the environment
 func (c *configImpl[T]) ConfigFilePath() string {
 	return c.viper.ConfigFileUsed()
 }
@@ -231,6 +293,11 @@ func onSettingsUpdated[T any](registry runtime.Registry, settings T) {
 	}
 }
 
+// New returns a new instance of AppConfig. It will load the configuration from the
+// default configuration file path and set the default values based on the given
+// settings. If the configuration file does not exist, it will be created with the
+// default values. If any error occurs during the creation of the AppConfig, it
+// will panic.
 func New() AppConfig {
 	settings := newDefaultSettings()
 	cfg, err := NewConfig[AppSettings]("pan.toml")

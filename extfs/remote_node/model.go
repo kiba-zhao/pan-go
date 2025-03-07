@@ -1,3 +1,4 @@
+// Define Remote Node model
 package remotenode
 
 import "time"

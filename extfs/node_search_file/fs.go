@@ -14,6 +14,11 @@ type walkEntry struct {
 	cursor     int
 }
 
+// Next returns the next directory entry in the walk sequence. If there are no more entries,
+// it returns nil. This method advances the internal cursor, so subsequent calls will return
+// the next entry in the list. If the walk is completed, indicated by the Done method, it
+// returns nil without advancing the cursor.
+
 func (w *walkEntry) Next() fs.DirEntry {
 	if w.Done() {
 		return nil
@@ -23,10 +28,25 @@ func (w *walkEntry) Next() fs.DirEntry {
 	return entry
 }
 
+// Done checks if the walk sequence has been completed by determining if the
+// internal cursor has reached or exceeded the number of directory entries.
+// It returns true if there are no more entries to iterate over, otherwise false.
+
 func (w *walkEntry) Done() bool {
 	return w.cursor >= len(w.dirEntries)
 }
 
+// WalkRoot returns a sequence of strings representing the paths of all files
+// and directories below the given root directory. The sequence is lazily
+// generated and will stop iterating if the callback function returns false.
+//
+// The sequence first yields the root directory, then all of its subdirectories
+// and files in depth-first order. If a directory is encountered, its path is
+// yielded first, then all of its subdirectories and files are yielded, and so
+// on.
+//
+// If an error occurs while walking the directory tree, the sequence will stop
+// iterating and the error will be returned.
 func WalkRoot(root string) (iter.Seq[string], error) {
 
 	stat, err := os.Stat(root)

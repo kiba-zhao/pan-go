@@ -11,12 +11,18 @@ import (
 )
 
 type FileRater interface {
+	// Rate returns the score of the file
 	Rate(filePath string, tokens []string) (uint, error)
+	// Tokenize returns the tokens of the text
 	Tokenize(text string) []string
 }
 
 type fileRaterImpl struct {
 }
+
+// Rate computes the number of tokens that are found within the filename
+// specified by filePath. It returns the count of matched tokens as a uint.
+// An error is returned if there is any issue during the computation.
 
 func (fr *fileRaterImpl) Rate(filePath string, tokens []string) (uint, error) {
 	matchedCount := 0
@@ -31,31 +37,9 @@ func (fr *fileRaterImpl) Rate(filePath string, tokens []string) (uint, error) {
 	return uint(matchedCount), nil
 }
 
-// func (fr *fileRaterImpl) Rate(filePath string, tokens []string) (uint, error) {
-
-// 	score := uint(0)
-// 	stat, err := os.Stat(filePath)
-// 	if err != nil {
-// 		return score, err
-// 	}
-
-// 	if !stat.IsDir() {
-// 		mimeType, err := nodeitem.GenerateMimeType(filePath)
-// 		if err != nil {
-// 			return score, err
-// 		}
-
-// 		mimeTypeScore, err := rateWithMimeType(filePath, tokens, mimeType)
-// 		if err != nil {
-// 			return score, err
-// 		}
-// 		score += mimeTypeScore
-// 	}
-
-// 	score += rateWithFilePath(filePath, tokens)
-// 	return score, nil
-// }
-
+// Tokenize splits the given text into tokens. The function first trims
+// leading and trailing whitespace, and then splits on one or more
+// whitespace characters. The result is a slice of the tokens.
 func (fr *fileRaterImpl) Tokenize(text string) []string {
 	text = strings.Trim(text, " ")
 	re := regexp.MustCompile(`\s+`)

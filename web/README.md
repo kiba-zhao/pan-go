@@ -1,30 +1,73 @@
-# React + TypeScript + Vite
+## Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+this package is used to generate web console pages,Support PC and mobile.
 
-Currently, two official plugins are available:
+**What can web console do:**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Application Settings: set information, service, broadcast and others
+- Remote Settings：set remote node.
+- ExtFS: A file manager for all nodes.You can browse and search all files.
 
-## Expanding the ESLint configuration
+## React + TypeScript + Vite
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+Using [Typescript](https://www.typescriptlang.org/) and [React](https://react.dev/).
 
-- Configure the top-level `parserOptions` property like this:
+Using [vite](https://vite.dev/) for for packaging and development.
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+## Material UI
+
+Most pages use [Material UI](https://mui.com/material-ui/getting-started/) and [React-Admin](https://marmelab.com/react-admin/) components.
+
+## Mock
+
+Using [json-server](https://github.com/typicode/json-server/tree/v0) to Simulate Development Data
+
+## Main Package Files
+
+```
+|--public   # Web Static Resources
+|--src      # Source files
+|   |--api          # api definition Files
+|   |--assets       # vite resources
+|   |--components   # UI components
+|   |--locales      # i18n language files
+|   |--api.ts           # api definition
+|   |--App.css
+|   |--App.tsx          # App component
+|   |--i18n.ts
+|   |--index.css
+|   |--main.tsx         # main file
+|   |--vite-env.d.ts    # environment variable declaration file
+|--.env     # default environment variable
+|--.env.development # environment variable for development（npm run dev）
+|--db.cjs   # resource definition file for json-server
+|--middleware.cjs   # middleware for json-server
+|--package.json     # package file for nodejs
+|--routes.json      # route definition file for json-server
+|--vite.config.ts   # vite config file
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+## Development
+
+```shell
+# Dependency installation
+npm install
+
+# Start JSON server to mock data
+npm run mock
+
+# Start Vite
+npm run dev
+
+```
+
+## Build
+
+```shell
+# Dependency installation
+npm install
+
+# pack the source code to dist folder
+npm run build
+
+```

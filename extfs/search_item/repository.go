@@ -11,11 +11,35 @@ import (
 var ErrSearchItemNotFound = errors.New("searchitem.SearchItemRepository Error: Not Found")
 
 type SearchItemRepository interface {
+	// Save saves the given SearchItem to the database.
+	// It returns the saved SearchItem and an error if any issues occur during the query.
+	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
 	Save(SearchItem) (SearchItem, error)
+	// Create creates the given SearchItem in the database.
+	// It returns the created SearchItem and an error if any issues occur during the query.
+	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
 	Create(SearchItem) (SearchItem, error)
+	// SelectOrCreate returns the SearchItem with the given id.
+	// If the SearchItem does not exist, it creates a new one.
+	// It returns the SearchItem, a boolean indicating whether the SearchItem was created, and an error if any issues occur during the query.
+	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
 	SelectOrCreate(SearchItem) (SearchItem, bool, error)
+	// Select retrieves the SearchItem associated with the given id.
+	// It returns the retrieved SearchItem and an error if any issues occur during the query.
+	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// If the SearchItem was not found, it returns ErrSearchItemNotFound.
+	//
 	Select(id uint64) (SearchItem, error)
+	// Delete removes the SearchItem associated with the given id from the database.
+	// It returns an error if any issues occur during the deletion process.
+	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// If the SearchItem was not found, it returns ErrSearchItemNotFound.
+	//
 	Delete(id uint64) error
+	// Search retrieves SearchItems associated with the given condition, applying the given range condition for pagination.
+	// It returns the total number of results, a slice of SearchItems, and an error if any issues occur during the query.
+	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	//
 	Search(SearchItemCondition) (int64, []SearchItem, error)
 }
 

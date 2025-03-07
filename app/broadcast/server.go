@@ -1,3 +1,4 @@
+// Define broadcast server for broadcast
 package broadcast
 
 import (
@@ -21,6 +22,8 @@ type broadcastServer struct {
 	mtu     int
 }
 
+// Shutdown shuts down the broadcast server.
+// It closes the underlying UDP connection and returns an error if the connection is invalid.
 func (bs *broadcastServer) Shutdown() error {
 	bs.locker.RLock()
 	conn := bs.conn
@@ -35,6 +38,13 @@ func (bs *broadcastServer) Shutdown() error {
 	return conn.Close()
 }
 
+// ListenAndServe listens and serves the UDP connection.
+// It resolves the address by net.ResolveUDPAddr, and then listens to the UDP connection by net.ListenMulticastUDP.
+// The function then reads the UDP packets and parses them using the parsePacketBuffer function.
+// If the packet is a complete packet, it will be served using the Serve method of the broadcast module.
+// If the packet is incomplete, it will be stored in the packet buffer and wait for the complete packet.
+// If the packet is invalid, it will be ignored.
+// The function will return an error if the connection is invalid or if there is an error in the connection.
 func (bs *broadcastServer) ListenAndServe() error {
 	if bs.module == nil {
 		return ErrBroadcastServerUnavailable
@@ -135,6 +145,7 @@ func (bs *broadcastServer) ListenAndServe() error {
 	return err
 }
 
+// HashCode returns the address of the broadcast server as the hash code.
 func (b *broadcastServer) HashCode() string {
 	return b.address
 }

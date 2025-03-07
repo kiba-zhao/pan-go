@@ -1,3 +1,4 @@
+// Define connection for quic
 package quic
 
 import (
@@ -12,11 +13,17 @@ import (
 
 const QuicConnAvaliableWindowSize = (1 << 10) * 512
 
+// Quic Connection Interface
 type QuicConn interface {
+	// Extends quic.Connection interface
 	quic.Connection
+	// PeerID returns the peer ID of the connection.
 	PeerID() peer.PeerID
+	// Available returns true if the connection is available.
 	Available() bool
+	// Closed returns true if the connection is closed.
 	Closed() bool
+	// CloseWithError closes the connection with the given error code and reason.
 	CloseStream(quic.Stream)
 }
 
@@ -90,6 +97,13 @@ func (c *quicConn) CloseStream(stream quic.Stream) {
 	c.streamWindowsRW.Unlock()
 }
 
+// OnStreamRead updates the read byte count for a specific stream.
+// It locates the stream's window via its streamId and increments
+// the readBytes by the specified size, provided the connection
+// is not closed and size is greater than zero. If the stream window
+// is not found, the function exits without making changes.
+// It implements the OnStreamRead method from the quic.Connection interface.
+
 func (c *quicConn) OnStreamRead(streamId quic.StreamID, size int) {
 	if c.Closed() {
 		return
@@ -110,6 +124,12 @@ func (c *quicConn) OnStreamRead(streamId quic.StreamID, size int) {
 
 }
 
+// OnStreamWrite updates the write byte count for a specific stream.
+// It locates the stream's window via its streamId and increments
+// the writeBytes by the specified size, provided the connection
+// is not closed and size is greater than zero. If the stream window
+// is not found, the function exits without making changes.
+// It implements the OnStreamWrite method from the quic.Connection interface.
 func (c *quicConn) OnStreamWrite(streamId quic.StreamID, size int) {
 	if c.Closed() {
 		return
@@ -128,6 +148,9 @@ func (c *quicConn) OnStreamWrite(streamId quic.StreamID, size int) {
 	window.writeRW.Unlock()
 }
 
+// AcceptStream implements the AcceptStream method of the quic.Connection interface.
+// It adds the new stream to the connection's stream window list and returns a
+// quicStream object wrapping the new stream and the connection.
 func (c *quicConn) AcceptStream(ctx context.Context) (quic.Stream, error) {
 	stream, err := c.Connection.AcceptStream(ctx)
 	if err != nil {
@@ -140,6 +163,10 @@ func (c *quicConn) AcceptStream(ctx context.Context) (quic.Stream, error) {
 	return &quicStream{Stream: stream, conn: c}, err
 }
 
+// OpenStream implements the OpenStream method of the quic.Connection interface.
+// It opens a new stream via the underlying quic.Connection and adds the new
+// stream to the connection's stream window list. It then returns a quicStream
+// object wrapping the new stream and the connection.
 func (c *quicConn) OpenStream() (quic.Stream, error) {
 	stream, err := c.Connection.OpenStream()
 	if err != nil {
@@ -151,6 +178,12 @@ func (c *quicConn) OpenStream() (quic.Stream, error) {
 	c.streamWindowsRW.Unlock()
 	return &quicStream{Stream: stream, conn: c, hangup: true}, err
 }
+
+// CloseWithError closes the quicConn with the specified error code and reason.
+// It first locks the closed state, checks if the connection is already closed,
+// and if not, marks it as closed. It then removes the connection from its manager
+// if applicable, and finally calls CloseWithError on the underlying connection.
+// Returns an error if the underlying connection encounters an issue during closure.
 
 func (c *quicConn) CloseWithError(code quic.ApplicationErrorCode, reason string) error {
 	c.closedLocker.Lock()

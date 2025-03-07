@@ -1,3 +1,4 @@
+// Define connection manager for quic
 package quic
 
 import (
@@ -18,6 +19,9 @@ func (mgr *quicConnMgr) compare(connArr []QuicConn, peerId peer.PeerID) int {
 	return bytes.Compare(connArr[0].PeerID(), peerId)
 }
 
+// Search returns a slice of QuicConn associated with the given peer ID if it exists.
+// It acquires a read lock to ensure thread-safe access to the connections.
+// If the peer ID does not exist, it returns nil.
 func (mgr *quicConnMgr) Search(peerId peer.PeerID) []QuicConn {
 	mgr.rw.RLock()
 	defer mgr.rw.RUnlock()
@@ -27,6 +31,12 @@ func (mgr *quicConnMgr) Search(peerId peer.PeerID) []QuicConn {
 	}
 	return slices.Clone(mgr.connMatrix[idx])
 }
+
+// SelectOrStore attempts to find the given QuicConn in the connection manager.
+// If the connection does not exist, it inserts it into the connection matrix.
+// It acquires a write lock to ensure thread-safe access to the connections.
+// Returns the existing or newly inserted connection, and a boolean indicating
+// if the connection was already present (true) or newly added (false).
 
 func (mgr *quicConnMgr) SelectOrStore(conn QuicConn) (QuicConn, bool) {
 	mgr.rw.Lock()
@@ -44,6 +54,9 @@ func (mgr *quicConnMgr) SelectOrStore(conn QuicConn) (QuicConn, bool) {
 	return mgr.connMatrix[idx][cidx], true
 }
 
+// Delete removes the given QuicConn from the connection manager.
+// It acquires a write lock to ensure thread-safe access to the connections.
+// If the connection is not found, it returns immediately.
 func (mgr *quicConnMgr) Delete(conn QuicConn) {
 	mgr.rw.Lock()
 	defer mgr.rw.Unlock()
@@ -64,6 +77,8 @@ func (mgr *quicConnMgr) Delete(conn QuicConn) {
 
 }
 
+// Clean closes all connections associated with the given peer ID.
+// It acquires a write lock to ensure thread-safe access to the connections.
 func (mgr *quicConnMgr) Clean(peer peer.PeerID) {
 	var connArr []QuicConn
 	mgr.rw.Lock()

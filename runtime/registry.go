@@ -1,3 +1,10 @@
+/*
+# Registry
+
+The registry is a thread-safe data structure that allows modules to be registered
+and accessed by other modules. It provides a simple and efficient way to manage
+and access modules in the engine.
+*/
 package runtime
 
 import (
@@ -8,14 +15,40 @@ import (
 	"sync"
 )
 
+// TraverseFunc is a function that takes a module and returns an error
 type TraverseFunc[T any] func(module T) error
 
+// Registry is an interface for registering modules
 type Registry interface {
+
+	// Count returns the number of modules registered under the specified type.
+	// It acquires a read lock to ensure thread-safe access to the registry's modules.
 	Count(t reflect.Type) int
+
+	// Append adds a module to the registry under the specified types.
+	// If a type is not provided, the type of the module is used.
+	// It acquires a write lock to ensure thread-safe access to the registry's modules.
+	// Returns ErrModuleType if the module does not implement the specified type(s).
 	Append(module interface{}, types ...reflect.Type) error
+
+	// Modules returns a slice of all modules registered in the registry.
 	Modules() []interface{}
+
+	// ModulesByType returns a slice of all modules registered in the registry
+	// under the specified type, and a boolean indicating whether any modules
+	// were found.
 	ModulesByType(t reflect.Type) ([]interface{}, bool)
+
+	// Traverse traverses all modules registered in the registry,
+	// and calls the specified function on each module.
+	// If the function returns an error, traversal stops and the error is returned.
+	// It acquires a read lock to ensure thread-safe access to the registry's modules.
 	Traverse(f TraverseFunc[interface{}]) error
+
+	// TraverseByType traverses all modules registered in the registry
+	// under the specified type, and calls the specified function on each module.
+	// If the function returns an error, traversal stops and the error is returned.
+	// It acquires a read lock to ensure thread-safe access to the registry's modules.
 	TraverseByType(f TraverseFunc[interface{}], t reflect.Type) error
 }
 
@@ -26,18 +59,31 @@ type registryImpl struct {
 	rw      sync.RWMutex
 }
 
+// NewRegistry creates a new registry.
+//
+// The registry is a central location for all modules
+// in the engine. It provides methods to add, get, and
+// traverse modules.
+//
+// The returned registry is safe for concurrent access.
 func NewRegistry() Registry {
 	registry := &registryImpl{}
 	registry.modules = make(map[reflect.Type][]interface{})
 	return registry
 }
 
+// Count returns the number of modules registered under the specified type.
+// It acquires a read lock to ensure thread-safe access to the registry's modules.
 func (r *registryImpl) Count(t reflect.Type) int {
 	r.rw.RLock()
 	defer r.rw.RUnlock()
 	return len(r.modules[t])
 }
 
+// Append adds a module to the registry under the specified types.
+// If a type is not provided, the type of the module is used.
+// It acquires a write lock to ensure thread-safe access to the registry's modules.
+// Returns ErrModuleType if the module does not implement the specified type(s).
 func (r *registryImpl) Append(module interface{}, types ...reflect.Type) error {
 	r.rw.Lock()
 	defer r.rw.Unlock()
@@ -58,6 +104,8 @@ func (r *registryImpl) Append(module interface{}, types ...reflect.Type) error {
 	return err
 }
 
+// Modules returns a slice of all modules registered in the registry.
+// It acquires a read lock to ensure thread-safe access to the registry's modules.
 func (r *registryImpl) Modules() []interface{} {
 	r.rw.RLock()
 	defer r.rw.RUnlock()
@@ -69,6 +117,11 @@ func (r *registryImpl) Modules() []interface{} {
 	return modules
 }
 
+// ModulesByType returns a slice of all modules registered in the registry
+// under the specified type, and a boolean indicating whether any modules
+// were found.
+//
+// It acquires a read lock to ensure thread-safe access to the registry's modules.
 func (r *registryImpl) ModulesByType(t reflect.Type) ([]interface{}, bool) {
 	r.rw.RLock()
 	defer r.rw.RUnlock()
@@ -76,6 +129,10 @@ func (r *registryImpl) ModulesByType(t reflect.Type) ([]interface{}, bool) {
 	return modules, ok
 }
 
+// Traverse traverses all modules registered in the registry,
+// and calls the specified function on each module.
+// If the function returns an error, traversal stops and the error is returned.
+// It acquires a read lock to ensure thread-safe access to the registry's modules.
 func (r *registryImpl) Traverse(f TraverseFunc[interface{}]) error {
 
 	r.rw.RLock()
@@ -110,6 +167,10 @@ func (r *registryImpl) Traverse(f TraverseFunc[interface{}]) error {
 	return err
 }
 
+// TraverseByType traverses all modules registered in the registry under the specified type,
+// and calls the specified function on each module.
+// If the function returns an error, traversal stops and the error is returned.
+// It acquires a read lock to ensure thread-safe access to the registry's modules.
 func (r *registryImpl) TraverseByType(f TraverseFunc[interface{}], t reflect.Type) error {
 
 	r.rw.RLock()
@@ -133,6 +194,10 @@ func (r *registryImpl) TraverseByType(f TraverseFunc[interface{}], t reflect.Typ
 	return err
 }
 
+// TraverseRegistry traverses all modules in the registry that implement the specified type T,
+// and applies the provided function to each module. It utilizes the TraverseByType method
+// to ensure only modules of the specified type are traversed. If the function returns an error
+// for any module, the traversal stops and the error is returned.
 func TraverseRegistry[T any](registry Registry, f TraverseFunc[T]) error {
 	t := reflect.TypeFor[T]()
 
@@ -141,6 +206,12 @@ func TraverseRegistry[T any](registry Registry, f TraverseFunc[T]) error {
 	}, t)
 }
 
+// ModulesForType returns a slice of all modules registered in the registry
+// that implement the specified type T.
+//
+// It acquires a read lock to ensure thread-safe access to the registry's modules.
+//
+// If no modules of the specified type are found, ModulesForType returns nil.
 func ModulesForType[T any](registry Registry) []T {
 
 	t := reflect.TypeFor[T]()
@@ -155,6 +226,10 @@ func ModulesForType[T any](registry Registry) []T {
 	return ts
 }
 
+// SeqForType returns a sequence of all modules registered in the registry
+// that implement the specified type T. It utilizes the ModulesByType method
+// to ensure only modules of the specified type are iterated over. If no
+// modules of the specified type are found, SeqForType returns an empty sequence.
 func SeqForType[T any](registry Registry) iter.Seq[T] {
 
 	t := reflect.TypeFor[T]()

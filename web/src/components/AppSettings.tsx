@@ -1,3 +1,6 @@
+/**
+ * AppSettings Page Definition File
+ */
 import { Title, useTranslate } from "react-admin";
 
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
@@ -72,6 +75,20 @@ const TabPanel = ({
 );
 
 export const APP_SETTINGS_QUERY_KEY = ["app-settings"];
+/**
+ * AppSettings Component
+ *
+ * This component renders the app settings page with multiple tabs for different
+ * settings sections, including summary, web address, peer address, broadcast
+ * address, and public address. It utilizes the react-admin library for
+ * internationalization and material-ui for UI components.
+ *
+ * The component fetches application settings data using a prefetch query and
+ * displays various settings in separate tab panels. The active tab is managed
+ * using local state, and the corresponding tab panel is displayed based on the
+ * selected tab.
+ */
+
 export const AppSettings = () => {
   const t = useTranslate();
   const [tab, setTab] = useState("summary");
@@ -128,6 +145,13 @@ export const AppSettings = () => {
   );
 };
 
+/**
+ * Refresh Button for App Settings
+ *
+ * A button that refreshes the app settings data when clicked.
+ *
+ * @returns A small refresh button.
+ */
 const RefreshButton = () => {
   const t = useTranslate();
 
@@ -150,6 +174,15 @@ const RefreshButton = () => {
   );
 };
 
+/**
+ * Save Button for App Settings
+ *
+ * A button that saves the app settings data when clicked.
+ *
+ * It opens a confirmation dialog when clicked, and saves the data if confirmed.
+ *
+ * @returns Button element for save App Settings
+ */
 const SaveButton = () => {
   const t = useTranslate();
 
@@ -194,10 +227,37 @@ const SaveButton = () => {
   );
 };
 
+/**
+ * A fallback component to be used when the AppSettings component is still
+ * loading.
+ *
+ * @returns Loading element for AppSettings
+ */
 const AppSettingsLoading = () => {
   return "App Settings Loading...";
 };
 
+/**
+ * AppSummarySettings
+ *
+ * The AppSummarySettings component is a form that allows the user to edit the
+ * summary settings of the app. The form is composed of a few fields, including:
+ * - Name: a text field for the name of the app
+ * - Root Path: a text field for the root path of the app
+ * - Peer ID: a read-only text field for the peer ID of the app
+ * - Guard Enabled: a switch that enables or disables the guard
+ * - Guard Access: a switch that allows or refuses access to the app when the
+ *   guard is enabled
+ *
+ * The component fetches the current app settings from the server and displays
+ * them in the form. It provides a "Save" button to save the changes to the
+ * server.
+ *
+ * The component also provides a "Refresh" button to reload the current app
+ * settings from the server.
+ *
+ * @returns A React element representing the AppSummarySettings component
+ */
 const AppSummarySettings = () => {
   const t = useTranslate();
 
@@ -363,6 +423,16 @@ type AddressEditDialogProps = {
   onChange?: (value: string) => void;
   isNew?: boolean;
 };
+/**
+ * A dialog to edit the network address of the app.
+ *
+ * @param open The dialog is open when this is true.
+ * @param onClose The callback when the user closes the dialog.
+ * @param value The current value of the network address.
+ * @param onChange The callback when the user changes the network address.
+ * @param onBlur The callback when the user blurs the dialog.
+ * @param isNew Whether the dialog is creating a new network address or not.
+ */
 const AddressEditDialog = ({
   open,
   onClose,
@@ -453,6 +523,12 @@ type AddressSource =
   | "peerAddress"
   | "publicAddress";
 
+/**
+ * A button that opens a dialog to input a new network address.
+ *
+ * @param source The field in the form where the new address is appended to.
+ * @param defaultValue The default value of the new address.
+ */
 const NewAddressButton = ({
   source,
   defaultValue,
@@ -493,6 +569,16 @@ const NewAddressButton = ({
   );
 };
 
+/**
+ * A button to edit an address in the current form, with a dialog for editing.
+ *
+ * @example
+ * <EditAddressButton source="webAddress" />
+ *
+ * @param {Object} props
+ * @prop {string} source The name of the address field to edit.
+ * @returns {ReactElement}
+ */
 const EditAddressButton = ({ source }: { source: string }) => {
   const t = useTranslate();
   const [open, setOpen] = useState(false);
@@ -517,6 +603,17 @@ const EditAddressButton = ({ source }: { source: string }) => {
   3;
 };
 
+/**
+ * A button to remove an address at a given index from the current form.
+ *
+ * @example
+ * <RemoveAddressButton source="webAddress" offset={0} />
+ *
+ * @param {Object} props
+ * @prop {string} source The name of the address field to remove from.
+ * @prop {number} offset The index of the address to remove.
+ * @returns {ReactElement}
+ */
 const RemoveAddressButton = ({
   source,
   offset,
@@ -570,6 +667,31 @@ type AppAddressSettingsProps = {
   source: AddressSource;
   children: ReactNode;
 };
+/**
+ * AppAddressSettings
+ *
+ * This component manages and displays the network addresses of the application
+ * in a form. It uses the `react-hook-form` library to handle form state and
+ * provides a form context to its children. The component fetches the current
+ * app settings and displays them as address items.
+ *
+ * Each address item is displayed with an avatar derived from the source name,
+ * and includes buttons to edit or remove the address. The addresses are
+ * displayed in a responsive layout using Material-UI's `Stack` component.
+ *
+ * The component listens for updates to the settings data and resets the form
+ * values accordingly. It provides a flexible way to manage and modify network
+ * addresses within the application.
+ *
+ * @param {AppAddressSettingsProps} props - The component's props.
+ * @param {AddressSource} props.source - The source field in the form where the
+ * addresses are managed.
+ * @param {ReactNode} props.children - The children elements to render within
+ * the form context.
+ * @returns {ReactElement} A React element representing the app address
+ * settings form.
+ */
+
 const AppAddressSettings = ({ source, children }: AppAddressSettingsProps) => {
   const avatar = useMemo(() => source[0].toUpperCase(), [source]);
 
@@ -631,6 +753,20 @@ type AppAddressSettingsItemProps = {
   address: string;
   children: ReactNode;
 };
+/**
+ * AppAddressSettingsItem component
+ *
+ * This component is used to render an item in the AppAddressSettings component.
+ * It expects the following props:
+ *
+ * - `avatar`: an avatar character to be displayed
+ * - `address`: an IP address and port number, separated by a colon
+ * - `children`: any children that should be rendered in the CardActions
+ *
+ * The component renders a Card with an Avatar and two TextFields, one for the IP
+ * address and one for the port number. The children are rendered in the
+ * CardActions.
+ */
 const AppAddressSettingsItem = ({
   avatar,
   address,
@@ -691,6 +827,15 @@ const AppAddressSettingsItem = ({
   );
 };
 
+/**
+ * WebAddressSettings
+ *
+ * This component renders the settings for web addresses within the application.
+ * It includes a form to add new web addresses, with a default value provided,
+ * and buttons to save or refresh the settings. The addresses are displayed
+ * using the AppAddressSettings component.
+ */
+
 const WebAddressSettings = () => {
   const source = "webAddress";
   return (
@@ -702,6 +847,16 @@ const WebAddressSettings = () => {
   );
 };
 
+/**
+ * PeerAddressSettings
+ *
+ * This component renders the settings for peer addresses within the application.
+ * It includes a form to add new peer addresses, with a default value provided,
+ * and buttons to save or refresh the settings. The addresses are displayed
+ * using the AppAddressSettings component.
+ *
+ * @returns A React element representing the PeerAddressSettings component
+ */
 const PeerAddressSettings = () => {
   const source = "peerAddress";
   return (
@@ -713,6 +868,16 @@ const PeerAddressSettings = () => {
   );
 };
 
+/**
+ * BroadcastAddressSettings
+ *
+ * This component renders the settings for broadcast addresses within the
+ * application. It includes a form to add new broadcast addresses, with a default
+ * value provided, and buttons to save or refresh the settings. The addresses
+ * are displayed using the AppAddressSettings component.
+ *
+ * @returns A React element representing the BroadcastAddressSettings component
+ */
 const BroadcastAddressSettings = () => {
   const source = "broadcastAddress";
   return (
@@ -724,6 +889,16 @@ const BroadcastAddressSettings = () => {
   );
 };
 
+/**
+ * PublicAddressSettings
+ *
+ * This component renders the settings for public addresses within the
+ * application. It includes a form to add new public addresses, with a default
+ * value provided, and buttons to save or refresh the settings. The addresses
+ * are displayed using the AppAddressSettings component.
+ *
+ * @returns A React element representing the PublicAddressSettings component
+ */
 const PublicAddressSettings = () => {
   const source = "publicAddress";
   return (

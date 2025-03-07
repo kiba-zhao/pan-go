@@ -1,3 +1,4 @@
+// Define injection engine
 package injection
 
 import (
@@ -15,6 +16,10 @@ var ErrComponentScope = errors.New("[app.injection] engine Error: invalid compon
 type engine struct {
 }
 
+// Init initializes the engine with the given registry.
+//
+// It will traverse all modules and try to inject all components.
+// If any error occurs during injection, it will return the error.
 func (ie *engine) Init(registry runtime.Registry) error {
 	store := NewComponentStore()
 	pendings := make(ComponentPendings)
@@ -42,12 +47,33 @@ func (ie *engine) Init(registry runtime.Registry) error {
 	return err
 }
 
+// EngineTypes returns a slice of reflect.Type representing the various engine types
+// associated with the injection module. These types include:
+//
+//   - ComponentProvider: Provides components for the injection module.
 func (in *engine) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[ComponentProvider](),
 	}
 }
 
+// inject injects the given component into the given internal and external stores.
+//
+// It also handles pendings and injects the component into the fields of the target.
+// If any error occurs during injection, it will return the error.
+//
+// The rules of injection are as follows:
+//
+//  2. If a component is registered, but the target is not a pointer or a struct, it will be ignored.
+//  3. If a component is registered, but the target is a pointer or a struct, it will be injected into the target.
+//  4. If a component is registered and the target is a pointer or a struct, but the field is not exported, it will be ignored.
+//  5. If a component is registered and the target is a pointer or a struct, but the field is exported and is a pointer or a struct, it will be injected into the field recursively.
+//  6. If a component is registered and the target is a pointer or a struct, but the field is exported and is not a pointer or a struct, it will be ignored.
+//  7. If a component is registered and the target is a pointer or a struct, but the field is exported and has a tag "inject" with value "-", it will be ignored.
+//  8. If a component is registered and the target is a pointer or a struct, but the field is exported and has a tag "inject" with value "volatile", it will be injected into the field, but the value will be set to zero after injection.
+//  9. If a component is registered and the target is a pointer or a struct, but the field is exported and has a tag "inject" with value "volatile;", it will be injected into the field, but the value will be set to zero after injection.
+//
+// 10. If a component is registered and the target is a pointer or a struct, but the field is exported and has a tag "inject" with value ";volatile", it will be injected into the field, but the value will be set to zero after injection.
 func inject(component Component, pendings ComponentPendings, internalStore ComponentStore, store ComponentStore) error {
 
 	t := component.Type()

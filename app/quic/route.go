@@ -1,3 +1,4 @@
+// Define route for quic
 package quic
 
 import (
@@ -16,9 +17,13 @@ type quicRoute struct {
 	sync.Mutex
 }
 
+// PeerID returns the peer ID of the peer route.
 func (qr *quicRoute) PeerID() peer.PeerID {
 	return qr.peerId
 }
+
+// Addrs returns a copy of the list of addresses associated with the quicRoute.
+// It acquires a read lock to ensure thread-safe access to the addresses.
 
 func (qr *quicRoute) Addrs() []string {
 	qr.rw.RLock()
@@ -26,18 +31,26 @@ func (qr *quicRoute) Addrs() []string {
 	return slices.Clone(qr.addrs)
 }
 
+// Available returns true if the quicRoute has at least one associated address.
+// It acquires a read lock to ensure thread-safe access to the addresses.
 func (qr *quicRoute) Available() bool {
 	qr.rw.RLock()
 	defer qr.rw.RUnlock()
 	return len(qr.addrs) > 0
 }
 
+// Contains returns true if the given address is associated with the quicRoute.
+// It acquires a read lock to ensure thread-safe access to the addresses.
 func (qr *quicRoute) Contains(addr string) bool {
 	qr.rw.RLock()
 	defer qr.rw.RUnlock()
 	return slices.Contains(qr.addrs, addr)
 }
 
+// Store adds the given address to the quicRoute.
+//
+// It acquires a write lock to ensure thread-safe access to the addresses.
+// If the address is already associated with the quicRoute, it returns ErrQuicPeerRouteDuplicateAddress.
 func (qr *quicRoute) Store(addr string) error {
 	qr.rw.Lock()
 	defer qr.rw.Unlock()
@@ -48,6 +61,11 @@ func (qr *quicRoute) Store(addr string) error {
 	return nil
 }
 
+// Delete removes the given address from the quicRoute.
+//
+// It acquires a write lock to ensure thread-safe access to the addresses.
+// If the address is not found, the function returns immediately.
+
 func (qr *quicRoute) Delete(addr string) {
 	qr.rw.Lock()
 	defer qr.rw.Unlock()
@@ -57,40 +75,3 @@ func (qr *quicRoute) Delete(addr string) {
 	}
 	qr.addrs = slices.Delete(qr.addrs, idx, idx+1)
 }
-
-// func (qr *quicPeerRoute) Dial(ctx context.Context) (quic.Connection, error) {
-
-// 	qr.failureLocker.RLock()
-// 	if qr.failures >= 3 {
-// 		qr.Close()
-// 		return nil, ErrQuicPeerRouteInvalid
-// 	}
-// 	qr.failureLocker.RUnlock()
-
-// 	conn, err := qr.quicPeerModule.Dial(ctx, qr.address)
-// 	if err == nil {
-// 		peerId, err := parsePeerID(conn)
-// 		if err == nil && !bytes.Equal(peerId, qr.peerId) {
-// 			defer qr.Close()
-// 			err = ErrQuicPeerRouteConflict
-// 		}
-// 		if err != nil {
-// 			conn = nil
-// 			defer conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "")
-// 		}
-// 	}
-
-// 	qr.failureLocker.Lock()
-// 	defer qr.failureLocker.Unlock()
-// 	if err != nil {
-// 		qr.failures++
-// 		failures := qr.failures
-// 		if failures >= 3 {
-// 			qr.Close()
-// 		}
-// 	} else {
-// 		qr.failures = 0
-// 	}
-
-// 	return conn, err
-// }

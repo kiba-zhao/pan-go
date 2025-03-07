@@ -1,3 +1,4 @@
+// Define route manager for quic
 package quic
 
 import (
@@ -16,6 +17,9 @@ func (mgr *quicRouteMgr) compare(route *quicRoute, peerId peer.PeerID) int {
 	return bytes.Compare(route.peerId, peerId)
 }
 
+// Search returns the route associated with the given peer ID if it exists.
+// It acquires a read lock to ensure thread-safe access to the routes.
+// If the route does not exist, it returns nil.
 func (mgr *quicRouteMgr) Search(peerId peer.PeerID) *quicRoute {
 	mgr.rw.RLock()
 	defer mgr.rw.RUnlock()
@@ -26,6 +30,10 @@ func (mgr *quicRouteMgr) Search(peerId peer.PeerID) *quicRoute {
 	return mgr.routes[idx]
 }
 
+// SearchOrStore searches for a route in the route manager, and if it does not exist, stores the given route.
+// It acquires a write lock to ensure thread-safe access to the routes.
+// If the route does not exist, it returns the given route with the second return value set to false.
+// If the route exists, it returns the existing route with the second return value set to true.
 func (mgr *quicRouteMgr) SearchOrStore(route *quicRoute) (*quicRoute, bool) {
 	mgr.rw.Lock()
 	defer mgr.rw.Unlock()
@@ -37,6 +45,10 @@ func (mgr *quicRouteMgr) SearchOrStore(route *quicRoute) (*quicRoute, bool) {
 	return mgr.routes[idx], true
 }
 
+// Delete removes the given route from the quicRouteMgr.
+//
+// It acquires a write lock to ensure thread-safe access to the routes.
+// If the route is not found, it returns immediately.
 func (mgr *quicRouteMgr) Delete(route *quicRoute) {
 	mgr.rw.Lock()
 	defer mgr.rw.Unlock()

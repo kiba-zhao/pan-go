@@ -5,6 +5,12 @@ import (
 	"io"
 )
 
+// ParseSegment reads a segment from the provided io.Reader.
+// It first reads a uint32 value to determine the size of the segment,
+// then reads the bytes of the segment based on the determined size.
+// It returns the segment as a byte slice and any error encountered
+// during the read operations.
+
 func ParseSegment(reader io.Reader) (segment []byte, err error) {
 
 	unsignedSize := uint32(0)

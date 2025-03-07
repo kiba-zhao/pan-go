@@ -1,3 +1,6 @@
+/**
+ * ExtFS Page Definition File
+ */
 import { Title, useTranslate } from "react-admin";
 
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -57,6 +60,11 @@ import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 export const ExtFSIcon = StorageIcon;
 export const ExtFSRoutePath = "/extfs";
 
+/**
+ * Provider for ExtFS state. It initializes the state with the home state and an empty list of parent items.
+ * @param children The children components to render.
+ * @returns The children components wrapped in the ExtFS state provider.
+ */
 export const ExtFSProvider = ({ children }: { children: ReactNode }) => {
   const initialState = {
     ...ExtFSHomeState,
@@ -67,6 +75,18 @@ export const ExtFSProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+/**
+ * ExtFS Home Page component
+ *
+ * The root component of the ExtFS. It renders the top bar with the navigation,
+ * the title, the search bar and the refresh button. It also renders the list of
+ * items and the more button.
+ *
+ * This component is always rendered, and its children components are determined
+ * by the state of the ExtFS.
+ *
+ * @returns The root component of the ExtFS.
+ */
 const Home = () => {
   const t = useTranslate();
 
@@ -109,6 +129,13 @@ const Home = () => {
     </Paper>
   );
 };
+/**
+ * ExtFS Home Page
+ *
+ * This component renders the ExtFS home page.
+ * It wraps the Home component with the ExtFSProvider
+ * to provide the ExtFS state to the Home component.
+ */
 const ExtFSHome = () => (
   <ExtFSProvider>
     <Home />
@@ -125,6 +152,14 @@ const CustomButton = styled(ButtonBase)(({ theme }) => ({
   },
 }));
 
+/**
+ * Search component
+ *
+ * This component renders a search button and a search input field.
+ * It will open a dialog with the search input field when the button is clicked.
+ * The dialog will be full screen on small screens and will be closed when
+ * the escape key is pressed.
+ */
 const Search = () => {
   const t = useTranslate();
   const theme = useTheme();
@@ -184,6 +219,18 @@ const Search = () => {
   );
 };
 
+/**
+ * Refresh Component
+ *
+ * This component renders a refresh button that, when clicked, triggers
+ * the refetching of queries associated with the ExtFS state. It uses
+ * `useIsFetching` to determine if any queries are currently fetching
+ * and prevents additional refetching if so. The queries to be refetched
+ * are determined by the `queryKeyList` from the ExtFS state.
+ *
+ * @returns A refresh icon button that refetches queries on click.
+ */
+
 const Refresh = () => {
   const [extFS, _] = useExtFS();
   const { queryKeyList } = extFS;
@@ -216,6 +263,20 @@ const CustomNavButton = styled(ButtonBase)(({ theme }) => ({
   },
 }));
 
+/**
+ * A component that renders a '...' link that, when clicked, opens a menu
+ * with the given `items`. When an item is clicked, the `onParentClick`
+ * callback is called with the clicked item and all ancestors as an array.
+ *
+ * @param items An array of items to be shown in the menu.
+ * @param onParentClick A callback that is called when an item is clicked.
+ *                      It receives an array of items, with the first element
+ *                      being the root, and the last element being the item
+ *                      that was clicked.
+ *
+ * @returns A component that renders a '...' link that opens a menu with the
+ *          given items.
+ */
 const NavigationMoreItems = ({
   items,
   onParentClick,
@@ -257,6 +318,14 @@ const NavigationMoreItems = ({
   );
 };
 
+/**
+ * A component that renders a navigation bar for ExtFS.
+ *
+ * @param anchorElWidth The width of the anchor element.
+ * @param anchorEl The anchor element.
+ *
+ * @returns A component that renders a navigation bar for ExtFS.
+ */
 const NavigationBar = ({
   anchorElWidth,
   anchorEl,
@@ -426,6 +495,17 @@ const NavigationBar = ({
   );
 };
 
+/**
+ * TopBar is a component that wraps a NavigationBar and any additional
+ * children provided as a Stack. The NavigationBar is rendered first,
+ * followed by the children. The NavigationBar is automatically resized
+ * to fit the parent container.
+ *
+ * @param {ReactNode} [children] - Additional children to render on the right
+ * side of the NavigationBar.
+ *
+ * @returns {ReactElement} A React element representing the TopBar.
+ */
 const TopBar = ({ children }: { children?: ReactNode }) => {
   const ref = useRef<HTMLElement | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);

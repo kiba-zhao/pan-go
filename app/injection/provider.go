@@ -1,9 +1,13 @@
 package injection
 
 type ComponentProvider interface {
+	// Components returns a slice of Component instances
+	// that this provider is responsible for managing.
 	Components() []Component
 }
 
+// NewComponentProvider returns a ComponentProvider that manages the given
+// components.
 func NewComponentProvider(components ...Component) ComponentProvider {
 	provider := &simpleComponentProvider{}
 	provider.components = components
@@ -18,6 +22,8 @@ func (provider *simpleComponentProvider) Components() []Component {
 	return provider.components
 }
 
+// NewStoreComponentProvider returns a ComponentProvider that manages the given
+// components and uses the given store to satisfy dependencies.
 func NewStoreComponentProvider(store ComponentStore, components ...Component) ComponentProvider {
 	provider := &storeComponentProvider{}
 	provider.store = store
