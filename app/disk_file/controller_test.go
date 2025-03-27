@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"pan/app/web"
-	"path"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -73,11 +73,11 @@ func TestDiskFileController(t *testing.T) {
 		defer teardownTemp(parent)
 
 		folderName := "folder1"
-		folderPath := path.Join(parent, folderName)
+		folderPath := filepath.Join(parent, folderName)
 		err = os.MkdirAll(folderPath, 0755)
 		assert.Nil(t, err)
 		fileName := "file1.txt"
-		filePath := path.Join(parent, fileName)
+		filePath := filepath.Join(parent, fileName)
 		os.WriteFile(filePath, []byte("hello"), 0644)
 
 		total := int64(2)
@@ -119,7 +119,7 @@ func TestDiskFileController(t *testing.T) {
 		defer teardownTemp(parent)
 
 		folderName := "folder2"
-		folderPath := path.Join(parent, folderName)
+		folderPath := filepath.Join(parent, folderName)
 		err = os.MkdirAll(folderPath, 0755)
 		assert.Nil(t, err)
 

@@ -7,7 +7,7 @@ import (
 	"pan/app/injection"
 	"pan/app/peer"
 	"pan/app/web"
-	"path"
+	"path/filepath"
 	"sync"
 
 	"gorm.io/driver/sqlite"
@@ -61,14 +61,14 @@ func (s *sample[T]) DB() RepositoryDB {
 		if len(models) <= 0 {
 			return
 		}
-		configPath := path.Dir(s.Config.ConfigFilePath())
+		configPath := filepath.Dir(s.Config.ConfigFilePath())
 		var db RepositoryDB
 		_, err := os.Stat(configPath)
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(configPath, 0755)
 		}
 		if err == nil {
-			dbPath := path.Join(configPath, s.provider.Name()+".db")
+			dbPath := filepath.Join(configPath, s.provider.Name()+".db")
 			db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 		}
 		if err == nil {
