@@ -8,7 +8,7 @@ import (
 	"os"
 	"pan/app/injection"
 	"pan/runtime"
-	"path"
+	"path/filepath"
 	"reflect"
 	"sync"
 
@@ -106,7 +106,7 @@ func NewConfig[T any](name string) (Config[T], error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.viper.SetConfigFile(path.Join(rootPath, name))
+	cfg.viper.SetConfigFile(filepath.Join(rootPath, name))
 
 	err = cfg.EnsureConfig()
 	if err != nil {
@@ -233,7 +233,7 @@ func (c *configImpl[T]) Save(settings T) error {
 // It returns an error if any error occurs during the creation process.
 func (c *configImpl[T]) EnsureConfig() error {
 	configFilePath := c.ConfigFilePath()
-	configDirPath := path.Dir(configFilePath)
+	configDirPath := filepath.Dir(configFilePath)
 	_, err := os.Stat(configDirPath)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(configDirPath, 0755)
@@ -257,7 +257,7 @@ func getConfigRootPath() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		rootPath = path.Join(homePath, DefaultRootName)
+		rootPath = filepath.Join(homePath, DefaultRootName)
 	}
 
 	return rootPath, nil

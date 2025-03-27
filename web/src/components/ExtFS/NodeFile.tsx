@@ -50,7 +50,11 @@ export const NodeFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
   const { itemId, parentPath } = state as ExtFSNodeFileSingleState;
   const api = useAPI();
-  const { data: items, isFetching } = useQuery({
+  const {
+    data: items,
+    isFetching,
+    error,
+  } = useQuery({
     queryKey: [...ExtFSNodeFileQueryKey, { itemId, parentPath }],
     queryFn: async () =>
       await api?.searchExtFSNodeFiles(itemId, { parentPath }),
@@ -58,7 +62,11 @@ export const NodeFiles = () => {
   });
 
   return (
-    <ExtFSItems items={items || []} isFetching={isFetching}>
+    <ExtFSItems
+      items={items || []}
+      isFetching={isFetching}
+      error={error || void 0}
+    >
       <NodeFile />
     </ExtFSItems>
   );

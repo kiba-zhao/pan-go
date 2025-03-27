@@ -141,8 +141,11 @@ function parseNodeQRCodeValue(value: string): NodeQRCodeValue | undefined {
   if (!URL.canParse(value)) return;
   const url = new URL(value);
   if (url.protocol.slice(0, -1) !== import.meta.env.VITE_APP_NAME) return;
-  if (url.host !== "app") return;
-  if (url.pathname !== "/nodes") return;
+  if (
+    !(url.host === "app" && url.pathname === "/nodes") &&
+    !(url.host === "" && url.pathname === "//app/nodes")
+  )
+    return;
   const peerId = url.searchParams.get("peerId");
   const name = url.searchParams.get("name");
   if (!peerId || peerId.length <= 0 || !name || name.length <= 0) return;

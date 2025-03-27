@@ -27,6 +27,7 @@ var ErrPeerModuleNotFound = errors.New("peer.PeerModule Error: Serve Not Found")
 var ErrPeerModuleUnknownPeer = errors.New("peer.PeerModule Error: Unknown Peer")
 var ErrPeerModuleControlConflict = errors.New("peer.PeerModule Error: Control Conflict")
 var ErrPeerModuleNetworkNotFound = errors.New("peer.PeerModule Error: Network Not Found")
+var ErrPeerModuleAccessDenied = errors.New("peer.PeerModule Error: Access Denied")
 
 type PeerID = []byte
 type PeerApp = *App
@@ -98,7 +99,7 @@ type peerModule struct {
 	registryLocker sync.RWMutex
 	app            PeerApp
 	appLocker      sync.RWMutex
-	network        PeerNetwork
+	network        *peerNetwork
 }
 
 // Init initializes the peer module with the provided registry.

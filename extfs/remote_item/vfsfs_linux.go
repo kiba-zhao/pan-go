@@ -1,3 +1,5 @@
+//go:build linux || (darwin && amd64)
+
 // Define fuse for remote item
 package remoteitem
 
@@ -16,33 +18,26 @@ import (
 	nodeitem "pan/extfs/node_item"
 )
 
-var ErrRemoteItemFUSENameConflict = errors.New("remoteitem.FUSERemoteItem Error: Name Conflict")
+var ErrRemoteItemFUSENameConflict = errors.New("remoteitem.VFSFUSERemoteItem Error: Name Conflict")
 
-type FUSERemoteInfo interface {
-	// Returns the peer ID of the remote item provider.
+type VFSFUSERemoteInfo interface {
+	// Returns the peer ID of the remote item runtime.
 	PeerID() peer.PeerID
 }
 
-type RemoteItemServiceFUSEProvider interface {
-	// Returns the remote item service.
-	RemoteItemService() *RemoteItemService
-	// It extends the RemoteFileInfoServiceFUSEProvider interface.
-	RemoteFileInfoServiceFUSEProvider
-}
-
-type FUSERemoteItem struct {
-	provider   RemoteItemServiceFUSEProvider
-	remoteInfo FUSERemoteInfo
+type VFSFUSERemoteItem struct {
+	runtime    VFSFUSERemoteItemRuntime
+	remoteInfo VFSFUSERemoteInfo
 	itemId     uint
 }
 
-// PeerID returns the peer ID of the remote item provider.
-func (fuseri *FUSERemoteItem) PeerID() peer.PeerID {
+// PeerID returns the peer ID of the remote item runtime.
+func (fuseri *VFSFUSERemoteItem) PeerID() peer.PeerID {
 	return fuseri.remoteInfo.PeerID()
 }
 
 // ItemID returns the ID of the remote item.
-func (fuseri *FUSERemoteItem) ItemID() uint {
+func (fuseri *VFSFUSERemoteItem) ItemID() uint {
 	return fuseri.itemId
 }
 
@@ -53,11 +48,11 @@ func (fuseri *FUSERemoteItem) ItemID() uint {
 //
 // If the remote item record does not exist, it returns syscall.ENOENT.
 // Otherwise, it returns 0.
-func (fuseri *FUSERemoteItem) GetRemoteFileAttr(ctx context.Context, out *fuse.AttrOut) syscall.Errno {
+func (fuseri *VFSFUSERemoteItem) GetRemoteFileAttr(ctx context.Context, out *fuse.AttrOut) syscall.Errno {
 	var condition RemoteItemRecordSelectCondition
 	id := uint32(fuseri.ItemID())
 	condition.ID = &id
-	remoteItemService := fuseri.provider.RemoteItemService()
+	remoteItemService := fuseri.runtime.RemoteItemService()
 	remoteNodeItem, err := remoteItemService.SelectWithCondition(fuseri.PeerID(), &condition)
 	if err == nil {
 
@@ -80,14 +75,14 @@ func (fuseri *FUSERemoteItem) GetRemoteFileAttr(ctx context.Context, out *fuse.A
 	return 0
 }
 
-type FUSERemoteItemList struct {
+type VFSFUSERemoteItemList struct {
 	fs.Inode
-	provider RemoteItemServiceFUSEProvider
-	peerId   peer.PeerID
+	runtime VFSFUSERemoteItemRuntime
+	peerId  peer.PeerID
 }
 
-// PeerID returns the peer ID of the remote item provider.
-func (fusernil *FUSERemoteItemList) PeerID() peer.PeerID {
+// PeerID returns the peer ID of the remote item runtime.
+func (fusernil *VFSFUSERemoteItemList) PeerID() peer.PeerID {
 	return fusernil.peerId
 }
 
@@ -98,7 +93,7 @@ func (fusernil *FUSERemoteItemList) PeerID() peer.PeerID {
 // the file is always 1.
 //
 // It implements the Getattr method of the fs.Inode interface.
-func (fusernil *FUSERemoteItemList) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+func (fusernil *VFSFUSERemoteItemList) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
 	out.Mode = fuse.S_IFDIR
 	out.Size = 4096
 	now := time.Now()
@@ -108,18 +103,18 @@ func (fusernil *FUSERemoteItemList) Getattr(ctx context.Context, f fs.FileHandle
 }
 
 // Readdir retrieves a directory stream containing entries of remote items
-// associated with the current FUSERemoteItemList. It traverses the remote
+// associated with the current VFSFUSERemoteItemList. It traverses the remote
 // item records using the peer ID and creates a list of directory entries
 // representing each item. If a name conflict occurs, an error is returned.
 // The function also removes child nodes that are not in the retrieved list
-// from the FUSERemoteItemList's children. Returns a newly created directory
+// from the VFSFUSERemoteItemList's children. Returns a newly created directory
 // stream and syscall.ENOENT if an error occurs during traversal.
 
-func (fusernil *FUSERemoteItemList) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
+func (fusernil *VFSFUSERemoteItemList) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 
 	names := make([]string, 0)
 	dirs := make([]fuse.DirEntry, 0)
-	remoteItemService := fusernil.provider.RemoteItemService()
+	remoteItemService := fusernil.runtime.RemoteItemService()
 	err := remoteItemService.TraverseRecordWithPeerID(func(record *RemoteItemRecord) error {
 		idx, ok := slices.BinarySearch(names, record.Name)
 		if ok {
@@ -165,10 +160,10 @@ func (fusernil *FUSERemoteItemList) Readdir(ctx context.Context) (fs.DirStream, 
 // Returns the found or newly created inode and fs.OK on success, or nil and ENOENT if
 // the record with the specified name does not exist.
 
-func (fusernil *FUSERemoteItemList) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
+func (fusernil *VFSFUSERemoteItemList) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
 	var condition RemoteItemRecordSelectCondition
 	condition.Name = &name
-	remoteItemService := fusernil.provider.RemoteItemService()
+	remoteItemService := fusernil.runtime.RemoteItemService()
 	record, err := remoteItemService.SelectWithCondition(fusernil.PeerID(), &condition)
 	if err != nil {
 		return nil, syscall.ENOENT
@@ -184,26 +179,26 @@ func (fusernil *FUSERemoteItemList) Lookup(ctx context.Context, name string, out
 
 	inode := fusernil.GetChild(name)
 	if inode != nil {
-		fuseRemoteFile, ok := inode.Operations().(*FUSERemoteFile)
+		fuseRemoteFile, ok := inode.Operations().(*VFSFUSERemoteFile)
 		if ok && fuseRemoteFile.ItemID() == uint(record.ID) && inode.Mode() == mode {
 			return inode, fs.OK
 		}
 		fusernil.RmChild(name)
 	}
 
-	itemInfo := &FUSERemoteItem{remoteInfo: fusernil, itemId: uint(record.ID), provider: fusernil.provider}
-	remoteFile := &FUSERemoteFile{provider: fusernil.provider, itemInfo: itemInfo}
+	itemInfo := &VFSFUSERemoteItem{remoteInfo: fusernil, itemId: uint(record.ID), runtime: fusernil.runtime}
+	remoteFile := &VFSFUSERemoteFile{runtime: fusernil.runtime, itemInfo: itemInfo}
 	inode = fusernil.NewInode(ctx, remoteFile, fs.StableAttr{Mode: mode})
 
 	return inode, fs.OK
 }
 
-// NewFUSENode creates a new FUSENodeItem with the given peer ID and remote item service provider.
-// It initializes the FUSENodeItem's peer ID and provider fields with the given peer ID and provider,
+// NewFUSENode creates a new FUSENodeItem with the given peer ID and remote item service runtime.
+// It initializes the FUSENodeItem's peer ID and runtime fields with the given peer ID and runtime,
 // and returns a pointer to the new FUSENodeItem as an fs.InodeEmbedder.
-func NewFUSENode(peerId peer.PeerID, provider RemoteItemServiceFUSEProvider) fs.InodeEmbedder {
-	var fuse FUSERemoteItemList
+func NewVFSFUSERemoteItem(peerId peer.PeerID, runtime VFSFUSERemoteItemRuntime) fs.InodeEmbedder {
+	var fuse VFSFUSERemoteItemList
 	fuse.peerId = peerId
-	fuse.provider = provider
+	fuse.runtime = runtime
 	return &fuse
 }

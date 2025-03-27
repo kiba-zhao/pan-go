@@ -22,7 +22,7 @@ import type { ExtFSRemoteSearchFileAPI } from "./api/remote_search_file";
 import type { ExtFSSearchFileAPI } from "./api/search_file";
 import type { ExtFSSearchItemAPI } from "./api/search_item";
 
-export type API = BaseAPI&
+export type API = BaseAPI &
   AppSettingsAPI &
   DiskFileAPI &
   ExtFSRemoteNodeAPI &

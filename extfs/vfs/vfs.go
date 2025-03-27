@@ -1,6 +1,3 @@
-// Package vfs
-//
-// It is a virtual file system for extfs
 package vfs
 
 import (
@@ -11,11 +8,11 @@ import (
 	"sync"
 )
 
-// VFSFileSystem is a virtual file system
-type VFSFileSystem interface {
+// VFSFS is a virtual file system
+type VFSFS interface {
 	// Mount mounts the virtual file system using the given settings.
 	// It returns an error if the settings are invalid or if the mount fails.
-	Mount(VFSSettings) error
+	Mount() error
 	// Unmount unmounts the virtual file system.
 	// It returns an error if the unmount fails.
 	Unmount() error
@@ -28,6 +25,7 @@ type VFSFileSystem interface {
 // If the configuration file does not exist, it will panic with an error.
 // If the configuration file exists but is invalid, it will panic with an error.
 func New(provider injection.ComponentStoreProvider) interface{} {
+
 	vfs := &VFS{}
 	vfs.provider = provider
 
@@ -41,14 +39,22 @@ func New(provider injection.ComponentStoreProvider) interface{} {
 }
 
 type VFS struct {
-	VFSFileSystem VFSFileSystem
-	provider      injection.ComponentStoreProvider
-	locker        sync.Mutex
-	vfsSettings   *VFSSettings
-	needReload    bool
-	reloadChan    chan struct{}
-	reloadOnce    sync.Once
-	config        appConfig.Config[*VFSSettings]
+	provider     injection.ComponentStoreProvider
+	locker       sync.Mutex
+	vfsSettings  *VFSSettings
+	needReload   bool
+	reloadChan   chan struct{}
+	reloadOnce   sync.Once
+	config       appConfig.Config[*VFSSettings]
+	vfsfsRuntime *VFSFSRuntime
+	vfsfsmOnce   sync.Once
+}
+
+func (vfs *VFS) VFSFSRuntime() *VFSFSRuntime {
+	vfs.vfsfsmOnce.Do(func() {
+		vfs.vfsfsRuntime = &VFSFSRuntime{}
+	})
+	return vfs.vfsfsRuntime
 }
 
 func (vfs *VFS) ComponentStore() injection.ComponentStore {
@@ -58,14 +64,8 @@ func (vfs *VFS) ComponentStore() injection.ComponentStore {
 func (vfs *VFS) Components() []injection.Component {
 	components := []injection.Component{
 		injection.NewComponent(vfs, injection.ComponentNoneScope),
+		injection.NewComponent(vfs.VFSFSRuntime(), injection.ComponentNoneScope),
 	}
-
-	// append FUSEFileSystem
-	var fuse FUSEFileSystem
-	components = append(components,
-		injection.NewComponent(&fuse, injection.ComponentNoneScope),
-		injection.NewComponent[VFSFileSystem](&fuse, injection.ComponentInternalScope),
-	)
 
 	return components
 }
@@ -107,6 +107,7 @@ func (vfs *VFS) ReloadChan() chan struct{} {
 
 func (vfs *VFS) Ready(ctx context.Context) error {
 
+	var vfsfs VFSFS
 	var err error
 	closed := false
 	for {
@@ -122,18 +123,35 @@ func (vfs *VFS) Ready(ctx context.Context) error {
 		settings := *vfs.vfsSettings
 		vfs.locker.Unlock()
 
-		vfs.VFSFileSystem.Unmount()
+		if vfsfs != nil {
+			vfsfs.Unmount()
+			vfsfs = nil
+		}
+
 		if closed {
 			break
 		}
+
 		if !settings.Enabled {
 			continue
 		}
 
-		err := vfs.VFSFileSystem.Mount(settings)
-		if err != nil {
-			logger.Default().Log(context.Background(), logger.LevelError, "extfs.vfs.VFS Error: %s", err.Error())
+		vfsfsRuntime := vfs.VFSFSRuntime()
+		if vfsfsRuntime == nil {
+			continue
 		}
+
+		vfsfs = NewVFSFS(vfsfsRuntime, settings)
+		err := vfsfs.Mount()
+		if err != nil {
+			logger.Default().Log(context.Background(), logger.LevelError, "extfs.vfs.VFS Error: "+err.Error())
+		}
+		// if vfs.VFSFS != nil {
+		// 	err := vfs.VFSFS.Mount(settings)
+		// 	if err != nil {
+		// 		logger.Default().Log(context.Background(), logger.LevelError, "extfs.vfs.VFS Error: %s", err.Error())
+		// 	}
+		// }
 	}
 	return err
 }

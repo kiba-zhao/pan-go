@@ -259,7 +259,7 @@ func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 		payload = slices.Insert(payload, 0, BroadcastTypeOnline)
 		err = agent.module.Deliver(payload, addrs...)
 		if err != nil {
-			logger.Default().Log(context.Background(), logger.LevelError, "broadcast agent deliver online failed: %s", err.Error())
+			logger.Default().Log(context.Background(), logger.LevelError, "broadcast agent deliver online failed: "+err.Error())
 		}
 	}
 

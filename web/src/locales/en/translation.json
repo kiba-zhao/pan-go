@@ -110,5 +110,11 @@
       "search": "Search ...",
       "search-input": "What are you looking for ?"
     }
+  },
+  "errors": {
+    "SearchError": "Searching encountered an exception",
+    "FetchError": {
+      "500": "System Error"
+    }
   }
 }

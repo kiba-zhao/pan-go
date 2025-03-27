@@ -55,7 +55,11 @@ export const HomeItems = () => {
     };
   }, [settings]);
 
-  const { data: remotes, isFetching: isRemotesFetching } = useQuery({
+  const {
+    data: remotes,
+    isFetching: isRemotesFetching,
+    error,
+  } = useQuery({
     queryKey: REMOTE_NODES_QUERY_KEY,
     queryFn: async () => await api?.selectAllExtFSRemoteNodes(),
     enabled: extfs.mode === ExtFSHomeMode,
@@ -76,7 +80,7 @@ export const HomeItems = () => {
   );
 
   return (
-    <ExtFSItems items={items} isFetching={isFetching}>
+    <ExtFSItems items={items} isFetching={isFetching} error={error || void 0}>
       <HomeItem />
     </ExtFSItems>
   );

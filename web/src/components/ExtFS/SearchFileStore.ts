@@ -117,31 +117,21 @@ async function sync(
   const generator = generateSearchFiles(query, api, ctx.abortCtrl.signal);
   const workers = [flushWithGenerator(workerId, ctx, generator)];
 
-  const remotes = await api.selectAllExtFSRemoteNodes();
-  if (remotes.length > 0) {
-    workers.push(syncRemotes(workerId, ctx, query, api, remotes));
+  try {
+    const remotes = await api.selectAllExtFSRemoteNodes();
+    if (remotes.length > 0) {
+      workers.push(syncRemotes(workerId, ctx, query, api, remotes));
+    }
+    await Promise.all(workers);
+  } catch (e) {
+    ctx.data.errs = { ...ctx.data.errs, "": e };
+  } finally {
+    if (workerId !== ctx.workerId) return;
+    ctx.data = { ...ctx.data, isComplete: true };
+    emitChange(ctx);
   }
-
-  await Promise.all(workers);
-
-  if (workerId !== ctx.workerId) return;
-  ctx.data = { ...ctx.data, isComplete: true };
-  emitChange(ctx);
 }
 
-/**
- * Recursively synchronizes search files with the given query and API for
- * the given remotes.
- *
- * If the search file store is currently syncing, calling syncRemotes will
- * abort the current search operation and trigger a new one.
- * @param workerId - The symbol representing the current sync operation.
- * @param ctx - The search file store context.
- * @param query - The search query string to be used for fetching files.
- * @param api - The API instance used for interacting with external services.
- * @param remotes - The list of remote nodes.
- * @param offset - The index of the current remote node.
- */
 async function syncRemotes(
   workerId: Symbol,
   ctx: SearchFileContext,

@@ -1,3 +1,5 @@
+
+
 export const extractPathSeq = (path: string): string => {
   if (path.indexOf("/") >= 0) {
     return "/";
@@ -5,10 +7,14 @@ export const extractPathSeq = (path: string): string => {
   if (path.indexOf("\\") > 0) {
     return "\\";
   }
+  const ROOT_DRIVE_REGEX = /^[a-z|A-Z]+(\:+)(\S*)$/gi;
+  if (ROOT_DRIVE_REGEX.test(path)) {
+    return "\\";
+  }
   throw new Error("Unknown path separator");
 };
 
-const ROOT_DRIVE_REGEX = /^(\w+)(\:+)(\S*)$/gi;
+
 export const extractRoot = (path: string): string => {
   if (path.startsWith("/")) {
     return "/";
@@ -17,17 +23,11 @@ export const extractRoot = (path: string): string => {
     return "\\\\";
   }
 
-  if (URL.canParse(path)) {
-    const url = new URL("/", path);
-    return url.toString();
-  }
+  const ROOT_DRIVE_REGEX = /^[a-z|A-Z]+(\:+)(\S*)$/gi;
 
-  const drivePrefix = ROOT_DRIVE_REGEX.exec(path);
-  if (drivePrefix) {
-    const prefix = drivePrefix[1];
-    const root =
-      path.length > prefix.length && path[prefix.length] === "\\" ? "\\" : "/";
-    return drivePrefix[1] + root;
+  if (ROOT_DRIVE_REGEX.test(path)) {
+    const idx = path.indexOf(":");
+    return path.slice(0, idx+1);
   }
   throw new Error("Unknown path root");
 };

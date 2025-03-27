@@ -18,7 +18,7 @@ import (
 	"pan/app/config"
 	"pan/app/injection"
 	"pan/runtime"
-	"path"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"time"
@@ -96,7 +96,7 @@ func (ns *peerSettings) Generate() error {
 	}
 
 	ns.locker.Lock()
-	configPath := path.Dir(ns.Config.ConfigFilePath())
+	configPath := filepath.Dir(ns.Config.ConfigFilePath())
 	err := ns.ParseFields(configPath)
 	if _, ok := err.(*fs.PathError); ok {
 		err = ns.GenerateFields(configPath)
@@ -159,7 +159,7 @@ func (ns *peerSettings) GenerateFields(configPath string) error {
 	}
 
 	privKeyPath, certificatePath := generatePrivKeyPathAndCertificatePath(configPath)
-	err = os.MkdirAll(path.Dir(privKeyPath), 0750)
+	err = os.MkdirAll(filepath.Dir(privKeyPath), 0750)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (ns *peerSettings) GenerateFields(configPath string) error {
 		return err
 	}
 
-	err = os.MkdirAll(path.Dir(certificatePath), 0750)
+	err = os.MkdirAll(filepath.Dir(certificatePath), 0750)
 	if err != nil {
 		return err
 	}
@@ -318,5 +318,5 @@ func (ns *peerSettings) EngineTypes() []reflect.Type {
 // stored as "key.pem" and the certificate is stored as "cert.pem" in the root path.
 func generatePrivKeyPathAndCertificatePath(rootPath string) (string, string) {
 
-	return path.Join(rootPath, "key.pem"), path.Join(rootPath, "cert.pem")
+	return filepath.Join(rootPath, "key.pem"), filepath.Join(rootPath, "cert.pem")
 }

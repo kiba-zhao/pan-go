@@ -29,6 +29,13 @@ var ErrPeerModuleInvalidConnection = errors.New("quic.PeerModule Error: Invalid 
 var ErrPeerModuleUnavailable = errors.New("quic.PeerModule Error: Unavailable")
 var ErrPeerModuleConnectionNotFound = errors.New("quic.PeerModule Error: Connection Not Found")
 
+const (
+	InternalErrorCode     quic.ApplicationErrorCode = 0x1
+	NotAvailableErrorCode quic.ApplicationErrorCode = 0x2
+	AccessDeniedErrorCode quic.ApplicationErrorCode = 0x3
+	InvalidPeerErrorCode  quic.ApplicationErrorCode = 0x4
+)
+
 func parsePeerID(conn quic.Connection) (peer.PeerID, error) {
 	state := conn.ConnectionState()
 	certificate := state.TLS.PeerCertificates[0]
@@ -219,7 +226,15 @@ func (qm *quicPeerModule) RoundTrip(ctx context.Context, peerId peer.PeerID, rea
 		return nil, ErrPeerModuleRouteNotFound
 	}
 
-	return qm.Do(ctx, conn, reader)
+	resReader, err := qm.Do(ctx, conn, reader)
+
+	if err != nil {
+		appErr, ok := err.(*quic.ApplicationError)
+		if ok && appErr.ErrorCode == AccessDeniedErrorCode {
+			return nil, peer.ErrPeerModuleAccessDenied
+		}
+	}
+	return resReader, err
 }
 
 func (qm *quicPeerModule) Do(ctx context.Context, conn QuicConn, reader io.Reader) (quic.Stream, error) {
@@ -332,11 +347,12 @@ outer_loop:
 
 func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string, needGreet bool) error {
 
+	if err := qm.PeerModule.Access(peerId); err != nil {
+		return err
+	}
+
 	route := qm.routeMgr.Search(peerId)
 	if route == nil {
-		if err := qm.PeerModule.Access(peerId); err != nil {
-			return err
-		}
 		nroute, _ := qm.routeMgr.SearchOrStore(&quicRoute{peerId: peerId})
 		route = nroute
 	}
@@ -402,21 +418,25 @@ func (qm *quicPeerModule) Serve(conn quic.Connection, peerId peer.PeerID) (QuicC
 	}
 
 	if qm.PeerModule == nil {
-		conn.CloseWithError(quic.ApplicationErrorCode(0), "")
+		conn.CloseWithError(NotAvailableErrorCode, "")
 		return nil, ErrPeerModuleUnavailable
 	}
 
 	serveConn, ok := conn.(QuicConn)
 	if !ok {
+		appErrCode := InvalidPeerErrorCode
 		connPeerID, err := parsePeerID(conn)
 		if err == nil && len(peerId) > 0 && !bytes.Equal(peerId, connPeerID) {
 			err = ErrPeerModuleInvalidPeerID
 		}
 		if err == nil && len(peerId) <= 0 {
 			err = qm.PeerModule.Access(connPeerID)
+			if err != nil {
+				appErrCode = AccessDeniedErrorCode
+			}
 		}
 		if err != nil {
-			conn.CloseWithError(quic.ApplicationErrorCode(0), err.Error())
+			conn.CloseWithError(appErrCode, err.Error())
 			return nil, err
 		}
 		serveConn, _ = qm.connMgr.SelectOrStore(&quicConn{Connection: conn, peerId: connPeerID, mgr: qm.connMgr})

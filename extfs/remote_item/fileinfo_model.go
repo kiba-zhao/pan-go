@@ -1,18 +1,13 @@
 package remoteitem
 
-import "time"
-
 type RemoteFileInfo struct {
-	CreatedAt  time.Time `json:"createdAt" form:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt" form:"updatedAt"`
-	PeerID     string    `json:"peerId" form:"peerId"`
-	ItemID     uint      `json:"itemId" form:"itemId"`
-	Name       string    `json:"name" form:"name"`
-	FilePath   string    `json:"filePath" form:"filePath"`
-	FileType   string    `json:"fileType" form:"fileType"`
-	ParentPath string    `json:"parentPath" form:"parentPath"`
-	Size       int64     `json:"size" form:"size"`
-	Available  bool      `json:"available" form:"available"`
+	RemoteFileStat
+	PeerID     string `json:"peerId" form:"peerId"`
+	ItemID     uint   `json:"itemId" form:"itemId"`
+	Name       string `json:"name" form:"name"`
+	FilePath   string `json:"filePath" form:"filePath"`
+	ParentPath string `json:"parentPath" form:"parentPath"`
+	Available  bool   `json:"available" form:"available"`
 }
 
 type RemoteFileInfoSearchCondition struct {

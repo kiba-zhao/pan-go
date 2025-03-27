@@ -87,10 +87,24 @@ func (pn *peerNetwork) RoundTrip(ctx context.Context, peerId PeerID, reader io.R
 		if !peerNetwork.CanReach(peerId) {
 			continue
 		}
+
 		resReader, err = peerNetwork.RoundTrip(ctx, peerId, reqReader)
-		if err == nil || ctx.Err() == err || reqReader.haveRead {
+
+		// break with success or request reader has been read
+		if err == nil || reqReader.haveRead {
 			break
 		}
+
+		// break with context is done
+		if errors.Is(err, ctx.Err()) {
+			break
+		}
+
+		// break access denied error
+		if errors.Is(err, ErrPeerModuleAccessDenied) {
+			break
+		}
+
 	}
 
 	return resReader, err

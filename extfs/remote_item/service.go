@@ -33,8 +33,11 @@ func (s *RemoteItemService) Select(peerId string, itemId uint) (RemoteItem, erro
 	if err != nil {
 		return RemoteItem{}, err
 	}
+	var condition RemoteItemRecordSelectCondition
 	itemId32 := uint32(itemId)
-	record, err := s.SelectWithCondition(peerIdBytes, &RemoteItemRecordSelectCondition{ID: &itemId32})
+	condition.ID = &itemId32
+
+	record, err := s.SelectWithCondition(peerIdBytes, &condition)
 
 	if err != nil {
 		return RemoteItem{}, err
@@ -52,6 +55,35 @@ func (s *RemoteItemService) Select(peerId string, itemId uint) (RemoteItem, erro
 	item.UpdatedAt = time.Unix(record.UpdatedAt, 0)
 
 	return item, nil
+}
+
+func (s *RemoteItemService) SelectByName(peerId string, name string) (RemoteItem, error) {
+	peerIdBytes, err := appnode.DecodePeerID(peerId)
+	if err != nil {
+		return RemoteItem{}, err
+	}
+	var condition RemoteItemRecordSelectCondition
+	condition.Name = &name
+
+	record, err := s.SelectWithCondition(peerIdBytes, &condition)
+
+	if err != nil {
+		return RemoteItem{}, err
+	}
+
+	var item RemoteItem
+
+	item.PeerID = peerId
+	item.ItemID = uint(record.ID)
+	item.Name = record.Name
+	item.FileType = record.FileType
+	item.Size = record.Size
+	item.Available = record.Available
+	item.CreatedAt = time.Unix(record.CreatedAt, 0)
+	item.UpdatedAt = time.Unix(record.UpdatedAt, 0)
+
+	return item, nil
+
 }
 
 func (s *RemoteItemService) Search(peerId string) (total int64, items []RemoteItem, err error) {

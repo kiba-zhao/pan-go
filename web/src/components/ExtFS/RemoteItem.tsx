@@ -47,13 +47,21 @@ export const RemoteItems = () => {
   const { peerId } = state as ExtFSRemoteSingleState;
 
   const api = useAPI();
-  const { data: items, isFetching } = useQuery({
+  const {
+    data: items,
+    isFetching,
+    error,
+  } = useQuery({
     queryKey: [...ExtFSRemoteQueryKey, { peerId }],
     queryFn: async () => await api?.searchExtFSRemoteItems(peerId),
     enabled: state.mode === ExtFSRemoteMode,
   });
   return (
-    <ExtFSItems items={items || []} isFetching={isFetching}>
+    <ExtFSItems
+      items={items || []}
+      isFetching={isFetching}
+      error={error || void 0}
+    >
       <RemoteItem />
     </ExtFSItems>
   );

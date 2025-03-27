@@ -1,3 +1,5 @@
+//go:build linux || (darwin && amd64)
+
 package remoteitem
 
 import (
@@ -13,36 +15,31 @@ import (
 	"github.com/hanwen/go-fuse/v2/fuse"
 )
 
-var ErrRemoteFileFUSENameConflict = errors.New("remoteitem.FUSERemoteFileInfo Error: Name Conflict")
+var ErrRemoteFileFUSENameConflict = errors.New("remoteitem.VFSFUSERemoteFileInfo Error: Name Conflict")
 
-type FUSERemoteItemInfo interface {
-	FUSERemoteInfo
+type VFSFUSERemoteItemInfo interface {
+	VFSFUSERemoteInfo
 	ItemID() uint
 	GetRemoteFileAttr(context.Context, *fuse.AttrOut) syscall.Errno
 }
 
-type RemoteFileInfoServiceFUSEProvider interface {
-	RemoteFileInfoService() *RemoteFileInfoService
-	RemoteFileStreamService() *RemoteFileStreamService
-}
-
-type FUSERemoteFile struct {
+type VFSFUSERemoteFile struct {
 	fs.Inode
-	provider RemoteFileInfoServiceFUSEProvider
-	itemInfo FUSERemoteItemInfo
+	runtime  VFSFUSERemoteFileRuntime
+	itemInfo VFSFUSERemoteItemInfo
 	filePath string
 }
 
-func (fuserfe *FUSERemoteFile) ItemID() uint {
+func (fuserfe *VFSFUSERemoteFile) ItemID() uint {
 	return fuserfe.itemInfo.ItemID()
 }
 
-func (fuserfe *FUSERemoteFile) GetRemoteFileAttr(ctx context.Context, out *fuse.AttrOut) syscall.Errno {
+func (fuserfe *VFSFUSERemoteFile) GetRemoteFileAttr(ctx context.Context, out *fuse.AttrOut) syscall.Errno {
 
 	var condition RemoteFileInfoRecordSelectCondition
 	condition.ItemID = uint32(fuserfe.itemInfo.ItemID())
 	condition.FilePath = fuserfe.filePath
-	remoteFileInfoService := fuserfe.provider.RemoteFileInfoService()
+	remoteFileInfoService := fuserfe.runtime.RemoteFileInfoService()
 	fileInfo, err := remoteFileInfoService.SelectWithCondition(fuserfe.itemInfo.PeerID(), &condition)
 
 	if err != nil {
@@ -64,14 +61,14 @@ func (fuserfe *FUSERemoteFile) GetRemoteFileAttr(ctx context.Context, out *fuse.
 	return 0
 }
 
-func (fuserfe *FUSERemoteFile) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+func (fuserfe *VFSFUSERemoteFile) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
 	if len(fuserfe.filePath) > 0 {
 		return fuserfe.GetRemoteFileAttr(ctx, out)
 	}
 	return fuserfe.itemInfo.GetRemoteFileAttr(ctx, out)
 }
 
-func (fuserfe *FUSERemoteFile) Open(ctx context.Context, flags uint32) (fs.FileHandle, uint32, syscall.Errno) {
+func (fuserfe *VFSFUSERemoteFile) Open(ctx context.Context, flags uint32) (fs.FileHandle, uint32, syscall.Errno) {
 
 	// TODO: support writing
 	if flags&(syscall.O_RDWR|syscall.O_WRONLY) != 0 {
@@ -79,16 +76,16 @@ func (fuserfe *FUSERemoteFile) Open(ctx context.Context, flags uint32) (fs.FileH
 	}
 	//
 
-	remoteFileStreamService := fuserfe.provider.RemoteFileStreamService()
+	remoteFileStreamService := fuserfe.runtime.RemoteFileStreamService()
 	reader, err := remoteFileStreamService.ReadWithPeerID(fuserfe.itemInfo.PeerID(), fuserfe.itemInfo.ItemID(), fuserfe.filePath)
 	if err != nil {
 		return nil, 0, syscall.ENOENT
 	}
-	return &FUSERemoteFileStreamReader{reader: reader}, fuse.FOPEN_DIRECT_IO, 0
+	return &VFSFUSERemoteFileStreamReader{reader: reader}, fuse.FOPEN_DIRECT_IO, 0
 
 }
 
-func (fuserfe *FUSERemoteFile) Statfs(ctx context.Context, out *fuse.StatfsOut) syscall.Errno {
+func (fuserfe *VFSFUSERemoteFile) Statfs(ctx context.Context, out *fuse.StatfsOut) syscall.Errno {
 	// s := syscall.Statfs_t{}
 	// err := syscall.Statfs(n.path(), &s)
 	// if err != nil {
@@ -98,14 +95,14 @@ func (fuserfe *FUSERemoteFile) Statfs(ctx context.Context, out *fuse.StatfsOut) 
 	return fs.OK
 }
 
-func (fuserfe *FUSERemoteFile) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
+func (fuserfe *VFSFUSERemoteFile) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 
 	dirs := make([]fuse.DirEntry, 0)
 	var condition RemoteFileInfoRecordSearchCondition
 	condition.ItemID = uint32(fuserfe.itemInfo.ItemID())
 	condition.ParentPath = fuserfe.filePath
 
-	remoteFileInfoService := fuserfe.provider.RemoteFileInfoService()
+	remoteFileInfoService := fuserfe.runtime.RemoteFileInfoService()
 	names := make([]string, 0)
 	err := remoteFileInfoService.TraverseRecordWithPeerID(func(record *RemoteFileInfoRecord) error {
 		idx, ok := slices.BinarySearch(names, record.Name)
@@ -145,7 +142,7 @@ func (fuserfe *FUSERemoteFile) Readdir(ctx context.Context) (fs.DirStream, sysca
 	return fs.NewListDirStream(dirs), 0
 }
 
-func (fuserfe *FUSERemoteFile) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
+func (fuserfe *VFSFUSERemoteFile) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
 
 	var condition RemoteFileInfoRecordSelectCondition
 	condition.ItemID = uint32(fuserfe.itemInfo.ItemID())
@@ -155,7 +152,7 @@ func (fuserfe *FUSERemoteFile) Lookup(ctx context.Context, name string, out *fus
 		condition.FilePath = name
 	}
 
-	remoteFileInfoService := fuserfe.provider.RemoteFileInfoService()
+	remoteFileInfoService := fuserfe.runtime.RemoteFileInfoService()
 	record, err := remoteFileInfoService.SelectWithCondition(fuserfe.itemInfo.PeerID(), &condition)
 	if err != nil {
 		return nil, syscall.ENOENT
@@ -177,6 +174,6 @@ func (fuserfe *FUSERemoteFile) Lookup(ctx context.Context, name string, out *fus
 		fuserfe.RmChild(name)
 	}
 
-	inode = fuserfe.NewInode(ctx, &FUSERemoteFile{provider: fuserfe.provider, itemInfo: fuserfe.itemInfo, filePath: condition.FilePath}, fs.StableAttr{Mode: mode})
+	inode = fuserfe.NewInode(ctx, &VFSFUSERemoteFile{runtime: fuserfe.runtime, itemInfo: fuserfe.itemInfo, filePath: condition.FilePath}, fs.StableAttr{Mode: mode})
 	return inode, fs.OK
 }

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net"
 	"pan/app/injection"
-	"pan/logger"
 	"pan/runtime"
 	"reflect"
 	"slices"
@@ -279,8 +278,10 @@ func (b *broadcastModule) Init(registry runtime.Registry) error {
 
 func (b *broadcastModule) Ready(ctx context.Context) error {
 
-	var wg sync.WaitGroup
-	var servers []*broadcastServer
+	var server broadcastServer
+	server.module = b
+	server.mtu = b.mtu
+
 	var err error
 	closed := false
 	for {
@@ -296,36 +297,12 @@ func (b *broadcastModule) Ready(ctx context.Context) error {
 		b.locker.Unlock()
 		addrs := b.ServeAddrs()
 
-		if len(servers) > 0 {
-			for _, item := range servers {
-				item.Shutdown()
-			}
-			wg.Wait()
-		}
-
 		if closed {
+			server.Shutdown()
 			break
 		}
 
-		servers = make([]*broadcastServer, 0)
-		mtu := b.mtu
-		for _, addr := range addrs {
-			server := &broadcastServer{
-				address: addr,
-				module:  b,
-				mtu:     mtu,
-			}
-
-			servers = append(servers, server)
-			wg.Add(1)
-			go func(bs *broadcastServer) {
-				defer wg.Done()
-				err = bs.ListenAndServe()
-				if err != nil {
-					logger.Default().Log(context.Background(), logger.LevelError, "app.broadcast Error: %s", err.Error())
-				}
-			}(server)
-		}
+		server.ListenAndServe(addrs)
 	}
 
 	return err
@@ -339,8 +316,10 @@ func broadcastMTU() int {
 	}
 	mtu := 65535
 	for _, i := range ifs {
-		if i.MTU < mtu {
-			mtu = i.MTU
+		if addrs, err := i.Addrs(); err == nil && len(addrs) > 0 {
+			if i.MTU > 0 && i.MTU < mtu {
+				mtu = i.MTU
+			}
 		}
 	}
 	return mtu
@@ -365,6 +344,12 @@ func resolveAddrs(addr string) ([]*net.UDPAddr, error) {
 	udpAddrs := make([]*net.UDPAddr, 0)
 	for _, iface := range ifaces {
 		if net.FlagMulticast != (net.FlagMulticast & iface.Flags) {
+			continue
+		}
+		if net.FlagRunning != (net.FlagRunning & iface.Flags) {
+			continue
+		}
+		if net.FlagLoopback == (net.FlagLoopback & iface.Flags) {
 			continue
 		}
 		ifaceAddrs, err := iface.Addrs()

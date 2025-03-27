@@ -1,3 +1,5 @@
+//go:build linux || (darwin && amd64)
+
 package nodeitem
 
 import (
@@ -11,14 +13,9 @@ import (
 	"github.com/hanwen/go-fuse/v2/fuse"
 )
 
-type NodeItemServiceFUSEProvider interface {
-	// NodeItemService returns the node item service.
-	NodeItemService() *NodeItemService
-}
-
-type FUSENodeItem struct {
+type VFSFUSENodeItem struct {
 	fs.Inode
-	provider NodeItemServiceFUSEProvider
+	runtime VFSFUSENodeItemRuntime
 }
 
 // Getattr returns the attributes of the current node item.
@@ -26,7 +23,7 @@ type FUSENodeItem struct {
 // current time as the last modified time. The number of hard links to
 // the file is always 1.
 // It implements the Getattr method of the fs.Inode interface.
-func (fuseni *FUSENodeItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+func (fuseni *VFSFUSENodeItem) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
 	out.Mode = fuse.S_IFDIR
 	out.Size = 4096
 	now := time.Now()
@@ -37,17 +34,17 @@ func (fuseni *FUSENodeItem) Getattr(ctx context.Context, f fs.FileHandle, out *f
 
 // Readdir returns a directory stream containing the node items as subdirectories.
 // If any node item has the same name as an existing child node, an error is returned.
-// The returned directory stream is released by calling RmChild on the FUSENodeItem instance with
+// The returned directory stream is released by calling RmChild on the VFSFUSENodeItem instance with
 // the names of the node items that are not in the returned stream.
 // It implements the Readdir method of the fs.Inode interface.
-func (fuseni *FUSENodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
+func (fuseni *VFSFUSENodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 	dirs := make([]fuse.DirEntry, 0)
 	names := make([]string, 0)
-	nodeItemService := fuseni.provider.NodeItemService()
+	nodeItemService := fuseni.runtime.NodeItemService()
 	err := nodeItemService.TraverseAll(func(nodeItem NodeItem) error {
 		idx, ok := slices.BinarySearch(names, nodeItem.Name)
 		if ok {
-			return errors.New("nodeitem.FUSENodeItem Error: Name Conflict")
+			return errors.New("nodeitem.VFSFUSENodeItem Error: Name Conflict")
 		}
 		names = slices.Insert(names, idx, nodeItem.Name)
 
@@ -86,8 +83,8 @@ func (fuseni *FUSENodeItem) Readdir(ctx context.Context) (fs.DirStream, syscall.
 // Returns the found inode and fs.OK on success, or nil and ENOENT if the name
 // does not correspond to any known node.
 // It implements the Lookup method of the fs.Inode interface.
-func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
-	nodeItemService := fuseni.provider.NodeItemService()
+func (fuseni *VFSFUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
+	nodeItemService := fuseni.runtime.NodeItemService()
 	nodeItem, err := nodeItemService.SelectByName(name)
 	if err != nil || !nodeItem.Available {
 		return nil, syscall.ENOENT
@@ -121,12 +118,12 @@ func (fuseni *FUSENodeItem) Lookup(ctx context.Context, name string, out *fuse.E
 	return inode, fs.OK
 }
 
-// NewFUSENode creates a new FUSENodeItem with the provided NodeItemServiceFUSEProvider.
-// It initializes the FUSENodeItem's provider field with the given provider
-// and returns a pointer to the new FUSENodeItem as an fs.InodeEmbedder.
+// NewFUSENode creates a new VFSFUSENodeItem with the provided VFSFUSENodeItemRuntime.
+// It initializes the VFSFUSENodeItem's runtime field with the given runtime
+// and returns a pointer to the new VFSFUSENodeItem as an fs.InodeEmbedder.
 
-func NewFUSENode(provider NodeItemServiceFUSEProvider) fs.InodeEmbedder {
-	var fuse FUSENodeItem
-	fuse.provider = provider
+func NewVFSFUSENodeItem(runtime VFSFUSENodeItemRuntime) fs.InodeEmbedder {
+	var fuse VFSFUSENodeItem
+	fuse.runtime = runtime
 	return &fuse
 }

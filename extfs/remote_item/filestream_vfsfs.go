@@ -1,3 +1,5 @@
+//go:build linux || (darwin && amd64)
+
 package remoteitem
 
 import (
@@ -11,14 +13,14 @@ import (
 	"github.com/hanwen/go-fuse/v2/fuse"
 )
 
-type FUSERemoteFileStreamReader struct {
+type VFSFUSERemoteFileStreamReader struct {
 	reader *RemoteFileStreamReader
 	locker sync.Mutex
 }
 
-var _ = (fs.FileReader)((*FUSERemoteFileStreamReader)(nil))
+var _ = (fs.FileReader)((*VFSFUSERemoteFileStreamReader)(nil))
 
-func (fuserfr *FUSERemoteFileStreamReader) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
+func (fuserfr *VFSFUSERemoteFileStreamReader) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
 
 	fuserfr.locker.Lock()
 	defer fuserfr.locker.Unlock()
@@ -49,9 +51,9 @@ func (fuserfr *FUSERemoteFileStreamReader) Read(ctx context.Context, dest []byte
 	return fuse.ReadResultData(dest), fs.OK
 }
 
-var _ = (fs.FileReleaser)((*FUSERemoteFileStreamReader)(nil))
+var _ = (fs.FileReleaser)((*VFSFUSERemoteFileStreamReader)(nil))
 
-func (fuserfr *FUSERemoteFileStreamReader) Release(ctx context.Context) syscall.Errno {
+func (fuserfr *VFSFUSERemoteFileStreamReader) Release(ctx context.Context) syscall.Errno {
 	fuserfr.locker.Lock()
 	defer fuserfr.locker.Unlock()
 

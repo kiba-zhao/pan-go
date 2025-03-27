@@ -116,5 +116,11 @@
       "search": "文件检索 ...",
       "search-input": "请输入检索内容"
     }
+  },
+  "errors": {
+    "SearchError": "检索出现异常",
+    "FetchError": {
+      "500": "系统出现异常"
+    }
   }
 }

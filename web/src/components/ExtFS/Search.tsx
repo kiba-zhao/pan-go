@@ -15,6 +15,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemSecondaryAction from "@mui/material/ListItemSecondaryAction";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
+import Alert from "@mui/material/Alert";
 
 import _ from "lodash";
 import {
@@ -175,23 +176,32 @@ type SearchItemsResultsProps = {
  */
 const SearchItemsResults = memo(
   ({ query, enabled, onEsc }: SearchItemsResultsProps) => {
+    const t = useTranslate();
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
     const queryKey = useMemo(() => ["extfs-search-items", query], [query]);
 
     const api = useAPI();
-    const { data, isFetching } = useQuery({
+    const { data, isFetching, error } = useQuery({
       queryKey,
       queryFn: async () =>
         await api?.searchExtFSSearchItems({ q: query, limit: 10 }),
       enabled,
     });
+
     return (
       <Fragment>
         <LinearProgress
           sx={{ visibility: isFetching ? "visible" : "hidden" }}
         />
+        {!isFetching && error ? (
+          <Alert severity="error">
+            {t(`errors.${error.name}`, { _: error.message })}
+          </Alert>
+        ) : (
+          void 0
+        )}
         <div style={{ height: fullScreen ? "100%" : 680 }}>
           <SearchContext.Provider value={{ queryKey }}>
             <ListItems items={data || []} isFetching={isFetching} itemSize={68}>

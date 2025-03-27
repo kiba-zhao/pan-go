@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"os"
-	"path"
+	"path/filepath"
 	"sync"
 )
 
@@ -64,7 +64,7 @@ func (s *DiskFileService) Search(conditions DiskFileSearchCondition) (total int6
 		if conditions.FileType != "" && conditions.FileType != getFileType(info.IsDir()) {
 			continue
 		}
-		filePath := path.Join(conditions.ParentPath, dir.Name())
+		filePath := filepath.Join(conditions.ParentPath, dir.Name())
 		items = append(items, DiskFile{
 			ID:         encodeFilePath(filePath),
 			Name:       dir.Name(),
@@ -111,7 +111,7 @@ func (s *DiskFileService) SelectWithFilePath(filePath string) (item DiskFile, er
 		ID:         encodeFilePath(filePath),
 		Name:       stat.Name(),
 		FilePath:   filePath,
-		ParentPath: path.Dir(filePath),
+		ParentPath: filepath.Dir(filePath),
 		FileType:   getFileType(stat.IsDir()),
 		UpdatedAt:  stat.ModTime(),
 	}

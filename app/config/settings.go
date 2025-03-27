@@ -33,7 +33,7 @@ func newDefaultSettings() AppSettings {
 			if !addrStat.IPv6Enabled {
 				settings.PeerAddress = append(settings.PeerAddress, "0.0.0.0:9000")
 			}
-			settings.BroadcastAddress = append(settings.BroadcastAddress, "224.0.0.1:9100")
+			settings.BroadcastAddress = append(settings.BroadcastAddress, "224.0.0.2:9100")
 		}
 		// Temporary annotation, awaiting completion of broadcast optimization
 		// if addrStat.IPv6GlobalEnabled {

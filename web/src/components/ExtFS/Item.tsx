@@ -19,6 +19,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import Alert from "@mui/material/Alert";
 
 import type { To } from "react-router-dom";
 import { Link as RouterLink } from "react-router-dom";
@@ -34,6 +35,7 @@ export type ExtFSItemsProps<T extends any> = {
   items: ListItemsProps<T>["items"];
   isFetching: ListItemsProps<T>["isFetching"];
   children: ListItemsProps<T>["children"];
+  error?: Error;
 };
 /**
  * ExtFSItems Component
@@ -55,19 +57,30 @@ export const ExtFSItems = <T extends any>({
   items,
   isFetching,
   children,
+  error,
 }: ExtFSItemsProps<T>) => {
+  const t = useTranslate();
+
   return (
     <Fragment>
-      <Box
-        height="100%"
-        sx={{
-          display: isFetching ? "flex" : "none",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <LinearProgress />
-      </Box>
+      {isFetching && (
+        <Box
+          height="100%"
+          sx={{
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <LinearProgress />
+        </Box>
+      )}
+      {!isFetching && error !== void 0 ? (
+        <Alert severity="error">
+          {t(`errors.${error.name}`, { _: error.message })}
+        </Alert>
+      ) : (
+        void 0
+      )}
       <ListItems items={items} isFetching={isFetching} itemSize={68}>
         {children}
       </ListItems>

@@ -2,8 +2,6 @@
 package app
 
 import (
-	"path"
-
 	appbroadcast "pan/app/app_broadcast"
 	appnode "pan/app/app_node"
 	appsettings "pan/app/app_settings"
@@ -12,6 +10,7 @@ import (
 	"pan/app/config"
 	diskfile "pan/app/disk_file"
 	"pan/app/injection"
+	"path/filepath"
 
 	"pan/app/guard"
 	"pan/app/peer"
@@ -175,7 +174,7 @@ func (m *module) SetSettings(settings config.Settings) error {
 // the environment variable "rootPath" if set, otherwise it defaults to the user's
 // home directory with the package name as a suffix.
 func (m *module) RootPath() string {
-	return path.Dir(m.Config.ConfigFilePath())
+	return filepath.Dir(m.Config.ConfigFilePath())
 }
 
 // PeerID returns the peer ID of the peer module, or an empty string if the peer

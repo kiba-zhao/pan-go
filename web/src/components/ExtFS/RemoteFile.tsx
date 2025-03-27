@@ -52,7 +52,11 @@ export const RemoteFiles = () => {
   const { peerId, itemId, parentPath } = state as ExtFSRemoteFileSingleState;
 
   const api = useAPI();
-  const { data: items, isFetching } = useQuery({
+  const {
+    data: items,
+    isFetching,
+    error,
+  } = useQuery({
     queryKey: [...ExtFSRemoteFileQueryKey, { peerId, itemId, parentPath }],
     queryFn: async () =>
       await api?.searchExtFSRemoteFiles(peerId, itemId, { parentPath }),
@@ -60,7 +64,11 @@ export const RemoteFiles = () => {
   });
 
   return (
-    <ExtFSItems items={items || []} isFetching={isFetching}>
+    <ExtFSItems
+      items={items || []}
+      isFetching={isFetching}
+      error={error || void 0}
+    >
       <RemoteFile />
     </ExtFSItems>
   );

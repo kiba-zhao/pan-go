@@ -59,16 +59,15 @@ func (s *NodeItemService) SelectAll() (int64, []NodeItem, error) {
 
 func (s *NodeItemService) Create(fields NodeItemFields) (NodeItem, error) {
 	stat, err := os.Stat(fields.FilePath)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return NodeItem{}, err
 	}
-	available := err == nil
 
 	var nodeItem NodeItem
 	nodeItem.Name = fields.Name
 	nodeItem.FilePath = fields.FilePath
 	nodeItem.Enabled = fields.Enabled
-	nodeItem.Available = available
+	nodeItem.Available = true
 	if stat.IsDir() {
 		nodeItem.FileType = FileTypeFolder
 	} else {

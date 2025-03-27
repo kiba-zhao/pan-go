@@ -55,13 +55,21 @@ export const NodeItems = () => {
   const [extfs, _] = useExtFS();
 
   const api = useAPI();
-  const { data: items, isFetching } = useQuery({
+  const {
+    data: items,
+    isFetching,
+    error,
+  } = useQuery({
     queryKey: ExtFSNodeQueryKey,
     queryFn: async () => await api?.selectAllExtFSNodeItems(),
     enabled: extfs.mode === ExtFSNodeMode,
   });
   return (
-    <ExtFSItems items={items || []} isFetching={isFetching}>
+    <ExtFSItems
+      items={items || []}
+      isFetching={isFetching}
+      error={error || void 0}
+    >
       <NodeItem />
     </ExtFSItems>
   );

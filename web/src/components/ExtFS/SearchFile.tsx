@@ -27,8 +27,10 @@ import IconButton from "@mui/material/IconButton";
 import LinearProgress from "@mui/material/LinearProgress";
 import Link from "@mui/material/Link";
 import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
+import Alert from "@mui/material/Alert";
 
 import { Fragment, useMemo, useSyncExternalStore } from "react";
+import { useTranslate } from "react-admin";
 
 export const ExtFSSearchFileMode = "SF";
 const ExtFSSearchFileQueryKey = ["extfs-search-files"];
@@ -78,14 +80,39 @@ type ExtFSSearchFileData = { peerId: string } & ExtFSSearchFile;
 export const SearchFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
   const { store } = state as ExtFSSearchFileSingleState;
-  const { files, isComplete } = useSyncExternalStore(
+  const { files, isComplete, errs } = useSyncExternalStore(
     store.subscribe,
     store.getSnapshot
   );
+  const t = useTranslate();
 
+  const [error] = useMemo(() => {
+    if (!errs) return [void 0, []];
+    const details: Array<[string, Error]> = [];
+    let error: Error | undefined;
+    for (const [peerId, err] of Object.entries(errs)) {
+      if (peerId.length <= 0) {
+        error = err;
+        continue;
+      }
+      details.push([peerId, err]);
+    }
+    if (!error && details.length > 0) {
+      error = new Error();
+      error.name = "SearchError";
+    }
+    return [error, details];
+  }, [errs]);
   return (
     <Fragment>
       <LinearProgress sx={{ visibility: isComplete ? "hidden" : "visible" }} />
+      {isComplete && error ? (
+        <Alert severity="error">
+          {t(`errors.${error.name}`, { _: error.message })}
+        </Alert>
+      ) : (
+        void 0
+      )}
       <ListItems items={files} itemSize={68}>
         <SearchFile />
       </ListItems>
