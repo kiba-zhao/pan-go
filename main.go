@@ -4,23 +4,22 @@ import (
 	"context"
 	"embed"
 	"io/fs"
-	"pan/app"
-	"pan/app/web"
-	"pan/extfs"
-	"pan/logger"
+	"pan/features/app"
+	"pan/features/extfs"
+	"pan/lib/log"
+	"pan/lib/web"
 
-	"pan/runtime"
+	"pan/lib/runtime"
 )
 
-//go:generate npm --prefix ./web install
-//go:generate npm --prefix ./web run build -- -m production
-//go:embed web/dist
+//go:generate go run script/build_web.go
+//go:embed gui/web/dist
 var embedFS embed.FS // Declare embedded file system for web assets.
 
 func main() {
 
 	// add web assets
-	assetsFS, err := fs.Sub(embedFS, "web/dist")
+	assetsFS, err := fs.Sub(embedFS, "gui/web/dist")
 	if err != nil {
 		panic(err)
 	}
@@ -36,6 +35,6 @@ func main() {
 	}
 
 	if err != nil {
-		logger.Default().Log(context.Background(), logger.LevelError, err.Error())
+		log.Default().Log(context.Background(), log.LevelError, err.Error())
 	}
 }
