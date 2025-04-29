@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"pan/lib/peer"
 	"pan/lib/web"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	appnode "pan/features/app/node"
 	mocked "pan/mocks/pan/features/app/node"
@@ -38,9 +40,9 @@ func TestAppNodeController(t *testing.T) {
 		total := int64(10)
 		peerIds := [][]byte{[]byte("peer id 1"), []byte("peer id 2"), []byte("peer id 3")}
 		items := []appnode.AppNode{
-			{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerIds[0]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[1]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[2]), Blocked: true},
+			{ID: 1, Name: "peer node1", PeerID: peer.EncodePeerID(peerIds[0]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: peer.EncodePeerID(peerIds[1]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: peer.EncodePeerID(peerIds[2]), Blocked: true},
 		}
 		peerNodeRepo.On("Search", appnode.AppNodeSearchCondition{}).Once().Return(total, items, nil)
 
@@ -85,9 +87,9 @@ func TestAppNodeController(t *testing.T) {
 		total := int64(10)
 		peerIds := [][]byte{[]byte("peer id 1"), []byte("peer id 2"), []byte("peer id 3")}
 		items := []appnode.AppNode{
-			{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerIds[0]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[1]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[2]), Blocked: true},
+			{ID: 1, Name: "peer node1", PeerID: peer.EncodePeerID(peerIds[0]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: peer.EncodePeerID(peerIds[1]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: peer.EncodePeerID(peerIds[2]), Blocked: true},
 		}
 		peerNodeRepo.On("Search", condition).Once().Return(total, items, nil)
 
@@ -139,9 +141,9 @@ func TestAppNodeController(t *testing.T) {
 		total := int64(10)
 		peerIds := [][]byte{[]byte("peer id 1"), []byte("peer id 2"), []byte("peer id 3")}
 		items := []appnode.AppNode{
-			{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerIds[0]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[1]), Blocked: false},
-			{ID: 2, Name: "peer node2", PeerID: appnode.EncodePeerID(peerIds[2]), Blocked: true},
+			{ID: 1, Name: "peer node1", PeerID: peer.EncodePeerID(peerIds[0]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: peer.EncodePeerID(peerIds[1]), Blocked: false},
+			{ID: 2, Name: "peer node2", PeerID: peer.EncodePeerID(peerIds[2]), Blocked: true},
 		}
 		peerNodeRepo.On("Search", condition).Once().Return(total, items, nil)
 
@@ -173,7 +175,11 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		peerId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerId), Blocked: false}
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: peer.EncodePeerID(peerId), Blocked: false}
+		addrs := []string{"addr1", "addr2"}
+		for _, addr := range addrs {
+			item.NetworkAddrs = append(item.NetworkAddrs, appnode.NetworkAddr{Address: addr})
+		}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 
 		peerModule := &mockedPeer.MockPeerModule{}
@@ -192,7 +198,11 @@ func TestAppNodeController(t *testing.T) {
 		assert.Nil(t, err)
 		item_ := item
 		item_.Online = true
-		assert.Equal(t, item_, result)
+		assert.Equal(t, item_.ID, result.ID)
+		assert.Equal(t, item_.Name, result.Name)
+		assert.Equal(t, item_.PeerID, result.PeerID)
+		assert.Equal(t, item_.Blocked, result.Blocked)
+		assert.Equal(t, addrs, result.NetworkAddrTexts)
 	})
 
 	t.Run("GET /nodes/:id wth blocked", func(t *testing.T) {
@@ -203,7 +213,7 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		peerId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerId), Blocked: true}
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: peer.EncodePeerID(peerId), Blocked: true}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 
 		w := httptest.NewRecorder()
@@ -225,7 +235,7 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		peerId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerId), Blocked: false}
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: peer.EncodePeerID(peerId), Blocked: false}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Delete", item).Once().Return(nil)
 
@@ -249,7 +259,7 @@ func TestAppNodeController(t *testing.T) {
 		defer peerNodeRepo.AssertExpectations(t)
 		ctrl.AppNodeService.AppNodeRepo = peerNodeRepo
 		peerId := []byte("peer id 1")
-		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: appnode.EncodePeerID(peerId), Blocked: true}
+		item := appnode.AppNode{ID: 1, Name: "peer node1", PeerID: peer.EncodePeerID(peerId), Blocked: true}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Delete", item).Once().Return(nil)
 
@@ -271,13 +281,20 @@ func TestAppNodeController(t *testing.T) {
 		blocked := true
 		fields := appnode.AppNodeFields{
 			Name:    "peer node1",
-			PeerID:  appnode.EncodePeerID([]byte("peer id 1")),
+			PeerID:  peer.EncodePeerID([]byte("peer id 1")),
 			Blocked: &blocked,
+			NetworkAddrs: []string{
+				"network addr 1",
+				"network addr 2",
+			},
 		}
 		item := appnode.AppNode{Name: fields.Name, PeerID: fields.PeerID, Blocked: blocked}
+		for _, addrText := range fields.NetworkAddrs {
+			item.NetworkAddrs = append(item.NetworkAddrs, appnode.NetworkAddr{Address: addrText})
+		}
 		newItem := item
 		newItem.ID = 1
-		peerNodeRepo.On("Save", item).Once().Return(newItem, nil)
+		peerNodeRepo.On("Create", item).Once().Return(newItem, nil)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
@@ -289,7 +306,11 @@ func TestAppNodeController(t *testing.T) {
 		var result appnode.AppNode
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		assert.Nil(t, err)
-		assert.Equal(t, newItem, result)
+		assert.Equal(t, newItem.ID, result.ID)
+		assert.Equal(t, newItem.Name, result.Name)
+		assert.Equal(t, newItem.PeerID, result.PeerID)
+		assert.Equal(t, newItem.Blocked, result.Blocked)
+		assert.Equal(t, fields.NetworkAddrs, result.NetworkAddrTexts)
 	})
 
 	t.Run("PATCH /nodes/:id", func(t *testing.T) {
@@ -303,15 +324,28 @@ func TestAppNodeController(t *testing.T) {
 		peerId := []byte("peer id")
 		fields := appnode.AppNodeFields{
 			Name:    "peer node1",
-			PeerID:  appnode.EncodePeerID([]byte("peer id 1")),
+			PeerID:  peer.EncodePeerID([]byte("peer id 1")),
 			Blocked: &blocked,
+			NetworkAddrs: []string{
+				"network addr 1",
+				"network addr 2",
+			},
 		}
-		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: appnode.EncodePeerID(peerId), Blocked: false}
+		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: peer.EncodePeerID(peerId), Blocked: false, NetworkAddrs: []appnode.NetworkAddr{{ID: 333, Address: fields.NetworkAddrs[0]}}}
 		newItem := item
 		newItem.Name = fields.Name
 		newItem.Blocked = blocked
+		newItem.NetworkAddrs = []appnode.NetworkAddr{item.NetworkAddrs[0], {Address: fields.NetworkAddrs[1]}}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
-		peerNodeRepo.On("Save", newItem).Once().Return(newItem, nil)
+		peerNodeRepo.On("Update", mock.Anything).Once().Return(newItem, nil).Run(func(args mock.Arguments) {
+
+			arg := args.Get(0).(appnode.AppNode)
+			assert.Equal(t, newItem.Name, arg.Name)
+			assert.Equal(t, newItem.Blocked, arg.Blocked)
+			assert.Equal(t, newItem.NetworkAddrs[0].ID, arg.NetworkAddrs[0].ID)
+			assert.Equal(t, newItem.NetworkAddrs[0].Address, arg.NetworkAddrs[0].Address)
+			assert.Equal(t, newItem.NetworkAddrs[1].Address, arg.NetworkAddrs[1].Address)
+		})
 
 		peerModule := &mockedPeer.MockPeerModule{}
 		defer peerModule.AssertExpectations(t)
@@ -329,7 +363,11 @@ func TestAppNodeController(t *testing.T) {
 		var result appnode.AppNode
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		assert.Nil(t, err)
-		assert.Equal(t, newItem, result)
+		assert.Equal(t, newItem.ID, result.ID)
+		assert.Equal(t, newItem.Name, result.Name)
+		assert.Equal(t, newItem.PeerID, result.PeerID)
+		assert.Equal(t, newItem.Blocked, result.Blocked)
+		assert.Equal(t, fields.NetworkAddrs, result.NetworkAddrTexts)
 
 	})
 
@@ -344,15 +382,15 @@ func TestAppNodeController(t *testing.T) {
 		peerId := []byte("peer id")
 		fields := appnode.AppNodeFields{
 			Name:    "peer node1",
-			PeerID:  appnode.EncodePeerID([]byte("peer id 1")),
+			PeerID:  peer.EncodePeerID([]byte("peer id 1")),
 			Blocked: &blocked,
 		}
-		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: appnode.EncodePeerID(peerId), Blocked: false}
+		item := appnode.AppNode{ID: 123, Name: "peer node", PeerID: peer.EncodePeerID(peerId), Blocked: false}
 		newItem := item
 		newItem.Name = fields.Name
 		newItem.Blocked = blocked
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
-		peerNodeRepo.On("Save", newItem).Once().Return(newItem, nil)
+		peerNodeRepo.On("Update", newItem).Once().Return(newItem, nil)
 
 		peerModule := &mockedPeer.MockPeerModule{}
 		defer peerModule.AssertExpectations(t)

@@ -1,13 +1,11 @@
-import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
-import { ExtFSNodeItemRoutePath } from "../ExtFSNodeItem";
 import type { ExtFSItemRecord } from "./Item";
 import { ExtFSItem, ExtFSItemOpen, ExtFSItems, useExtFSItem } from "./Item";
-import { More, MoreHelpItem, MoreSettingsItem } from "./More";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
 
-import type { ExtFSNodeFile } from "../../api";
-import { useAPI } from "../API";
+import type { ExtFSNodeFile } from "./api";
+import { searchExtFSNodeFiles } from "./api";
+import { ExtFSBrowseFilePath } from "../ExtFSBrowseFile/Route";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -49,15 +47,14 @@ export type ExtFSNodeFileSingleState = {
 export const NodeFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
   const { itemId, parentPath } = state as ExtFSNodeFileSingleState;
-  const api = useAPI();
+
   const {
     data: items,
     isFetching,
     error,
   } = useQuery({
     queryKey: [...ExtFSNodeFileQueryKey, { itemId, parentPath }],
-    queryFn: async () =>
-      await api?.searchExtFSNodeFiles(itemId, { parentPath }),
+    queryFn: async () => await searchExtFSNodeFiles(itemId, { parentPath }),
     enabled: state.mode === ExtFSNodeFileMode,
   });
 
@@ -99,7 +96,7 @@ export const NodeFile = () => {
       itemId: item.itemId.toString(),
       filePath: item.filePath,
     });
-    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+    return `${ExtFSBrowseFilePath}?${searchParams.toString()}`;
   }, [item.itemId, item.filePath]);
 
   const openHidden = useMemo(() => {
@@ -122,20 +119,4 @@ export const NodeFile = () => {
       />
     </ExtFSItem>
   );
-};
-
-export const NodeFileMore = () => {
-  return (
-    <More>
-      <NodeFileSettingsMore />
-      <MoreHelpItem />
-    </More>
-  );
-};
-
-const NodeFileSettingsMore = () => {
-  const [{ parentItems, ...state }, _] = useExtFS();
-  const { itemId, parentPath } = state as ExtFSNodeFileSingleState;
-  if (parentPath) return void 0;
-  return <MoreSettingsItem to={`${ExtFSNodeItemRoutePath}/${itemId}`} />;
 };

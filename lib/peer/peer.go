@@ -5,6 +5,7 @@ package peer
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"io"
 	"pan/lib/injection"
@@ -34,6 +35,14 @@ type PeerApp = *App
 type PeerRouter = AppHandleGroup
 type PeerContext = AppContext
 type PeerNext = Next
+
+func EncodePeerID(peerId PeerID) string {
+	return base64.RawURLEncoding.EncodeToString(peerId)
+}
+
+func DecodePeerID(peerId string) (PeerID, error) {
+	return base64.RawURLEncoding.DecodeString(peerId)
+}
 
 // PeerAppModule is a module for the p2p application
 //

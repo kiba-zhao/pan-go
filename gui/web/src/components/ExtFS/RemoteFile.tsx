@@ -1,14 +1,14 @@
-import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
 import type { ExtFSItemRecord } from "./Item";
 import { ExtFSItem, ExtFSItemOpen, ExtFSItems, useExtFSItem } from "./Item";
-import { More, MoreHelpItem } from "./More";
+
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
 
-import { useQuery } from "@tanstack/react-query";
-import type { ExtFSRemoteFile } from "../../api";
-import { useAPI } from "../API";
+import type { ExtFSRemoteFile } from "./api";
+import { searchExtFSRemoteFiles } from "./api";
+import { ExtFSBrowseFilePath } from "../ExtFSBrowseFile/Route";
 
+import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import CloudIcon from "@mui/icons-material/Cloud";
@@ -51,7 +51,6 @@ export const RemoteFiles = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
   const { peerId, itemId, parentPath } = state as ExtFSRemoteFileSingleState;
 
-  const api = useAPI();
   const {
     data: items,
     isFetching,
@@ -59,8 +58,8 @@ export const RemoteFiles = () => {
   } = useQuery({
     queryKey: [...ExtFSRemoteFileQueryKey, { peerId, itemId, parentPath }],
     queryFn: async () =>
-      await api?.searchExtFSRemoteFiles(peerId, itemId, { parentPath }),
-    enabled: !!api && state.mode === ExtFSRemoteFileMode,
+      await searchExtFSRemoteFiles(peerId, itemId, { parentPath }),
+    enabled: state.mode === ExtFSRemoteFileMode,
   });
 
   return (
@@ -101,7 +100,7 @@ export const RemoteFile = () => {
       itemId: item.itemId.toString(),
       filePath: item.filePath,
     });
-    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+    return `${ExtFSBrowseFilePath}?${searchParams.toString()}`;
   }, [item.peerId, item.itemId, item.filePath]);
 
   const openHidden = useMemo(() => {
@@ -124,12 +123,5 @@ export const RemoteFile = () => {
         hidden={openHidden}
       />
     </ExtFSItem>
-  );
-};
-export const RemoteFileMore = () => {
-  return (
-    <More>
-      <MoreHelpItem />
-    </More>
   );
 };

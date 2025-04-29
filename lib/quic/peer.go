@@ -84,6 +84,9 @@ func serveQuicConn(conn QuicConn, peerModule peer.PeerModule) error {
 type QuicPeerModule interface {
 	// Extends peer.PeerNetwork
 	peer.PeerNetwork
+	peer.PeerNetworkPurgeable
+	//
+
 	// PeerSettings returns the current peer settings from the PeerModule.
 	// It retrieves settings such as the peer's ID, public key, private key, and certificate.
 	// The settings are initialized on the first call and remain unchanged thereafter.
@@ -110,17 +113,16 @@ type QuicPeerModule interface {
 	// connection. If the peer module is unavailable or the settings are invalid,
 	// it returns an error.
 	Dial(context.Context, peer.PeerID) (QuicConn, error)
-	// Route establishes a route to a peer using the given peer ID and address.
-	// If the route does not exist, it attempts to create a new one. The function
-	// locks the route during modification to ensure thread safety. If needGreet is true,
-	// the function ensures that a greeting is sent to the peer after establishing the route.
-	// It returns an error if any step in the process fails, such as issues accessing
-	// the peer or establishing a connection.
-	Route(peer.PeerID, string, bool) error
+	// Route routes the given peer ID to the given address.
+	Route(peer.PeerID, string) error
 	// Invite invites a peer create a connection to the current peer.
 	Invite(peer.PeerID) (QuicConn, error)
 	// Reload reloads the peer settings from the PeerModule.
 	Reload()
+	// Peer listens for incoming connections from other peers.
+	Addrs() []string
+	// PublicAddrs returns the public addresses of the peer.
+	PublicAddrs() []string
 }
 
 type quicPeerModule struct {
@@ -128,6 +130,7 @@ type quicPeerModule struct {
 	agent      *quicPeerAgent
 
 	addrs       []string
+	publicAddrs []string
 	locker      sync.RWMutex
 	reloadChan  chan struct{}
 	reloadOnce  sync.Once
@@ -150,6 +153,12 @@ func (qm *quicPeerModule) Addrs() []string {
 	qm.locker.RLock()
 	defer qm.locker.RUnlock()
 	return qm.addrs
+}
+
+func (qm *quicPeerModule) PublicAddrs() []string {
+	qm.locker.RLock()
+	defer qm.locker.RUnlock()
+	return qm.publicAddrs
 }
 
 func (qm *quicPeerModule) ReloadChan() chan struct{} {
@@ -176,10 +185,20 @@ func (qm *quicPeerModule) OnConfigUpdated(settings config.AppSettings) {
 	qm.locker.Lock()
 	defer qm.locker.Unlock()
 
-	if reloadServe := !slices.Equal(qm.addrs, settings.PeerAddress); reloadServe {
+	var reloadServe bool
+	if !slices.Equal(qm.addrs, settings.PeerAddress) {
 		qm.addrs = settings.PeerAddress
+		reloadServe = true
 	}
 
+	if !slices.Equal(qm.publicAddrs, settings.PublicAddress) {
+		qm.publicAddrs = settings.PublicAddress
+		reloadServe = true
+	}
+
+	if !reloadServe {
+		return
+	}
 	reload(qm)
 }
 
@@ -345,7 +364,7 @@ outer_loop:
 	return dialConn, dialCtx.Err()
 }
 
-func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string, needGreet bool) error {
+func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string) error {
 
 	if err := qm.PeerModule.Access(peerId); err != nil {
 		return err
@@ -360,30 +379,22 @@ func (qm *quicPeerModule) Route(peerId peer.PeerID, addr string, needGreet bool)
 	route.Lock()
 	defer route.Unlock()
 
-	var serveConn QuicConn
 	if route.Contains(addr) {
-		if !needGreet {
-			return nil
-		}
-		serveConn = qm.Lookup(peerId)
+		return nil
 	}
 
-	var err error
-	if serveConn == nil {
-		var conn quic.Connection
-		conn, err = dialAddr(context.Background(), addr, qm)
-		if err == nil {
-			serveConn, err = qm.Serve(conn, peerId)
-		}
-		if err == nil {
-			err = route.Store(addr)
-			if err == ErrQuicPeerRouteDuplicateAddress {
-				err = nil
-			}
+	var serveConn QuicConn
+	conn, err := dialAddr(context.Background(), addr, qm)
+	if err == nil {
+		serveConn, err = qm.Serve(conn, peerId)
+	}
+	if err == nil {
+		err = route.Store(addr)
+		if errors.Is(err, ErrQuicPeerRouteDuplicateAddress) {
+			err = nil
 		}
 	}
-
-	if err == nil && needGreet {
+	if err == nil {
 		err = qm.agent.Greet(serveConn)
 	}
 

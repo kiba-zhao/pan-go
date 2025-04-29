@@ -2,23 +2,30 @@
   "resources": {
     "app/nodes": {
       "name": "Peer of App",
+      "create-name": "Create Node",
+      "edit-name": "Edit Node",
       "fields": {
-        "peerId": "Peer ID"
+        "peerId": "Peer ID",
+        "networkAddr": "Network Address"
       },
       "filters": {
         "stat": "Online / Blocked",
         "online": "Online",
         "blocked": "Blocked"
-      }
+      },
+      "not_found": "Unknown App Node"
     }
   },
   "custom": {
     "extfs": {
-      "name": "Extended File System"
+      "name": "Extended File System",
+      "root": "Root",
+      "search": "Search"
     },
     "extfs/local-node-items": {
-      "createName": "Create Node Item",
-      "editName": "Edit Node Item",
+      "name": "Node Item",
+      "create-name": "Create Node Item",
+      "edit-name": "Edit Node Item",
       "input": {
         "filePath": "File Path Selector"
       },
@@ -70,6 +77,8 @@
     },
     "pagination": "{{total}} results",
     "button": {
+      "back": "Back",
+      "back-to-home": "Back Home",
       "open": "Open",
       "settings": "Settings",
       "add": "Add",
@@ -115,6 +124,7 @@
     "SearchError": "Searching encountered an exception",
     "FetchError": {
       "500": "System Error"
-    }
+    },
+    "PageNotFound": "Error: Page Not Found"
   }
 }

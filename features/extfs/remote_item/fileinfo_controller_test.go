@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	appnode "pan/features/app/node"
+	"pan/lib/peer"
 	"pan/lib/web"
 	mockedSample "pan/mocks/pan/lib/sample"
 	"path"
@@ -76,7 +76,7 @@ func TestRemoteFileInfoController(t *testing.T) {
 		nodeFileInfoService.On("IsNotExist", mock.Anything).Once().Return(false)
 		//
 
-		peerId := appnode.EncodePeerID(peerIdBytes)
+		peerId := peer.EncodePeerID(peerIdBytes)
 
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/remotes/%s/remote-items/%d/_files/%s", peerId, record.ItemID, record.FilePath)
@@ -145,7 +145,7 @@ func TestRemoteFileInfoController(t *testing.T) {
 		nodeFileInfoService.On("IsNotExist", mock.Anything).Once().Return(false)
 		//
 
-		peerId := appnode.EncodePeerID(peerIdBytes)
+		peerId := peer.EncodePeerID(peerIdBytes)
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/remotes/%s/remote-items/%d/_files", peerId, record.ItemID)
 		req := httptest.NewRequest("GET", url, nil)

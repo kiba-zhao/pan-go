@@ -4,94 +4,91 @@
  * root component of the application
  */
 
-import { QueryClient } from "@tanstack/react-query";
-import {
-  Admin,
-  CustomRoutes,
-  RaThemeOptions,
-  Resource,
-  defaultTheme,
-} from "react-admin";
-import { BrowserRouter, Route } from "react-router-dom";
-import { dataProvider } from "./api";
-import { APIProvider } from "./components/API";
-import { useI18nProvider } from "./i18n";
+import "./App.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { I18nProvider } from "./components/i18n/Context";
+import { Router, Route, Outlet } from "./components/Route/Router";
 
-import {
-  APPNodeEdit,
-  AppNodeCreate,
-  AppNodeRoutePath,
-  AppNodes,
-} from "./components/AppNodes";
-import { AppSettings, AppSettingsRoutePath } from "./components/AppSettings";
-import Dashboard from "./components/Dashboard";
-import ExtFSHome, { ExtFSRoutePath } from "./components/ExtFS";
+import { Master, MasterErrorBoundary } from "./components/Master/Layout";
+// AppNode
+import { AppNodeCreate, AppNodeEdit } from "./components/AppNode/Page";
+import { AppNodeCreatePath, AppNodeEditPath } from "./components/AppNode/Route";
+//
+// ExtFSBrowseFile
+import { default as ExtFSBrowseFile } from "./components/ExtFSBrowseFile/Page";
+import { ExtFSBrowseFilePath } from "./components/ExtFSBrowseFile/Route";
+//
+// ExtFSNodeItem
 import {
   ExtFSNodeItemCreate,
   ExtFSNodeItemEdit,
-  ExtFSNodeItemRoutePath,
   ExtFSNodeItemView,
-} from "./components/ExtFSNodeItem";
+} from "./components/ExtFSNodeItem/Page";
+import {
+  ExtFSNodeItemCreatePath,
+  ExtFSNodeItemEditPath,
+  ExtFSNodeItemShowPath,
+} from "./components/ExtFSNodeItem/Route";
+//
+// AppSettings
+import { AppSettings } from "./components/AppSettings/Page";
+import { AppSettingsPath } from "./components/AppSettings/Route";
+//
+// ExtFS
+import { default as ExtFSHome } from "./components/ExtFS/Page";
+import { ExtFSPath } from "./components/ExtFS/Route";
+//
 
-import ExtFSBrowseFile, {
-  RoutePath as ExtFSBrowseFileRoutePath,
-} from "./components/ExtFSBrowseFile";
-import { AppLayout } from "./components/Layout";
-import NotFound from "./components/NotFound";
+// Error Page
+import { PageNotFound } from "./components/Master/Page";
+//
+
+// import { Component, lazy } from "react";
+
+// async function lazy(path: string) {
+//   const { default: Component_, Component } = await import(path);
+//   return { Component: Component || Component_ };
+// }
+// type LazyLoad = () => Promise<Component>;
+// const Lazy = ({ component }: { component: Component }) => {
+//   const Component = lazy(component);
+
+//   return (
+//     <Suspense fallback={<LoadingSpinner />}>
+//       <Component />
+//     </Suspense>
+//   );
+// };
 
 const queryClient = new QueryClient();
-const darkTheme: RaThemeOptions = {
-  ...defaultTheme,
-  palette: { mode: "dark" },
-};
-export const App = () => {
-  const i18nProvider = useI18nProvider();
-  if (!i18nProvider) return null;
-  return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <APIProvider>
-        <Admin
-          disableTelemetry
-          theme={defaultTheme}
-          darkTheme={darkTheme}
-          dataProvider={dataProvider}
-          i18nProvider={i18nProvider}
-          catchAll={NotFound}
-          dashboard={Dashboard}
-          queryClient={queryClient}
-          layout={AppLayout}
-        >
-          <CustomRoutes>
-            <Route path={AppSettingsRoutePath} element={<AppSettings />} />
-            <Route path={ExtFSRoutePath} element={<ExtFSHome />} />
+const AppProvider = ({ children }: { children?: React.ReactNode }) => (
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  </I18nProvider>
+);
 
-            <Route
-              path={ExtFSBrowseFileRoutePath}
-              element={<ExtFSBrowseFile />}
-            />
-            <Route
-              path={`${ExtFSNodeItemRoutePath}/create`}
-              element={<ExtFSNodeItemCreate />}
-            />
-            <Route
-              path={`${ExtFSNodeItemRoutePath}/:id`}
-              element={<ExtFSNodeItemEdit />}
-            />
-            <Route
-              path={`${ExtFSNodeItemRoutePath}/:id/show`}
-              element={<ExtFSNodeItemView />}
-            />
-          </CustomRoutes>
-          <Resource
-            name={AppNodeRoutePath.substring(1)}
-            list={AppNodes}
-            create={AppNodeCreate}
-            edit={APPNodeEdit}
-          />
-        </Admin>
-      </APIProvider>
-    </BrowserRouter>
-  );
-};
+const AppLayout = () => (
+  <Master>
+    <Outlet />
+  </Master>
+);
+
+export const App = () => (
+  <AppProvider>
+    <Router>
+      <Route Component={AppLayout} ErrorBoundary={MasterErrorBoundary}>
+        <Route index path={ExtFSPath} Component={ExtFSHome} />
+        <Route path={AppSettingsPath} Component={AppSettings} />
+        <Route path={ExtFSNodeItemCreatePath} Component={ExtFSNodeItemCreate} />
+        <Route path={ExtFSNodeItemEditPath} Component={ExtFSNodeItemEdit} />
+        <Route path={ExtFSNodeItemShowPath} Component={ExtFSNodeItemView} />
+        <Route path={ExtFSBrowseFilePath} Component={ExtFSBrowseFile} />
+        <Route path={AppNodeCreatePath} Component={AppNodeCreate} />
+        <Route path={AppNodeEditPath} Component={AppNodeEdit} />
+        <Route path="*" Component={PageNotFound} />
+      </Route>
+    </Router>
+  </AppProvider>
+);
 
 export default App;

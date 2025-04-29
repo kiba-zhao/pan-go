@@ -9,7 +9,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
-	"pan/lib/discovery"
 	"pan/lib/injection"
 	"pan/lib/log"
 	"pan/lib/peer"
@@ -37,6 +36,18 @@ const (
 	BroadcastMulticastTypeLocal
 	BroadcastMulticastTypeIPV6Local
 )
+
+type BroadcastAgent interface {
+	// DeliverOnline send a broadcast message to the online peers.
+	//
+	// The message will be sent to the peers whose addresses are in the parameter list.
+	// If the parameter list is empty, the message will be sent to all online peers.
+	DeliverOnline(...string) error
+	// Reload reloads the broadcast module.
+	//
+	// It is called by the runtime to reload the broadcast module after the application has finished initializing.
+	Reload()
+}
 
 type broadcastAgent struct {
 	PeerModule     peer.PeerModule
@@ -66,7 +77,7 @@ func (agent *broadcastAgent) ComponentStore() injection.ComponentStore {
 func (agent *broadcastAgent) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(agent, injection.ComponentNoneScope),
-		injection.NewComponent[discovery.Broadcast](agent, injection.ComponentExternalScope),
+		injection.NewComponent[BroadcastAgent](agent, injection.ComponentExternalScope),
 	}
 }
 
@@ -316,7 +327,7 @@ func (agent *broadcastAgent) AcceptOnline(payload []byte, addr string) error {
 		return err
 	}
 
-	return agent.QuicPeerModule.Route(msg.PeerId, msgAddr, true)
+	return agent.QuicPeerModule.Route(msg.PeerId, msgAddr)
 }
 
 // Ready prepares the broadcast agent to operate within the given context.

@@ -35,6 +35,7 @@ func (s *sample[T]) Do(ctx context.Context, peerId peer.PeerID, request *peer.Re
 }
 
 func (s *sample[T]) Request(ctx context.Context, peerId peer.PeerID, name peer.RequestName, body proto.Message, headerItems ...peer.HeaderItem) (*peer.Response, error) {
+
 	var request *peer.Request
 	if body != nil {
 		requestBytes, err := proto.Marshal(body)

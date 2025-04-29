@@ -1,6 +1,5 @@
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { useTranslate } from "react-admin";
 
 import ClearIcon from "@mui/icons-material/Clear";
 import SearchIcon from "@mui/icons-material/Search";
@@ -33,10 +32,15 @@ import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 
-import type { ExtFSSearchItem, ExtFSSearchItemFields } from "../../api";
-import { useAPI } from "../API";
-import type { ListItemData } from "../List/Item";
-import { ListItems, useListItems } from "../List/Item";
+import { useTranslation } from "../i18n/Context";
+import type { ExtFSSearchItem, ExtFSSearchItemFields } from "./api";
+import {
+  saveExtFSSearchItem,
+  searchExtFSSearchItems,
+  deleteExtFSSearchItem,
+} from "./api";
+import type { ListItemData } from "../Common/Item";
+import { ListItems, useListItems } from "../Common/Item";
 import { newExtFSState } from "./SearchFile";
 import { useExtFS } from "./State";
 
@@ -66,7 +70,7 @@ type SearchItemsProps = {
  */
 
 export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
-  const t = useTranslate();
+  const { t } = useTranslation();
 
   const [query, setQuery] = useState("");
 
@@ -89,13 +93,12 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
 
   const [extfs, setExtFS] = useExtFS();
 
-  const api = useAPI();
   const { mutate: saveMutate, isPending: isSavePending } = useMutation({
-    mutationFn: api?.saveExtFSSearchItem,
+    mutationFn: saveExtFSSearchItem,
 
     onSuccess: (data) => {
       onEsc();
-      const state = newExtFSState(extfs, { query: data.query, api });
+      const state = newExtFSState(extfs, { query: data.query });
       setExtFS(state);
     },
   });
@@ -176,17 +179,16 @@ type SearchItemsResultsProps = {
  */
 const SearchItemsResults = memo(
   ({ query, enabled, onEsc }: SearchItemsResultsProps) => {
-    const t = useTranslate();
+    const { t } = useTranslation();
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
     const queryKey = useMemo(() => ["extfs-search-items", query], [query]);
 
-    const api = useAPI();
     const { data, isFetching, error } = useQuery({
       queryKey,
       queryFn: async () =>
-        await api?.searchExtFSSearchItems({ q: query, limit: 10 }),
+        await searchExtFSSearchItems({ q: query, limit: 10 }),
       enabled,
     });
 
@@ -228,10 +230,9 @@ type SearchItemProps = {
 export const SearchItem = ({ onClick }: SearchItemProps) => {
   const { style, item }: ListItemData<ExtFSSearchItem> = useListItems();
 
-  const api = useAPI();
   const [extfs, setExtFS] = useExtFS();
   const handleClick = () => {
-    const state = newExtFSState(extfs, { query: item.query, api });
+    const state = newExtFSState(extfs, { query: item.query });
     setExtFS(state);
     onClick();
   };
@@ -265,9 +266,8 @@ const SearchItemRemoveAction = () => {
   const { queryKey } = useContext(SearchContext);
   const queryClient = useQueryClient();
 
-  const api = useAPI();
   const { mutate, isPending } = useMutation({
-    mutationFn: api?.deleteExtFSSearchItem,
+    mutationFn: deleteExtFSSearchItem,
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey });
     },

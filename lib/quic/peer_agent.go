@@ -9,7 +9,6 @@ import (
 	"errors"
 	"io"
 	"net"
-	"pan/lib/discovery"
 
 	"sync"
 	"time"
@@ -72,7 +71,6 @@ func doQuicConn(conn QuicConn, flag uint8, reader io.Reader) error {
 }
 
 type quicPeerAgent struct {
-	Broadcast      discovery.Broadcast
 	quicPeerModule QuicPeerModule
 	matrix         [][]*quicReception
 	locker         sync.Mutex
@@ -89,13 +87,11 @@ func (agent *quicPeerAgent) Follow(conn QuicConn) error {
 
 	agent.locker.Lock()
 	receptions := searchReceptions(agent.matrix, conn.PeerID())
-	if len(receptions) <= 0 {
-		agent.locker.Unlock()
-		return nil
+	if len(receptions) > 0 {
+		agent.matrix = deleteReception(agent.matrix, receptions[0])
+		receptions[0].ch <- conn
 	}
-	agent.matrix = deleteReception(agent.matrix, receptions[0])
 	agent.locker.Unlock()
-	receptions[0].ch <- conn
 
 	go acceptQuicConn(conn, agent)
 	return nil
@@ -106,7 +102,7 @@ func (agent *quicPeerAgent) Follow(conn QuicConn) error {
 // has no public addresses, the function returns immediately. The method
 // simply marshals a QuicGreet message and calls doQuicConn with the result.
 func (agent *quicPeerAgent) Greet(conn QuicConn) error {
-	addrs := agent.Broadcast.PublicAddrs()
+	addrs := agent.quicPeerModule.PublicAddrs()
 	if len(addrs) <= 0 {
 		return nil
 	}
@@ -158,7 +154,7 @@ func (agent *quicPeerAgent) AcceptGreet(stream quic.ReceiveStream, conn QuicConn
 				addr = net.JoinHostPort(ip, port)
 			}
 
-			agent.quicPeerModule.Route(conn.PeerID(), addr, false)
+			agent.quicPeerModule.Route(conn.PeerID(), addr)
 		}
 	}
 

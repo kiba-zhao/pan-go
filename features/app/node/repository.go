@@ -7,13 +7,16 @@ import (
 	"strings"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var ErrAppNodeNotFound = errors.New("appnode.AppNodeRepository Error: Not Found")
+var ErrAppNodeInvaild = errors.New("appnode.AppNodeRepository Error: Invaild")
 
 type AppNodeRepository interface {
 	Search(AppNodeSearchCondition) (int64, []AppNode, error)
-	Save(AppNode) (AppNode, error)
+	Create(AppNode) (AppNode, error)
+	Update(AppNode) (AppNode, error)
 	Select(uint) (AppNode, error)
 	SelectByName(string) (AppNode, error)
 	Delete(AppNode) error
@@ -69,17 +72,66 @@ func (repo *peerNodeRepository) Search(conditions AppNodeSearchCondition) (int64
 
 }
 
-func (repo *peerNodeRepository) Save(node AppNode) (AppNode, error) {
+func (repo *peerNodeRepository) Create(node AppNode) (AppNode, error) {
 	db := repo.db
 	if db == nil {
 		return node, sample.ErrSampleDBUnavailable
 	}
-
-	results := db.Save(&node)
-	if results.Error == nil && results.RowsAffected != 1 {
-		return node, ErrAppNodeNotFound
+	if node.ID > 0 {
+		return node, ErrAppNodeInvaild
 	}
-	return node, results.Error
+	results := db.Create(&node)
+	err := results.Error
+	if err == nil && results.RowsAffected < 1 {
+		err = ErrAppNodeNotFound
+	}
+	return node, err
+}
+
+func (repo *peerNodeRepository) Update(node AppNode) (AppNode, error) {
+	db := repo.db
+	if db == nil {
+		return node, sample.ErrSampleDBUnavailable
+	}
+	if node.ID <= 0 {
+		return node, ErrAppNodeInvaild
+	}
+
+	db = db.Begin()
+
+	// remove NetworkAddr
+	tx := db.Where("app_node_id = ?", node.ID)
+	if len(node.NetworkAddrs) > 0 {
+		addrIds := make([]uint64, 0)
+		for _, addr := range node.NetworkAddrs {
+			if addr.ID > 0 {
+				addrIds = append(addrIds, addr.ID)
+			}
+		}
+		if len(addrIds) > 0 {
+			tx = tx.Not(addrIds)
+		}
+	}
+	tx = tx.Delete(&NetworkAddr{})
+	err := tx.Error
+
+	if err == nil {
+		results := db.Save(&node)
+		err = results.Error
+		if err == nil && results.RowsAffected < 1 {
+			err = ErrAppNodeNotFound
+		}
+	}
+
+	if err == nil {
+		results := db.Commit()
+		err = results.Error
+	}
+	if err != nil {
+		db.Rollback()
+	}
+
+	return node, err
 }
 
 func (repo *peerNodeRepository) Select(id uint) (AppNode, error) {
@@ -89,7 +141,8 @@ func (repo *peerNodeRepository) Select(id uint) (AppNode, error) {
 		return AppNode{}, sample.ErrSampleDBUnavailable
 	}
 	var peerNode AppNode
-	results := db.Take(&peerNode, id)
+
+	results := db.Model(&peerNode).Preload("NetworkAddrs").Take(&peerNode, id)
 	if results.Error == gorm.ErrRecordNotFound {
 		return peerNode, ErrAppNodeNotFound
 	}
@@ -116,7 +169,7 @@ func (repo *peerNodeRepository) Delete(node AppNode) error {
 	if db == nil {
 		return sample.ErrSampleDBUnavailable
 	}
-	results := db.Delete(&node)
+	results := db.Select(clause.Associations).Delete(&node)
 	if results.Error == nil && results.RowsAffected != 1 {
 		return ErrAppNodeNotFound
 	}

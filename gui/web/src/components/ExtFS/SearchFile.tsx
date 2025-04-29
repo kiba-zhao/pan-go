@@ -1,5 +1,4 @@
-import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
-import { ListItems } from "../List/Item";
+import { ListItems } from "../Common/Item";
 import {
   ExtFSItem,
   ExtFSItemOpen,
@@ -7,15 +6,18 @@ import {
   ExtFSItemSettings,
   useExtFSItem,
 } from "./Item";
-import { More, MoreHelpItem } from "./More";
+
 import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
-import { newItemSettingsUrl as newItemSettingsUrlWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
 import type { SearchFileStore } from "./SearchFileStore";
 import { newSearchFileStore } from "./SearchFileStore";
 import { ExtFSSingleState, ExtFSState, useExtFS } from "./State";
 
-import type { API, ExtFSSearchFile, ExtFSSearchItem } from "../../api";
+import { generateEditPath } from "../Route/utils";
+import { ExtFSNodeItemPath } from "../ExtFSNodeItem/Route";
+import { ExtFSBrowseFilePath } from "../ExtFSBrowseFile/Route";
+import type { ExtFSSearchFile, ExtFSSearchItem } from "./api";
+import { useTranslation } from "../i18n/Context";
 
 import CloseIcon from "@mui/icons-material/Close";
 import CloudIcon from "@mui/icons-material/Cloud";
@@ -30,7 +32,6 @@ import MenuItem, { MenuItemOwnProps } from "@mui/material/MenuItem";
 import Alert from "@mui/material/Alert";
 
 import { Fragment, useMemo, useSyncExternalStore } from "react";
-import { useTranslate } from "react-admin";
 
 export const ExtFSSearchFileMode = "SF";
 const ExtFSSearchFileQueryKey = ["extfs-search-files"];
@@ -44,10 +45,7 @@ export type ExtFSSearchFileSingleState = {
   store: SearchFileStore;
 } & ExtFSSingleState;
 
-export type ExtFSSearchFileStateOpts = { api: API } & Pick<
-  ExtFSSearchItem,
-  "query"
->;
+export type ExtFSSearchFileStateOpts = Pick<ExtFSSearchItem, "query">;
 export function newExtFSState(
   extfs: ExtFSState,
   opts: ExtFSSearchFileStateOpts
@@ -57,7 +55,7 @@ export function newExtFSState(
   const state = {
     ...ExtFSSearchFileState,
     snapshot: snapshot || extfs,
-    store: newSearchFileStore(opts.query, opts.api),
+    store: newSearchFileStore(opts.query),
   };
   return {
     ...state,
@@ -84,7 +82,7 @@ export const SearchFiles = () => {
     store.subscribe,
     store.getSnapshot
   );
-  const t = useTranslate();
+  const { t } = useTranslation();
 
   const [error] = useMemo(() => {
     if (!errs) return [void 0, []];
@@ -135,8 +133,11 @@ export const SearchFile = () => {
   const settingsUrl = useMemo(() => {
     // TODO: redirect to settings view
     if (item === void 0) return "";
-    if (item?.peerId === void 0 && item?.filePath === void 0)
-      return newItemSettingsUrlWithNodeItem(item.itemId);
+    if (
+      item?.peerId === void 0 &&
+      (item?.filePath === void 0 || item?.filePath === "")
+    )
+      return generateEditPath(ExtFSNodeItemPath, item.itemId);
     return "";
   }, [item?.peerId, item?.filePath, item?.itemId]);
 
@@ -173,7 +174,7 @@ export const SearchFile = () => {
     if (item.filePath !== void 0 && item.filePath.length > 0) {
       searchParams.set("filePath", item.filePath);
     }
-    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+    return `${ExtFSBrowseFilePath}?${searchParams.toString()}`;
   }, [item.peerId, item.itemId, item.filePath]);
 
   const openHidden = useMemo(() => {
@@ -200,14 +201,6 @@ export const SearchFile = () => {
   );
 };
 
-export const SearchFileMore = () => {
-  return (
-    <More>
-      <MoreHelpItem />
-    </More>
-  );
-};
-
 export const SearchNavigationBreadcrumbRoot = () => {
   const [extfs, setExtFS] = useExtFS();
   const handleClick = () => {
@@ -221,7 +214,7 @@ export const SearchNavigationBreadcrumbRoot = () => {
       color="inherit"
       onClick={handleClick}
     >
-      <SearchOffIcon fontSize="inherit" />
+      <SearchOffIcon fontSize="medium" />
     </Link>
   );
 };
@@ -232,6 +225,7 @@ export const SearchNavigationMenuRoot = ({
   sx: MenuItemOwnProps["sx"];
   anchorElWidth?: number;
 }) => {
+  const { t } = useTranslation();
   const [extfs, setExtFS] = useExtFS();
   const handleClick = () => {
     const state = restoreExtFSState(extfs);
@@ -239,14 +233,14 @@ export const SearchNavigationMenuRoot = ({
   };
   return (
     <MenuItem onClick={handleClick} sx={sx}>
-      Search Exit
+      {t("extfs.search.search")}
     </MenuItem>
   );
 };
 
 export const SearchFileRefresh = () => {
   const [extfs, _] = useExtFS();
-  const { parentItems, ...state } = extfs;
+  const { parentItems, ...state } = extfs || { store: {} };
   const fileState = state as ExtFSSearchFileSingleState;
 
   const { store } = fileState;

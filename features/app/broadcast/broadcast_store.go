@@ -2,7 +2,6 @@
 package broadcast
 
 import (
-	appnode "pan/features/app/node"
 	"pan/lib/broadcast"
 	"pan/lib/peer"
 )
@@ -20,7 +19,7 @@ type BroadcastStore struct {
 // the function returns an error.
 func (store *BroadcastStore) SelectOrCreate(info broadcast.BroadcastInfo) (broadcast.BroadcastInfo, error) {
 	var modelInfo AppBroadcastInfo
-	modelInfo.PeerID = appnode.EncodePeerID(info.PeerID)
+	modelInfo.PeerID = peer.EncodePeerID(info.PeerID)
 	modelInfo.Hightest = info.Heightest
 
 	modelInfo, _, err := store.Repo.SelectOrCreate(modelInfo)
@@ -42,7 +41,7 @@ func (store *BroadcastStore) SelectOrCreate(info broadcast.BroadcastInfo) (broad
 // with the store, the function returns an error.
 func (store *BroadcastStore) SaveHighest(peerId peer.PeerID, heightest uint64) error {
 	var modelInfo AppBroadcastInfo
-	modelInfo.PeerID = appnode.EncodePeerID(peerId)
+	modelInfo.PeerID = peer.EncodePeerID(peerId)
 	modelInfo.Hightest = heightest
 
 	modelInfo, ok, err := store.Repo.SelectOrCreate(modelInfo)
@@ -63,7 +62,7 @@ func (store *BroadcastStore) SaveHighest(peerId peer.PeerID, heightest uint64) e
 // If there is an error with the store, the function returns an error.
 
 func (store *BroadcastStore) Delete(peerId peer.PeerID) error {
-	return store.Repo.DeleteByPeerID(appnode.EncodePeerID(peerId))
+	return store.Repo.DeleteByPeerID(peer.EncodePeerID(peerId))
 }
 
 // Init initializes the BroadcastStore for the given peerId.
@@ -74,7 +73,7 @@ func (store *BroadcastStore) Delete(peerId peer.PeerID) error {
 // returns an error.
 func (store *BroadcastStore) Init(peerId peer.PeerID) error {
 	var modelInfo AppBroadcastInfo
-	modelInfo.PeerID = appnode.EncodePeerID(peerId)
+	modelInfo.PeerID = peer.EncodePeerID(peerId)
 	modelInfo.Hightest = 0
 
 	modelInfo, ok, err := store.Repo.SelectOrCreate(modelInfo)

@@ -63,12 +63,11 @@ func (repo *searchItemRepositoryImpl) Save(item SearchItem) (SearchItem, error) 
 	return item, results.Error
 }
 
-func (repo *searchItemRepositoryImpl) Create(fields SearchItem) (SearchItem, error) {
+func (repo *searchItemRepositoryImpl) Create(item SearchItem) (SearchItem, error) {
 	db := repo.db
 	if db == nil {
 		return SearchItem{}, appSample.ErrSampleDBUnavailable
 	}
-	var item SearchItem
 	results := db.Create(&item)
 	return item, results.Error
 }

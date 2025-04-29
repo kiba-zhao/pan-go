@@ -1,7 +1,8 @@
-import type { ExtFSNodeItem, ExtFSSearchFile } from "../../api";
-import { useAPI } from "../API";
-import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
-import { ExtFSNodeItemRoutePath } from "../ExtFSNodeItem";
+import type { ExtFSNodeItem, ExtFSSearchFile } from "./api";
+import { selectAllExtFSNodeItems } from "./api";
+import { generateEditPath, generateShowPath } from "../Route/utils";
+import { ExtFSBrowseFilePath } from "../ExtFSBrowseFile/Route";
+import { ExtFSNodeItemPath } from "../ExtFSNodeItem/Route";
 import type { ExtFSItemRecord } from "./Item";
 import {
   ExtFSItem,
@@ -10,7 +11,6 @@ import {
   ExtFSItemSettings,
   useExtFSItem,
 } from "./Item";
-import { More, MoreHelpItem, MoreNewItem } from "./More";
 import { newExtFSState as newExtFSStateWithNodeFile } from "./NodeFile";
 import type { ExtFSState } from "./State";
 import { useExtFS } from "./State";
@@ -21,7 +21,7 @@ import { useMemo } from "react";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "../Route/Router";
 
 export const ExtFSNodeMode = "N";
 export const ExtFSNodeQueryKey = ["extfs-node-items"];
@@ -39,10 +39,6 @@ export function newExtFSState(extfs: ExtFSState, name: string): ExtFSState {
   } as ExtFSState;
 }
 
-export function newItemSettingsUrl(id: ExtFSNodeItem["id"]): string {
-  return `${ExtFSNodeItemRoutePath}/${id}`;
-}
-
 type NewExtFSStateReferOpts = Pick<ExtFSSearchFile, "name">;
 export function newExtFSStateWithRefer(
   extfs: ExtFSState,
@@ -54,14 +50,13 @@ export function newExtFSStateWithRefer(
 export const NodeItems = () => {
   const [extfs, _] = useExtFS();
 
-  const api = useAPI();
   const {
     data: items,
     isFetching,
     error,
   } = useQuery({
     queryKey: ExtFSNodeQueryKey,
-    queryFn: async () => await api?.selectAllExtFSNodeItems(),
+    queryFn: async () => await selectAllExtFSNodeItems(),
     enabled: extfs.mode === ExtFSNodeMode,
   });
   return (
@@ -99,16 +94,19 @@ export const NodeItem = () => {
       return;
     }
 
-    navigate(`${ExtFSNodeItemRoutePath}/${item.id}/show`);
+    navigate(generateShowPath(ExtFSNodeItemPath, item.id));
   };
 
-  const settingsUrl = useMemo(() => newItemSettingsUrl(item.id), [item.id]);
+  const settingsUrl = useMemo(
+    () => generateEditPath(ExtFSNodeItemPath, item.id),
+    [item.id]
+  );
 
   const openUrl = useMemo(() => {
     const searchParams = new URLSearchParams({
       itemId: item.id.toString(),
     });
-    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+    return `${ExtFSBrowseFilePath}?${searchParams.toString()}`;
   }, [item.id]);
 
   const openHidden = useMemo(() => {
@@ -133,16 +131,3 @@ export const NodeItem = () => {
     </ExtFSItem>
   );
 };
-
-export const NodeMore = () => {
-  return (
-    <More>
-      <NodeNewMore />
-      <MoreHelpItem />
-    </More>
-  );
-};
-
-export const NodeNewMore = () => (
-  <MoreNewItem to={`${ExtFSNodeItemRoutePath}/create`} />
-);

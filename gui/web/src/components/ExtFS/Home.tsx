@@ -2,16 +2,17 @@
  * ExtFS Home Component Definition File
  */
 import type { ExtFSItemRecord } from "./Item";
-import { ExtFSItem, ExtFSItems, useExtFSItem } from "./Item";
-import { More, MoreHelpItem } from "./More";
+import { ExtFSItem, ExtFSItems, useExtFSItem, ExtFSItemSettings } from "./Item";
 import { newExtFSState as newExtFSStateWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemote } from "./RemoteItem";
 import { useExtFS } from "./State";
 
-import type { ExtFSRemoteNode } from "../../api";
-import { useAPI } from "../API";
-import { AppNodeIcon } from "../AppNodes";
-import { APP_SETTINGS_QUERY_KEY } from "../AppSettings";
+import { useTranslation } from "../i18n/Context";
+import type { AppNode } from "./api";
+import { selectAllAppSettings, selectAllAppNodes } from "./api";
+import { APP_SETTINGS_QUERY_KEY } from "../AppSettings/Page";
+import { generateEditPath } from "../Route/utils";
+import { AppNodeIcon, AppNodePath, AppNodeEditI18nKey } from "../AppNode/Route";
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -26,7 +27,7 @@ export const ExtFSHomeState = {
   queryKeyList: [APP_SETTINGS_QUERY_KEY, REMOTE_NODES_QUERY_KEY],
 };
 
-type ExtFSNode = {
+type ExtFSLocalNode = {
   name: string;
   peerId: string;
 };
@@ -41,10 +42,10 @@ type ExtFSNode = {
  */
 export const HomeItems = () => {
   const [extfs, _] = useExtFS();
-  const api = useAPI();
+
   const { data: settings, isFetching: isSettingsFetching } = useQuery({
     queryKey: APP_SETTINGS_QUERY_KEY,
-    queryFn: async () => await api?.selectAllAppSettings(),
+    queryFn: async () => await selectAllAppSettings(),
     enabled: extfs.mode === ExtFSHomeMode,
   });
   const nodeItem = useMemo(() => {
@@ -61,12 +62,12 @@ export const HomeItems = () => {
     error,
   } = useQuery({
     queryKey: REMOTE_NODES_QUERY_KEY,
-    queryFn: async () => await api?.selectAllExtFSRemoteNodes(),
+    queryFn: async () => await selectAllAppNodes(),
     enabled: extfs.mode === ExtFSHomeMode,
   });
 
   const items = useMemo(() => {
-    const items_: Array<ExtFSNode | ExtFSRemoteNode> =
+    const items_: Array<ExtFSLocalNode | AppNode> =
       remotes && remotes.length > 0 ? remotes : [];
     if (nodeItem) {
       return [nodeItem, ...items_];
@@ -94,19 +95,19 @@ export const HomeItems = () => {
  * <HomeItem />
  */
 const HomeItem = () => {
-  const { style, item }: ExtFSItemRecord<ExtFSNode | ExtFSRemoteNode> =
+  const { t } = useTranslation();
+  const { style, item }: ExtFSItemRecord<ExtFSLocalNode | AppNode> =
     useExtFSItem();
 
   const [extfs, setExtFS] = useExtFS();
 
-  const remoteNode = useMemo(
-    () =>
-      (item as ExtFSRemoteNode).updatedAt !== void 0
-        ? (item as ExtFSRemoteNode)
-        : void 0,
-    [item]
-  );
-  if (remoteNode !== void 0) {
+  const [remoteNode, remoteSettingsUrl] = useMemo(() => {
+    const rnode = item as AppNode;
+    if (rnode.id === void 0) return [];
+    return [rnode, generateEditPath(AppNodePath, rnode.id)];
+  }, [item]);
+
+  if (remoteNode !== void 0 && remoteSettingsUrl !== void 0) {
     const handleRemoteClick = () => {
       const state = newExtFSStateWithRemote(extfs, remoteNode);
       setExtFS(state);
@@ -116,21 +117,26 @@ const HomeItem = () => {
       <ExtFSItem
         style={style}
         primary={remoteNode.name}
-        secondary={remoteNode.updatedAt}
+        secondary={remoteNode?.updatedAt.toString()}
         avatarIcon={
           <AppNodeIcon
             fontSize="large"
-            color={remoteNode.available ? "primary" : "disabled"}
+            color={remoteNode.online ? "primary" : "disabled"}
           />
         }
         extIcon={<CloudIcon fontSize="small" />}
-        disabled={!remoteNode.available}
+        disabled={!remoteNode?.online}
         onClick={handleRemoteClick}
-      ></ExtFSItem>
+      >
+        <ExtFSItemSettings
+          to={remoteSettingsUrl}
+          title={t(AppNodeEditI18nKey)}
+        />
+      </ExtFSItem>
     );
   }
 
-  const localNode = item as ExtFSNode;
+  const localNode = item as ExtFSLocalNode;
 
   const handleLocalClick = () => {
     const state = newExtFSStateWithNodeItem(extfs, localNode.name);
@@ -145,22 +151,5 @@ const HomeItem = () => {
       avatarIcon={<AppNodeIcon fontSize="large" color="primary" />}
       onClick={handleLocalClick}
     ></ExtFSItem>
-  );
-};
-
-/**
- * @function HomeMore
- * @description
- * A component that renders a More component for the home route.
- * @returns {JSX.Element} An element that renders a More component.
- * @example
- * import { HomeMore } from "./Home";
- * <HomeMore />
- */
-export const HomeMore = () => {
-  return (
-    <More>
-      <MoreHelpItem />
-    </More>
   );
 };

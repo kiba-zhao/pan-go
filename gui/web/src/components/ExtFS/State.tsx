@@ -2,7 +2,7 @@ import {
   createReducerContext,
   ReducerStateProvider,
   useReducerState,
-} from "../Context/ReducerState";
+} from "../Common/ReducerState";
 
 import type { ReactNode } from "react";
 

@@ -7,12 +7,16 @@ import type { Store, StoreContext } from "./Store";
 import { newStore, initStoreContext, emitChange } from "./Store";
 
 import type {
-  API,
   ExtFSSearchFile,
   ExtFSSearchFileSearchCondition,
   ExtFSRemoteSearchFileSearchCondition,
-  ExtFSRemoteNode,
-} from "../../api";
+  AppNode,
+} from "./api";
+import {
+  searchExtFSRemoteSearchFileResults,
+  searchExtFSSearchFileResults,
+  selectAllAppNodes,
+} from "./api";
 
 type SearchFileItem = { peerId?: string } & ExtFSSearchFile;
 
@@ -46,18 +50,18 @@ export interface SearchFileStore extends Store<SearchFileStoreData> {
  * @returns A SearchFileStore with abort and refresh functionalities.
  */
 
-export function newSearchFileStore(query: string, api: API): SearchFileStore {
+export function newSearchFileStore(query: string): SearchFileStore {
   const ctx = {} as SearchFileContext;
   const data = {} as SearchFileStoreData;
   data.files = [];
   initStoreContext(ctx, data);
-  refresh(ctx, query, api);
+  refresh(ctx, query);
 
   const store = newStore(ctx);
   return {
     ...store,
     abort: (reason?: any) => abort(ctx, reason),
-    refresh: () => refresh(ctx, query, api),
+    refresh: () => refresh(ctx, query),
   };
 }
 
@@ -80,9 +84,8 @@ function abort(ctx: SearchFileContext, reason?: any) {
  * If the search file store is currently syncing, calling refresh will abort
  * the current search operation and trigger a new one.
  * @param query - The search query string to be used for fetching files.
- * @param api - The API instance used for interacting with external services.
  */
-function refresh(ctx: SearchFileContext, query: string, api: API) {
+function refresh(ctx: SearchFileContext, query: string) {
   ctx.abortCtrl = new AbortController();
   ctx.isSyncNodeComplete = false;
   ctx.isSyncRemoteComplete = false;
@@ -93,7 +96,7 @@ function refresh(ctx: SearchFileContext, query: string, api: API) {
     ctx.data = data;
   }
   ctx.workerId = Symbol();
-  ctx.worker = sync(ctx.workerId, ctx, query, api);
+  ctx.worker = sync(ctx.workerId, ctx, query);
 }
 
 /**
@@ -105,22 +108,16 @@ function refresh(ctx: SearchFileContext, query: string, api: API) {
  * @param workerId - The symbol representing the current sync operation.
  * @param ctx - The search file store context.
  * @param query - The search query string to be used for fetching files.
- * @param api - The API instance used for interacting with external services.
  */
-async function sync(
-  workerId: Symbol,
-  ctx: SearchFileContext,
-  query: string,
-  api: API
-) {
+async function sync(workerId: Symbol, ctx: SearchFileContext, query: string) {
   if (workerId !== ctx.workerId) return;
-  const generator = generateSearchFiles(query, api, ctx.abortCtrl.signal);
+  const generator = generateSearchFiles(query, ctx.abortCtrl.signal);
   const workers = [flushWithGenerator(workerId, ctx, generator)];
 
   try {
-    const remotes = await api.selectAllExtFSRemoteNodes();
+    const remotes = await selectAllAppNodes({ online: true });
     if (remotes.length > 0) {
-      workers.push(syncRemotes(workerId, ctx, query, api, remotes));
+      workers.push(syncRemotes(workerId, ctx, query, remotes));
     }
     await Promise.all(workers);
   } catch (e) {
@@ -136,21 +133,15 @@ async function syncRemotes(
   workerId: Symbol,
   ctx: SearchFileContext,
   query: string,
-  api: API,
-  remotes: ExtFSRemoteNode[],
+  remotes: AppNode[],
   offset: number = 0
 ) {
   if (workerId !== ctx.workerId) return;
   const { peerId } = remotes[offset];
-  const generator = generateSearchFiles(
-    query,
-    api,
-    ctx.abortCtrl.signal,
-    peerId
-  );
+  const generator = generateSearchFiles(query, ctx.abortCtrl.signal, peerId);
   await flushWithGenerator(workerId, ctx, generator, peerId);
   if (offset < remotes.length - 1) {
-    await syncRemotes(workerId, ctx, query, api, remotes, offset + 1);
+    await syncRemotes(workerId, ctx, query, remotes, offset + 1);
   }
 }
 
@@ -208,14 +199,12 @@ async function flushWithGenerator(
  * If the search file store is currently syncing, calling generateSearchFiles will
  * abort the current search operation and trigger a new one.
  * @param query - The search query string to be used for fetching files.
- * @param api - The API instance used for interacting with external services.
  * @param signal - The abort signal used for aborting the search operation.
  * @param peerId - The peerId of the remote node if remote search files are being fetched.
  * @returns An async generator that yields an array of search files.
  */
 async function* generateSearchFiles(
   query: string,
-  api: API,
   signal: AbortSignal,
   peerId?: string
 ): AsyncGenerator<ExtFSSearchFile[]> {
@@ -231,16 +220,15 @@ async function* generateSearchFiles(
   while (true) {
     try {
       if (peerId) {
-        [hash, total, files] = await api.searchExtFSRemoteSearchFileResults(
+        [hash, total, files] = await searchExtFSRemoteSearchFileResults(
           peerId,
           condition as ExtFSRemoteSearchFileSearchCondition,
           { signal }
         );
       } else {
-        [hash, total, files] = await api.searchExtFSSearchFileResults(
-          condition,
-          { signal }
-        );
+        [hash, total, files] = await searchExtFSSearchFileResults(condition, {
+          signal,
+        });
       }
 
       yield files;

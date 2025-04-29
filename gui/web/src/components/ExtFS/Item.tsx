@@ -2,9 +2,7 @@
  * ExtFS Item Component Definition File
  */
 import type { CSSProperties, ReactNode } from "react";
-import { Fragment } from "react";
-
-import { useTranslate } from "react-admin";
+import { Fragment, HTMLAttributeAnchorTarget } from "react";
 
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -21,11 +19,12 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 
-import type { To } from "react-router-dom";
-import { Link as RouterLink } from "react-router-dom";
+import type { To } from "../Route/Router";
+import { Link as RouterLink } from "../Route/Router";
 
-import type { ListItemData, ListItemsProps } from "../List/Item";
-import { ListItems, useListItems } from "../List/Item";
+import type { ListItemData, ListItemsProps } from "../Common/Item";
+import { ListItems, useListItems } from "../Common/Item";
+import { useTranslation } from "../i18n/Context";
 
 export type ExtFSItemRecord<T extends any> = ListItemData<T>;
 
@@ -59,7 +58,7 @@ export const ExtFSItems = <T extends any>({
   children,
   error,
 }: ExtFSItemsProps<T>) => {
-  const t = useTranslate();
+  const { t } = useTranslation();
 
   return (
     <Fragment>
@@ -136,7 +135,7 @@ export const ExtFSItem = ({
         </ListItemAvatar>
         <ListItemText
           primary={primary}
-          secondaryTypographyProps={{ component: "div" }}
+          slotProps={{ secondary: { component: "div" } }}
           secondary={
             <Stack
               direction="row"
@@ -161,7 +160,7 @@ type ExtFSItemLinkProps = {
   to: To;
   children?: ReactNode;
   disabled?: boolean;
-  target?: React.HTMLAttributeAnchorTarget;
+  target?: HTMLAttributeAnchorTarget;
 };
 /**
  * ExtFSItemLink Component
@@ -203,7 +202,8 @@ const ExtFSItemLink = ({
 export type ExtFSItemSettingsProps = Pick<
   ExtFSItemLinkProps,
   "to" | "disabled"
->;
+> &
+  Partial<Pick<ExtFSItemLinkProps, "title">>;
 /**
  * ExtFSItemSettings Component
  *
@@ -216,11 +216,15 @@ export type ExtFSItemSettingsProps = Pick<
  *
  * @returns {JSX.Element} A JSX element representing a link button with a tooltip.
  */
-export const ExtFSItemSettings = ({ to, disabled }: ExtFSItemSettingsProps) => {
-  const t = useTranslate();
+export const ExtFSItemSettings = ({
+  to,
+  disabled,
+  title,
+}: ExtFSItemSettingsProps) => {
+  const { t } = useTranslation();
   return (
     <ExtFSItemLink
-      title={t("custom.button.settings")}
+      title={title ?? t("custom.button.settings")}
       to={to}
       disabled={disabled}
     >
@@ -231,7 +235,7 @@ export const ExtFSItemSettings = ({ to, disabled }: ExtFSItemSettingsProps) => {
 
 export type ExtFSItemOpenProps = Pick<ExtFSItemLinkProps, "to" | "disabled"> & {
   hidden?: boolean;
-};
+} & Partial<Pick<ExtFSItemLinkProps, "title">>;
 /**
  * ExtFSItemOpen Component
  *
@@ -246,12 +250,17 @@ export type ExtFSItemOpenProps = Pick<ExtFSItemLinkProps, "to" | "disabled"> & {
  *
  * @returns {JSX.Element} A JSX element representing a link button with a tooltip.
  */
-export const ExtFSItemOpen = ({ to, disabled, hidden }: ExtFSItemOpenProps) => {
-  const t = useTranslate();
+export const ExtFSItemOpen = ({
+  to,
+  disabled,
+  hidden,
+  title,
+}: ExtFSItemOpenProps) => {
+  const { t } = useTranslation();
   if (hidden) return;
   return (
     <ExtFSItemLink
-      title={t("custom.button.open")}
+      title={title ?? t("custom.button.open")}
       to={to}
       disabled={disabled}
       target="_blank"

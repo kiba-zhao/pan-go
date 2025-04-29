@@ -32,6 +32,7 @@ func New() interface{} {
 	m := &module{}
 	m.peerGuard = &appnode.PeerGuard{}
 	m.store = injection.NewComponentStore()
+	m.networkAddrGuide = &appnode.NetworkAddrGuide{}
 
 	sampleModule := sample.New(m)
 	m.sample = sampleModule
@@ -50,15 +51,16 @@ func Bootstrap() interface{} {
 const moduleName = "app"
 
 type module struct {
-	PeerModule      peer.PeerModule
-	Config          config.AppConfig
-	store           injection.ComponentStore
-	sample          sample.Sample
-	settings        config.AppSettings
-	settingsRW      sync.RWMutex
-	controllers     []web.WebController
-	controllersOnce sync.Once
-	peerGuard       *appnode.PeerGuard
+	PeerModule       peer.PeerModule
+	Config           config.AppConfig
+	store            injection.ComponentStore
+	sample           sample.Sample
+	settings         config.AppSettings
+	settingsRW       sync.RWMutex
+	controllers      []web.WebController
+	controllersOnce  sync.Once
+	peerGuard        *appnode.PeerGuard
+	networkAddrGuide *appnode.NetworkAddrGuide
 }
 
 // Name returns the name of the module, which is "app".
@@ -93,6 +95,7 @@ func (m *module) WebControllers() []web.WebController {
 func (m *module) Models() []interface{} {
 	return []interface{}{
 		&appnode.AppNode{},
+		&appnode.NetworkAddr{},
 		&appbroadcast.AppBroadcastInfo{},
 	}
 }
@@ -114,15 +117,18 @@ func (m *module) Components() []injection.Component {
 		injection.NewComponent(m, injection.ComponentNoneScope),
 		// submodules
 		injection.NewComponent(m.peerGuard, injection.ComponentNoneScope),
+		injection.NewComponent(m.networkAddrGuide, injection.ComponentNoneScope),
 	}
 
 	// services
 	components = sample.AppendSampleComponent(components, &diskfile.DiskFileService{})
 	components = sample.AppendSampleExternalComponent[appsettings.AppSettingsExternalService](components, &appsettings.AppSettingsService{Provider: m})
 	components = sample.AppendSampleExternalComponent[appnode.AppNodeExternalService](components, &appnode.AppNodeService{})
+	components = sample.AppendSampleComponent(components, &appnode.NetworkAddrService{})
 
 	// repositories
 	components = sample.AppendSampleComponent(components, appnode.NewAppNodeRepository(m.sample.DB()))
+	components = sample.AppendSampleComponent(components, appnode.NewNetworkAddrRepository(m.sample.DB()))
 	components = sample.AppendSampleComponent(components, appbroadcast.NewAppBroadcastInfoRepository(m.sample.DB()))
 
 	// controllers
@@ -190,7 +196,7 @@ func (m *module) PeerID() string {
 		return ""
 	}
 
-	return appnode.EncodePeerID(settings.PeerID())
+	return peer.EncodePeerID(settings.PeerID())
 }
 
 // Modules returns a slice of interfaces representing the sub-modules
@@ -198,5 +204,5 @@ func (m *module) PeerID() string {
 // provides access control and security features within the p2p module.
 
 func (m *module) Modules() []interface{} {
-	return []interface{}{m.peerGuard}
+	return []interface{}{m.peerGuard, m.networkAddrGuide}
 }

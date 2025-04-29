@@ -2,12 +2,15 @@
   "resources": {
     "app/nodes": {
       "name": "应用节点",
+      "create-name": "新增节点",
+      "edit-name": "设置节点",
       "fields": {
         "peerId": "节点ID",
         "name": "名称",
         "online": "在线",
         "offline": "离线",
         "blocked": "封锁",
+        "networkAddr": "网络地址",
         "createdAt": "创建时间",
         "updatedAt": "更新时间"
       },
@@ -15,16 +18,20 @@
         "stat": "在线 / 封锁",
         "online": "在线",
         "blocked": "封锁"
-      }
+      },
+      "not_found": "未知的应用节点"
     }
   },
   "custom": {
     "extfs": {
-      "name": "扩展文件系统"
+      "name": "扩展文件系统",
+      "root": "根目录",
+      "search": "检索"
     },
     "extfs/local-node-items": {
-      "createName": "新增本地项",
-      "editName": "编辑本地项",
+      "name": "本地项",
+      "create-name": "新增本地项",
+      "edit-name": "编辑本地项",
       "input": {
         "filePath": "文件选择"
       },
@@ -76,6 +83,8 @@
     },
     "pagination": "总共 {{total}} 项",
     "button": {
+      "back": "返回",
+      "back-to-home": "返回首页",
       "open": "打开文件",
       "settings": "设置",
       "add": "添加",
@@ -121,6 +130,7 @@
     "SearchError": "检索出现异常",
     "FetchError": {
       "500": "系统出现异常"
-    }
+    },
+    "PageNotFound": "错误：页面不存在"
   }
 }

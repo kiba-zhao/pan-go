@@ -13,6 +13,9 @@ var ErrPeerNetworkUnavailable = errors.New("peer.PeerNetwork Error: Unavailable"
 type PeerNetwork interface {
 	RoundTrip(context.Context, PeerID, io.Reader) (io.ReadCloser, error)
 	CanReach(PeerID) bool
+}
+
+type PeerNetworkPurgeable interface {
 	Purge(PeerID) error
 }
 
@@ -53,7 +56,10 @@ func (pn *peerNetwork) Purge(peerId PeerID) error {
 	}
 
 	for _, module := range modules {
-		peerNetwork := module.(PeerNetwork)
+		peerNetwork, ok := module.(PeerNetworkPurgeable)
+		if !ok {
+			continue
+		}
 		err := peerNetwork.Purge(peerId)
 		if err != nil {
 			log.Default().Log(context.Background(), log.LevelError, err.Error())
@@ -91,7 +97,7 @@ func (pn *peerNetwork) RoundTrip(ctx context.Context, peerId PeerID, reader io.R
 		resReader, err = peerNetwork.RoundTrip(ctx, peerId, reqReader)
 
 		// break with success or request reader has been read
-		if err == nil || reqReader.haveRead {
+		if resReader != nil || reqReader.haveRead {
 			break
 		}
 

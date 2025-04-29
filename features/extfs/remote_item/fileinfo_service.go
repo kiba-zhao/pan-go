@@ -2,7 +2,6 @@ package remoteitem
 
 import (
 	"errors"
-	appnode "pan/features/app/node"
 	"pan/lib/peer"
 	"time"
 
@@ -30,7 +29,7 @@ func (s *RemoteFileInfoService) IsNotExist(err error) bool {
 
 func (s *RemoteFileInfoService) Select(peerId string, itemId uint, filePath string) (RemoteFileInfo, error) {
 
-	peerIdBytes, err := appnode.DecodePeerID(peerId)
+	peerIdBytes, err := peer.DecodePeerID(peerId)
 	if err != nil {
 		return RemoteFileInfo{}, err
 	}
@@ -64,7 +63,7 @@ func (s *RemoteFileInfoService) Select(peerId string, itemId uint, filePath stri
 
 func (s *RemoteFileInfoService) Search(peerId string, itemId uint, parentPath string) (total int64, items []RemoteFileInfo, err error) {
 
-	peerIdBytes, err := appnode.DecodePeerID(peerId)
+	peerIdBytes, err := peer.DecodePeerID(peerId)
 	if err != nil {
 		return
 	}

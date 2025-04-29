@@ -2,7 +2,6 @@ package remoteitem
 
 import (
 	"errors"
-	appnode "pan/features/app/node"
 	"pan/lib/peer"
 
 	nodeitem "pan/features/extfs/node_item"
@@ -29,7 +28,7 @@ func (s *RemoteItemService) IsNotExist(err error) bool {
 
 func (s *RemoteItemService) Select(peerId string, itemId uint) (RemoteItem, error) {
 
-	peerIdBytes, err := appnode.DecodePeerID(peerId)
+	peerIdBytes, err := peer.DecodePeerID(peerId)
 	if err != nil {
 		return RemoteItem{}, err
 	}
@@ -58,7 +57,7 @@ func (s *RemoteItemService) Select(peerId string, itemId uint) (RemoteItem, erro
 }
 
 func (s *RemoteItemService) SelectByName(peerId string, name string) (RemoteItem, error) {
-	peerIdBytes, err := appnode.DecodePeerID(peerId)
+	peerIdBytes, err := peer.DecodePeerID(peerId)
 	if err != nil {
 		return RemoteItem{}, err
 	}
@@ -87,7 +86,7 @@ func (s *RemoteItemService) SelectByName(peerId string, name string) (RemoteItem
 }
 
 func (s *RemoteItemService) Search(peerId string) (total int64, items []RemoteItem, err error) {
-	peerIdBytes, err := appnode.DecodePeerID(peerId)
+	peerIdBytes, err := peer.DecodePeerID(peerId)
 	if err != nil {
 		return
 	}

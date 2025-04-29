@@ -18,11 +18,8 @@ module.exports = () => {
     count: { min: 1, max: 10 },
   });
 
-  remoteNodes = faker.helpers
-    .arrayElements(nodes, { min: 1 })
-    .map(parseRemoteNode);
-  const remoteItems = remoteNodes.reduce((arr, node) => {
-    if (!node.available) return arr;
+  const remoteItems = nodes.reduce((arr, node) => {
+    if (!node.online) return arr;
     return arr.concat(
       faker.helpers.multiple(
         generateExtFSRemoteNodeItem.bind(this, node.peerId),
@@ -71,7 +68,6 @@ module.exports = () => {
       diskFiles.filter((_) => _.fileType === "D").map((_) => _.filePath)
     ),
     "app-nodes": nodes,
-    "extfs-remote-nodes": remoteNodes,
     "extfs-node-items": nodeItems,
     "extfs-remote-items": remoteItems,
     "extfs-node-files": nodeFiles,
@@ -146,6 +142,14 @@ function generateAddress() {
 }
 
 function generateNodes() {
+  const networkAddrs = faker.helpers.arrayElements([
+    faker.internet.ipv4(),
+    `${faker.internet.ipv4()}:${faker.internet.port()}`,
+    `[${faker.internet.ipv6()}]`,
+    `[${faker.internet.ipv6()}]:${faker.internet.port()}`,
+    faker.internet.domainName(),
+    `${faker.internet.domainName()}:${faker.internet.port()}`,
+  ])
   return faker.helpers.multiple(
     () => {
       const blocked = faker.datatype.boolean();
@@ -155,6 +159,7 @@ function generateNodes() {
         name: faker.internet.domainName(),
         blocked,
         online: blocked || faker.datatype.boolean(),
+        networkAddrs,
         createdAt: faker.date.past(),
         updatedAt: faker.date.past(),
       };
@@ -163,17 +168,6 @@ function generateNodes() {
       count: { min: 1, max: 10 },
     }
   );
-}
-
-function parseRemoteNode(node) {
-  return {
-    id: node.id,
-    peerId: node.peerId,
-    name: node.name,
-    available: node.online,
-    createdAt: node.createdAt,
-    updatedAt: node.updatedAt,
-  };
 }
 
 function generateExtFSNodeItem() {

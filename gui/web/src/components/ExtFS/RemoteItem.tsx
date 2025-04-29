@@ -1,15 +1,14 @@
-import type { ExtFSRemoteItem } from "../../api";
-import { useAPI } from "../API";
-import { RoutePath as ExtFSBrowseRoutePath } from "../ExtFSBrowseFile";
+import type { ExtFSRemoteItem } from "./api";
+import { searchExtFSRemoteItems } from "./api";
+import { ExtFSBrowseFilePath } from "../ExtFSBrowseFile/Route";
 import type { ExtFSItemRecord } from "./Item";
 import { ExtFSItem, ExtFSItemOpen, ExtFSItems, useExtFSItem } from "./Item";
-import { More, MoreHelpItem } from "./More";
+
 import { newExtFSState as newExtFSStateWithRemoteFile } from "./RemoteFile";
 import type { ExtFSSingleState, ExtFSState } from "./State";
 import { useExtFS } from "./State";
 
 import { useQuery } from "@tanstack/react-query";
-
 import CloudIcon from "@mui/icons-material/Cloud";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
@@ -46,14 +45,13 @@ export const RemoteItems = () => {
   const [{ parentItems, ...state }, _] = useExtFS();
   const { peerId } = state as ExtFSRemoteSingleState;
 
-  const api = useAPI();
   const {
     data: items,
     isFetching,
     error,
   } = useQuery({
     queryKey: [...ExtFSRemoteQueryKey, { peerId }],
-    queryFn: async () => await api?.searchExtFSRemoteItems(peerId),
+    queryFn: async () => await searchExtFSRemoteItems(peerId),
     enabled: state.mode === ExtFSRemoteMode,
   });
   return (
@@ -97,7 +95,7 @@ export const RemoteItem = () => {
       peerId: item.peerId,
       itemId: item.itemId.toString(),
     });
-    return `${ExtFSBrowseRoutePath}?${searchParams.toString()}`;
+    return `${ExtFSBrowseFilePath}?${searchParams.toString()}`;
   }, [item.peerId, item.itemId]);
 
   const openHidden = useMemo(() => {
@@ -120,13 +118,5 @@ export const RemoteItem = () => {
         hidden={openHidden}
       />
     </ExtFSItem>
-  );
-};
-
-export const RemoteMore = () => {
-  return (
-    <More>
-      <MoreHelpItem />
-    </More>
   );
 };

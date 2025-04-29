@@ -3,7 +3,6 @@ package remoteitem
 import (
 	"io"
 	"os"
-	appnode "pan/features/app/node"
 	nodeitem "pan/features/extfs/node_item"
 	"pan/lib/peer"
 )
@@ -23,7 +22,7 @@ func (s *RemoteFileStreamService) IsNotExist(err error) bool {
 
 func (s *RemoteFileStreamService) Read(peerId string, itemId uint, filePath string) (*RemoteFileStreamReader, error) {
 
-	peerIdBytes, err := appnode.DecodePeerID(peerId)
+	peerIdBytes, err := peer.DecodePeerID(peerId)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"pan/lib/peer"
 	"pan/lib/web"
 
 	"testing"
@@ -15,7 +16,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/proto"
 
-	appnode "pan/features/app/node"
 	nodeitem "pan/features/extfs/node_item"
 	remoteitem "pan/features/extfs/remote_item"
 	mockedSample "pan/mocks/pan/lib/sample"
@@ -63,7 +63,7 @@ func TestRemoteItemController(t *testing.T) {
 		})
 		//
 
-		peerId := appnode.EncodePeerID(peerIdBytes)
+		peerId := peer.EncodePeerID(peerIdBytes)
 
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/remotes/%s/remote-items/%d", peerId, record.ID)
@@ -117,7 +117,7 @@ func TestRemoteItemController(t *testing.T) {
 			assert.Nil(t, err)
 		})
 
-		peerId := appnode.EncodePeerID(peerIdBytes)
+		peerId := peer.EncodePeerID(peerIdBytes)
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/remotes/%s/remote-items", peerId)
 		req := httptest.NewRequest("GET", url, nil)

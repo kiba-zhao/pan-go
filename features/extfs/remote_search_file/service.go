@@ -1,8 +1,8 @@
 package remotesearchfile
 
 import (
-	appnode "pan/features/app/node"
 	nodesearchfile "pan/features/extfs/node_search_file"
+	"pan/lib/peer"
 	"time"
 )
 
@@ -25,7 +25,7 @@ type RemoteSearchFileService struct {
 //   - An ETag of the search result.
 //   - An error if the search request fails.
 func (s *RemoteSearchFileService) Search(peerId string, condition RemoteSearchFileSearchCondition) (total int64, searchFiles []RemoteSearchFile, etag string, err error) {
-	peerIdBytes, err := appnode.DecodePeerID(peerId)
+	peerIdBytes, err := peer.DecodePeerID(peerId)
 	if err != nil {
 		return
 	}

@@ -1,6 +1,10 @@
 // Package quic provides the quic module
 package quic
 
+import (
+	"pan/lib/runtime"
+)
+
 func New() interface{} {
 
 	var module quicPeerModule
@@ -11,5 +15,8 @@ func New() interface{} {
 	module.agent = &agent
 	agent.quicPeerModule = &module
 
-	return &module
+	var explorer QuicExplorer
+	explorer.quicModule = &module
+
+	return runtime.NewModule(&module, &explorer)
 }

@@ -14,9 +14,10 @@ type Settings struct {
 	PublicAddress    []string `json:"publicAddress" form:"publicAddress"`
 	GuardEnabled     bool     `json:"guardEnabled" form:"guardEnabled"`
 	GuardAccess      bool     `json:"guardAccess" form:"guardAccess"`
+	DiscoveryServer  []string `json:"discoveryServer" form:"discoveryServer"`
 }
 
-func newDefaultSettings() AppSettings {
+func newDefaultSettings(cfg AppConfig) AppSettings {
 
 	settings := &Settings{}
 	addrStat, err := net.StatAddr()

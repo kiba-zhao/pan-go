@@ -7,10 +7,10 @@ import (
 	"context"
 	"errors"
 	"os"
-	appnode "pan/features/app/node"
 	nodeitem "pan/features/extfs/node_item"
 	remoteitem "pan/features/extfs/remote_item"
 	remotenode "pan/features/extfs/remote_node"
+	"pan/lib/peer"
 	"slices"
 	"syscall"
 	"time"
@@ -211,7 +211,7 @@ func (fusefs *VFSFUSEFS) Lookup(ctx context.Context, name string, out *fuse.Entr
 		return nil, syscall.ENOENT
 	}
 
-	peerId, err := appnode.DecodePeerID(remote.PeerID)
+	peerId, err := peer.DecodePeerID(remote.PeerID)
 	if err != nil {
 		return nil, syscall.ENOENT
 	}
