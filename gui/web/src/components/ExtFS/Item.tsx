@@ -24,7 +24,7 @@ import { Link as RouterLink } from "../Route/Router";
 
 import type { ListItemData, ListItemsProps } from "../Common/Item";
 import { ListItems, useListItems } from "../Common/Item";
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
 
 export type ExtFSItemRecord<T extends any> = ListItemData<T>;
 
@@ -224,7 +224,7 @@ export const ExtFSItemSettings = ({
   const { t } = useTranslation();
   return (
     <ExtFSItemLink
-      title={title ?? t("custom.button.settings")}
+      title={title ?? t("buttons.settings")}
       to={to}
       disabled={disabled}
     >
@@ -260,7 +260,7 @@ export const ExtFSItemOpen = ({
   if (hidden) return;
   return (
     <ExtFSItemLink
-      title={title ?? t("custom.button.open")}
+      title={title ?? t("buttons.open")}
       to={to}
       disabled={disabled}
       target="_blank"

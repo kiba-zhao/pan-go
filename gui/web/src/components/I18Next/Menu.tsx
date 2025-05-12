@@ -1,16 +1,3 @@
-/**
- * i18next Provider for React Admin
- *
- * @see https://react.i18next.com/
- */
-import i18next from "i18next";
-import LanguageDetector from "i18next-browser-languagedetector";
-import resourcesToBackend from "i18next-resources-to-backend";
-import {
-  I18nextProvider,
-  useTranslation,
-  initReactI18next,
-} from "react-i18next";
 import { useMemo, useState } from "react";
 
 import Box from "@mui/material/Box";
@@ -19,36 +6,8 @@ import MenuItem from "@mui/material/MenuItem";
 import LanguageIcon from "@mui/icons-material/Translate";
 import IconButton from "@mui/material/IconButton";
 
-export { useTranslation };
-
-const defaultLanguages = [
-  { locale: "zh-CN", name: "中文" },
-  { locale: "en", name: "English" },
-];
-
-const importLanguage = async (language: string, namespace: string) => {
-  const { default: translation } = await import(
-    `../../locales/${language}/${namespace}.json`
-  );
-
-  return translation;
-};
-
-i18next
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .use(resourcesToBackend(importLanguage))
-  .init({
-    lng: defaultLanguages[0].locale,
-    fallbackLng: defaultLanguages[0].locale,
-    supportedLngs: defaultLanguages.map((l) => l.locale),
-  });
-
-export const I18nProvider = ({ children }: { children: React.ReactNode }) => (
-  <I18nextProvider i18n={i18next} defaultNS={"translation"}>
-    {children}
-  </I18nextProvider>
-);
+import { LANGUAGES } from "./constants";
+import { useTranslation } from "./Context";
 
 type Language = {
   locale: string;
@@ -56,11 +15,12 @@ type Language = {
 };
 
 export const LocalesMenuButton = ({
-  languages = defaultLanguages,
+  languages = LANGUAGES,
 }: {
   languages?: Language[];
 }) => {
   const { i18n } = useTranslation();
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const handleOpen = (element: HTMLElement) => {
     setAnchorEl(element);
@@ -75,8 +35,8 @@ export const LocalesMenuButton = ({
   };
 
   const language = useMemo(
-    () => languages.find((l) => l.locale === i18next.language),
-    [i18next.language, languages]
+    () => languages.find((l) => l.locale === i18n.language),
+    [i18n.language, languages]
   );
 
   return (

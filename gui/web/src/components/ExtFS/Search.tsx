@@ -11,7 +11,6 @@ import InputBase from "@mui/material/InputBase";
 import LinearProgress from "@mui/material/LinearProgress";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
-import ListItemSecondaryAction from "@mui/material/ListItemSecondaryAction";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import Alert from "@mui/material/Alert";
@@ -32,7 +31,7 @@ import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
 import type { ExtFSSearchItem, ExtFSSearchItemFields } from "./api";
 import {
   saveExtFSSearchItem,
@@ -133,7 +132,7 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
           name="query"
           render={({ field: { onChange, ...field_ } }) => (
             <InputBase
-              placeholder={t("custom.placeholder.search-input")}
+              placeholder={t("placeholders.search-input")}
               fullWidth
               size="medium"
               autoFocus
@@ -238,15 +237,16 @@ export const SearchItem = ({ onClick }: SearchItemProps) => {
   };
 
   return (
-    <ListItem style={style} disableGutters>
+    <ListItem
+      style={style}
+      disableGutters
+      secondaryAction={<SearchItemRemoveAction />}
+    >
       <ListItemButton onClick={handleClick}>
         <ListItemText
           primary={item.query}
           sx={{ paddingRight: 5 }}
         ></ListItemText>
-        <ListItemSecondaryAction>
-          <SearchItemRemoveAction />
-        </ListItemSecondaryAction>
       </ListItemButton>
     </ListItem>
   );

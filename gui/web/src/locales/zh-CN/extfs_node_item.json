@@ -1,0 +1,15 @@
+{
+  "resources": {
+    "extfs/local-node-items": {
+      "input": {
+        "filePath": "文件选择"
+      },
+      "fields": {
+        "name": "名称",
+        "filePath": "文件路径",
+        "enabled": "启用状态",
+        "available": "可用状态"
+      }
+    }
+  }
+}

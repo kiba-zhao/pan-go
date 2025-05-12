@@ -5,24 +5,26 @@
  */
 
 import "./App.css";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { I18nProvider } from "./components/i18n/Context";
+import { Provider as I18NextProvider } from "./components/I18Next/Context";
+import { ThemeProvider } from "./components/Master/Theme";
 import { Router, Route, Outlet } from "./components/Route/Router";
 
-import { Master, MasterErrorBoundary } from "./components/Master/Layout";
+import { Master } from "./components/Master/Layout";
 // AppNode
-import { AppNodeCreate, AppNodeEdit } from "./components/AppNode/Page";
+import { AppNodeCreatePage, AppNodeEditPage } from "./components/AppNode/Page";
 import { AppNodeCreatePath, AppNodeEditPath } from "./components/AppNode/Route";
 //
 // ExtFSBrowseFile
-import { default as ExtFSBrowseFile } from "./components/ExtFSBrowseFile/Page";
+import { default as ExtFSBrowseFilePage } from "./components/ExtFSBrowseFile/Page";
 import { ExtFSBrowseFilePath } from "./components/ExtFSBrowseFile/Route";
 //
 // ExtFSNodeItem
 import {
-  ExtFSNodeItemCreate,
-  ExtFSNodeItemEdit,
-  ExtFSNodeItemView,
+  ExtFSNodeItemCreatePage,
+  ExtFSNodeItemEditPage,
+  ExtFSNodeItemViewPage,
 } from "./components/ExtFSNodeItem/Page";
 import {
   ExtFSNodeItemCreatePath,
@@ -31,16 +33,16 @@ import {
 } from "./components/ExtFSNodeItem/Route";
 //
 // AppSettings
-import { AppSettings } from "./components/AppSettings/Page";
+import { AppSettingsPage } from "./components/AppSettings/Page";
 import { AppSettingsPath } from "./components/AppSettings/Route";
 //
 // ExtFS
-import { default as ExtFSHome } from "./components/ExtFS/Page";
+import { default as ExtFSPage } from "./components/ExtFS/Page";
 import { ExtFSPath } from "./components/ExtFS/Route";
 //
 
 // Error Page
-import { PageNotFound } from "./components/Master/Page";
+import { NotFoundPage } from "./components/Master/Page";
 //
 
 // import { Component, lazy } from "react";
@@ -61,34 +63,35 @@ import { PageNotFound } from "./components/Master/Page";
 // };
 
 const queryClient = new QueryClient();
-const AppProvider = ({ children }: { children?: React.ReactNode }) => (
-  <I18nProvider>
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  </I18nProvider>
-);
-
 const AppLayout = () => (
-  <Master>
-    <Outlet />
-  </Master>
+  <QueryClientProvider client={queryClient}>
+    <I18NextProvider>
+      <ThemeProvider>
+        <Master>
+          <Outlet />
+        </Master>
+      </ThemeProvider>
+    </I18NextProvider>
+  </QueryClientProvider>
 );
 
 export const App = () => (
-  <AppProvider>
-    <Router>
-      <Route Component={AppLayout} ErrorBoundary={MasterErrorBoundary}>
-        <Route index path={ExtFSPath} Component={ExtFSHome} />
-        <Route path={AppSettingsPath} Component={AppSettings} />
-        <Route path={ExtFSNodeItemCreatePath} Component={ExtFSNodeItemCreate} />
-        <Route path={ExtFSNodeItemEditPath} Component={ExtFSNodeItemEdit} />
-        <Route path={ExtFSNodeItemShowPath} Component={ExtFSNodeItemView} />
-        <Route path={ExtFSBrowseFilePath} Component={ExtFSBrowseFile} />
-        <Route path={AppNodeCreatePath} Component={AppNodeCreate} />
-        <Route path={AppNodeEditPath} Component={AppNodeEdit} />
-        <Route path="*" Component={PageNotFound} />
-      </Route>
-    </Router>
-  </AppProvider>
+  <Router>
+    <Route Component={AppLayout}>
+      <Route index path={ExtFSPath} Component={ExtFSPage} />
+      <Route path={AppSettingsPath} Component={AppSettingsPage} />
+      <Route
+        path={ExtFSNodeItemCreatePath}
+        Component={ExtFSNodeItemCreatePage}
+      />
+      <Route path={ExtFSNodeItemEditPath} Component={ExtFSNodeItemEditPage} />
+      <Route path={ExtFSNodeItemShowPath} Component={ExtFSNodeItemViewPage} />
+      <Route path={ExtFSBrowseFilePath} Component={ExtFSBrowseFilePage} />
+      <Route path={AppNodeCreatePath} Component={AppNodeCreatePage} />
+      <Route path={AppNodeEditPath} Component={AppNodeEditPage} />
+      <Route path="*" Component={NotFoundPage} />
+    </Route>
+  </Router>
 );
 
 export default App;

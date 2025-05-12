@@ -12,14 +12,14 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
 import CircleIcon from "@mui/icons-material/Circle";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 
 import { useNavigate, useParams } from "../Route/Router";
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
+import { PageI18Next } from "../I18Next/Page";
 import type { ExtFSNodeItem, ExtFSNodeItemFields } from "./api";
 import {
   selectExtFSNodeItem,
@@ -38,11 +38,12 @@ import {
   ExtFSNodeItemCreateI18nKey,
   ExtFSNodeItemCreatePath,
   ExtFSNodeItemI18nKey,
+  ExtFSNodeItemNS,
 } from "./Route";
 import { ExtFSPath } from "../ExtFS/Route";
 import { generateEditPath } from "../Route/utils";
 import { PageHeader } from "../Master/Header";
-import { PageLayout, PageTopBar } from "../Master/Page";
+import { PageLayout, PageTopBar, PageHeaderTitle } from "../Master/Page";
 import { RouteMore } from "../Route/More";
 
 /**
@@ -50,7 +51,12 @@ import { RouteMore } from "../Route/More";
  *
  * @returns {JSX.Element} The JSX element representing the ExtFSNodeItem Panel
  */
-export const ExtFSNodeItemCreate = () => <ExtFSNodeItemForm />;
+export const ExtFSNodeItemCreatePage = () => (
+  <Fragment>
+    <PageI18Next ns={ExtFSNodeItemNS} defaultNS={ExtFSNodeItemNS} />
+    <ExtFSNodeItemForm />
+  </Fragment>
+);
 
 /**
  * SaveButton Component
@@ -104,13 +110,13 @@ const SaveButton = ({
         onClick={handleClick}
         disabled={disabled}
       >
-        {t("custom.button.save")}
+        {t("buttons.save")}
       </Button>
       <Dialog open={open} onClose={handleClose}>
-        <DialogConfirmContent label={t("custom.button.save")} />
+        <DialogConfirmContent label={t("buttons.save")} />
         <DialogActions>
           <DialogConfirmActions
-            label={t("custom.button.save")}
+            label={t("buttons.save")}
             onConfirm={handleConfirm}
           />
         </DialogActions>
@@ -165,13 +171,13 @@ const DeleteButton = ({
         onClick={handleClick}
         disabled={disabled}
       >
-        {t("custom.button.remove")}
+        {t("buttons.remove")}
       </Button>
       <Dialog open={open} onClose={handleClose}>
-        <DialogConfirmContent label={t("custom.button.remove")} />
+        <DialogConfirmContent label={t("buttons.remove")} />
         <DialogActions>
           <DialogConfirmActions
-            label={t("custom.button.remove")}
+            label={t("buttons.remove")}
             onConfirm={handleConfirm}
           />
         </DialogActions>
@@ -272,7 +278,7 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
               onClick={handleReset}
               disabled={isPending}
             >
-              {t("custom.button.reset")}
+              {t("buttons.reset")}
             </Button>
           )}
           <SaveButton
@@ -287,7 +293,7 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
             name="name"
             render={({ field }) => (
               <TextField
-                label={t("custom.extfs/local-node-items.fields.name")}
+                label={t("resources.extfs/local-node-items.fields.name")}
                 fullWidth
                 variant="filled"
                 {...field}
@@ -300,15 +306,15 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
             name="filePath"
             render={({ field }) => (
               <FilePathInput
-                title={t("custom.extfs/local-node-items.input.filePath", {})}
-                label={t("custom.extfs/local-node-items.fields.filePath")}
+                title={t("resources.extfs/local-node-items.input.filePath", {})}
+                label={t("resources.extfs/local-node-items.fields.filePath")}
                 {...field}
               />
             )}
           />
           <FormControl component="fieldset">
             <FormLabel component="legend">
-              {t("custom.extfs/local-node-items.fields.enabled")}
+              {t("resources.extfs/local-node-items.fields.enabled")}
             </FormLabel>
             <Controller
               control={control}
@@ -316,9 +322,7 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
               render={({ field }) => (
                 <FormControlLabel
                   label={t(
-                    enabled === false
-                      ? "custom.label.disabled"
-                      : "custom.label.enabled"
+                    enabled === false ? "labels.disabled" : "labels.enabled"
                   )}
                   labelPlacement="end"
                   control={
@@ -337,13 +341,13 @@ const ExtFSNodeItemForm = ({ id }: { id?: ExtFSNodeItem["id"] }) => {
             sx={{ display: id === void 0 ? "none" : "block" }}
           >
             <FormLabel component="legend">
-              {t("custom.extfs/local-node-items.fields.available")}
+              {t("resources.extfs/local-node-items.fields.available")}
             </FormLabel>
             <FormControlLabel
               label={t(
                 available === false
-                  ? "custom.label.not_available"
-                  : "custom.label.available"
+                  ? "labels.not_available"
+                  : "labels.available"
               )}
               labelPlacement="end"
               control={
@@ -366,13 +370,13 @@ const ExtFSNodeItemEditTitle = () => {
   const { id } = useParams();
   const id_ = id ? parseInt(id) : 0;
   return (
-    <Typography variant="h6">
+    <PageHeaderTitle>
       {t(
         id_ == 0 || isNaN(id_)
           ? ExtFSNodeItemCreateI18nKey
           : ExtFSNodeItemEditI18nKey
       )}
-    </Typography>
+    </PageHeaderTitle>
   );
 };
 
@@ -381,6 +385,13 @@ const ExtFSNodeItemAddons = () => {
   const path = id === void 0 ? ExtFSNodeItemCreatePath : void 0;
   return <RouteMore path={path}></RouteMore>;
 };
+
+export const ExtFSNodeItemEditPage = () => (
+  <Fragment>
+    <PageI18Next ns={ExtFSNodeItemNS} defaultNS={ExtFSNodeItemNS} />
+    <ExtFSNodeItemEdit />
+  </Fragment>
+);
 /**
  * Component for editing an ExtFS node item.
  *
@@ -393,7 +404,7 @@ const ExtFSNodeItemAddons = () => {
  * @returns {JSX.Element} A form for editing or creating an ExtFS node item.
  */
 
-export const ExtFSNodeItemEdit = () => {
+const ExtFSNodeItemEdit = () => {
   const { id } = useParams();
   const id_ = id ? parseInt(id) : 0;
   if (id_ == 0 || isNaN(id_)) return <ExtFSNodeItemForm />;
@@ -402,8 +413,15 @@ export const ExtFSNodeItemEdit = () => {
 
 const ExtFSNodeItemViewTitle = () => {
   const { t } = useTranslation();
-  return <Typography variant="h6">{t(ExtFSNodeItemI18nKey)}</Typography>;
+  return <PageHeaderTitle>{t(ExtFSNodeItemI18nKey)}</PageHeaderTitle>;
 };
+
+export const ExtFSNodeItemViewPage = () => (
+  <Fragment>
+    <PageI18Next ns={ExtFSNodeItemNS} defaultNS={ExtFSNodeItemNS} />
+    <ExtFSNodeItemView />
+  </Fragment>
+);
 /**
  * Component for viewing an ExtFS node item.
  *
@@ -417,7 +435,7 @@ const ExtFSNodeItemViewTitle = () => {
  *
  * @returns {JSX.Element} A form for viewing an ExtFS node item.
  */
-export const ExtFSNodeItemView = () => {
+const ExtFSNodeItemView = () => {
   const { t } = useTranslation();
   const { id: paramId } = useParams();
   const id = parseInt(paramId as string);
@@ -446,7 +464,7 @@ export const ExtFSNodeItemView = () => {
           sx={{ display: id === void 0 ? "none" : "block" }}
           disabled={isFetching}
         >
-          {t("custom.button.refresh")}
+          {t("buttons.refresh")}
         </Button>
         <Button
           variant="contained"
@@ -455,18 +473,18 @@ export const ExtFSNodeItemView = () => {
           disabled={isFetching}
           color="success"
         >
-          {t("custom.button.open")}
+          {t("buttons.open")}
         </Button>
       </PageTopBar>
       <Stack spacing={2} marginTop={2}>
         <TextField
-          label={t("custom.extfs/local-node-items.fields.name")}
+          label={t("resources.extfs/local-node-items.fields.name")}
           fullWidth
           variant="filled"
           value={data?.name || ""}
         />
         <TextField
-          label={t("custom.extfs/local-node-items.fields.filePath")}
+          label={t("resources.extfs/local-node-items.fields.filePath")}
           fullWidth
           variant="filled"
           value={data?.filePath || ""}

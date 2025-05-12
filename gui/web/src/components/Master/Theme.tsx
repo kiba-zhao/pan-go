@@ -3,19 +3,26 @@ import {
   ThemeProvider as MuiThemeProvider,
   useColorScheme,
 } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
 
-import IconButton from "@mui/material/IconButton";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
+import IconButton from "@mui/material/IconButton";
+import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 
 import { ReactNode, useMemo } from "react";
 
 const defaultThemeOptions = {
   colorSchemes: {
     dark: true,
+    light: true,
+  },
+  cssVariables: {
+    colorSchemeSelector: "class",
   },
 };
+export const ColorSchemeScript = () => (
+  <InitColorSchemeScript attribute="class" />
+);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const theme = useMemo(() => createTheme(defaultThemeOptions), []);
@@ -27,12 +34,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const ToggleColorModeButton = () => {
-  const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
-  const { mode, setMode } = useColorScheme();
+  const { mode, systemMode, setMode } = useColorScheme();
   const colorDarkMode = useMemo(
-    () =>
-      mode === "dark" || (mode === "system" && prefersDarkMode) ? true : false,
-    [mode, prefersDarkMode]
+    () => mode === "dark" || (mode === "system" && systemMode === "dark"),
+    [mode, systemMode]
   );
 
   if (!mode) {

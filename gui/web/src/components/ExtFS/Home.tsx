@@ -7,7 +7,7 @@ import { newExtFSState as newExtFSStateWithNodeItem } from "./NodeItem";
 import { newExtFSState as newExtFSStateWithRemote } from "./RemoteItem";
 import { useExtFS } from "./State";
 
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
 import type { AppNode } from "./api";
 import { selectAllAppSettings, selectAllAppNodes } from "./api";
 import { APP_SETTINGS_QUERY_KEY } from "../AppSettings/Page";

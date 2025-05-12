@@ -20,9 +20,10 @@ import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
+import { PageI18Next } from "../I18Next/Page";
 import { PageHeader } from "../Master/Header";
-import { PageLayout, PageTopBar } from "../Master/Page";
+import { PageLayout, PageTopBar, PageHeaderTitle } from "../Master/Page";
 import type { AppSettingsFields } from "./api";
 import { selectAllAppSettings, saveAppSettings } from "./api";
 import {
@@ -58,7 +59,7 @@ import {
   useForm,
   useFormContext,
 } from "react-hook-form";
-import { AppSettingsI18nKey, AppSettingsPath } from "./Route";
+import { AppSettingsI18nKey, AppSettingsNS, AppSettingsPath } from "./Route";
 
 const TabPanel = ({
   children,
@@ -76,12 +77,19 @@ export const APP_SETTINGS_QUERY_KEY = ["app-settings"];
 
 const AppSettingsTitle = () => {
   const { t } = useTranslation();
-  return <Typography variant="h6">{t(AppSettingsI18nKey)}</Typography>;
+  return <PageHeaderTitle>{t(AppSettingsI18nKey)}</PageHeaderTitle>;
 };
 
 const AppSettingsAddons = () => {
   return <RouteMore path={AppSettingsPath}></RouteMore>;
 };
+
+export const AppSettingsPage = () => (
+  <Fragment>
+    <PageI18Next ns={AppSettingsNS} defaultNS={AppSettingsNS} />
+    <AppSettings />
+  </Fragment>
+);
 /**
  * AppSettings Component
  *
@@ -96,7 +104,7 @@ const AppSettingsAddons = () => {
  * selected tab.
  */
 
-export const AppSettings = () => {
+const AppSettings = () => {
   const { t } = useTranslation();
   const [tab, setTab] = useState("summary");
   const onChange = (_: React.SyntheticEvent, newValue: string) => {
@@ -113,21 +121,21 @@ export const AppSettings = () => {
       <PageHeader title={<AppSettingsTitle />} addons={<AppSettingsAddons />} />
       <PageLayout>
         <Tabs value={tab} onChange={onChange}>
-          <Tab label={t("custom.app/settings.summary")} value={"summary"} />
+          <Tab label={t("resources.app/settings.summary")} value={"summary"} />
           <Tab
-            label={t("custom.app/settings.web-address")}
+            label={t("resources.app/settings.web-address")}
             value={"web-address"}
           />
           <Tab
-            label={t("custom.app/settings.peer-address")}
+            label={t("resources.app/settings.peer-address")}
             value={"peer-address"}
           />
           <Tab
-            label={t("custom.app/settings.broadcast-address")}
+            label={t("resources.app/settings.broadcast-address")}
             value={"broadcast-address"}
           />
           <Tab
-            label={t("custom.app/settings.public-address")}
+            label={t("resources.app/settings.public-address")}
             value={"public-address"}
           />
         </Tabs>
@@ -175,7 +183,7 @@ const RefreshButton = () => {
   };
   return (
     <Button variant="contained" size="small" color="warning" onClick={onClick}>
-      {t("custom.button.refresh")}
+      {t("buttons.refresh")}
     </Button>
   );
 };
@@ -214,13 +222,13 @@ const SaveButton = () => {
   return (
     <Fragment>
       <Button variant="contained" size="small" onClick={onOpen}>
-        {t("custom.button.save")}
+        {t("buttons.save")}
       </Button>
       <Dialog open={open} onClose={onClose}>
-        <DialogConfirmContent label={t("custom.button.save")} />
+        <DialogConfirmContent label={t("buttons.save")} />
         <DialogActions>
           <DialogConfirmActions
-            label={t("custom.button.save")}
+            label={t("buttons.save")}
             onConfirm={onConfirm}
           />
         </DialogActions>
@@ -314,13 +322,13 @@ const AppSummarySettings = () => {
           >
             <QRCodeDownloadButton />
             <Button variant="contained" color="error" size="small">
-              {t("custom.button.renew")}
+              {t("buttons.renew")}
             </Button>
           </Stack>
         </NodeQRCode>
         <Stack spacing={2} minWidth={200} maxWidth={760} width={"70%"}>
           <TextField
-            label={t("custom.app/settings.fields.rootPath")}
+            label={t("resources.app/settings.fields.rootPath")}
             fullWidth
             variant="filled"
             value={data?.rootPath}
@@ -330,7 +338,7 @@ const AppSummarySettings = () => {
             name="name"
             render={({ field }) => (
               <TextField
-                label={t("custom.app/settings.fields.name")}
+                label={t("resources.app/settings.fields.name")}
                 fullWidth
                 variant="filled"
                 {...field}
@@ -340,7 +348,7 @@ const AppSummarySettings = () => {
           />
 
           <TextField
-            label={t("custom.app/settings.fields.peerId")}
+            label={t("resources.app/settings.fields.peerId")}
             fullWidth
             multiline
             rows={3}
@@ -351,7 +359,7 @@ const AppSummarySettings = () => {
           />
           <FormControl component="fieldset">
             <FormLabel component="legend">
-              {t("custom.app/settings.fields.guardEnabled")}
+              {t("resources.app/settings.fields.guardEnabled")}
             </FormLabel>
             <Controller
               control={control}
@@ -360,8 +368,8 @@ const AppSummarySettings = () => {
                 <FormControlLabel
                   label={t(
                     guardEnabled === false
-                      ? "custom.label.disabled"
-                      : "custom.label.enabled"
+                      ? "labels.disabled"
+                      : "labels.enabled"
                   )}
                   labelPlacement="end"
                   control={
@@ -377,7 +385,7 @@ const AppSummarySettings = () => {
           </FormControl>
           <FormControl component="fieldset">
             <FormLabel component="legend">
-              {t("custom.app/settings.fields.guardAccess")}
+              {t("resources.app/settings.fields.guardAccess")}
             </FormLabel>
             <Controller
               control={control}
@@ -385,9 +393,7 @@ const AppSummarySettings = () => {
               render={({ field }) => (
                 <FormControlLabel
                   label={t(
-                    guardAccess === false
-                      ? "custom.label.refused"
-                      : "custom.label.allowed"
+                    guardAccess === false ? "labels.refused" : "labels.allowed"
                   )}
                   labelPlacement="end"
                   control={
@@ -468,7 +474,7 @@ const AddressEditDialog = ({
       <DialogTitle>
         <Stack direction="row" spacing={0.2} alignItems="flex-start">
           <Typography variant="h6">
-            {t("custom.app/settings.network-address")}
+            {t("resources.app/settings.network-address")}
           </Typography>
           <Typography
             variant="caption"
@@ -478,21 +484,21 @@ const AddressEditDialog = ({
             borderRadius={0.5}
             hidden={!isNew}
           >
-            {t("custom.button.new")}
+            {t("buttons.new")}
           </Typography>
         </Stack>
       </DialogTitle>
       <DialogContent>
         <Stack paddingY={1} direction="row" spacing={1.5}>
           <TextField
-            label={t("custom.app/settings.ip")}
+            label={t("resources.app/settings.ip")}
             value={fields[0]}
             onChange={onIPChange}
             variant="outlined"
             focused
           />
           <TextField
-            label={t("custom.app/settings.port")}
+            label={t("resources.app/settings.port")}
             value={fields[1]}
             onChange={onPortChange}
             variant="outlined"
@@ -504,7 +510,7 @@ const AddressEditDialog = ({
         <DialogSubmitActions
           onSubmit={onSubmit}
           onCancel={onCancel}
-          label={isNew ? t("custom.button.new") : t("custom.button.edit")}
+          label={isNew ? t("buttons.new") : t("buttons.edit")}
         />
       </DialogActions>
     </Dialog>
@@ -543,7 +549,7 @@ const NewAddressButton = ({
   return (
     <Fragment>
       <Button variant="contained" color="success" size="small" onClick={onOpen}>
-        {t("custom.button.new")}
+        {t("buttons.new")}
       </Button>
       <Controller
         control={control}
@@ -583,7 +589,7 @@ const EditAddressButton = ({ source }: { source: string }) => {
   return (
     <Fragment>
       <Button variant="outlined" size="small" onClick={onOpen}>
-        {t("custom.button.edit")}
+        {t("buttons.edit")}
       </Button>
       <Controller
         control={control}
@@ -639,16 +645,16 @@ const RemoveAddressButton = ({
   return (
     <Fragment>
       <Button variant="contained" color="error" size="small" onClick={onOpen}>
-        {t("custom.button.remove")}
+        {t("buttons.remove")}
       </Button>
       <Dialog open={open} onClose={onClose}>
         <DialogConfirmContent
-          label={t("custom.button.remove")}
-          contentLabel={`${t("custom.button.remove").toLowerCase()} ${value}`}
+          label={t("buttons.remove")}
+          contentLabel={`${t("buttons.remove").toLowerCase()} ${value}`}
         />
         <DialogActions>
           <DialogConfirmActions
-            label={t("custom.button.remove")}
+            label={t("buttons.remove")}
             onConfirm={onConfirm}
           />
         </DialogActions>
@@ -783,13 +789,13 @@ const AppAddressSettingsItem = ({
           </Avatar>
           <Stack spacing={1.5}>
             <TextField
-              label={t("custom.app/settings.ip")}
+              label={t("resources.app/settings.ip")}
               value={ip}
               variant="outlined"
               slotProps={{ htmlInput: { readOnly: true } }}
             />
             <TextField
-              label={t("custom.app/settings.port")}
+              label={t("resources.app/settings.port")}
               value={port}
               variant="outlined"
               slotProps={{ htmlInput: { readOnly: true } }}

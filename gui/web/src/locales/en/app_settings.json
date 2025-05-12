@@ -1,0 +1,24 @@
+{
+  "resources": {
+    "app/settings": {
+      "summary": "SUMMARY",
+      "network-address": "NET ADDRESS",
+      "web-address": "Web Service Address",
+      "peer-address": "Peer Service Address",
+      "broadcast-address": "Broadcast Service Address",
+      "public-address": "Public Address",
+      "ip": "IP",
+      "port": "Port",
+      "fields": {
+        "rootPath": "Root Path",
+        "peerId": "Peer ID",
+        "name": "Peer Name",
+        "guardEnabled": "Guard Enabled",
+        "guardAccess": "Default Access"
+      },
+      "input": {
+        "filePath": "Disk Path Selector"
+      }
+    }
+  }
+}

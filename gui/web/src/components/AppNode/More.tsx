@@ -1,6 +1,11 @@
-import { AppNodeCreatePath, AppNodeCreateI18nKey, AppNodeIcon } from "./Route";
+import {
+  AppNodeCreatePath,
+  AppNodeCreateI18nKey,
+  AppNodeNS,
+  AppNodeIcon,
+} from "./Route";
 import { MoreLinkItem } from "../Common/MoreButton";
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
 
 export const NewAppNodeMore = ({ selected }: { selected?: boolean }) => {
   const { t } = useTranslation();
@@ -10,7 +15,7 @@ export const NewAppNodeMore = ({ selected }: { selected?: boolean }) => {
       icon={<AppNodeIcon />}
       selected={selected}
     >
-      {t(AppNodeCreateI18nKey)}
+      {t(AppNodeCreateI18nKey, { ns: AppNodeNS })}
     </MoreLinkItem>
   );
 };

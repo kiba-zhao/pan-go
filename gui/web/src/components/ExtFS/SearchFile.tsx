@@ -17,7 +17,7 @@ import { generateEditPath } from "../Route/utils";
 import { ExtFSNodeItemPath } from "../ExtFSNodeItem/Route";
 import { ExtFSBrowseFilePath } from "../ExtFSBrowseFile/Route";
 import type { ExtFSSearchFile, ExtFSSearchItem } from "./api";
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
 
 import CloseIcon from "@mui/icons-material/Close";
 import CloudIcon from "@mui/icons-material/Cloud";
@@ -233,7 +233,7 @@ export const SearchNavigationMenuRoot = ({
   };
   return (
     <MenuItem onClick={handleClick} sx={sx}>
-      {t("extfs.search.search")}
+      {t("resources.extfs.search")}
     </MenuItem>
   );
 };

@@ -1,5 +1,5 @@
 import { MoreLinkItem } from "../Common/MoreButton";
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
 import { AppSettingsPath, AppSettingsI18nKey, AppSettingsIcon } from "./Route";
 
 export const AppSettingsMore = ({ selected }: { selected?: boolean }) => {

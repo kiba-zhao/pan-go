@@ -1,0 +1,24 @@
+{
+  "resources": {
+    "app/settings": {
+      "summary": "通用设置",
+      "network-address": "网络地址",
+      "web-address": "网页地址",
+      "peer-address": "节点地址",
+      "broadcast-address": "广播地址",
+      "public-address": "公告地址",
+      "ip": "IP 地址",
+      "port": "端口",
+      "fields": {
+        "rootPath": "根目录",
+        "peerId": "节点ID",
+        "name": "节点名称",
+        "guardEnabled": "节点防火墙",
+        "guardAccess": "默认访问"
+      },
+      "input": {
+        "filePath": "磁盘目录选择"
+      }
+    }
+  }
+}

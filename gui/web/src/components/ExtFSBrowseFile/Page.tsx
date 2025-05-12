@@ -8,7 +8,6 @@ import AlertTitle from "@mui/material/AlertTitle";
 import LinearProgress from "@mui/material/LinearProgress";
 import type { LinkProps } from "@mui/material/Link";
 import Link from "@mui/material/Link";
-import Typography from "@mui/material/Typography";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Trans } from "react-i18next";
@@ -29,15 +28,24 @@ import { ExtFSNodeQueryKey } from "../ExtFS/NodeItem";
 import { ExtFSRemoteFileQueryKey } from "../ExtFS/RemoteFile";
 import { ExtFSRemoteQueryKey } from "../ExtFS/RemoteItem";
 import { useBrowser } from "../Browser";
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
+import { PageI18Next } from "../I18Next/Page";
 import { PageHeader } from "../Master/Header";
-import { PageLayout, PageNotFound } from "../Master/Page";
-import { ExtFSBrowseFileI18nKey } from "./Route";
+import { PageLayout, PageNotFound, PageHeaderTitle } from "../Master/Page";
+
+import { ExtFSBrowseFileI18nKey, ExtFSBrowseFileNS } from "./Route";
 
 const ExtFSBrowseFileTitle = () => {
   const { t } = useTranslation();
-  return <Typography variant="h6">{t(ExtFSBrowseFileI18nKey)}</Typography>;
+  return <PageHeaderTitle>{t(ExtFSBrowseFileI18nKey)}</PageHeaderTitle>;
 };
+
+const ExtFSBrowseFilePage = () => (
+  <Fragment>
+    <PageI18Next ns={ExtFSBrowseFileNS} defaultNS={ExtFSBrowseFileNS} />
+    <ExtFSBrowseFile />
+  </Fragment>
+);
 
 /**
  * ExtFSBrowseFile Component
@@ -104,7 +112,7 @@ function parseQueryParams(query: URLSearchParams): ExtFSBrowseFileQueryParams {
   return params;
 }
 
-export default ExtFSBrowseFile;
+export default ExtFSBrowseFilePage;
 
 /**
  * Calculate 1024 to the power of a given number
@@ -173,14 +181,14 @@ const ExtFSBrowseFileView = ({
   const errorProps = useMemo(() => {
     if (error) {
       return {
-        title: t("custom.extfs/browse-files.error"),
+        title: t("resources.extfs/browse-files.error"),
         desc: error.message,
       };
     }
     if (disabled) {
       return {
-        title: t("custom.extfs/browse-files.disabled"),
-        desc: t("custom.extfs/browse-files.disabled_desc", {
+        title: t("resources.extfs/browse-files.disabled"),
+        desc: t("resources.extfs/browse-files.disabled_desc", {
           fileName,
           fileSize: fileSizeStr,
         }),
@@ -189,8 +197,8 @@ const ExtFSBrowseFileView = ({
 
     if (fileType !== "F") {
       return {
-        title: t("custom.extfs/browse-files.invalid"),
-        desc: t("custom.extfs/browse-files.invalid_desc", {
+        title: t("resources.extfs/browse-files.invalid"),
+        desc: t("resources.extfs/browse-files.invalid_desc", {
           fileName,
           fileSize: fileSizeStr,
         }),
@@ -281,18 +289,18 @@ const ExtFSBrowseFileViewWithSuccess = ({
 
   return (
     <Alert severity={countDown > 0 ? "success" : "info"}>
-      <AlertTitle>{t("custom.extfs/browse-files.success")}</AlertTitle>
+      <AlertTitle>{t("resources.extfs/browse-files.success")}</AlertTitle>
       {countDown > 0 ? (
         <Fragment>
           <Trans
-            i18nKey={"custom.extfs/browse-files.success_countdown"}
+            i18nKey={"resources.extfs/browse-files.success_countdown"}
             values={{ countDown }}
             components={{
               Typography: <span style={{ color: "red" }} />,
             }}
           ></Trans>
           <Trans
-            i18nKey={"custom.extfs/browse-files.success_desc"}
+            i18nKey={"resources.extfs/browse-files.success_desc"}
             values={{ fileName, fileSize: fileSize }}
             components={{
               Link: <Link {...linkProps} />,
@@ -300,7 +308,7 @@ const ExtFSBrowseFileViewWithSuccess = ({
           ></Trans>
         </Fragment>
       ) : (
-        t("custom.extfs/browse-files.success_delay_end", {
+        t("resources.extfs/browse-files.success_delay_end", {
           fileName,
           fileSize: fileSize,
         })

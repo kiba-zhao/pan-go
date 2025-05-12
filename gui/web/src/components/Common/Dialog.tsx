@@ -1,4 +1,4 @@
-import { useTranslate } from "../i18n/Custom";
+import { useTranslation } from "../I18Next/Context";
 
 import Button from "@mui/material/Button";
 import type { DialogProps as MuiDialogProps } from "@mui/material/Dialog";
@@ -58,14 +58,14 @@ export const DialogSaveActions = ({
   onCancel: () => void;
   label?: string;
 }) => {
-  const { t } = useTranslate();
+  const { t } = useTranslation();
   return (
     <Fragment>
       <Button size="small" onClick={onCancel}>
-        {t("button.cancel")}
+        {t("buttons.cancel")}
       </Button>
       <Button size="small" onClick={onSave} autoFocus>
-        {label ? label : t("button.save")}
+        {label ? label : t("buttons.save")}
       </Button>
     </Fragment>
   );
@@ -96,14 +96,14 @@ export const DialogSubmitActions = ({
   onCancel: () => void;
   label?: string;
 }) => {
-  const { t } = useTranslate();
+  const { t } = useTranslation();
   return (
     <Fragment>
       <Button size="small" onClick={onCancel}>
-        {t("button.cancel")}
+        {t("buttons.cancel")}
       </Button>
       <Button size="small" onClick={onSubmit} autoFocus>
-        {label ? label : t("button.submit")}
+        {label ? label : t("buttons.submit")}
       </Button>
     </Fragment>
   );
@@ -130,11 +130,11 @@ export const DialogConfirmActions = ({
   onConfirm: (confirm: boolean) => void;
   label?: string;
 }) => {
-  const { t } = useTranslate();
+  const { t } = useTranslation();
   return (
     <Fragment>
       <Button size="small" onClick={() => onConfirm(false)}>
-        {t("button.cancel")}
+        {t("buttons.cancel")}
       </Button>
       <Button
         size="small"
@@ -142,7 +142,7 @@ export const DialogConfirmActions = ({
         autoFocus
         color="error"
       >
-        {label ? label : t("button.confirm")}
+        {label ? label : t("buttons.confirm")}
       </Button>
     </Fragment>
   );
@@ -165,13 +165,13 @@ export const DialogConfirmContent = ({
   label = "",
   contentLabel,
 }: DialogConfirmContentProps) => {
-  const { t } = useTranslate();
+  const { t } = useTranslation();
   return (
     <Fragment>
-      <DialogTitle>{t("dialog.confirm.title", { label })}</DialogTitle>
+      <DialogTitle>{t("dialogs.confirm.title", { label })}</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          {t("dialog.confirm.content", {
+          {t("dialogs.confirm.content", {
             label: contentLabel || label.toLowerCase(),
           })}
         </DialogContentText>

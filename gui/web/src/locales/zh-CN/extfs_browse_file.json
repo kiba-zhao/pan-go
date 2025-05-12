@@ -1,0 +1,15 @@
+{
+  "resources": {
+    "extfs/browse-files": {
+      "error": "文件访问异常",
+      "disabled": "文件禁止访问",
+      "disabled_desc": "文件 {{fileName}} ({{fileSize}}) 已禁止访问",
+      "invalid": "文件访问失败",
+      "invalid_desc": "文件 {{fileName}} ({{fileSize}}) 访问失败，尚不支持该文件。",
+      "success": "正在打开文件",
+      "success_desc": "直接打开 <Link>{{fileName}} ({{fileSize}})</Link>。",
+      "success_countdown": "将在<Typography> {{countDown}} </Typography>秒后自动跳转浏览文件。",
+      "success_delay_end": "即将打开文件 {{fileName}} ({{fileSize}})。"
+    }
+  }
+}

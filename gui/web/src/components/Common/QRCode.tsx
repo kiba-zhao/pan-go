@@ -6,7 +6,7 @@ import jsQR from "jsqr";
 import type { QRCodeRenderersOptions } from "qrcode";
 import { toCanvas } from "qrcode";
 import { useBrowser } from "../Browser";
-import { useTranslate } from "../i18n/Custom";
+import { useTranslation } from "../I18Next/Context";
 
 import Button from "@mui/material/Button";
 import type { Dispatch } from "react";
@@ -79,7 +79,7 @@ export const QRCode = ({ name, value, ...opts }: QRCodeProps) => {
 };
 
 export const QRCodeDownloadButton = () => {
-  const { t } = useTranslate();
+  const { t } = useTranslation();
   const { download, value, url } = useQR();
   return (
     <Button
@@ -90,7 +90,7 @@ export const QRCodeDownloadButton = () => {
       disabled={!value || value.length <= 0}
       startIcon={<PhotoIcon />}
     >
-      {t("button.save")}
+      {t("buttons.qrsave")}
     </Button>
   );
 };

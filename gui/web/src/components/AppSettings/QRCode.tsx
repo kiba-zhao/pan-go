@@ -1,6 +1,6 @@
-import { useTranslate } from "../i18n/Custom";
 import type { QRScanChangedEvent } from "../Common/QRCode";
 import { QRCode, QRFileScan, QRProvider, QRScan } from "../Common/QRCode";
+import { useTranslation } from "../I18Next/Context";
 
 import type { ReactNode } from "react";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -49,7 +49,7 @@ export const NodeQRCode = ({
 
 export const NodeQRScan = (props: NodeQRScanProps) => {
   const { onQRScan } = props;
-  const { t } = useTranslate();
+  const { t } = useTranslation();
 
   const browser = useBrowser();
   const [available, setAvailable] = useState(false);
@@ -82,13 +82,13 @@ export const NodeQRScan = (props: NodeQRScanProps) => {
         onClick={onOpen}
         disabled={!available}
       >
-        {t("button.qrscan")}
+        {t("buttons.qrscan")}
       </Button>
       {available && open && (
         <Dialog open={open} onClose={onClose}>
           <DialogActions>
             <Button size="small" onClick={onClose}>
-              {t("button.close")}
+              {t("buttons.close")}
             </Button>
           </DialogActions>
           <DialogContent>
@@ -104,7 +104,7 @@ type NodeQRScanProps = {
   onQRScan?: (value: NodeQRCodeValue) => void;
 };
 export const NodeFileQRScan = ({ onQRScan }: NodeQRScanProps) => {
-  const { t } = useTranslate();
+  const { t } = useTranslation();
 
   const onFileScan = (value: string) => {
     const nodeValue = parseNodeQRCodeValue(value);
@@ -119,7 +119,7 @@ export const NodeFileQRScan = ({ onQRScan }: NodeQRScanProps) => {
         size="small"
         startIcon={<ImageIcon />}
       >
-        {t("button.qrscan-file")}
+        {t("buttons.qrscan-file")}
         <QRFileScan onChange={onFileScan} />
       </Button>
     </Fragment>

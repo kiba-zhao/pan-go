@@ -1,0 +1,18 @@
+{
+  "resources": {
+    "app/nodes": {
+      "fields": {
+        "peerId": "Peer ID",
+        "networkAddr": "Network Address"
+      },
+      "filters": {
+        "stat": "Online / Blocked",
+        "online": "Online",
+        "blocked": "Blocked"
+      }
+    },
+    "not_found": {
+      "text": "Unknown App Node"
+    }
+  }
+}

@@ -2,18 +2,18 @@
  * Master Component Definition File
  */
 
-import { Fragment, type ReactNode } from "react";
-import { ThemeProvider, ToggleColorModeButton } from "./Theme";
-import { LocalesMenuButton, useTranslation } from "../i18n/Context";
-import { HeaderView, HeaderProvider, PageHeaderTitle } from "./Header";
+import { Fragment } from "react";
+import { LocalesMenuButton } from "../I18Next/Menu";
 import { Provider, ProviderView } from "./Context";
+import { HeaderProvider, HeaderView } from "./Header";
+import { ToggleColorModeButton } from "./Theme";
 
-import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import useMediaQuery from "@mui/material/useMediaQuery";
+import CssBaseline from "@mui/material/CssBaseline";
 import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
+
+import type { ReactNode } from "react";
 
 const MasterHeader = () => {
   const theme = useTheme();
@@ -35,11 +35,9 @@ const MasterMain = ({ children }: { children: ReactNode }) => (
 );
 
 const MasterProvider = ({ children }: { children: ReactNode }) => (
-  <ThemeProvider>
-    <Provider>
-      <HeaderProvider>{children}</HeaderProvider>
-    </Provider>
-  </ThemeProvider>
+  <Provider>
+    <HeaderProvider>{children}</HeaderProvider>
+  </Provider>
 );
 
 type MasterProps = {
@@ -54,18 +52,3 @@ export const Master = ({ children }: MasterProps) => (
     </ProviderView>
   </MasterProvider>
 );
-
-export const MasterErrorBoundary = () => {
-  const { t } = useTranslation();
-
-  return (
-    <Master>
-      <Card>
-        <PageHeaderTitle title={t("ra.page.not_found")} />
-        <CardContent>
-          <h1>404: {t("ra.page.not_found")}</h1>
-        </CardContent>
-      </Card>
-    </Master>
-  );
-};

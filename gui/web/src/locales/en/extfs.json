@@ -1,0 +1,12 @@
+{
+  "resources": {
+    "extfs": {
+      "root": "Root",
+      "search": "Search"
+    }
+  },
+  "placeholders": {
+    "search": "Search ...",
+    "search-input": "What are you looking for ?"
+  }
+}

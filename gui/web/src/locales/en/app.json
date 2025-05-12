@@ -1,0 +1,72 @@
+{
+  "resources": {
+    "app/nodes": {
+      "name": "Peer of App",
+      "create-name": "Create Node",
+      "edit-name": "Edit Node"
+    },
+    "app/settings": {
+      "name": "App Settings"
+    },
+    "extfs/browse-files": {
+      "name": "View File"
+    },
+    "extfs/local-node-items": {
+      "name": "Node Item",
+      "create-name": "Create Node Item",
+      "edit-name": "Edit Node Item"
+    },
+    "extfs": {
+      "name": "Extended File System"
+    },
+    "not_found": {
+      "text": "Error: Page Not Found"
+    }
+  },
+  "labels": {
+    "available": "Available",
+    "not_available": "Not Available",
+    "disabled": "Disabled",
+    "enabled": "Enabled",
+    "allowed": "Allowed",
+    "refused": "Refused"
+  },
+  "dialogs": {
+    "confirm": {
+      "title": "{{label}} Confirm ",
+      "content": "Are you sure to {{label}} ? "
+    }
+  },
+  "buttons": {
+    "back": "Back",
+    "back-to-home": "Back Home",
+    "open": "Open",
+    "settings": "Settings",
+    "add": "Add",
+    "revise": "Revise",
+    "close": "Close",
+    "confirm": "Confirm",
+    "refresh": "Refresh",
+    "download": "Download",
+    "qrscan": "Scan",
+    "qrscan-file": "File Scan",
+    "qrsave": "Save QR",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "edit": "Edit",
+    "new": "New",
+    "reset": "Reset",
+    "save": "Save",
+    "copy": "Copy",
+    "renew": "Renew",
+    "import": "Import",
+    "export": "Export"
+  },
+  "errors": {
+    "SearchError": "Searching encountered an exception",
+    "FetchError": {
+      "500": "System Error"
+    }
+  }
+}

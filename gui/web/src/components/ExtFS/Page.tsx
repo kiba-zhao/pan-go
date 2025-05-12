@@ -19,10 +19,11 @@ import { styled, useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
-import { PageLayout } from "../Master/Page";
+import { PageLayout, PageHeaderTitle } from "../Master/Page";
 import { PageHeader } from "../Master/Header";
 import { PageProvider } from "../Master/Context";
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
+import { PageI18Next } from "../I18Next/Page";
 import { RouteMore } from "../Route/More";
 import {
   ExtFSSearchFileMode,
@@ -46,7 +47,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { Fragment, useMemo, useState } from "react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 
-import { ExtFSIcon, ExtFSI18nKey, ExtFSPath } from "./Route";
+import { ExtFSIcon, ExtFSI18nKey, ExtFSPath, ExtFSNS } from "./Route";
 
 /**
  * Provider for ExtFS state. It initializes the state with the home state and an empty list of parent items.
@@ -84,7 +85,7 @@ const HomeAddons = () => {
 const HomeTitle = () => {
   const { t } = useTranslation();
 
-  return <Typography variant="h6">{t(ExtFSI18nKey)}</Typography>;
+  return <PageHeaderTitle>{t(ExtFSI18nKey)}</PageHeaderTitle>;
 };
 
 /**
@@ -99,7 +100,7 @@ const HomeTitle = () => {
  *
  * @returns The root component of the ExtFS.
  */
-const Home = () => {
+const ExtFSView = () => {
   const [extfs, _] = useExtFS();
   const { mode } = extfs || {};
 
@@ -132,13 +133,14 @@ const Home = () => {
  * It wraps the Home component with the ExtFSProvider
  * to provide the ExtFS state to the Home component.
  */
-const ExtFSHome = () => (
+const ExtFSPage = () => (
   <Fragment>
     <PageProvider Component={ExtFSProvider} />
-    <Home />
+    <PageI18Next ns={ExtFSNS} defaultNS={ExtFSNS} />
+    <ExtFSView />
   </Fragment>
 );
-export default ExtFSHome;
+export default ExtFSPage;
 
 const CustomButton = styled(ButtonBase)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
@@ -184,7 +186,7 @@ const Search = () => {
         >
           <SearchIcon color="inherit" opacity={0.5} />
           <Typography sx={{ opacity: 0.5 }}>
-            {t("custom.placeholder.search")}
+            {t("placeholders.search")}
           </Typography>
         </Stack>
       </CustomButton>
@@ -354,7 +356,7 @@ const NavigationBar = () => {
       <SearchNavigationMenuRoot sx={{ width: anchorElWidth }} />
     ) : (
       <MenuItem onClick={handleHomeClick} sx={{ width: anchorElWidth }}>
-        {t("custom.extfs.root")}
+        {t("resources.extfs.root")}
       </MenuItem>
     );
 
@@ -385,7 +387,7 @@ const NavigationBar = () => {
             parentItems.length > 0 ? "none" : { xs: "block", sm: "none" },
         }}
       >
-        {t("custom.extfs.root")}
+        {t("resources.extfs.root")}
       </Typography>
       <ButtonBase
         sx={{

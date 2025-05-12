@@ -1,0 +1,24 @@
+{
+  "resources": {
+    "app/nodes": {
+      "fields": {
+        "peerId": "节点ID",
+        "name": "名称",
+        "online": "在线",
+        "offline": "离线",
+        "blocked": "封锁",
+        "networkAddr": "网络地址",
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间"
+      },
+      "filters": {
+        "stat": "在线 / 封锁",
+        "online": "在线",
+        "blocked": "封锁"
+      }
+    },
+    "not_found": {
+      "text": "未知的应用节点"
+    }
+  }
+}

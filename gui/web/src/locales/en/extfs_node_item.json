@@ -1,0 +1,15 @@
+{
+  "resources": {
+    "extfs/local-node-items": {
+      "input": {
+        "filePath": "File Path Selector"
+      },
+      "fields": {
+        "name": "Name",
+        "filePath": "File Path",
+        "enabled": "Enabled",
+        "available": "Available"
+      }
+    }
+  }
+}

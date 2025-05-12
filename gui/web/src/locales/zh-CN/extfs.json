@@ -1,0 +1,12 @@
+{
+  "resources": {
+    "extfs": {
+      "root": "根目录",
+      "search": "检索"
+    }
+  },
+  "placeholders": {
+    "search": "文件检索 ...",
+    "search-input": "请输入检索内容"
+  }
+}

@@ -10,7 +10,6 @@ import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
-import Typography from "@mui/material/Typography";
 
 import {
   useMemo,
@@ -44,13 +43,20 @@ import {
   AppNodeCreateI18nKey,
   AppNodeEditI18nKey,
   AppNodeCreatePath,
+  AppNodeNS,
 } from "./Route";
 import { generateEditPath } from "../Route/utils";
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
+import { PageI18Next } from "../I18Next/Page";
 import type { NodeQRCodeValue } from "../AppSettings/QRCode";
 import { NodeFileQRScan, NodeQRCode, NodeQRScan } from "../AppSettings/QRCode";
 import { PageHeader } from "../Master/Header";
-import { PageLayout, PageTopBar, PageNotFound } from "../Master/Page";
+import {
+  PageLayout,
+  PageTopBar,
+  PageNotFound,
+  PageHeaderTitle,
+} from "../Master/Page";
 import { ExtFSPath } from "../ExtFS/Route";
 import { RouteMore } from "../Route/More";
 
@@ -241,9 +247,7 @@ const AppNodeForm = () => {
             render={({ field }) => (
               <FormControlLabel
                 label={t(
-                  blocked === false
-                    ? "custom.label.disabled"
-                    : "custom.label.enabled"
+                  blocked === false ? "labels.disabled" : "labels.enabled"
                 )}
                 labelPlacement="end"
                 control={<Switch {...field} checked={!!blocked} />}
@@ -304,7 +308,7 @@ const ResetButton = ({ children }: { children?: React.ReactNode }) => {
       disabled={disabled}
       hidden={!id}
     >
-      {children || t("custom.button.reset")}
+      {children || t("buttons.reset")}
     </Button>
   );
 };
@@ -353,7 +357,7 @@ const SaveButton = ({ children }: { children?: React.ReactNode }) => {
         onClick={handleClick}
         disabled={disabled}
       >
-        {children ?? t("custom.button.save")}
+        {children ?? t("buttons.save")}
       </Button>
       <button
         type="submit"
@@ -363,10 +367,10 @@ const SaveButton = ({ children }: { children?: React.ReactNode }) => {
         disabled={disabled}
       />
       <Dialog open={open} onClose={handleClose}>
-        <DialogConfirmContent label={t("custom.button.save")} />
+        <DialogConfirmContent label={t("buttons.save")} />
         <DialogActions>
           <DialogConfirmActions
-            label={t("custom.button.save")}
+            label={t("buttons.save")}
             onConfirm={handleConfirm}
           />
         </DialogActions>
@@ -422,13 +426,13 @@ const DeleteButton = ({ children }: { children?: React.ReactNode }) => {
         hidden={!id}
         disabled={disabled}
       >
-        {children ?? t("custom.button.remove")}
+        {children ?? t("buttons.remove")}
       </Button>
       <Dialog open={open} onClose={handleClose}>
-        <DialogConfirmContent label={t("custom.button.remove")} />
+        <DialogConfirmContent label={t("buttons.remove")} />
         <DialogActions>
           <DialogConfirmActions
-            label={t("custom.button.remove")}
+            label={t("buttons.remove")}
             onConfirm={handleConfirm}
           />
         </DialogActions>
@@ -503,7 +507,7 @@ const AppNodeAddons = () => {
 
 const AppNodeCreateTitle = () => {
   const { t } = useTranslation();
-  return <Typography variant="h6">{t(AppNodeCreateI18nKey)}</Typography>;
+  return <PageHeaderTitle>{t(AppNodeCreateI18nKey)}</PageHeaderTitle>;
 };
 
 const AppNodeCreateProvider = ({
@@ -547,10 +551,11 @@ const AppNodeCreateForm = () => (
  * @returns {ReactElement} A React element representing the create form for
  * the app nodes resource.
  */
-export const AppNodeCreate = () => {
+export const AppNodeCreatePage = () => {
   return (
     <Fragment>
       <PageHeader title={<AppNodeCreateTitle />} addons={<AppNodeAddons />} />
+      <PageI18Next ns={AppNodeNS} defaultNS={AppNodeNS} />
       <PageProvider Component={AppNodeCreateProvider} />
       <AppNodeCreateForm />
     </Fragment>
@@ -559,7 +564,7 @@ export const AppNodeCreate = () => {
 
 const AppNodeEditTitle = () => {
   const { t } = useTranslation();
-  return <Typography variant="h6">{t(AppNodeEditI18nKey)}</Typography>;
+  return <PageHeaderTitle>{t(AppNodeEditI18nKey)}</PageHeaderTitle>;
 };
 
 const AppNodeEditProvider = ({ children }: { children?: React.ReactNode }) => {
@@ -579,11 +584,9 @@ const AppNodeEditProvider = ({ children }: { children?: React.ReactNode }) => {
 };
 
 const AppNodeEditForm = () => {
-  const { t } = useTranslation();
   const { id, data } = useContext(AppNodeContext) || {};
 
-  if (!id || data === null)
-    return <PageNotFound text={t("resources.app/nodes.not_found")} />;
+  if (!id || data === null) return <PageNotFound />;
   return (
     <PageLayout>
       <PageTopBar>
@@ -596,10 +599,11 @@ const AppNodeEditForm = () => {
   );
 };
 
-export const AppNodeEdit = () => {
+export const AppNodeEditPage = () => {
   return (
     <Fragment>
       <PageHeader title={<AppNodeEditTitle />} addons={<AppNodeAddons />} />
+      <PageI18Next ns={AppNodeNS} defaultNS={AppNodeNS} />
       <PageProvider Component={AppNodeEditProvider} />
       <AppNodeEditForm />
     </Fragment>

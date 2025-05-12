@@ -1,5 +1,5 @@
 import { MoreLinkItem } from "../Common/MoreButton";
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
 import {
   ExtFSNodeItemCreatePath,
   ExtFSNodeItemCreateI18nKey,

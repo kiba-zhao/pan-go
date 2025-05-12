@@ -1,4 +1,4 @@
-import { useTranslation } from "../i18n/Context";
+import { useTranslation } from "../I18Next/Context";
 import { MoreLinkItem } from "../Common/MoreButton";
 import { ExtFSPath, ExtFSI18nKey, ExtFSIcon } from "./Route";
 

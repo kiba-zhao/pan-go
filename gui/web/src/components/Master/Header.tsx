@@ -8,10 +8,9 @@ import {
   useReducerStateValue,
 } from "../Common/ReducerState";
 
-import Box from "@mui/material/Box";
 import AppBar from "@mui/material/AppBar";
+import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
 
 type HeaderState = {
   title?: ReactNode;
@@ -56,21 +55,4 @@ export const PageHeader = ({ partial, ...state_ }: PageHeaderProps) => {
     dispatch(partial ? { ...state, ...state_ } : state_);
   }, [partial, title, tools, addons]);
   return <></>;
-};
-
-export const PageHeaderTitle = ({ title }: { title: string }) => {
-  const children = (
-    <Typography noWrap variant="h6" component="div">
-      {title}
-    </Typography>
-  );
-  return <PageHeader title={children} partial />;
-};
-
-export const PageHeaderTools = ({ children }: { children?: ReactNode }) => {
-  return <PageHeader tools={children} partial />;
-};
-
-export const PageHeaderAddons = ({ children }: { children?: ReactNode }) => {
-  return <PageHeader addons={children} partial />;
 };

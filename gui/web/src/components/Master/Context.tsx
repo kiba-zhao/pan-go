@@ -7,8 +7,10 @@ import {
   useReducerStateValue,
   useReducerStateValueSetter,
 } from "../Common/ReducerState";
+
+export type PageProviderComponentProps = { children?: ReactNode };
 type State = {
-  Component: ComponentType<{ children?: ReactNode }> | null;
+  Component: ComponentType<PageProviderComponentProps> | null;
 };
 
 const ContextOpts = createReducerContext<State>();
