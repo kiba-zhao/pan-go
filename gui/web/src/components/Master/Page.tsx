@@ -1,17 +1,19 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
 import { ExtFSPath } from "../ExtFS/Route";
 
+import { Fragment } from "react";
 import { useTranslation } from "../I18Next/Context";
 import { PageI18Next } from "../I18Next/Page";
 import { Link, To } from "../Route/Router";
 import { PageHeader } from "./Header";
-import { Fragment } from "react/jsx-runtime";
 
-export const PageLayout = ({ children }: { children?: React.ReactNode }) => (
+import type { ReactNode } from "react";
+
+export const PageLayout = ({ children }: { children?: ReactNode }) => (
   <Paper sx={{ paddingY: 1, paddingX: 3, height: "100%", overflowY: "auto" }}>
     {children}
   </Paper>
