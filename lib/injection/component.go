@@ -33,7 +33,7 @@ func (c *componentBase) Scope() string {
 	return c.scope
 }
 
-type componentImpl struct {
+type stdComponent struct {
 	componentBase
 	target interface{}
 }
@@ -49,7 +49,7 @@ func NewComponent[T any](target T, scope string) Component {
 		scope: scope,
 	}
 
-	return &componentImpl{
+	return &stdComponent{
 		target:        target,
 		componentBase: base,
 	}
@@ -68,12 +68,12 @@ func NewComponentByType(ty reflect.Type, target interface{}, scope string) Compo
 		scope: scope,
 	}
 
-	return &componentImpl{
+	return &stdComponent{
 		target:        target,
 		componentBase: base,
 	}
 }
 
-func (c *componentImpl) Target() interface{} {
+func (c *stdComponent) Target() interface{} {
 	return c.target
 }

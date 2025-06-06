@@ -17,14 +17,16 @@ type FileRater interface {
 	Tokenize(text string) []string
 }
 
-type fileRaterImpl struct {
+type stdFileRater struct {
 }
+
+var _ = (FileRater)((*stdFileRater)(nil))
 
 // Rate computes the number of tokens that are found within the filename
 // specified by filePath. It returns the count of matched tokens as a uint.
 // An error is returned if there is any issue during the computation.
 
-func (fr *fileRaterImpl) Rate(filePath string, tokens []string) (uint, error) {
+func (fr *stdFileRater) Rate(filePath string, tokens []string) (uint, error) {
 	matchedCount := 0
 
 	_, filename := path.Split(filePath)
@@ -40,7 +42,7 @@ func (fr *fileRaterImpl) Rate(filePath string, tokens []string) (uint, error) {
 // Tokenize splits the given text into tokens. The function first trims
 // leading and trailing whitespace, and then splits on one or more
 // whitespace characters. The result is a slice of the tokens.
-func (fr *fileRaterImpl) Tokenize(text string) []string {
+func (fr *stdFileRater) Tokenize(text string) []string {
 	text = strings.Trim(text, " ")
 	re := regexp.MustCompile(`\s+`)
 	text = re.ReplaceAllString(text, " ")

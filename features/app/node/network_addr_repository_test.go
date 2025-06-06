@@ -27,7 +27,8 @@ func TestNetworkAddrRepository(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		repo = appnode.NewNetworkAddrRepository(db)
+		repo = appnode.NewNetworkAddrRepository()
+		repo.SetupToRepository(db)
 		return
 	}
 

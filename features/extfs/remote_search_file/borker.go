@@ -5,14 +5,14 @@ package remotesearchfile
 
 import (
 	"context"
+	"pan/lib/feature"
 	"pan/lib/peer"
-	"pan/lib/sample"
 )
 
 var SearchRemoteSearchFiles = []byte("search_remote_search_files")
 
 type RemoteSearchFileBroker struct {
-	SamplePeer sample.SamplePeer
+	feature.BrokerHelper
 }
 
 // Search sends a request to search for remote search files based on the given peer ID and search condition.
@@ -28,6 +28,6 @@ type RemoteSearchFileBroker struct {
 
 func (broker *RemoteSearchFileBroker) Search(peerId peer.PeerID, condition *RemoteSearchFileRecordSearchCondition) (*RemoteSearchFileRecordList, error) {
 	var list RemoteSearchFileRecordList
-	err := broker.SamplePeer.RequestWithProto(context.Background(), peerId, SearchRemoteSearchFiles, &list, condition)
+	err := broker.RequestWithProto(context.Background(), peerId, SearchRemoteSearchFiles, &list, condition)
 	return &list, err
 }

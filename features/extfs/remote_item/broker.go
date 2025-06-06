@@ -5,15 +5,15 @@ package remoteitem
 
 import (
 	"context"
+	"pan/lib/feature"
 	"pan/lib/peer"
-	"pan/lib/sample"
 )
 
 var SelectAllRemoteItems = []byte("select_all_remote_items")
 var SelectRemoteItem = []byte("select_remote_item")
 
 type RemoteItemBroker struct {
-	SamplePeer sample.SamplePeer
+	feature.BrokerHelper
 }
 
 // SelectAll sends a request to select all remote items with the given peer ID.
@@ -27,7 +27,7 @@ type RemoteItemBroker struct {
 func (broker *RemoteItemBroker) SelectAll(peerId peer.PeerID) (*RemoteItemRecordList, error) {
 
 	var remoteItemRecordList RemoteItemRecordList
-	err := broker.SamplePeer.RequestWithProto(context.Background(), peerId, SelectAllRemoteItems, &remoteItemRecordList, nil)
+	err := broker.RequestWithProto(context.Background(), peerId, SelectAllRemoteItems, &remoteItemRecordList, nil)
 
 	return &remoteItemRecordList, err
 }
@@ -44,7 +44,7 @@ func (broker *RemoteItemBroker) SelectAll(peerId peer.PeerID) (*RemoteItemRecord
 func (broker *RemoteItemBroker) Select(peerId peer.PeerID, condition *RemoteItemRecordSelectCondition) (*RemoteItemRecord, error) {
 
 	var record RemoteItemRecord
-	err := broker.SamplePeer.RequestWithProto(context.Background(), peerId, SelectRemoteItem, &record, condition)
+	err := broker.RequestWithProto(context.Background(), peerId, SelectRemoteItem, &record, condition)
 
 	return &record, err
 }

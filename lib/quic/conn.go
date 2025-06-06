@@ -27,7 +27,7 @@ type QuicConn interface {
 	CloseStream(quic.Stream)
 }
 
-type quicStreamWindow struct {
+type stdQuicStreamWindow struct {
 	streamId   quic.StreamID
 	readBytes  int
 	writeBytes int
@@ -35,21 +35,21 @@ type quicStreamWindow struct {
 	writeRW    sync.RWMutex
 }
 
-type quicConn struct {
+type stdQuicConn struct {
 	quic.Connection
 	peerId          peer.PeerID
 	closed          bool
 	closedLocker    sync.Mutex
-	mgr             *quicConnMgr
-	streamWindows   []*quicStreamWindow
+	mgr             *stdQuicConnMgr
+	streamWindows   []*stdQuicStreamWindow
 	streamWindowsRW sync.RWMutex
 }
 
-func (c *quicConn) PeerID() peer.PeerID {
+func (c *stdQuicConn) PeerID() peer.PeerID {
 	return c.peerId
 }
 
-func (c *quicConn) Available() bool {
+func (c *stdQuicConn) Available() bool {
 	available := !c.Closed()
 	if !available {
 		return available
@@ -83,14 +83,14 @@ func (c *quicConn) Available() bool {
 	return available
 }
 
-func (c *quicConn) Closed() bool {
+func (c *stdQuicConn) Closed() bool {
 
 	c.closedLocker.Lock()
 	defer c.closedLocker.Unlock()
 	return c.closed
 }
 
-func (c *quicConn) CloseStream(stream quic.Stream) {
+func (c *stdQuicConn) CloseStream(stream quic.Stream) {
 	stream.CancelRead(quic.StreamErrorCode(quic.NoError))
 	c.streamWindowsRW.Lock()
 	c.streamWindows = removeStreamWindow(c.streamWindows, stream.StreamID())
@@ -104,7 +104,7 @@ func (c *quicConn) CloseStream(stream quic.Stream) {
 // is not found, the function exits without making changes.
 // It implements the OnStreamRead method from the quic.Connection interface.
 
-func (c *quicConn) OnStreamRead(streamId quic.StreamID, size int) {
+func (c *stdQuicConn) OnStreamRead(streamId quic.StreamID, size int) {
 	if c.Closed() {
 		return
 	}
@@ -130,7 +130,7 @@ func (c *quicConn) OnStreamRead(streamId quic.StreamID, size int) {
 // is not closed and size is greater than zero. If the stream window
 // is not found, the function exits without making changes.
 // It implements the OnStreamWrite method from the quic.Connection interface.
-func (c *quicConn) OnStreamWrite(streamId quic.StreamID, size int) {
+func (c *stdQuicConn) OnStreamWrite(streamId quic.StreamID, size int) {
 	if c.Closed() {
 		return
 	}
@@ -151,41 +151,41 @@ func (c *quicConn) OnStreamWrite(streamId quic.StreamID, size int) {
 // AcceptStream implements the AcceptStream method of the quic.Connection interface.
 // It adds the new stream to the connection's stream window list and returns a
 // quicStream object wrapping the new stream and the connection.
-func (c *quicConn) AcceptStream(ctx context.Context) (quic.Stream, error) {
+func (c *stdQuicConn) AcceptStream(ctx context.Context) (quic.Stream, error) {
 	stream, err := c.Connection.AcceptStream(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	c.streamWindowsRW.Lock()
-	c.streamWindows = storeStreamWindow(c.streamWindows, &quicStreamWindow{streamId: stream.StreamID()})
+	c.streamWindows = storeStreamWindow(c.streamWindows, &stdQuicStreamWindow{streamId: stream.StreamID()})
 	c.streamWindowsRW.Unlock()
-	return &quicStream{Stream: stream, conn: c}, err
+	return &stdQuicStream{Stream: stream, conn: c}, err
 }
 
 // OpenStream implements the OpenStream method of the quic.Connection interface.
 // It opens a new stream via the underlying quic.Connection and adds the new
 // stream to the connection's stream window list. It then returns a quicStream
 // object wrapping the new stream and the connection.
-func (c *quicConn) OpenStream() (quic.Stream, error) {
+func (c *stdQuicConn) OpenStream() (quic.Stream, error) {
 	stream, err := c.Connection.OpenStream()
 	if err != nil {
 		return nil, err
 	}
 
 	c.streamWindowsRW.Lock()
-	c.streamWindows = storeStreamWindow(c.streamWindows, &quicStreamWindow{streamId: stream.StreamID()})
+	c.streamWindows = storeStreamWindow(c.streamWindows, &stdQuicStreamWindow{streamId: stream.StreamID()})
 	c.streamWindowsRW.Unlock()
-	return &quicStream{Stream: stream, conn: c, hangup: true}, err
+	return &stdQuicStream{Stream: stream, conn: c, hangup: true}, err
 }
 
-// CloseWithError closes the quicConn with the specified error code and reason.
+// CloseWithError closes the stdQuicConn with the specified error code and reason.
 // It first locks the closed state, checks if the connection is already closed,
 // and if not, marks it as closed. It then removes the connection from its manager
 // if applicable, and finally calls CloseWithError on the underlying connection.
 // Returns an error if the underlying connection encounters an issue during closure.
 
-func (c *quicConn) CloseWithError(code quic.ApplicationErrorCode, reason string) error {
+func (c *stdQuicConn) CloseWithError(code quic.ApplicationErrorCode, reason string) error {
 	c.closedLocker.Lock()
 	defer c.closedLocker.Unlock()
 	if c.closed {
@@ -199,11 +199,11 @@ func (c *quicConn) CloseWithError(code quic.ApplicationErrorCode, reason string)
 	return c.Connection.CloseWithError(code, reason)
 }
 
-func compareStreamWindow(window *quicStreamWindow, streamId quic.StreamID) int {
+func compareStreamWindow(window *stdQuicStreamWindow, streamId quic.StreamID) int {
 	return cmp.Compare(window.streamId, streamId)
 }
 
-func removeStreamWindow(streamWindows []*quicStreamWindow, streamId quic.StreamID) []*quicStreamWindow {
+func removeStreamWindow(streamWindows []*stdQuicStreamWindow, streamId quic.StreamID) []*stdQuicStreamWindow {
 	idx, ok := slices.BinarySearchFunc(streamWindows, streamId, compareStreamWindow)
 	if ok {
 		streamWindows = slices.Delete(streamWindows, idx, idx+1)
@@ -211,7 +211,7 @@ func removeStreamWindow(streamWindows []*quicStreamWindow, streamId quic.StreamI
 	return streamWindows
 }
 
-func searchStreamWindow(streamWindows []*quicStreamWindow, streamId quic.StreamID) *quicStreamWindow {
+func searchStreamWindow(streamWindows []*stdQuicStreamWindow, streamId quic.StreamID) *stdQuicStreamWindow {
 	idx, ok := slices.BinarySearchFunc(streamWindows, streamId, compareStreamWindow)
 	if ok {
 		return streamWindows[idx]
@@ -219,7 +219,7 @@ func searchStreamWindow(streamWindows []*quicStreamWindow, streamId quic.StreamI
 	return nil
 }
 
-func storeStreamWindow(streamWindows []*quicStreamWindow, window *quicStreamWindow) []*quicStreamWindow {
+func storeStreamWindow(streamWindows []*stdQuicStreamWindow, window *stdQuicStreamWindow) []*stdQuicStreamWindow {
 	idx, ok := slices.BinarySearchFunc(streamWindows, window.streamId, compareStreamWindow)
 	if ok {
 		streamWindows[idx] = window

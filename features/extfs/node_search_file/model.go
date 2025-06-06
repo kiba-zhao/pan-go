@@ -4,8 +4,6 @@ package nodesearchfile
 import (
 	"pan/lib/web"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type Tokens []string
@@ -40,15 +38,15 @@ type NodeSearchTask struct {
 	ID        uint64    `gorm:"primarykey" json:"id" form:"id"`
 	CreatedAt time.Time `json:"createdAt" form:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" form:"updatedAt"`
-	DeletedAt gorm.DeletedAt
-	Query     string `gorm:"size:256,Index" json:"query" form:"query"`
-	Hash      string `gorm:"size:256,Index" json:"hash" form:"hash"`
-	Status    uint8  `gorm:"Index" json:"status" form:"status"`
+	Query     string    `gorm:"size:256,Index" json:"query" form:"query"`
+	Hash      string    `gorm:"size:256,Index" json:"hash" form:"hash"`
+	Status    uint8     `gorm:"Index" json:"status" form:"status"`
 }
 
 const (
 	NodeSearchTaskStatusPending uint8 = iota
 	NodeSearchTaskStatusSuccess
 	NodeSearchTaskStatusWarning
+	NodeSearchTaskStatusError
 	NodeSearchTaskStatusCancel
 )

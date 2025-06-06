@@ -2,7 +2,8 @@ package node
 
 import (
 	"errors"
-	"pan/lib/sample"
+	"pan/lib/feature"
+	"pan/lib/repository"
 	"pan/lib/web"
 	"strings"
 
@@ -14,6 +15,7 @@ var ErrAppNodeNotFound = errors.New("appnode.AppNodeRepository Error: Not Found"
 var ErrAppNodeInvaild = errors.New("appnode.AppNodeRepository Error: Invaild")
 
 type AppNodeRepository interface {
+	repository.Repository
 	Search(AppNodeSearchCondition) (int64, []AppNode, error)
 	Create(AppNode) (AppNode, error)
 	Update(AppNode) (AppNode, error)
@@ -25,18 +27,19 @@ type AppNodeRepository interface {
 }
 
 type peerNodeRepository struct {
-	db *gorm.DB
+	feature.Repository
 }
 
-func NewAppNodeRepository(db *gorm.DB) AppNodeRepository {
-	return &peerNodeRepository{db: db}
+func NewAppNodeRepository() AppNodeRepository {
+	return &peerNodeRepository{}
 }
+
+var _ = (AppNodeRepository)((*peerNodeRepository)(nil))
 
 func (repo *peerNodeRepository) Search(conditions AppNodeSearchCondition) (int64, []AppNode, error) {
-
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return 0, nil, sample.ErrSampleDBUnavailable
+		return 0, nil, feature.ErrFeatureRepositoryDBUnavailable
 	}
 
 	if len(conditions.Keyword) > 0 {
@@ -73,9 +76,9 @@ func (repo *peerNodeRepository) Search(conditions AppNodeSearchCondition) (int64
 }
 
 func (repo *peerNodeRepository) Create(node AppNode) (AppNode, error) {
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return node, sample.ErrSampleDBUnavailable
+		return node, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	if node.ID > 0 {
 		return node, ErrAppNodeInvaild
@@ -89,9 +92,9 @@ func (repo *peerNodeRepository) Create(node AppNode) (AppNode, error) {
 }
 
 func (repo *peerNodeRepository) Update(node AppNode) (AppNode, error) {
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return node, sample.ErrSampleDBUnavailable
+		return node, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	if node.ID <= 0 {
 		return node, ErrAppNodeInvaild
@@ -136,9 +139,9 @@ func (repo *peerNodeRepository) Update(node AppNode) (AppNode, error) {
 
 func (repo *peerNodeRepository) Select(id uint) (AppNode, error) {
 
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return AppNode{}, sample.ErrSampleDBUnavailable
+		return AppNode{}, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	var peerNode AppNode
 
@@ -151,9 +154,9 @@ func (repo *peerNodeRepository) Select(id uint) (AppNode, error) {
 
 func (repo *peerNodeRepository) SelectByName(name string) (AppNode, error) {
 
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return AppNode{}, sample.ErrSampleDBUnavailable
+		return AppNode{}, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	var peerNode AppNode
 	results := db.Where("name = ?", name).Take(&peerNode)
@@ -165,9 +168,9 @@ func (repo *peerNodeRepository) SelectByName(name string) (AppNode, error) {
 
 func (repo *peerNodeRepository) Delete(node AppNode) error {
 
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return sample.ErrSampleDBUnavailable
+		return feature.ErrFeatureRepositoryDBUnavailable
 	}
 	results := db.Select(clause.Associations).Delete(&node)
 	if results.Error == nil && results.RowsAffected != 1 {
@@ -178,9 +181,9 @@ func (repo *peerNodeRepository) Delete(node AppNode) error {
 
 func (repo *peerNodeRepository) SelectByPeerID(peerId string) (AppNode, error) {
 
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return AppNode{}, sample.ErrSampleDBUnavailable
+		return AppNode{}, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	var peerNode AppNode
 	peerNode.PeerID = peerId
@@ -193,9 +196,9 @@ func (repo *peerNodeRepository) SelectByPeerID(peerId string) (AppNode, error) {
 
 func (repo *peerNodeRepository) TraverseAll(traverse func(AppNode) error) error {
 
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return sample.ErrSampleDBUnavailable
+		return feature.ErrFeatureRepositoryDBUnavailable
 	}
 
 	rows, err := db.Model(&AppNode{}).Rows()

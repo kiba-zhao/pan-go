@@ -3,6 +3,7 @@ package remoteitem_test
 import (
 	"bytes"
 	"io"
+	libApp "pan/lib/app"
 	"pan/lib/peer"
 	"testing"
 	"time"
@@ -19,9 +20,9 @@ import (
 
 func TestRemoteFileInfoTopic(t *testing.T) {
 
-	setup := func() (*peer.App, *remoteitem.RemoteFileInfoTopic) {
+	setup := func() (peer.PeerApp, *remoteitem.RemoteFileInfoTopic) {
 		ctrl := &remoteitem.RemoteFileInfoTopic{}
-		app := peer.NewApp()
+		app := libApp.NewApp()
 		ctrl.SetupToPeer(app)
 
 		ctrl.RemoteFileInfoService = &remoteitem.RemoteFileInfoService{}
@@ -64,14 +65,14 @@ func TestRemoteFileInfoTopic(t *testing.T) {
 		// request and response
 		reqBytes, err := proto.Marshal(&condition)
 		assert.Nil(t, err)
-		req := peer.NewRequest(remoteitem.SearchRemoteFileInfos, bytes.NewReader(reqBytes))
-		reqReader := peer.MarshalRequest(req)
-		var ctx peer.Context
-		peer.InitContext(&ctx)
-		err = peer.UnmarshalRequest(reqReader, ctx.Request())
+		req := libApp.NewRequest(remoteitem.SearchRemoteFileInfos, bytes.NewReader(reqBytes))
+		reqReader := libApp.MarshalRequest(req)
+		ctx := libApp.NewAppContext()
+		libApp.InitContext(ctx)
+		err = libApp.UnmarshalRequest(reqReader, ctx.Request())
 		assert.Nil(t, err)
 
-		err = app.Run(&ctx, nil)
+		err = app.Run(ctx, nil)
 		assert.Nil(t, err)
 
 		body, err := io.ReadAll(ctx)
@@ -122,14 +123,14 @@ func TestRemoteFileInfoTopic(t *testing.T) {
 		// request and response
 		reqBytes, err := proto.Marshal(&condition)
 		assert.Nil(t, err)
-		req := peer.NewRequest(remoteitem.SelectRemoteFileInfo, bytes.NewReader(reqBytes))
-		reqReader := peer.MarshalRequest(req)
-		var ctx peer.Context
-		peer.InitContext(&ctx)
-		err = peer.UnmarshalRequest(reqReader, ctx.Request())
+		req := libApp.NewRequest(remoteitem.SelectRemoteFileInfo, bytes.NewReader(reqBytes))
+		reqReader := libApp.MarshalRequest(req)
+		ctx := libApp.NewAppContext()
+		libApp.InitContext(ctx)
+		err = libApp.UnmarshalRequest(reqReader, ctx.Request())
 		assert.Nil(t, err)
 
-		err = app.Run(&ctx, nil)
+		err = app.Run(ctx, nil)
 		assert.Nil(t, err)
 
 		body, err := io.ReadAll(ctx)

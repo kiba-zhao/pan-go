@@ -10,7 +10,7 @@ import (
 
 var ErrQuicPeerRouteDuplicateAddress = errors.New("quic.PeerRoute Error: duplicate address")
 
-type quicRoute struct {
+type stdQuicRoute struct {
 	peerId peer.PeerID
 	addrs  []string
 	rw     sync.RWMutex
@@ -18,40 +18,40 @@ type quicRoute struct {
 }
 
 // PeerID returns the peer ID of the peer route.
-func (qr *quicRoute) PeerID() peer.PeerID {
+func (qr *stdQuicRoute) PeerID() peer.PeerID {
 	return qr.peerId
 }
 
-// Addrs returns a copy of the list of addresses associated with the quicRoute.
+// Addrs returns a copy of the list of addresses associated with the stdQuicRoute.
 // It acquires a read lock to ensure thread-safe access to the addresses.
 
-func (qr *quicRoute) Addrs() []string {
+func (qr *stdQuicRoute) Addrs() []string {
 	qr.rw.RLock()
 	defer qr.rw.RUnlock()
 	return slices.Clone(qr.addrs)
 }
 
-// Available returns true if the quicRoute has at least one associated address.
+// Available returns true if the stdQuicRoute has at least one associated address.
 // It acquires a read lock to ensure thread-safe access to the addresses.
-func (qr *quicRoute) Available() bool {
+func (qr *stdQuicRoute) Available() bool {
 	qr.rw.RLock()
 	defer qr.rw.RUnlock()
 	return len(qr.addrs) > 0
 }
 
-// Contains returns true if the given address is associated with the quicRoute.
+// Contains returns true if the given address is associated with the stdQuicRoute.
 // It acquires a read lock to ensure thread-safe access to the addresses.
-func (qr *quicRoute) Contains(addr string) bool {
+func (qr *stdQuicRoute) Contains(addr string) bool {
 	qr.rw.RLock()
 	defer qr.rw.RUnlock()
 	return slices.Contains(qr.addrs, addr)
 }
 
-// Store adds the given address to the quicRoute.
+// Store adds the given address to the stdQuicRoute.
 //
 // It acquires a write lock to ensure thread-safe access to the addresses.
-// If the address is already associated with the quicRoute, it returns ErrQuicPeerRouteDuplicateAddress.
-func (qr *quicRoute) Store(addr string) error {
+// If the address is already associated with the stdQuicRoute, it returns ErrQuicPeerRouteDuplicateAddress.
+func (qr *stdQuicRoute) Store(addr string) error {
 	qr.rw.Lock()
 	defer qr.rw.Unlock()
 	if ok := slices.Contains(qr.addrs, addr); ok {
@@ -61,12 +61,12 @@ func (qr *quicRoute) Store(addr string) error {
 	return nil
 }
 
-// Delete removes the given address from the quicRoute.
+// Delete removes the given address from the stdQuicRoute.
 //
 // It acquires a write lock to ensure thread-safe access to the addresses.
 // If the address is not found, the function returns immediately.
 
-func (qr *quicRoute) Delete(addr string) {
+func (qr *stdQuicRoute) Delete(addr string) {
 	qr.rw.Lock()
 	defer qr.rw.Unlock()
 	idx := slices.Index(qr.addrs, addr)

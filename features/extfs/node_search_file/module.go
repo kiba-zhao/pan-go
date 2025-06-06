@@ -2,84 +2,142 @@
 package nodesearchfile
 
 import (
-	appConfig "pan/lib/config"
+	"context"
+	"pan/lib/bootstrap"
+	"pan/lib/config"
+	"pan/lib/feature"
 	"pan/lib/injection"
-	"pan/lib/sample"
+	"pan/lib/log"
+	"pan/lib/repository"
+	"pan/lib/runtime"
+	"sync"
 )
 
-// New creates a new runtime module for node search file.
-//
-// It takes a component store provider to create the virtual file system.
-// It will load the configuration from "extfs_searchfile.toml" file.
-// If the configuration file does not exist, it will panic with an error.
-// If the configuration file exists but is invalid, it will panic with an error.
-func New(provider injection.ComponentStoreProvider) interface{} {
-	var m moduleImpl
-	m.provider = provider
-	m.agent = &agentImpl{provider: provider}
+func New(featureName string, provider injection.ComponentStoreProvider) interface{} {
+	module := &stdModule{}
+	module.ComponentStoreProvider = provider
 
-	config, err := appConfig.NewConfig[*NodeSearchFileSettings]("extfs_searchfile.toml")
-	if err != nil {
-		panic(err)
-	}
-	config.SetDefaults(newDefaultSettings())
-	m.config = config
+	cleaner := &stdTaskCleaner{}
+	module.cleaner = cleaner
 
-	m.worker = &taskWorkerImpl{}
-	m.cleaner = &taskCleanerImpl{}
+	worker := &stdTaskWorker{}
+	module.worker = worker
+	cleaner.worker = worker
+	worker.reloadChan = make(chan struct{}, 1)
 
-	m.fileRater = &fileRaterImpl{}
-	return &m
+	logger := log.Default()
+	worker.logger = logger
+	cleaner.logger = logger
+	return runtime.NewModule(feature.New(featureName, module), module)
 }
 
-type moduleImpl struct {
-	agent     Agent
-	config    appConfig.Config[*NodeSearchFileSettings]
-	worker    TaskWorker
-	cleaner   *taskCleanerImpl
-	fileRater FileRater
+type NodeSearchFileConfig = config.Config[*NodeSearchFileSettings]
 
-	provider injection.ComponentStoreProvider
+type stdModule struct {
+	injection.ComponentStoreProvider
+
+	Config NodeSearchFileConfig
+
+	worker  *stdTaskWorker
+	cleaner *stdTaskCleaner
+
+	controllers     []feature.WebController
+	controllersOnce sync.Once
+
+	metaList     []feature.RepositoryMeta
+	metaListOnce sync.Once
 }
 
-// ComponentStore returns the component store that the module uses to
-// store its components. This is the same component store that is
-// passed to the module's constructor.
-func (m *moduleImpl) ComponentStore() injection.ComponentStore {
-	return m.provider.ComponentStore()
+var _ = (feature.WebControllerProvider)((*stdModule)(nil))
+
+func (module *stdModule) WebControllers() []feature.WebController {
+	module.controllersOnce.Do(func() {
+		module.controllers = []feature.WebController{
+			&NodeSearchFileController{},
+		}
+	})
+	return module.controllers
 }
 
-// Components returns a slice of injection.Component representing the components
-// provided by the module. It includes the configuration, agent, task worker, task
-// cleaner, and file rater. The components are scoped as follows:
-//
-//   - configuration: internal scope
-//   - agent: sample scope
-//   - task worker: sample scope
-//   - task cleaner: none scope
-//   - file rater: none scope
-func (m *moduleImpl) Components() []injection.Component {
+var _ = (feature.RepositoryMetaProvider)((*stdModule)(nil))
+
+func (module *stdModule) RepositoryMetaList() []feature.RepositoryMeta {
+	module.metaListOnce.Do(func() {
+		module.metaList = []feature.RepositoryMeta{
+			feature.NewRepositoryMeta[NodeSearchFileRepository](NewNodeSearchFileRepository()),
+			feature.NewRepositoryMeta[NodeSearchTaskRepository](NewNodeSearchTaskRepository()),
+		}
+	})
+
+	return module.metaList
+}
+
+var _ = (config.ConfigListener[*NodeSearchFileSettings])((*stdModule)(nil))
+
+func (module *stdModule) OnConfigUpdated(settings *NodeSearchFileSettings) {
+	module.worker.SetParallelThreshold(settings.ParallelThreshold)
+	module.cleaner.SetLifecycle(settings.Lifecycle)
+}
+
+var _ = (injection.ComponentProvider)((*stdModule)(nil))
+
+func (module *stdModule) Components() []injection.Component {
 
 	components := []injection.Component{
-		injection.NewComponent(m.config, injection.ComponentInternalScope),
+		injection.NewComponent(module, injection.ComponentNoneScope),
+		injection.NewComponent(module.cleaner, injection.ComponentNoneScope),
 	}
 
-	components = sample.AppendSampleComponent(components, m.agent)
-	components = sample.AppendSampleComponent(components, m.worker)
-	components = append(components, injection.NewComponent(m.cleaner, injection.ComponentNoneScope))
+	components = feature.AppendExternalComponent[TaskWorker](components, module.worker)
 
+	// services
+	components = feature.AppendInternalComponent[NodeSearchFileInternalService](components, &NodeSearchFileService{})
 	return components
 }
 
-// Modules returns a slice of sub-modules.
-//
-// The sub-modules are the configuration, agent, task worker, task cleaner, and file rater.
-func (m *moduleImpl) Modules() []interface{} {
+var _ = (runtime.ProviderModule)((*stdModule)(nil))
+
+func (module *stdModule) Modules() []interface{} {
 	return []interface{}{
-		m.config,
-		m.agent,
-		m.worker,
-		m.cleaner,
-		m.fileRater,
+		config.NewWithDefaults("extfs_searchfile.toml", newDefaultSettings()),
 	}
+}
+
+var _ = (repository.Repository)((*stdModule)(nil))
+
+func (module *stdModule) SetupToRepository(db repository.RepositoryDB) error {
+	return db.AutoMigrate(&NodeSearchTask{}, &NodeSearchFile{})
+}
+
+var _ = (feature.RepositoryDBModule)((*stdModule)(nil))
+
+func (module *stdModule) IsTempDB() bool {
+	return true
+}
+
+var _ = (bootstrap.ReadyModule)((*stdModule)(nil))
+
+func (module *stdModule) Ready(ctx context.Context) error {
+	fileRater := &stdFileRater{}
+	module.worker.RegisterFileRater(fileRater)
+	defer module.worker.UnregisterFileRater(fileRater)
+
+	module.Config.Subscribe(module)
+	defer module.Config.Unsubscribe(module)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func(worker *stdTaskWorker) {
+		defer wg.Done()
+		worker.Run(ctx)
+	}(module.worker)
+
+	go func(cleaner *stdTaskCleaner) {
+		defer wg.Done()
+		cleaner.Run(ctx)
+	}(module.cleaner)
+
+	wg.Wait()
+	return nil
 }

@@ -26,13 +26,13 @@ var ErrVFSFUSEFSNameConflict = errors.New("vfs.VFSFUSEFS Error: Name Conflict")
 
 type VFSFUSEFS struct {
 	fs.Inode
-	runtime  *VFSFSRuntime
+	runtime  *stdVFSFSRuntime
 	server   *fuse.Server
 	settings *VFSSettings
 	rw       sync.RWMutex
 }
 
-func NewVFSFS(runtime *VFSFSRuntime, settings VFSSettings) *VFSFUSEFS {
+func NewVFSFS(runtime *stdVFSFSRuntime, settings VFSSettings) *VFSFUSEFS {
 	var vfsfs VFSFUSEFS
 	vfsfs.settings = &settings
 	vfsfs.runtime = runtime

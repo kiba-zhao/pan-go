@@ -7,8 +7,6 @@ import (
 	"iter"
 	"net"
 	"pan/lib/peer"
-	"pan/lib/runtime"
-	reflect "reflect"
 	"sync"
 )
 
@@ -19,39 +17,92 @@ type QuicExplorerGuide interface {
 	LookupExplorerAddr(peerId peer.PeerID) (iter.Seq[string], error)
 }
 
-type QuicExplorer struct {
-	quicModule *quicPeerModule
-	registry   runtime.Registry
-	rw         sync.RWMutex
+type QuicExplorer interface {
+	peer.PeerNetwork
+
+	Guides() []QuicExplorerGuide
+	AddGuide(guide QuicExplorerGuide)
+	RemoveGuide(guide QuicExplorerGuide)
 }
 
-func (e *QuicExplorer) Init(registry runtime.Registry) error {
-	e.rw.Lock()
-	e.registry = registry
-	e.rw.Unlock()
-	return nil
+type stdQuicExplorer struct {
+	cluster  *stdQuicCluster
+	guides   []QuicExplorerGuide
+	guidesRW sync.RWMutex
 }
 
-func (e *QuicExplorer) EngineTypes() []reflect.Type {
-	return []reflect.Type{
-		reflect.TypeFor[QuicExplorerGuide](),
+var _ = (QuicExplorer)((*stdQuicExplorer)(nil))
+
+func (e *stdQuicExplorer) RoundTrip(ctx context.Context, peerId peer.PeerID, reader io.Reader) (io.ReadCloser, error) {
+
+	addrSeq := e.lookup(peerId)
+	quicAddrSeq := resolveExplorerAddrs(addrSeq)
+	if quicAddrSeq == nil {
+		return nil, ErrQuicExplorerUnavailable
+	}
+
+	cluster := e.cluster
+	hasRoute := false
+	for addr := range quicAddrSeq {
+		err := cluster.Route(peerId, addr)
+		if err == nil {
+			hasRoute = true
+			break
+		}
+	}
+
+	if !hasRoute {
+		return nil, ErrQuicExplorerNotFound
+	}
+	return cluster.RoundTrip(ctx, peerId, reader)
+}
+
+func (e *stdQuicExplorer) CanReach(peerId peer.PeerID) bool {
+	addrSeq := e.lookup(peerId)
+	if addrSeq == nil {
+		return false
+	}
+	reachable := false
+	for _ = range addrSeq {
+		reachable = true
+		break
+	}
+	return reachable
+}
+
+func (e *stdQuicExplorer) Guides() []QuicExplorerGuide {
+	e.guidesRW.RLock()
+	defer e.guidesRW.RUnlock()
+	return e.guides
+}
+
+func (e *stdQuicExplorer) AddGuide(guide QuicExplorerGuide) {
+	e.guidesRW.Lock()
+	defer e.guidesRW.Unlock()
+	e.guides = append(e.guides, guide)
+}
+
+func (e *stdQuicExplorer) RemoveGuide(guide QuicExplorerGuide) {
+	e.guidesRW.Lock()
+	defer e.guidesRW.Unlock()
+	for i, g := range e.guides {
+		if g == guide {
+			e.guides = append(e.guides[:i], e.guides[i+1:]...)
+			break
+		}
 	}
 }
 
-func (e *QuicExplorer) lookup(peerId peer.PeerID) iter.Seq[string] {
-	e.rw.RLock()
-	registry := e.registry
-	e.rw.RUnlock()
+func (e *stdQuicExplorer) lookup(peerId peer.PeerID) iter.Seq[string] {
 
-	if registry == nil {
+	guides := e.Guides()
+	if len(guides) == 0 {
 		return nil
 	}
 
-	guideSeq := runtime.SeqForType[QuicExplorerGuide](e.registry)
-
 	return func(yield func(string) bool) {
 	loop_guide:
-		for guide := range guideSeq {
+		for _, guide := range guides {
 			// discover addr from guide
 			addrs, err := guide.LookupExplorerAddr(peerId)
 			if err != nil || addrs == nil {
@@ -67,43 +118,6 @@ func (e *QuicExplorer) lookup(peerId peer.PeerID) iter.Seq[string] {
 
 		}
 	}
-}
-
-func (e *QuicExplorer) RoundTrip(ctx context.Context, peerId peer.PeerID, reader io.Reader) (io.ReadCloser, error) {
-
-	addrSeq := e.lookup(peerId)
-	quicAddrSeq := resolveExplorerAddrs(addrSeq)
-	if quicAddrSeq == nil {
-		return nil, ErrQuicExplorerUnavailable
-	}
-
-	quicModule := e.quicModule
-	hasRoute := false
-	for addr := range quicAddrSeq {
-		err := quicModule.Route(peerId, addr)
-		if err == nil {
-			hasRoute = true
-			break
-		}
-	}
-
-	if !hasRoute {
-		return nil, ErrQuicExplorerNotFound
-	}
-	return quicModule.RoundTrip(ctx, peerId, reader)
-}
-
-func (e *QuicExplorer) CanReach(peerId peer.PeerID) bool {
-	addrSeq := e.lookup(peerId)
-	if addrSeq == nil {
-		return false
-	}
-	reachable := false
-	for _ = range addrSeq {
-		reachable = true
-		break
-	}
-	return reachable
 }
 
 func resolveExplorerAddrs(addrs iter.Seq[string]) iter.Seq[string] {

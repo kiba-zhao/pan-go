@@ -10,19 +10,19 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-type quicConnMgr struct {
+type stdQuicConnMgr struct {
 	connMatrix [][]QuicConn
 	rw         sync.RWMutex
 }
 
-func (mgr *quicConnMgr) compare(connArr []QuicConn, peerId peer.PeerID) int {
+func (mgr *stdQuicConnMgr) compare(connArr []QuicConn, peerId peer.PeerID) int {
 	return bytes.Compare(connArr[0].PeerID(), peerId)
 }
 
 // Search returns a slice of QuicConn associated with the given peer ID if it exists.
 // It acquires a read lock to ensure thread-safe access to the connections.
 // If the peer ID does not exist, it returns nil.
-func (mgr *quicConnMgr) Search(peerId peer.PeerID) []QuicConn {
+func (mgr *stdQuicConnMgr) Search(peerId peer.PeerID) []QuicConn {
 	mgr.rw.RLock()
 	defer mgr.rw.RUnlock()
 	idx, ok := slices.BinarySearchFunc(mgr.connMatrix, peerId, mgr.compare)
@@ -38,7 +38,7 @@ func (mgr *quicConnMgr) Search(peerId peer.PeerID) []QuicConn {
 // Returns the existing or newly inserted connection, and a boolean indicating
 // if the connection was already present (true) or newly added (false).
 
-func (mgr *quicConnMgr) SelectOrStore(conn QuicConn) (QuicConn, bool) {
+func (mgr *stdQuicConnMgr) SelectOrStore(conn QuicConn) (QuicConn, bool) {
 	mgr.rw.Lock()
 	defer mgr.rw.Unlock()
 	idx, ok := slices.BinarySearchFunc(mgr.connMatrix, conn.PeerID(), mgr.compare)
@@ -57,7 +57,7 @@ func (mgr *quicConnMgr) SelectOrStore(conn QuicConn) (QuicConn, bool) {
 // Delete removes the given QuicConn from the connection manager.
 // It acquires a write lock to ensure thread-safe access to the connections.
 // If the connection is not found, it returns immediately.
-func (mgr *quicConnMgr) Delete(conn QuicConn) {
+func (mgr *stdQuicConnMgr) Delete(conn QuicConn) {
 	mgr.rw.Lock()
 	defer mgr.rw.Unlock()
 	idx, ok := slices.BinarySearchFunc(mgr.connMatrix, conn.PeerID(), mgr.compare)
@@ -79,7 +79,7 @@ func (mgr *quicConnMgr) Delete(conn QuicConn) {
 
 // Clean closes all connections associated with the given peer ID.
 // It acquires a write lock to ensure thread-safe access to the connections.
-func (mgr *quicConnMgr) Clean(peer peer.PeerID) {
+func (mgr *stdQuicConnMgr) Clean(peer peer.PeerID) {
 	var connArr []QuicConn
 	mgr.rw.Lock()
 	idx, ok := slices.BinarySearchFunc(mgr.connMatrix, peer, mgr.compare)

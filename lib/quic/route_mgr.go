@@ -8,19 +8,19 @@ import (
 	"sync"
 )
 
-type quicRouteMgr struct {
-	routes []*quicRoute
+type stdQuicRouteMgr struct {
+	routes []*stdQuicRoute
 	rw     sync.RWMutex
 }
 
-func (mgr *quicRouteMgr) compare(route *quicRoute, peerId peer.PeerID) int {
+func (mgr *stdQuicRouteMgr) compare(route *stdQuicRoute, peerId peer.PeerID) int {
 	return bytes.Compare(route.peerId, peerId)
 }
 
 // Search returns the route associated with the given peer ID if it exists.
 // It acquires a read lock to ensure thread-safe access to the routes.
 // If the route does not exist, it returns nil.
-func (mgr *quicRouteMgr) Search(peerId peer.PeerID) *quicRoute {
+func (mgr *stdQuicRouteMgr) Search(peerId peer.PeerID) *stdQuicRoute {
 	mgr.rw.RLock()
 	defer mgr.rw.RUnlock()
 	idx, ok := slices.BinarySearchFunc(mgr.routes, peerId, mgr.compare)
@@ -34,7 +34,7 @@ func (mgr *quicRouteMgr) Search(peerId peer.PeerID) *quicRoute {
 // It acquires a write lock to ensure thread-safe access to the routes.
 // If the route does not exist, it returns the given route with the second return value set to false.
 // If the route exists, it returns the existing route with the second return value set to true.
-func (mgr *quicRouteMgr) SearchOrStore(route *quicRoute) (*quicRoute, bool) {
+func (mgr *stdQuicRouteMgr) SearchOrStore(route *stdQuicRoute) (*stdQuicRoute, bool) {
 	mgr.rw.Lock()
 	defer mgr.rw.Unlock()
 	idx, ok := slices.BinarySearchFunc(mgr.routes, route.PeerID(), mgr.compare)
@@ -45,11 +45,11 @@ func (mgr *quicRouteMgr) SearchOrStore(route *quicRoute) (*quicRoute, bool) {
 	return mgr.routes[idx], true
 }
 
-// Delete removes the given route from the quicRouteMgr.
+// Delete removes the given route from the stdQuicRouteMgr.
 //
 // It acquires a write lock to ensure thread-safe access to the routes.
 // If the route is not found, it returns immediately.
-func (mgr *quicRouteMgr) Delete(route *quicRoute) {
+func (mgr *stdQuicRouteMgr) Delete(route *stdQuicRoute) {
 	mgr.rw.Lock()
 	defer mgr.rw.Unlock()
 	idx, ok := slices.BinarySearchFunc(mgr.routes, route.PeerID(), mgr.compare)

@@ -6,16 +6,16 @@ import (
 	"slices"
 )
 
-type quicReception struct {
+type stdQuicReception struct {
 	peerId peer.PeerID
 	ch     chan QuicConn
 }
 
-func compareReceptionItem(items []*quicReception, peerId peer.PeerID) int {
+func compareReceptionItem(items []*stdQuicReception, peerId peer.PeerID) int {
 	return bytes.Compare(items[0].peerId, peerId)
 }
 
-func searchReceptions(matrix [][]*quicReception, peerId peer.PeerID) []*quicReception {
+func searchReceptions(matrix [][]*stdQuicReception, peerId peer.PeerID) []*stdQuicReception {
 	idx, ok := slices.BinarySearchFunc(matrix, peerId, compareReceptionItem)
 	if !ok {
 		return nil
@@ -23,10 +23,10 @@ func searchReceptions(matrix [][]*quicReception, peerId peer.PeerID) []*quicRece
 	return slices.Clone(matrix[idx])
 }
 
-func storeReception(matrix [][]*quicReception, target *quicReception) [][]*quicReception {
+func storeReception(matrix [][]*stdQuicReception, target *stdQuicReception) [][]*stdQuicReception {
 	idx, ok := slices.BinarySearchFunc(matrix, target.peerId, compareReceptionItem)
 	if !ok {
-		matrix = slices.Insert(matrix, idx, []*quicReception{target})
+		matrix = slices.Insert(matrix, idx, []*stdQuicReception{target})
 		return matrix
 	}
 	ridx := slices.Index(matrix[idx], target)
@@ -37,7 +37,7 @@ func storeReception(matrix [][]*quicReception, target *quicReception) [][]*quicR
 	return matrix
 }
 
-func deleteReception(matrix [][]*quicReception, target *quicReception) [][]*quicReception {
+func deleteReception(matrix [][]*stdQuicReception, target *stdQuicReception) [][]*stdQuicReception {
 	idx, ok := slices.BinarySearchFunc(matrix, target.peerId, compareReceptionItem)
 	if !ok {
 		return matrix
@@ -54,7 +54,7 @@ func deleteReception(matrix [][]*quicReception, target *quicReception) [][]*quic
 	return matrix
 }
 
-func takeOutReception(matrix [][]*quicReception, peerId peer.PeerID) ([][]*quicReception, []*quicReception) {
+func takeOutReception(matrix [][]*stdQuicReception, peerId peer.PeerID) ([][]*stdQuicReception, []*stdQuicReception) {
 	idx, ok := slices.BinarySearchFunc(matrix, peerId, compareReceptionItem)
 	if !ok {
 		return matrix, nil

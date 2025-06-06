@@ -3,7 +3,8 @@ package broadcast
 
 import (
 	"errors"
-	"pan/lib/sample"
+	"pan/lib/feature"
+	"pan/lib/repository"
 
 	"gorm.io/gorm"
 )
@@ -11,6 +12,8 @@ import (
 var ErrAppBroadcastInfoNotFound = errors.New("appbroadcast.AppBroadcastInfoRepository Error: Not Found")
 
 type AppBroadcastInfoRepository interface {
+	repository.Repository
+
 	// SelectOrCreate selects or creates a AppBroadcastInfo from the store.
 	//
 	// If the peerID exists in the store, the function returns the associated AppBroadcastInfo.
@@ -37,18 +40,20 @@ type AppBroadcastInfoRepository interface {
 }
 
 type appBroadcastInfoRepository struct {
-	db *gorm.DB
+	feature.Repository
 }
 
-func NewAppBroadcastInfoRepository(db *gorm.DB) AppBroadcastInfoRepository {
-	return &appBroadcastInfoRepository{db: db}
+func NewAppBroadcastInfoRepository() AppBroadcastInfoRepository {
+	return &appBroadcastInfoRepository{}
 }
+
+var _ = (AppBroadcastInfoRepository)((*appBroadcastInfoRepository)(nil))
 
 func (repo *appBroadcastInfoRepository) SelectOrCreate(baseInfo AppBroadcastInfo) (AppBroadcastInfo, bool, error) {
 
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return AppBroadcastInfo{}, false, sample.ErrSampleDBUnavailable
+		return AppBroadcastInfo{}, false, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	var info AppBroadcastInfo
 	results := db.Where(AppBroadcastInfo{PeerID: baseInfo.PeerID}).Attrs(baseInfo).FirstOrCreate(&info)
@@ -59,9 +64,9 @@ func (repo *appBroadcastInfoRepository) SelectOrCreate(baseInfo AppBroadcastInfo
 }
 
 func (repo *appBroadcastInfoRepository) UpdateHeightest(info AppBroadcastInfo) (AppBroadcastInfo, error) {
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return AppBroadcastInfo{}, sample.ErrSampleDBUnavailable
+		return AppBroadcastInfo{}, feature.ErrFeatureRepositoryDBUnavailable
 	}
 
 	results := db.Model(&info).Where("hightest < ?", info.Hightest).Limit(1).Updates(info)
@@ -72,9 +77,9 @@ func (repo *appBroadcastInfoRepository) UpdateHeightest(info AppBroadcastInfo) (
 }
 
 func (repo *appBroadcastInfoRepository) DeleteByPeerID(peerId string) error {
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return sample.ErrSampleDBUnavailable
+		return feature.ErrFeatureRepositoryDBUnavailable
 	}
 	results := db.Delete(&AppBroadcastInfo{PeerID: peerId}).Limit(1)
 	if results.Error == nil && results.RowsAffected != 1 {

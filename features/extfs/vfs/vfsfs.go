@@ -6,7 +6,7 @@ import (
 	remotenode "pan/features/extfs/remote_node"
 )
 
-type VFSFSRuntime struct {
+type stdVFSFSRuntime struct {
 	RemoteFileStreamServiceImpl *remoteitem.RemoteFileStreamService
 	RemoteFileInfoServiceImpl   *remoteitem.RemoteFileInfoService
 	RemoteItemServiceImpl       *remoteitem.RemoteItemService
@@ -14,22 +14,22 @@ type VFSFSRuntime struct {
 	NodeItemServiceImpl         *nodeitem.NodeItemService
 }
 
-func (runtime *VFSFSRuntime) RemoteFileStreamService() *remoteitem.RemoteFileStreamService {
+func (runtime *stdVFSFSRuntime) RemoteFileStreamService() *remoteitem.RemoteFileStreamService {
 	return runtime.RemoteFileStreamServiceImpl
 }
 
-func (runtime *VFSFSRuntime) RemoteFileInfoService() *remoteitem.RemoteFileInfoService {
+func (runtime *stdVFSFSRuntime) RemoteFileInfoService() *remoteitem.RemoteFileInfoService {
 	return runtime.RemoteFileInfoServiceImpl
 }
 
-func (runtime *VFSFSRuntime) RemoteItemService() *remoteitem.RemoteItemService {
+func (runtime *stdVFSFSRuntime) RemoteItemService() *remoteitem.RemoteItemService {
 	return runtime.RemoteItemServiceImpl
 }
 
-func (runtime *VFSFSRuntime) RemoteNodeService() *remotenode.RemoteNodeService {
+func (runtime *stdVFSFSRuntime) RemoteNodeService() *remotenode.RemoteNodeService {
 	return runtime.RemoteNodeServiceImpl
 }
 
-func (runtime *VFSFSRuntime) NodeItemService() *nodeitem.NodeItemService {
+func (runtime *stdVFSFSRuntime) NodeItemService() *nodeitem.NodeItemService {
 	return runtime.NodeItemServiceImpl
 }

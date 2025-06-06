@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type webAssets struct {
+type stdWebAssets struct {
 	basename string
 	assets   fs.FS
 }
@@ -23,11 +23,13 @@ type webAssets struct {
 // The middleware will serve an index.html file if one is present in the
 // assets fs.FS.
 func NewWebAssets(basename string, assets fs.FS) interface{} {
-	return &webAssets{
+	return &stdWebAssets{
 		basename: basename,
 		assets:   assets,
 	}
 }
+
+var _ = (WebAppModule)((*stdWebAssets)(nil))
 
 // Implements WebAppModule interface
 //
@@ -43,7 +45,7 @@ func NewWebAssets(basename string, assets fs.FS) interface{} {
 //
 // For example, if basename is "static", and the assets fs.FS contains a file
 // called "foo/bar", the file will be served at "/static/foo/bar".
-func (wa *webAssets) SetupToWeb(app WebApp) error {
+func (wa *stdWebAssets) SetupToWeb(app WebApp) error {
 
 	hasIndexFile := false
 	entries, err := fs.ReadDir(wa.assets, ".")
@@ -88,7 +90,7 @@ const (
 // it serves the index.html file from the root of the web assets file system.
 // Otherwise, it proceeds to the next middleware or route handler.
 
-func (wa *webAssets) noRoute(ctx WebContext) {
+func (wa *stdWebAssets) noRoute(ctx WebContext) {
 	accepted := ctx.NegotiateFormat(MIMEHTML) == MIMEHTML
 	if accepted && strings.HasPrefix(ctx.Request.URL.Path, wa.basename) {
 		ctx.FileFromFS("/", http.FS(wa.assets))

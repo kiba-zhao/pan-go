@@ -37,7 +37,7 @@ func (t *RemoteSearchFileTopic) SetupToPeer(router peer.PeerRouter) error {
 //
 // Otherwise, it marshals the result into a RemoteSearchFileRecordList and responds with the marshaled
 // data.
-func (t *RemoteSearchFileTopic) Search(ctx *peer.Context, next peer.Next) error {
+func (t *RemoteSearchFileTopic) Search(ctx peer.PeerContext, next peer.PeerNext) error {
 	req := ctx.Request()
 	body, err := io.ReadAll(req)
 	if err != nil {

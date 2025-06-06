@@ -10,6 +10,8 @@ type module struct {
 	modules []interface{}
 }
 
+var _ = (ProviderModule)((*module)(nil))
+
 // NewModule creates a new instance of a simple engine module.
 //
 // It takes a variable number of arguments representing the sub-modules to be

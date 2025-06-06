@@ -29,6 +29,8 @@ type deferEngine struct {
 	locker   sync.RWMutex
 }
 
+var _ = (runtime.InitializeModule)((*deferEngine)(nil))
+
 // Init initializes the defer engine with the provided registry.
 //
 // It sets the registry and does not return an error.
@@ -39,6 +41,8 @@ func (de *deferEngine) Init(registry runtime.Registry) error {
 	return nil
 }
 
+var _ = (runtime.EngineExtensionModule)((*deferEngine)(nil))
+
 // EngineTypes returns a slice of reflect.Type representing the various engine types
 // associated with the defer engine. These types include:
 //
@@ -48,6 +52,8 @@ func (de *deferEngine) EngineTypes() []reflect.Type {
 		reflect.TypeFor[DeferModule](),
 	}
 }
+
+var _ = (injection.ComponentProvider)((*deferEngine)(nil))
 
 // Components returns a slice of injection.Component representing the components
 // provided by the defer engine. Currently, the only component provided is the

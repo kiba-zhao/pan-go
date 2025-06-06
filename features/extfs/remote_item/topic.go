@@ -38,7 +38,7 @@ func (topic *RemoteItemTopic) SetupToPeer(router peer.PeerRouter) error {
 //
 // Otherwise, it marshals the result into a RemoteItemRecordList and responds with the marshaled
 // data.
-func (topic *RemoteItemTopic) SelectAll(ctx *peer.Context, next peer.Next) error {
+func (topic *RemoteItemTopic) SelectAll(ctx peer.PeerContext, next peer.PeerNext) error {
 
 	recordList, err := topic.RemoteItemService.SelectAllForTopic()
 	if err != nil {
@@ -53,7 +53,7 @@ func (topic *RemoteItemTopic) SelectAll(ctx *peer.Context, next peer.Next) error
 	return err
 }
 
-func (topic *RemoteItemTopic) Select(ctx *peer.Context, next peer.Next) error {
+func (topic *RemoteItemTopic) Select(ctx peer.PeerContext, next peer.PeerNext) error {
 	req := ctx.Request()
 	body, err := io.ReadAll(req)
 	if err != nil {

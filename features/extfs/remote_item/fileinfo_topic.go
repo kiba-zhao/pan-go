@@ -18,7 +18,7 @@ func (topic *RemoteFileInfoTopic) SetupToPeer(router peer.PeerRouter) error {
 	return nil
 }
 
-func (topic *RemoteFileInfoTopic) Search(ctx *peer.Context, next peer.Next) error {
+func (topic *RemoteFileInfoTopic) Search(ctx peer.PeerContext, next peer.PeerNext) error {
 
 	req := ctx.Request()
 	body, err := io.ReadAll(req)
@@ -47,7 +47,7 @@ func (topic *RemoteFileInfoTopic) Search(ctx *peer.Context, next peer.Next) erro
 	return err
 }
 
-func (topic *RemoteFileInfoTopic) Select(ctx *peer.Context, next peer.Next) error {
+func (topic *RemoteFileInfoTopic) Select(ctx peer.PeerContext, next peer.PeerNext) error {
 
 	req := ctx.Request()
 	body, err := io.ReadAll(req)

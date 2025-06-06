@@ -18,7 +18,7 @@ import (
 
 	nodeitem "pan/features/extfs/node_item"
 	remoteitem "pan/features/extfs/remote_item"
-	mockedSample "pan/mocks/pan/lib/sample"
+	mockedFeature "pan/mocks/pan/lib/feature"
 )
 
 func TestRemoteItemController(t *testing.T) {
@@ -36,10 +36,10 @@ func TestRemoteItemController(t *testing.T) {
 	t.Run("GET /remotes/:peerId/remote-items/:id", func(t *testing.T) {
 		app, ctrl := setup()
 
-		// mock SamplePeer
-		samplePeer := &mockedSample.MockSamplePeer{}
-		defer samplePeer.AssertExpectations(t)
-		ctrl.RemoteItemService.RemoteItemBroker.SamplePeer = samplePeer
+		// mock BrokerHelper
+		brokerHelper := &mockedFeature.MockBrokerHelper{}
+		defer brokerHelper.AssertExpectations(t)
+		ctrl.RemoteItemService.RemoteItemBroker.BrokerHelper = brokerHelper
 		//
 
 		// mock response
@@ -56,7 +56,7 @@ func TestRemoteItemController(t *testing.T) {
 		resBody, err := proto.Marshal(&record)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectRemoteItem, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+		brokerHelper.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectRemoteItem, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
 			resp := args.Get(3).(*remoteitem.RemoteItemRecord)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)
@@ -89,10 +89,10 @@ func TestRemoteItemController(t *testing.T) {
 
 		app, ctrl := setup()
 
-		// mock SamplePeer
-		samplePeer := &mockedSample.MockSamplePeer{}
-		defer samplePeer.AssertExpectations(t)
-		ctrl.RemoteItemService.RemoteItemBroker.SamplePeer = samplePeer
+		// mock BrokerHelper
+		brokerHelper := &mockedFeature.MockBrokerHelper{}
+		defer brokerHelper.AssertExpectations(t)
+		ctrl.RemoteItemService.RemoteItemBroker.BrokerHelper = brokerHelper
 		//
 
 		// mock response
@@ -111,7 +111,7 @@ func TestRemoteItemController(t *testing.T) {
 		resBody, err := proto.Marshal(&recordList)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectAllRemoteItems, mock.Anything, nil).Once().Return(nil).Run(func(args mock.Arguments) {
+		brokerHelper.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectAllRemoteItems, mock.Anything, nil).Once().Return(nil).Run(func(args mock.Arguments) {
 			resp := args.Get(3).(*remoteitem.RemoteItemRecordList)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)

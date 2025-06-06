@@ -28,7 +28,8 @@ func TestAppNodeRepo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		repo = appnode.NewAppNodeRepository(db)
+		repo = appnode.NewAppNodeRepository()
+		repo.SetupToRepository(db)
 		return
 	}
 

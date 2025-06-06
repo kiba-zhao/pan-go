@@ -26,7 +26,8 @@ func TestNodeItemRepo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		repo := nodeitem.NewNodeItemRepository(db)
+		repo := nodeitem.NewNodeItemRepository()
+		repo.SetupToRepository(db)
 		return repo, mockDB, mock
 	}
 

@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 )
 
@@ -45,26 +46,8 @@ func Sign(data []byte, key crypto.PrivateKey) ([]byte, error) {
 	return ecdsa.SignASN1(rand.Reader, privKey, hash)
 }
 
-// Verify checks the validity of a given signature for the provided data using
-// the specified public key.
-//
-// The `key` must be in the PKIX, ASN.1 DER format and represent an ECDSA public
-// key. If the public key cannot be parsed or is not an ECDSA key, the function
-// returns ErrPeerSignatureInvalidPublicKey.
-//
-// The function calculates a hash of the `data` based on the curve used by the
-// public key and verifies the signature using ECDSA. If the signature does not
-// match, it returns ErrPeerSignatureVerifyFailed.
-//
-// Returns an error if the public key is invalid, the curve is unsupported, or
-// the signature verification fails.
-
-func Verify(data, sig, key []byte) error {
-	x509Key, err := x509.ParsePKIXPublicKey(key)
-	if err != nil {
-		return err
-	}
-	pubKey, ok := x509Key.(*ecdsa.PublicKey)
+func Verify(data, sig []byte, key any) error {
+	pubKey, ok := key.(*ecdsa.PublicKey)
 	if !ok {
 		return ErrPeerSignatureInvalidPublicKey
 	}
@@ -81,6 +64,30 @@ func Verify(data, sig, key []byte) error {
 	}
 
 	return nil
+}
+
+func VerifyWithPublicKeyBytes(data, sig, key []byte) error {
+	x509Key, err := x509.ParsePKIXPublicKey(key)
+	if err == nil {
+		err = Verify(data, sig, x509Key)
+	}
+	return err
+}
+
+func VerifyPairKey(privKey crypto.PrivateKey, pubKey any) error {
+	randomBytes := make([]byte, 32)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return err
+	}
+
+	sig, err := Sign(randomBytes, privKey)
+	if err != nil {
+		return err
+	}
+
+	return Verify(randomBytes, sig, pubKey)
+
 }
 
 // hashWithECDSA generates a hash for the given data using the specified curve.
@@ -143,4 +150,31 @@ func shaWithCryptoHash(hash crypto.Hash, data []byte) (hashed []byte, err error)
 		err = ErrPeerSignatureUnsupportedHash
 	}
 	return
+}
+
+func EncodePrivateKeyToPemBytes(key crypto.PrivateKey) ([]byte, error) {
+	privKey, ok := key.(*ecdsa.PrivateKey)
+	if !ok {
+		return nil, ErrPeerSignatureInvalidPrivKey
+	}
+
+	privKeyBytes, err := x509.MarshalPKCS8PrivateKey(privKey)
+	if err != nil {
+		return nil, err
+	}
+
+	block := &pem.Block{}
+	block.Type = "EC PRIVATE KEY"
+	block.Bytes = privKeyBytes
+
+	return pem.EncodeToMemory(block), nil
+}
+
+func EncodeCertificateToPemBytes(certificates ...[]byte) []byte {
+	certificateBytes := make([]byte, 0)
+	for _, certificate := range certificates {
+		certPEMBlock := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate})
+		certificateBytes = append(certificateBytes, certPEMBlock...)
+	}
+	return certificateBytes
 }

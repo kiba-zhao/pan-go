@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"pan/lib/peer"
 	"pan/lib/web"
-	mockedSample "pan/mocks/pan/lib/sample"
+	mockedFeature "pan/mocks/pan/lib/feature"
 	"path"
 	"testing"
 	"time"
@@ -38,10 +38,10 @@ func TestRemoteFileInfoController(t *testing.T) {
 	t.Run("GET /remotes/:peerId/remote-items/:id/_files/*filepath", func(t *testing.T) {
 		app, ctrl := setup()
 
-		// mock SamplePeer
-		samplePeer := &mockedSample.MockSamplePeer{}
-		defer samplePeer.AssertExpectations(t)
-		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.SamplePeer = samplePeer
+		// mock BrokerHelper
+		brokerHelper := &mockedFeature.MockBrokerHelper{}
+		defer brokerHelper.AssertExpectations(t)
+		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.BrokerHelper = brokerHelper
 		//
 
 		peerIdBytes := []byte("peerId")
@@ -59,7 +59,7 @@ func TestRemoteFileInfoController(t *testing.T) {
 		resBody, err := proto.Marshal(&record)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectRemoteFileInfo, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+		brokerHelper.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectRemoteFileInfo, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
 			resp := args.Get(3).(*remoteitem.RemoteFileInfoRecord)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)
@@ -103,10 +103,10 @@ func TestRemoteFileInfoController(t *testing.T) {
 	t.Run("GET /remotes/:peerId/remote-items/:id/_files?parentPath=", func(t *testing.T) {
 		app, ctrl := setup()
 
-		// mock SamplePeer
-		samplePeer := &mockedSample.MockSamplePeer{}
-		defer samplePeer.AssertExpectations(t)
-		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.SamplePeer = samplePeer
+		// mock BrokerHelper
+		brokerHelper := &mockedFeature.MockBrokerHelper{}
+		defer brokerHelper.AssertExpectations(t)
+		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.BrokerHelper = brokerHelper
 		//
 
 		// mock response
@@ -128,7 +128,7 @@ func TestRemoteFileInfoController(t *testing.T) {
 		resBody, err := proto.Marshal(&recordList)
 		assert.Nil(t, err)
 
-		samplePeer.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SearchRemoteFileInfos, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+		brokerHelper.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SearchRemoteFileInfos, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
 			resp := args.Get(3).(*remoteitem.RemoteFileInfoRecordList)
 			err := proto.Unmarshal(resBody, resp)
 			assert.Nil(t, err)

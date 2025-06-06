@@ -13,7 +13,7 @@ import (
 
 const CHECKSUM_THRESHOLD = uint16(65535)
 
-type PacketBuffer struct {
+type stdPacketBuffer struct {
 	size    int
 	content []byte
 	addr    string
@@ -22,11 +22,11 @@ type PacketBuffer struct {
 }
 
 // HashCode returns the address of the packet buffer as the hash code.
-func (bpb *PacketBuffer) HashCode() string {
+func (bpb *stdPacketBuffer) HashCode() string {
 	return bpb.addr
 }
 
-func comparePacketBuffer(item *PacketBuffer, key string) int {
+func comparePacketBuffer(item *stdPacketBuffer, key string) int {
 	return cmp.Compare(item.addr, key)
 }
 

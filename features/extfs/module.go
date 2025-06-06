@@ -1,11 +1,10 @@
 package extfs
 
 import (
+	"pan/lib/feature"
 	"pan/lib/injection"
-	"pan/lib/peer"
+	"pan/lib/repository"
 	"pan/lib/runtime"
-	"pan/lib/sample"
-	"pan/lib/web"
 
 	remotesearchfile "pan/features/extfs/remote_search_file"
 	"pan/features/extfs/vfs"
@@ -18,35 +17,35 @@ import (
 	searchitem "pan/features/extfs/search_item"
 )
 
+const ModuleName = "extfs"
+
 func New() interface{} {
 	m := &module{}
-	m.store = injection.NewComponentStore()
 
-	sampleModule := sample.New(m)
-	m.sample = sampleModule
-
-	return runtime.NewModule(vfs.New(m), nodesearchfile.New(m), sampleModule)
+	return runtime.NewModule(
+		vfs.New(m),
+		nodesearchfile.New(ModuleName, m),
+		feature.New(ModuleName, m),
+		m,
+	)
 }
-
-const moduleName = "extfs"
 
 type module struct {
-	store              injection.ComponentStore
-	sample             sample.Sample
-	controllers        []web.WebController
-	controllersOnce    sync.Once
-	peerAppModules     []peer.PeerAppModule
-	peerAppModulesOnce sync.Once
+	injection.BaseComponentStoreProvider
+
+	controllers     []feature.WebController
+	controllersOnce sync.Once
+
+	topics     []feature.PeerTopic
+	topicsOnce sync.Once
 }
 
-func (m *module) Name() string {
-	return moduleName
-}
+var _ = (feature.WebControllerProvider)((*module)(nil))
 
-func (m *module) WebControllers() []web.WebController {
+func (m *module) WebControllers() []feature.WebController {
 	m.controllersOnce.Do(func() {
 
-		m.controllers = []web.WebController{
+		m.controllers = []feature.WebController{
 			// nodeitem controllers
 			&nodeitem.NodeItemController{},
 			&nodeitem.NodeFileInfoController{},
@@ -60,34 +59,42 @@ func (m *module) WebControllers() []web.WebController {
 
 			// search controllers
 			&searchitem.SearchItemController{},
-			&nodesearchfile.NodeSearchFileController{},
 			&remotesearchfile.RemoteSearchFileController{},
 		}
 	})
 	return m.controllers
 }
 
-func (m *module) PeerAppModules() []peer.PeerAppModule {
-	m.peerAppModulesOnce.Do(func() {
-		m.peerAppModules = []peer.PeerAppModule{
+var _ = (repository.Repository)((*module)(nil))
+
+func (m *module) SetupToRepository(db repository.RepositoryDB) error {
+	return db.AutoMigrate(
+		&nodeitem.NodeItem{},
+		&searchitem.SearchItem{},
+	)
+}
+
+var _ = (feature.RepositoryMetaProvider)((*module)(nil))
+
+func (m *module) RepositoryMetaList() []feature.RepositoryMeta {
+	return []feature.RepositoryMeta{
+		feature.NewRepositoryMeta[nodeitem.NodeItemRepository](nodeitem.NewNodeItemRepository()),
+		feature.NewRepositoryMeta[searchitem.SearchItemRepository](searchitem.NewSearchItemRepository()),
+	}
+}
+
+var _ = (feature.PeerTopicProvider)((*module)(nil))
+
+func (m *module) PeerTopics() []feature.PeerTopic {
+	m.topicsOnce.Do(func() {
+		m.topics = []feature.PeerTopic{
 			&remoteitem.RemoteItemTopic{},
 			&remoteitem.RemoteFileInfoTopic{},
 			&remoteitem.RemoteFileStreamTopic{},
 			&remotesearchfile.RemoteSearchFileTopic{},
 		}
 	})
-	return m.peerAppModules
-}
-
-func (m *module) Models() []interface{} {
-	return []interface{}{
-		&nodeitem.NodeItem{},
-		&searchitem.SearchItem{},
-	}
-}
-
-func (m *module) ComponentStore() injection.ComponentStore {
-	return m.store
+	return m.topics
 }
 
 func (m *module) Components() []injection.Component {
@@ -96,40 +103,25 @@ func (m *module) Components() []injection.Component {
 	components := []injection.Component{}
 
 	// node-items services
-	components = sample.AppendSampleInternalComponent[nodeitem.NodeItemInternalService](components, &nodeitem.NodeItemService{})
-	components = sample.AppendSampleInternalComponent[nodeitem.NodeFilePathInternalService](components, &nodeitem.NodeFilePathService{})
-	components = sample.AppendSampleInternalComponent[nodeitem.NodeFileInfoInternalService](components, &nodeitem.NodeFileInfoService{})
+	components = feature.AppendInternalComponent[nodeitem.NodeItemInternalService](components, &nodeitem.NodeItemService{})
+	components = feature.AppendInternalComponent[nodeitem.NodeFilePathInternalService](components, &nodeitem.NodeFilePathService{})
+	components = feature.AppendInternalComponent[nodeitem.NodeFileInfoInternalService](components, &nodeitem.NodeFileInfoService{})
 
 	// remote-nodes services
-	components = sample.AppendSampleComponent(components, &remotenode.RemoteNodeService{})
-	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemService{})
-	components = sample.AppendSampleInternalComponent[remoteitem.RemoteFileInfoInternalService](components, &remoteitem.RemoteFileInfoService{})
-	components = sample.AppendSampleComponent(components, &remoteitem.RemoteFileStreamService{})
+	components = feature.AppendComponent(components, &remotenode.RemoteNodeService{})
+	components = feature.AppendComponent(components, &remoteitem.RemoteItemService{})
+	components = feature.AppendInternalComponent[remoteitem.RemoteFileInfoInternalService](components, &remoteitem.RemoteFileInfoService{})
+	components = feature.AppendComponent(components, &remoteitem.RemoteFileStreamService{})
 
 	// search file services
-	components = sample.AppendSampleInternalComponent[nodesearchfile.NodeSearchFileInternalService](components, &nodesearchfile.NodeSearchFileService{})
-	components = sample.AppendSampleComponent(components, &searchitem.SearchItemService{})
-	components = sample.AppendSampleComponent(components, &remotesearchfile.RemoteSearchFileService{})
+	components = feature.AppendComponent(components, &searchitem.SearchItemService{})
+	components = feature.AppendComponent(components, &remotesearchfile.RemoteSearchFileService{})
 
 	// brokers
-	components = sample.AppendSampleComponent(components, &remoteitem.RemoteItemBroker{SamplePeer: m.sample})
-	components = sample.AppendSampleComponent(components, &remoteitem.RemoteFileInfoBroker{SamplePeer: m.sample})
-	components = sample.AppendSampleComponent(components, &remoteitem.RemoteFileStreamBroker{SamplePeer: m.sample})
-	components = sample.AppendSampleComponent(components, &remotesearchfile.RemoteSearchFileBroker{SamplePeer: m.sample})
-
-	// repositories
-	components = sample.AppendSampleComponent(components, nodeitem.NewNodeItemRepository(m.sample.DB()))
-	components = sample.AppendSampleComponent(components, searchitem.NewSearchItemRepository(m.sample.DB()))
-
-	// controllers
-	for _, ctrl := range m.WebControllers() {
-		components = append(components, injection.NewComponent(ctrl, injection.ComponentNoneScope))
-	}
-
-	// peer app modules
-	for _, peerAppModule := range m.PeerAppModules() {
-		components = append(components, injection.NewComponent(peerAppModule, injection.ComponentNoneScope))
-	}
+	components = feature.AppendComponent(components, &remoteitem.RemoteItemBroker{})
+	components = feature.AppendComponent(components, &remoteitem.RemoteFileInfoBroker{})
+	components = feature.AppendComponent(components, &remoteitem.RemoteFileStreamBroker{})
+	components = feature.AppendComponent(components, &remotesearchfile.RemoteSearchFileBroker{})
 
 	return components
 }

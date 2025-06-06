@@ -2,6 +2,8 @@ package nodesearchfile
 
 import (
 	"errors"
+	"pan/lib/feature"
+	"pan/lib/repository"
 	"pan/lib/web"
 	"strconv"
 	"strings"
@@ -38,6 +40,7 @@ func NodeSearchFileWithTaskID(searchFile *NodeSearchFile, taskId uint64) func(db
 }
 
 type NodeSearchFileRepository interface {
+	repository.Repository
 	// Init initializes the database table for the given task ID.
 	// The function checks if the table already exists, and if not, creates it.
 	// If the table already exists, the function does nothing.
@@ -60,24 +63,26 @@ type NodeSearchFileRepository interface {
 	Save(taskId uint64, searchFile NodeSearchFile) (NodeSearchFile, error)
 }
 
-type searchFileRepositoryImpl struct {
-	db *gorm.DB
+type stdSearchFileRepository struct {
+	feature.Repository
 }
 
 // NewNodeSearchFileRepository creates a new instance of NodeSearchFileRepository using the
 // provided Gorm DB instance. If the database connection is nil, subsequent repository
 // operations will return ErrNodeSearchFileDBUnavailable.
-func NewNodeSearchFileRepository(db *gorm.DB) NodeSearchFileRepository {
-	return &searchFileRepositoryImpl{db: db}
+func NewNodeSearchFileRepository() NodeSearchFileRepository {
+	return &stdSearchFileRepository{}
 }
+
+var _ = (NodeSearchFileRepository)((*stdSearchFileRepository)(nil))
 
 // Init initializes the database table for the given task ID.
 // The function checks if the table already exists, and if not, creates it.
 // If the table already exists, the function does nothing.
 // If the database is unavailable, the function returns ErrNodeSearchFileDBUnavailable.
 // If the function fails to create the table, the function returns the error.
-func (repo *searchFileRepositoryImpl) Init(taskId uint64) error {
-	db := repo.db
+func (repo *stdSearchFileRepository) Init(taskId uint64) error {
+	db := repo.DB()
 	if db == nil {
 		return ErrNodeSearchFileDBUnavailable
 	}
@@ -85,7 +90,7 @@ func (repo *searchFileRepositoryImpl) Init(taskId uint64) error {
 	db = db.Scopes(NodeSearchFileWithTaskID(&model, taskId))
 	migrator := db.Migrator()
 	if migrator.HasTable(&model) {
-		return nil
+		return db.Delete(&model).Error
 	}
 	return migrator.CreateTable(&model)
 }
@@ -95,8 +100,8 @@ func (repo *searchFileRepositoryImpl) Init(taskId uint64) error {
 // If the table exists, it drops the table and returns any error encountered during this process.
 // If the table does not exist, it returns nil.
 
-func (repo *searchFileRepositoryImpl) Destroy(taskId uint64) error {
-	db := repo.db
+func (repo *stdSearchFileRepository) Destroy(taskId uint64) error {
+	db := repo.DB()
 	if db == nil {
 		return ErrNodeSearchFileDBUnavailable
 	}
@@ -115,8 +120,8 @@ func (repo *searchFileRepositoryImpl) Destroy(taskId uint64) error {
 // If the database is unavailable, it returns ErrNodeSearchFileDBUnavailable.
 // If the table for the task ID does not exist, the function returns nil for the total
 // and the slice of NodeSearchFiles, and no error.
-func (repo *searchFileRepositoryImpl) Search(taskId uint64, condition web.RangeCondition) (int64, []NodeSearchFile, error) {
-	db := repo.db
+func (repo *stdSearchFileRepository) Search(taskId uint64, condition web.RangeCondition) (int64, []NodeSearchFile, error) {
+	db := repo.DB()
 	if db == nil {
 		return 0, nil, ErrNodeSearchFileDBUnavailable
 	}
@@ -150,8 +155,8 @@ func (repo *searchFileRepositoryImpl) Search(taskId uint64, condition web.RangeC
 // If the table for the task ID does not exist, it returns ErrNodeSearchFileRepoUnavailable.
 //
 // If the NodeSearchFile was not found, it returns ErrNodeSearchFileNotFound.
-func (repo *searchFileRepositoryImpl) Save(taskId uint64, searchFile NodeSearchFile) (NodeSearchFile, error) {
-	db := repo.db
+func (repo *stdSearchFileRepository) Save(taskId uint64, searchFile NodeSearchFile) (NodeSearchFile, error) {
+	db := repo.DB()
 	if db == nil {
 		return NodeSearchFile{}, ErrNodeSearchFileDBUnavailable
 	}

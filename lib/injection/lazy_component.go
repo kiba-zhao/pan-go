@@ -4,7 +4,7 @@ import "reflect"
 
 type LazyComponentFunc[T any] func() T
 
-type lazyComponentImpl[T any] struct {
+type stdLazyComponent[T any] struct {
 	componentBase
 	lazyFunc LazyComponentFunc[T]
 }
@@ -22,12 +22,12 @@ func NewLazyComponent[T any](lazyFunc LazyComponentFunc[T], scope string) Compon
 		ty:    reflect.TypeFor[T](),
 		scope: scope,
 	}
-	return &lazyComponentImpl[T]{
+	return &stdLazyComponent[T]{
 		lazyFunc:      lazyFunc,
 		componentBase: base,
 	}
 }
 
-func (c *lazyComponentImpl[T]) Target() interface{} {
+func (c *stdLazyComponent[T]) Target() interface{} {
 	return c.lazyFunc()
 }

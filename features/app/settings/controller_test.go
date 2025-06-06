@@ -11,9 +11,10 @@ import (
 
 	appsettings "pan/features/app/settings"
 
-	mocked "pan/mocks/pan/features/app/settings"
+	configMocked "pan/mocks/pan/lib/config"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestAppSettingsController(t *testing.T) {
@@ -40,13 +41,12 @@ func TestAppSettingsController(t *testing.T) {
 		settings.PublicAddress = []string{"127.0.0.1:9003"}
 		settings.GuardEnabled = true
 		settings.GuardAccess = true
+		settings.DBPath = "test db path"
+		settings.TempPath = "test temp path"
 
-		provider := &mocked.MockAppSettingsProvider{}
-		provider.AssertExpectations(t)
-		ctrl.AppSettingsService.Provider = provider
-		provider.On("Settings").Once().Return(settings)
-		provider.On("PeerID").Once().Return(peerId)
-		provider.On("RootPath").Once().Return(rootPath)
+		ctrl.AppSettingsService.SetConfigSettings(&settings)
+		ctrl.AppSettingsService.SetPeerID(peerId)
+		ctrl.AppSettingsService.SetRootPath(rootPath)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/settings", nil)
@@ -73,6 +73,12 @@ func TestAppSettingsController(t *testing.T) {
 		settings.PublicAddress = []string{"127.0.0.1:9003"}
 		settings.GuardEnabled = true
 		settings.GuardAccess = true
+		settings.DBPath = "test db path"
+		settings.TempPath = "test temp path"
+
+		ctrl.AppSettingsService.SetConfigSettings(&settings)
+		ctrl.AppSettingsService.SetPeerID(peerId)
+		ctrl.AppSettingsService.SetRootPath(rootPath)
 
 		fields := appsettings.AppSettingsFields{}
 		fields.Name = "field name"
@@ -85,23 +91,23 @@ func TestAppSettingsController(t *testing.T) {
 		fields.GuardAccess = new(bool)
 		*fields.GuardAccess = false
 
-		settings_ := settings
-		settings_.Name = fields.Name
-		settings_.WebAddress = fields.WebAddress
-		settings_.PeerAddress = fields.PeerAddress
-		settings_.BroadcastAddress = fields.BroadcastAddress
-		settings_.PublicAddress = fields.PublicAddress
-		settings_.GuardEnabled = *fields.GuardEnabled
-		settings_.GuardAccess = *fields.GuardAccess
-
-		provider := &mocked.MockAppSettingsProvider{}
-		provider.AssertExpectations(t)
-		ctrl.AppSettingsService.Provider = provider
-		provider.On("Settings").Once().Return(settings)
-		provider.On("SetSettings", settings_).Once().Return(nil)
-		provider.On("Settings").Once().Return(settings_)
-		provider.On("PeerID").Once().Return(peerId)
-		provider.On("RootPath").Once().Return(rootPath)
+		var settings_ config.AppSettings
+		appConfig := &configMocked.MockAppConfig[config.AppSettings]{}
+		appConfig.AssertExpectations(t)
+		ctrl.AppSettingsService.AppConfig = appConfig
+		appConfig.On("Save", mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
+			settings_ = args.Get(0).(config.AppSettings)
+			assert.Equal(t, fields.Name, settings_.Name)
+			assert.Equal(t, fields.WebAddress, settings_.WebAddress)
+			assert.Equal(t, fields.PeerAddress, settings_.PeerAddress)
+			assert.Equal(t, fields.BroadcastAddress, settings_.BroadcastAddress)
+			assert.Equal(t, fields.PublicAddress, settings_.PublicAddress)
+			assert.Equal(t, *fields.GuardEnabled, settings_.GuardEnabled)
+			assert.Equal(t, *fields.GuardAccess, settings_.GuardAccess)
+			assert.Equal(t, settings.DBPath, settings_.DBPath)
+			assert.Equal(t, settings.TempPath, settings_.TempPath)
+			ctrl.AppSettingsService.SetConfigSettings(settings_)
+		})
 
 		fieldsData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
@@ -113,6 +119,6 @@ func TestAppSettingsController(t *testing.T) {
 		var results appsettings.AppSettings
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
-		assert.Equal(t, appsettings.AppSettings{Settings: settings_, PeerID: peerId, RootPath: rootPath}, results)
+		assert.Equal(t, appsettings.AppSettings{Settings: *settings_, PeerID: peerId, RootPath: rootPath}, results)
 	})
 }

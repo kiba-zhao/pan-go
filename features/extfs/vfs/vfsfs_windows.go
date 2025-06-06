@@ -19,9 +19,9 @@ const VFSWinFSPathSeparator = "/"
 
 type VFSWinFSNodeSystem = fuse.FileSystemInterface
 
-func NewVFSFS(runtime *VFSFSRuntime, settings VFSSettings) *VFSWinFS {
+func NewVFSFS(runtime *stdVFSFSRuntime, settings VFSSettings) *VFSWinFS {
 	var vfsfs VFSWinFS
-	vfsfs.VFSFSRuntime = runtime
+	vfsfs.stdVFSFSRuntime = runtime
 	vfsfs.settings = &settings
 	vfsfs.nodeItemSys = nodeitem.NewVFSWinFS(&vfsfs)
 	vfsfs.remoteItemSys = remoteitem.NewVFSWinFS(&vfsfs)
@@ -30,7 +30,7 @@ func NewVFSFS(runtime *VFSFSRuntime, settings VFSSettings) *VFSWinFS {
 
 type VFSWinFS struct {
 	fuse.FileSystemBase
-	*VFSFSRuntime
+	*stdVFSFSRuntime
 	settings      *VFSSettings
 	locker        sync.Mutex
 	host          *fuse.FileSystemHost

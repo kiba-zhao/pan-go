@@ -5,7 +5,8 @@ import (
 	"errors"
 	"time"
 
-	appSample "pan/lib/sample"
+	"pan/lib/feature"
+	"pan/lib/repository"
 	"pan/lib/web"
 
 	"gorm.io/gorm"
@@ -14,71 +15,93 @@ import (
 var ErrNodeSearchTaskNotFound = errors.New("searchtask.NodeSearchTaskRepository Error: Not Found")
 
 type NodeSearchTaskRepository interface {
+	repository.Repository
+
+	SelectWithStatusExcludeIds(status uint8, ids []uint64) (NodeSearchTask, error)
 	// Select retrieves a NodeSearchTask associated with the given ID.
 	// It returns the retrieved NodeSearchTask and an error if any issues occur during the query.
-	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 	// If the NodeSearchTask was not found, it returns ErrNodeSearchTaskNotFound.
 	Select(id uint64) (NodeSearchTask, error)
 	// SelectWithQueryAndHash retrieves a NodeSearchTask associated with the given query and hash.
 	// It returns the retrieved NodeSearchTask and an error if any issues occur during the query.
-	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 	// If the NodeSearchTask was not found, it returns ErrNodeSearchTaskNotFound.
 	SelectWithQueryAndHash(query string, hash string) (NodeSearchTask, error)
 	// SearchWithStatus retrieves NodeSearchTasks associated with the given status and
 	// applying the given range condition for pagination. It returns the total number of
 	// results, a slice of NodeSearchTasks, and an error if any issues occur during the
-	// query. If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// query. If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 	SearchWithStatus(status uint8, condition web.RangeCondition) (int64, []NodeSearchTask, error)
 	// UpdateWithStatus updates the status of the specified NodeSearchTask in the database.
 	// It returns the updated NodeSearchTask and an error if any issues occur during the update.
-	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 	// If the NodeSearchTask was not found, it returns ErrNodeSearchTaskNotFound.
 	UpdateWithStatus(uint8, NodeSearchTask) (NodeSearchTask, error)
 	// SelectOrCreate selects a NodeSearchTask associated with the given query and hash,
 	// or creates a new one if none exists. It returns the selected or created NodeSearchTask,
 	// a boolean indicating whether the NodeSearchTask was created, and an error if any
 	// issues occur during the query. If the database is unavailable, it returns
-	// appSample.ErrSampleDBUnavailable.
+	// feature.ErrFeatureRepositoryDBUnavailable.
 	SelectOrCreate(task NodeSearchTask) (NodeSearchTask, bool, error)
 	// Save saves the given NodeSearchTask to the database.
 	// It returns the saved NodeSearchTask and an error if any issues occur during the query.
-	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 	Save(task NodeSearchTask) (NodeSearchTask, error)
 	// SearchWithLifecycle retrieves NodeSearchTasks that have not been updated for the given duration.
 	// It returns a slice of NodeSearchTasks and an error if any issues occur during the query.
-	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 	SearchWithLifecycle(lifecycle uint64) ([]NodeSearchTask, error)
 	// DeleteWithIDs deletes NodeSearchTasks associated with the given IDs.
 	// It returns an error if any issues occur during the deletion process.
-	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 	DeleteWithIDs(ids ...uint64) error
 	// Delete removes the specified NodeSearchTask from the database.
 	// It returns an error if any issues occur during the deletion process.
-	// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+	// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 	// If the NodeSearchTask was not found, it returns ErrNodeSearchTaskNotFound.
 	Delete(NodeSearchTask) error
 }
 
-type searchTaskRepositoryImpl struct {
-	db *gorm.DB
+type stdNodeSearchTaskRepository struct {
+	feature.Repository
 }
 
 // NewNodeSearchTaskRepository creates a new instance of NodeSearchTaskRepository
 // using the given Gorm DB instance. If the database connection is nil,
 // subsequent repository operations will return ErrNodeSearchTaskNotFound.
-func NewNodeSearchTaskRepository(db *gorm.DB) NodeSearchTaskRepository {
-	return &searchTaskRepositoryImpl{db: db}
+func NewNodeSearchTaskRepository() NodeSearchTaskRepository {
+	return &stdNodeSearchTaskRepository{}
+}
+
+var _ = (NodeSearchTaskRepository)((*stdNodeSearchTaskRepository)(nil))
+
+func (repo *stdNodeSearchTaskRepository) SelectWithStatusExcludeIds(status uint8, ids []uint64) (NodeSearchTask, error) {
+	db := repo.DB()
+	if db == nil {
+		return NodeSearchTask{}, feature.ErrFeatureRepositoryDBUnavailable
+	}
+
+	if len(ids) > 0 {
+		db = db.Not(ids)
+	}
+	var task NodeSearchTask
+	results := db.Order("created_at asc").Where("status =?", status).Take(&task)
+	if results.Error == gorm.ErrRecordNotFound {
+		return task, ErrNodeSearchTaskNotFound
+	}
+	return task, results.Error
 }
 
 // Select retrieves a NodeSearchTask associated with the given ID.
 // It returns the retrieved NodeSearchTask and an error if any issues occur during the query.
-// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 // If the NodeSearchTask was not found, it returns ErrNodeSearchTaskNotFound.
 
-func (repo *searchTaskRepositoryImpl) Select(id uint64) (NodeSearchTask, error) {
-	db := repo.db
+func (repo *stdNodeSearchTaskRepository) Select(id uint64) (NodeSearchTask, error) {
+	db := repo.DB()
 	if db == nil {
-		return NodeSearchTask{}, appSample.ErrSampleDBUnavailable
+		return NodeSearchTask{}, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	var task NodeSearchTask
 	results := db.Take(&task, id)
@@ -90,12 +113,12 @@ func (repo *searchTaskRepositoryImpl) Select(id uint64) (NodeSearchTask, error) 
 
 // SelectWithQueryAndHash retrieves a NodeSearchTask associated with the given query and hash.
 // It returns the retrieved NodeSearchTask and an error if any issues occur during the query.
-// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 // If the NodeSearchTask was not found, it returns ErrNodeSearchTaskNotFound.
-func (repo *searchTaskRepositoryImpl) SelectWithQueryAndHash(query string, hash string) (NodeSearchTask, error) {
-	db := repo.db
+func (repo *stdNodeSearchTaskRepository) SelectWithQueryAndHash(query string, hash string) (NodeSearchTask, error) {
+	db := repo.DB()
 	if db == nil {
-		return NodeSearchTask{}, appSample.ErrSampleDBUnavailable
+		return NodeSearchTask{}, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	var task NodeSearchTask
 	db = db.Where("query = ?", query)
@@ -112,11 +135,11 @@ func (repo *searchTaskRepositoryImpl) SelectWithQueryAndHash(query string, hash 
 // SearchWithStatus retrieves NodeSearchTasks associated with the given status and
 // applying the given range condition for pagination. It returns the total number of
 // results, a slice of NodeSearchTasks, and an error if any issues occur during the
-// query. If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
-func (repo *searchTaskRepositoryImpl) SearchWithStatus(status uint8, condition web.RangeCondition) (int64, []NodeSearchTask, error) {
-	db := repo.db
+// query. If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
+func (repo *stdNodeSearchTaskRepository) SearchWithStatus(status uint8, condition web.RangeCondition) (int64, []NodeSearchTask, error) {
+	db := repo.DB()
 	if db == nil {
-		return 0, nil, appSample.ErrSampleDBUnavailable
+		return 0, nil, feature.ErrFeatureRepositoryDBUnavailable
 	}
 
 	total := int64(0)
@@ -135,12 +158,12 @@ func (repo *searchTaskRepositoryImpl) SearchWithStatus(status uint8, condition w
 
 // UpdateWithStatus updates the status of the specified NodeSearchTask in the database.
 // It returns the updated NodeSearchTask and an error if any issues occur during the update.
-// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 // If the NodeSearchTask was not found, it returns ErrNodeSearchTaskNotFound.
-func (repo *searchTaskRepositoryImpl) UpdateWithStatus(status uint8, task NodeSearchTask) (NodeSearchTask, error) {
-	db := repo.db
+func (repo *stdNodeSearchTaskRepository) UpdateWithStatus(status uint8, task NodeSearchTask) (NodeSearchTask, error) {
+	db := repo.DB()
 	if db == nil {
-		return task, appSample.ErrSampleDBUnavailable
+		return task, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	results := db.Model(&task).Where("id = ?", task.ID).Where("status = ?", status).Limit(1).Updates(&task)
 	if results.Error == nil && results.RowsAffected != 1 {
@@ -153,11 +176,11 @@ func (repo *searchTaskRepositoryImpl) UpdateWithStatus(status uint8, task NodeSe
 // or creates a new one if none exists. It returns the selected or created NodeSearchTask,
 // a boolean indicating whether the NodeSearchTask was created, and an error if any
 // issues occur during the query. If the database is unavailable, it returns
-// appSample.ErrSampleDBUnavailable.
-func (repo *searchTaskRepositoryImpl) SelectOrCreate(task NodeSearchTask) (NodeSearchTask, bool, error) {
-	db := repo.db
+// feature.ErrFeatureRepositoryDBUnavailable.
+func (repo *stdNodeSearchTaskRepository) SelectOrCreate(task NodeSearchTask) (NodeSearchTask, bool, error) {
+	db := repo.DB()
 	if db == nil {
-		return task, false, appSample.ErrSampleDBUnavailable
+		return task, false, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	db = db.Where("query = ?", task.Query)
 	db = db.Where("status = ?", task.Status)
@@ -169,12 +192,12 @@ func (repo *searchTaskRepositoryImpl) SelectOrCreate(task NodeSearchTask) (NodeS
 
 // Save saves the given NodeSearchTask to the database.
 // It returns the saved NodeSearchTask and an error if any issues occur during the query.
-// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 // If the NodeSearchTask was not found, it returns ErrNodeSearchTaskNotFound.
-func (repo *searchTaskRepositoryImpl) Save(task NodeSearchTask) (NodeSearchTask, error) {
-	db := repo.db
+func (repo *stdNodeSearchTaskRepository) Save(task NodeSearchTask) (NodeSearchTask, error) {
+	db := repo.DB()
 	if db == nil {
-		return task, appSample.ErrSampleDBUnavailable
+		return task, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	results := db.Save(&task)
 	if results.Error == nil && results.RowsAffected != 1 {
@@ -185,12 +208,12 @@ func (repo *searchTaskRepositoryImpl) Save(task NodeSearchTask) (NodeSearchTask,
 
 // SearchWithLifecycle retrieves NodeSearchTasks that have not been updated for the given lifecycle duration.
 // It returns a slice of NodeSearchTasks and an error if any issues occur during the query.
-// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 
-func (repo *searchTaskRepositoryImpl) SearchWithLifecycle(lifecycle uint64) ([]NodeSearchTask, error) {
-	db := repo.db
+func (repo *stdNodeSearchTaskRepository) SearchWithLifecycle(lifecycle uint64) ([]NodeSearchTask, error) {
+	db := repo.DB()
 	if db == nil {
-		return nil, appSample.ErrSampleDBUnavailable
+		return nil, feature.ErrFeatureRepositoryDBUnavailable
 	}
 	lifecycleAt := time.Now().Add(-time.Duration(lifecycle))
 	var tasks []NodeSearchTask
@@ -200,12 +223,12 @@ func (repo *searchTaskRepositoryImpl) SearchWithLifecycle(lifecycle uint64) ([]N
 
 // DeleteWithIDs deletes NodeSearchTasks associated with the given IDs from the database.
 // It returns an error if any issues occur during the deletion process.
-// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 
-func (repo *searchTaskRepositoryImpl) DeleteWithIDs(ids ...uint64) error {
-	db := repo.db
+func (repo *stdNodeSearchTaskRepository) DeleteWithIDs(ids ...uint64) error {
+	db := repo.DB()
 	if db == nil {
-		return appSample.ErrSampleDBUnavailable
+		return feature.ErrFeatureRepositoryDBUnavailable
 	}
 	results := db.Delete(&NodeSearchTask{}, ids)
 	return results.Error
@@ -213,13 +236,13 @@ func (repo *searchTaskRepositoryImpl) DeleteWithIDs(ids ...uint64) error {
 
 // Delete removes the specified NodeSearchTask from the database.
 // It returns an error if any issues occur during the deletion process.
-// If the database is unavailable, it returns appSample.ErrSampleDBUnavailable.
+// If the database is unavailable, it returns feature.ErrFeatureRepositoryDBUnavailable.
 // If the NodeSearchTask was not found, it returns ErrNodeSearchTaskNotFound.
 
-func (repo *searchTaskRepositoryImpl) Delete(task NodeSearchTask) error {
-	db := repo.db
+func (repo *stdNodeSearchTaskRepository) Delete(task NodeSearchTask) error {
+	db := repo.DB()
 	if db == nil {
-		return appSample.ErrSampleDBUnavailable
+		return feature.ErrFeatureRepositoryDBUnavailable
 	}
 	results := db.Delete(&task)
 	if results.Error == nil && results.RowsAffected != 1 {

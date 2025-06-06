@@ -3,58 +3,68 @@ package nodesearchfile
 
 import (
 	"context"
+	"pan/lib/log"
+	"sync/atomic"
 	"time"
 )
 
-type taskCleanerImpl struct {
+type stdTaskCleaner struct {
 	NodeSearchTaskRepo    NodeSearchTaskRepository
 	NodeSearchFileService *NodeSearchFileService
-	Agent                 Agent
+
+	logger    log.Logger
+	worker    *stdTaskWorker
+	lifecycle atomic.Uint64
 }
 
-// Ready executes the cleanup routine for node search file tasks based on their
-// lifecycle. It continuously checks for tasks that have exceeded their lifecycle
-// duration and deletes their associated search files. The function listens for
-// context cancellation to gracefully terminate the cleanup process. It returns
-// an error if the context is canceled or if an error occurs during task
-// retrieval or deletion.
+func (cleaner *stdTaskCleaner) SetLifecycle(lifecycle uint64) {
+	cleaner.lifecycle.Swap(lifecycle)
+}
 
-func (c *taskCleanerImpl) Ready(ctx context.Context) error {
+func (cleaner *stdTaskCleaner) Lifecycle() uint64 {
+	return cleaner.lifecycle.Load()
+}
+
+func (cleaner *stdTaskCleaner) Run(ctx context.Context) error {
+	cleaner.logger.Debug("nodesearchfile.TaskCleaner", "Run begin")
+	defer cleaner.logger.Debug("nodesearchfile.TaskCleaner", "Run end")
+
 	var err error
-	var timeCh <-chan time.Time
+	timeCh := time.After(0)
 
 read_loop:
 	for {
-		if timeCh == nil {
-			select {
-			case <-ctx.Done():
-				err = ctx.Err()
-				break read_loop
-			default:
-			}
-		} else {
-			select {
-			case <-ctx.Done():
-				err = ctx.Err()
-				break read_loop
-			case <-timeCh:
-			}
-			timeCh = nil
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			break read_loop
+		case <-timeCh:
 		}
 
-		settings := c.Agent.Settings()
-		tasks, err := c.NodeSearchTaskRepo.SearchWithLifecycle(settings.Lifecycle)
+		lifecycle := cleaner.Lifecycle()
+		tasks, err := cleaner.NodeSearchTaskRepo.SearchWithLifecycle(lifecycle)
 		if err != nil || len(tasks) <= 0 {
-			timeCh = time.After(time.Duration(settings.Lifecycle))
+			timeCh = time.After(time.Duration(lifecycle))
 			continue
 		}
 
+		hasDestroy := false
 		for _, task := range tasks {
-			taskErr := c.NodeSearchFileService.DestroyWithTaskID(task.ID)
+			if cleaner.worker.HasTask(task.ID) {
+				continue
+			}
+			hasDestroy = true
+			taskErr := cleaner.NodeSearchFileService.DestroyWithTaskID(task.ID)
 			if taskErr != nil {
 				continue
 			}
-			c.NodeSearchTaskRepo.Delete(task)
+			cleaner.NodeSearchTaskRepo.Delete(task)
+		}
+
+		if hasDestroy {
+			timeCh = time.After(time.Duration(lifecycle))
+		} else {
+			timeCh = time.After(0)
 		}
 	}
 

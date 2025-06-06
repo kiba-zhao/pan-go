@@ -46,11 +46,11 @@ func TestAppNodeController(t *testing.T) {
 		}
 		peerNodeRepo.On("Search", appnode.AppNodeSearchCondition{}).Once().Return(total, items, nil)
 
-		peerModule := &mockedPeer.MockPeerModule{}
-		ctrl.AppNodeService.PeerModule = peerModule
-		defer peerModule.AssertExpectations(t)
-		peerModule.On("CanReach", peerIds[0]).Once().Return(true)
-		peerModule.On("CanReach", peerIds[1]).Once().Return(false)
+		peerCluster := &mockedPeer.MockPeerCluster{}
+		ctrl.AppNodeService.PeerCluster = peerCluster
+		defer peerCluster.AssertExpectations(t)
+		peerCluster.On("CanReach", peerIds[0]).Once().Return(true)
+		peerCluster.On("CanReach", peerIds[1]).Once().Return(false)
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/nodes", nil)
@@ -93,11 +93,11 @@ func TestAppNodeController(t *testing.T) {
 		}
 		peerNodeRepo.On("Search", condition).Once().Return(total, items, nil)
 
-		peerModule := &mockedPeer.MockPeerModule{}
-		defer peerModule.AssertExpectations(t)
-		ctrl.AppNodeService.PeerModule = peerModule
-		peerModule.On("CanReach", peerIds[0]).Once().Return(true)
-		peerModule.On("CanReach", peerIds[1]).Once().Return(false)
+		peerCluster := &mockedPeer.MockPeerCluster{}
+		defer peerCluster.AssertExpectations(t)
+		ctrl.AppNodeService.PeerCluster = peerCluster
+		peerCluster.On("CanReach", peerIds[0]).Once().Return(true)
+		peerCluster.On("CanReach", peerIds[1]).Once().Return(false)
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/nodes", nil)
@@ -182,10 +182,10 @@ func TestAppNodeController(t *testing.T) {
 		}
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 
-		peerModule := &mockedPeer.MockPeerModule{}
-		defer peerModule.AssertExpectations(t)
-		ctrl.AppNodeService.PeerModule = peerModule
-		peerModule.On("CanReach", peerId).Once().Return(true)
+		peerCluster := &mockedPeer.MockPeerCluster{}
+		defer peerCluster.AssertExpectations(t)
+		ctrl.AppNodeService.PeerCluster = peerCluster
+		peerCluster.On("CanReach", peerId).Once().Return(true)
 
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/nodes/%d", item.ID)
@@ -239,10 +239,10 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Delete", item).Once().Return(nil)
 
-		peerModule := &mockedPeer.MockPeerModule{}
-		defer peerModule.AssertExpectations(t)
-		ctrl.AppNodeService.PeerModule = peerModule
-		peerModule.On("Purge", peerId).Once().Return(nil)
+		peerCluster := &mockedPeer.MockPeerCluster{}
+		defer peerCluster.AssertExpectations(t)
+		ctrl.AppNodeService.PeerCluster = peerCluster
+		peerCluster.On("Purge", peerId).Once().Return(nil)
 
 		w := httptest.NewRecorder()
 		url := fmt.Sprintf("/nodes/%d", item.ID)
@@ -347,10 +347,10 @@ func TestAppNodeController(t *testing.T) {
 			assert.Equal(t, newItem.NetworkAddrs[1].Address, arg.NetworkAddrs[1].Address)
 		})
 
-		peerModule := &mockedPeer.MockPeerModule{}
-		defer peerModule.AssertExpectations(t)
-		ctrl.AppNodeService.PeerModule = peerModule
-		peerModule.On("Purge", peerId).Once().Return(nil)
+		peerCluster := &mockedPeer.MockPeerCluster{}
+		defer peerCluster.AssertExpectations(t)
+		ctrl.AppNodeService.PeerCluster = peerCluster
+		peerCluster.On("Purge", peerId).Once().Return(nil)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()
@@ -392,10 +392,10 @@ func TestAppNodeController(t *testing.T) {
 		peerNodeRepo.On("Select", item.ID).Once().Return(item, nil)
 		peerNodeRepo.On("Update", newItem).Once().Return(newItem, nil)
 
-		peerModule := &mockedPeer.MockPeerModule{}
-		defer peerModule.AssertExpectations(t)
-		ctrl.AppNodeService.PeerModule = peerModule
-		peerModule.On("CanReach", peerId).Once().Return(true)
+		peerCluster := &mockedPeer.MockPeerCluster{}
+		defer peerCluster.AssertExpectations(t)
+		ctrl.AppNodeService.PeerCluster = peerCluster
+		peerCluster.On("CanReach", peerId).Once().Return(true)
 
 		jsonData, _ := json.Marshal(fields)
 		w := httptest.NewRecorder()

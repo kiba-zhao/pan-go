@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"iter"
 	"net"
 	"slices"
 	"strconv"
@@ -26,79 +27,125 @@ type PacketConn interface {
 	LeaveGroup(ifi *net.Interface, group net.Addr) error
 }
 
-type broadcastServer struct {
-	module  *broadcastModule
-	locker  sync.RWMutex
-	connArr []*net.UDPConn
-	mtu     int
+type stdBroadcastServer struct {
+	logger log.Logger
+
+	cluster *stdBroadcastCluster
+
+	reloadChan chan struct{}
+	reloadLock sync.Mutex
+	reload     bool
+
+	addrs   []string
+	addrsRW sync.RWMutex
 }
 
-// Shutdown shuts down the broadcast server.
-func (bs *broadcastServer) Shutdown() error {
-
-	bs.locker.Lock()
-	defer bs.locker.Unlock()
-	return bs.close()
+func (server *stdBroadcastServer) Addrs() []string {
+	server.addrsRW.RLock()
+	defer server.addrsRW.RUnlock()
+	return server.addrs
 }
 
-// ListenAndServe starts the broadcast server to listen on the specified addresses for incoming multicast messages.
-// It initializes the necessary UDP connections for each address and serves the multicast groups.
-// Returns an error if the broadcast server is unavailable or if there are issues with the provided addresses.
-func (bs *broadcastServer) ListenAndServe(addrs []string) error {
-	bs.locker.Lock()
-	defer bs.locker.Unlock()
+func (server *stdBroadcastServer) SetAddrs(addrs []string) {
+	server.logger.Debug("BroadcastServer", "SetAddrs")
 
-	if bs.module == nil {
+	server.addrsRW.Lock()
+	defer server.addrsRW.Unlock()
+	if slices.Equal(server.addrs, addrs) {
+		return
+	}
+	server.addrs = addrs
+	server.Reload()
+}
+
+func (server *stdBroadcastServer) Reload() {
+	server.logger.Debug("BroadcastServer", "Reload")
+
+	server.reloadLock.Lock()
+	defer server.reloadLock.Unlock()
+	if server.reload {
+		return
+	}
+
+	server.reload = true
+	server.reloadChan <- struct{}{}
+}
+
+func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
+
+	server.logger.Debug("BroadcastServer", "ListenAndServe begin")
+	defer server.logger.Debug("BroadcastServer", "ListenAndServe end")
+
+	var err error
+	var closed bool
+
+	var wg sync.WaitGroup
+	var connections []*net.UDPConn
+
+	for {
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			closed = true
+		case <-server.reloadChan:
+			server.reloadLock.Lock()
+			server.reload = false
+			server.reloadLock.Unlock()
+		}
+
+		if len(connections) > 0 {
+			for _, conn := range connections {
+				conn.Close()
+			}
+			wg.Wait()
+		}
+
+		if closed {
+			break
+		}
+
+		addrs := seqForMulitcastAddrs(server.logger, server.Addrs())
+		if addrs == nil {
+			continue
+		}
+
+		connections = make([]*net.UDPConn, 0)
+		for port, groups := range addrs {
+			conn, err := newMulticastConn(port, groups)
+			if err != nil {
+				server.logger.Error("BroadcastServer", "Conn Error: "+err.Error())
+				continue
+			}
+			connections = append(connections, conn)
+			wg.Add(1)
+			go func(conn *net.UDPConn) {
+				defer wg.Done()
+				err := server.serve(conn)
+				if err != nil {
+					server.logger.Error("BroadcastServer", "Serve Error: "+err.Error())
+				}
+			}(conn)
+		}
+	}
+	return err
+}
+
+func (server *stdBroadcastServer) serve(conn *net.UDPConn) error {
+	cluster := server.cluster
+	if cluster == nil {
+		return ErrBroadcastServerUnavailable
+	}
+	mtu := cluster.MTU()
+	if mtu <= 0 {
 		return ErrBroadcastServerUnavailable
 	}
 
-	if len(bs.connArr) > 0 {
-		return bs.close()
-	}
-
-	mAddrs := make(map[int][]net.IP)
-	for _, addr := range addrs {
-		var addrPort int
-		host, port, err := net.SplitHostPort(addr)
-		if err == nil {
-			addrPort, err = strconv.Atoi(port)
-		}
-		if err != nil {
-			log.Default().Log(context.Background(), log.LevelWarning, "app.broadcastServer Addr Error: "+err.Error())
-			continue
-		}
-		if _, ok := mAddrs[addrPort]; !ok {
-			mAddrs[addrPort] = make([]net.IP, 0)
-		}
-		ip := net.ParseIP(host)
-		mAddrs[addrPort] = append(mAddrs[addrPort], ip)
-	}
-
-	for port, groups := range mAddrs {
-		conn, err := newMulticastConn(port, groups)
-		if err != nil {
-			log.Default().Log(context.Background(), log.LevelWarning, "app.broadcastServer Conn Error: "+err.Error())
-			continue
-		}
-		go bs.serve(conn)
-	}
-
-	return nil
-}
-
-// serve serves the UDP connection.
-// It reads the UDP packets and parses them using the parsePacketBuffer function.
-// If the packet is a complete packet, it will be served using the Serve method of the broadcast module.
-// If the packet is incomplete, it will be stored in the packet buffer and wait for the complete packet.
-// If the packet is invalid, it will be ignored.
-// The function will return an error if the connection is invalid or if there is an error in the connection.
-func (bs *broadcastServer) serve(conn *net.UDPConn) error {
-	packetBuffers := make([]*PacketBuffer, 0)
+	packetBuffers := make([]*stdPacketBuffer, 0)
 	var packetBuffersRW sync.RWMutex
 	var err error
 
 	for {
-		block := make([]byte, bs.mtu)
+		block := make([]byte, mtu)
 		byteLen, addr, err := conn.ReadFromUDP(block)
 		if errors.Is(err, net.ErrClosed) {
 			break
@@ -110,7 +157,7 @@ func (bs *broadcastServer) serve(conn *net.UDPConn) error {
 		buffer, size := parsePacketBuffer(block[:byteLen])
 		packetBuffersRW.RLock()
 		idx, ok := slices.BinarySearchFunc(packetBuffers, addr.String(), comparePacketBuffer)
-		var bufferItem *PacketBuffer
+		var bufferItem *stdPacketBuffer
 		if ok {
 			bufferItem = packetBuffers[idx]
 		}
@@ -135,7 +182,7 @@ func (bs *broadcastServer) serve(conn *net.UDPConn) error {
 		if size > len(buffer) {
 			if !ok {
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-				bufferItem = &PacketBuffer{
+				bufferItem = &stdPacketBuffer{
 					addr:   addr.String(),
 					cancel: cancel,
 				}
@@ -146,7 +193,7 @@ func (bs *broadcastServer) serve(conn *net.UDPConn) error {
 					packetBuffers = slices.Insert(packetBuffers, idx_, bufferItem)
 				}
 				packetBuffersRW.Unlock()
-				go func(item *PacketBuffer, ctx context.Context) {
+				go func(item *stdPacketBuffer, ctx context.Context) {
 					defer item.wg.Done()
 					<-ctx.Done()
 					packetBuffersRW.Lock()
@@ -167,38 +214,44 @@ func (bs *broadcastServer) serve(conn *net.UDPConn) error {
 			bufferItem.cancel()
 			bufferItem.wg.Wait()
 		}
-		go bs.module.Serve(buffer, addr.String())
+		go cluster.Serve(buffer, addr.String())
 	}
 	return err
 }
 
-// close closes all UDP connections in the broadcast server's connection array.
-// If no connections exist, it returns nil. Otherwise, it iterates through the
-// connections, closing each one and then resets the connection array to nil.
-
-func (bs *broadcastServer) close() error {
-	if len(bs.connArr) <= 0 {
+func seqForMulitcastAddrs(logger log.Logger, addrs []string) iter.Seq2[int, []net.IP] {
+	if len(addrs) <= 0 {
 		return nil
 	}
 
-	for _, conn := range bs.connArr {
-		conn.Close()
-	}
+	return func(yield func(int, []net.IP) bool) {
 
-	bs.connArr = nil
-	return nil
+		mAddrs := make(map[int][]net.IP)
+		for _, addr := range addrs {
+			var addrPort int
+			host, port, err := net.SplitHostPort(addr)
+			if err == nil {
+				addrPort, err = strconv.Atoi(port)
+			}
+			if err != nil {
+				logger.Warn("BroadcastServer", "Addr Error: "+err.Error())
+				continue
+			}
+			if _, ok := mAddrs[addrPort]; !ok {
+				mAddrs[addrPort] = make([]net.IP, 0)
+			}
+			ip := net.ParseIP(host)
+			mAddrs[addrPort] = append(mAddrs[addrPort], ip)
+		}
+
+		for port, ips := range mAddrs {
+			if !yield(port, ips) {
+				break
+			}
+		}
+	}
 }
 
-// newMulticastConn creates a new UDP connection for a given port and list of
-// multicast groups.
-//
-// It iterates through the list of network interfaces and for each interface that
-// supports multicast and is running, it joins the multicast group for each IP
-// address in the list.
-//
-// The function returns a *net.UDPConn and an error. If an error occurs while
-// joining a multicast group, it will be returned. If no multicast groups are
-// specified, the function will return nil as the error.
 func newMulticastConn(port int, groups []net.IP) (*net.UDPConn, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {

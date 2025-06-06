@@ -9,12 +9,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
-	"pan/lib/injection"
 	"pan/lib/log"
 	"pan/lib/peer"
 	"pan/lib/quic"
-	"pan/lib/runtime"
-	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -37,54 +34,26 @@ const (
 	BroadcastMulticastTypeIPV6Local
 )
 
-type BroadcastAgent interface {
-	// DeliverOnline send a broadcast message to the online peers.
-	//
-	// The message will be sent to the peers whose addresses are in the parameter list.
-	// If the parameter list is empty, the message will be sent to all online peers.
-	DeliverOnline(...string) error
-	// Reload reloads the broadcast module.
-	//
-	// It is called by the runtime to reload the broadcast module after the application has finished initializing.
-	Reload()
-}
+type stdBroadcastAgent struct {
+	logger log.Logger
 
-type broadcastAgent struct {
-	PeerModule     peer.PeerModule
-	QuicPeerModule quic.QuicPeerModule
-	Store          BroadcastStore
+	reloadChan chan struct{}
+	reloadLock sync.Mutex
+	reload     bool
 
-	provider injection.ComponentStoreProvider
-	module   *broadcastModule
+	publicAddrs   []string
+	publicAddrsRW sync.RWMutex
 
-	registry   runtime.Registry
-	registryRW sync.RWMutex
+	peerSettings   *peer.PeerSettings
+	peerSettingsRW sync.RWMutex
 
-	reloadLocker sync.Mutex
-	reloadChan   chan struct{}
-	reloadOnce   sync.Once
-	needReload   bool
-}
+	store   BroadcastStore
+	storeRW sync.RWMutex
 
-// ComponentStore returns the ComponentStore associated with the broadcast agent.
-//
-// This method retrieves the ComponentStore from the agent's provider,
-// allowing access to the map of components that are injected into other components.
-func (agent *broadcastAgent) ComponentStore() injection.ComponentStore {
-	return agent.provider.ComponentStore()
-}
+	quicCluster   quic.QuicCluster
+	quicClusterRW sync.RWMutex
 
-func (agent *broadcastAgent) Components() []injection.Component {
-	return []injection.Component{
-		injection.NewComponent(agent, injection.ComponentNoneScope),
-		injection.NewComponent[BroadcastAgent](agent, injection.ComponentExternalScope),
-	}
-}
-
-func (agent *broadcastAgent) EngineTypes() []reflect.Type {
-	return []reflect.Type{
-		reflect.TypeFor[BroadcastPublicAddrsProvider](),
-	}
+	cluster *stdBroadcastCluster
 }
 
 // PublicAddrs returns the list of public addresses that the broadcast agent can use.
@@ -93,68 +62,38 @@ func (agent *broadcastAgent) EngineTypes() []reflect.Type {
 //
 // The addresses are retrieved from the registry, and the list is deduplicated
 // before being returned.
-func (agent *broadcastAgent) PublicAddrs() []string {
-	agent.registryRW.RLock()
-	registry := agent.registry
-	agent.registryRW.RUnlock()
-
-	if registry == nil {
-		return nil
-	}
-
-	addrs := make([]string, 0)
-	runtime.TraverseRegistry(registry, func(provider BroadcastPublicAddrsProvider) error {
-		publicAddrs := provider.BroadcastPublicAddrs()
-		if len(publicAddrs) <= 0 {
-			return nil
-		}
-		for _, addr := range publicAddrs {
-			if idx, ok := slices.BinarySearch(addrs, addr); !ok {
-				addrs = slices.Insert(addrs, idx, addr)
-			}
-		}
-		return nil
-	})
-	return addrs
+func (agent *stdBroadcastAgent) PublicAddrs() []string {
+	agent.publicAddrsRW.RLock()
+	defer agent.publicAddrsRW.RUnlock()
+	return agent.publicAddrs
 }
 
-func (agent *broadcastAgent) Init(registry runtime.Registry) error {
-	agent.registryRW.Lock()
-	defer agent.registryRW.Unlock()
-	agent.registry = registry
-	return nil
-}
-
-func (agent *broadcastAgent) ReloadChan() chan struct{} {
-
-	agent.reloadOnce.Do(func() {
-		agent.reloadChan = make(chan struct{}, 1)
-	})
-
-	return agent.reloadChan
-}
-
-// Reload reloads the broadcast agent.
-//
-// It is called by the runtime to reload the broadcast agent after the application has finished initializing.
-//
-// The function first checks if the registry is available, and if it is not, an error is returned.
-// If the registry is available, the function calls ReloadModules to reload the broadcast agent.
-//
-// ReloadModules is a noop if the registry is not available.
-func (agent *broadcastAgent) Reload() {
-	agent.reloadLocker.Lock()
-	defer agent.reloadLocker.Unlock()
-	if agent.needReload {
+func (agent *stdBroadcastAgent) SetPublicAddrs(addrs []string) {
+	agent.publicAddrsRW.Lock()
+	defer agent.publicAddrsRW.Unlock()
+	if slices.Equal(agent.publicAddrs, addrs) {
 		return
 	}
-	agent.needReload = true
-	agent.ReloadChan() <- struct{}{}
+	agent.publicAddrs = addrs
+	agent.Reload()
+}
+
+func (agent *stdBroadcastAgent) Reload() {
+	agent.logger.Debug("BroadcastAgent", "Reload")
+
+	agent.reloadLock.Lock()
+	defer agent.reloadLock.Unlock()
+	if agent.reload {
+		return
+	}
+
+	agent.reload = true
+	agent.reloadChan <- struct{}{}
 }
 
 // ServeBroadcast serves the broadcast message to the peer.
 // Returns an error if the broadcast agent is unavailable or if there is an issue serving the broadcast.
-func (agent *broadcastAgent) ServeBroadcast(payload []byte, addr string) error {
+func (agent *stdBroadcastAgent) ServeBroadcast(payload []byte, addr string) error {
 	if len(payload) <= 0 {
 		return nil
 	}
@@ -167,21 +106,63 @@ func (agent *broadcastAgent) ServeBroadcast(payload []byte, addr string) error {
 	return err
 }
 
+func (agent *stdBroadcastAgent) PeerSettings() *peer.PeerSettings {
+	agent.peerSettingsRW.RLock()
+	defer agent.peerSettingsRW.RUnlock()
+	return agent.peerSettings
+}
+
+func (agent *stdBroadcastAgent) SetPeerSettings(settings *peer.PeerSettings) {
+	agent.peerSettingsRW.Lock()
+	defer agent.peerSettingsRW.Unlock()
+	agent.peerSettings = settings
+
+	agent.Reload()
+}
+
+func (agent *stdBroadcastAgent) Store() BroadcastStore {
+	agent.storeRW.RLock()
+	defer agent.storeRW.RUnlock()
+	return agent.store
+}
+
+func (agent *stdBroadcastAgent) SetStore(store BroadcastStore) {
+	agent.storeRW.Lock()
+	defer agent.storeRW.Unlock()
+	agent.store = store
+
+	agent.Reload()
+}
+
+func (agent *stdBroadcastAgent) QuicCluster() quic.QuicCluster {
+	agent.quicClusterRW.RLock()
+	defer agent.quicClusterRW.RUnlock()
+	return agent.quicCluster
+}
+
+func (agent *stdBroadcastAgent) SetQuicCluster(cluster quic.QuicCluster) {
+	agent.quicClusterRW.Lock()
+	defer agent.quicClusterRW.Unlock()
+	agent.quicCluster = cluster
+}
+
 // DeliverOnline sends the online message to the peers.
 //
 // The message is sent to the peers whose addresses are in the parameter list.
 // If the parameter list is empty, the message is sent to all online peers.
 //
 // Returns an error if the broadcast agent is unavailable or if there is an issue delivering the online message.
-func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
+func (agent *stdBroadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 
-	settings := agent.PeerModule.PeerSettings()
-	if !settings.Available() {
+	store := agent.Store()
+	cluster := agent.cluster
+	settings := agent.PeerSettings()
+	if settings == nil || cluster == nil || store == nil {
 		return ErrBroadcastAgentDeliverOnlineUnavailable
 	}
 
 	if len(deliverAddrs) <= 0 {
-		deliverAddrs = agent.module.DeliverAddrs()
+		deliverAddrs = cluster.DeliverAddrs()
 	}
 
 	if len(deliverAddrs) <= 0 {
@@ -197,7 +178,7 @@ func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 	info.PeerID = settings.PeerID()
 	info.Heightest = 0
 	info.UpdatedAt = time.Now()
-	info, err := agent.Store.SelectOrCreate(info)
+	info, err := store.SelectOrCreate(info)
 	if err != nil {
 		return err
 	}
@@ -262,15 +243,15 @@ func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 		if err != nil {
 			continue
 		}
-		sig, err := peer.Sign(data, settings.PrivKey())
+		sig, err := peer.Sign(data, settings.PrivateKey())
 		if err != nil {
 			continue
 		}
 		payload := packAgentPayload(data, sig)
 		payload = slices.Insert(payload, 0, BroadcastTypeOnline)
-		err = agent.module.Deliver(payload, addrs...)
+		err = cluster.Deliver(payload, addrs...)
 		if err != nil {
-			log.Default().Log(context.Background(), log.LevelError, "broadcast agent deliver online failed: "+err.Error())
+			log.Default().Error("BroadcastAgent", "Deliver Error: "+err.Error())
 		}
 	}
 
@@ -282,9 +263,11 @@ func (agent *broadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 // The message is verified and the peer is routed to the quic peer module.
 //
 // Returns an error if the message is invalid or if there is an issue routing the peer.
-func (agent *broadcastAgent) AcceptOnline(payload []byte, addr string) error {
-	settings := agent.PeerModule.PeerSettings()
-	if !settings.Available() {
+func (agent *stdBroadcastAgent) AcceptOnline(payload []byte, addr string) error {
+	quicCluster := agent.QuicCluster()
+	store := agent.Store()
+	settings := agent.PeerSettings()
+	if settings == nil || store == nil || quicCluster == nil {
 		return ErrBroadcastAgentDeliverOnlineUnavailable
 	}
 
@@ -322,103 +305,77 @@ func (agent *broadcastAgent) AcceptOnline(payload []byte, addr string) error {
 		msgAddr = net.JoinHostPort(addrIP, port)
 	}
 
-	err = agent.Store.SaveHighest(msg.PeerId, msg.Heightest)
+	err = store.SaveHighest(msg.PeerId, msg.Heightest)
 	if err != nil {
 		return err
 	}
 
-	return agent.QuicPeerModule.Route(msg.PeerId, msgAddr)
+	return quicCluster.Route(msg.PeerId, msgAddr)
 }
 
-// Ready prepares the broadcast agent to operate within the given context.
-//
-// The method manages the lifecycle of the broadcast agent, handling context cancellation,
-// reload signals, and delivery of online messages to peers. It stops any ongoing delivery
-// when the context is done or when a reload is triggered and restarts it if necessary.
-//
-// The method initializes the broadcast store with the peer ID and ensures that the peer
-// settings are available before proceeding. It runs the StartDelivery method in a
-// separate goroutine, which continues to deliver online messages until the context is canceled.
-//
-// Returns an error if the context is canceled or if there is an issue initializing the store.
+func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
+	agent.logger.Debug("BroadcastAgent", "Deliver begin")
+	defer agent.logger.Debug("BroadcastAgent", "Deliver end")
 
-func (agent *broadcastAgent) Ready(ctx context.Context) error {
-
-	var cancel context.CancelCauseFunc
 	var err error
-	closed := false
+	var closed bool
+
+	var wg sync.WaitGroup
+	var cancel context.CancelCauseFunc
 
 	for {
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
 			closed = true
-		case <-agent.ReloadChan():
+		case <-agent.reloadChan:
+			agent.reloadLock.Lock()
+			agent.reload = false
+			agent.reloadLock.Unlock()
 		}
 
-		agent.reloadLocker.Lock()
-		agent.needReload = false
-		agent.reloadLocker.Unlock()
+		if cancel != nil {
+			cancel(ErrBroadcastAgentDeliverExit)
+			cancel = nil
+			wg.Wait()
+		}
 
-		agent.StopDelivery(cancel)
 		if closed {
 			break
 		}
 
-		settings := agent.PeerModule.PeerSettings()
-		if !settings.Available() {
+		peerSettings := agent.PeerSettings()
+		store := agent.Store()
+		if peerSettings == nil || store == nil {
 			continue
 		}
 
-		err := agent.Store.Init(settings.PeerID())
+		err := store.Init(peerSettings.PeerID())
 		if err != nil {
-			log.Default().Log(context.Background(), log.LevelError, "broadcast agent init failed: %s", err.Error())
+			agent.logger.Error("BroadcastAgent", " Init Store Error: "+err.Error())
+			continue
 		}
 
 		causeCtx, causeCancel := context.WithCancelCause(ctx)
 		cancel = causeCancel
-		go agent.StartDelivery(causeCtx)
-	}
+		go func(causeCtx context.Context) {
+		loop:
+			for {
+				err := agent.DeliverOnline()
+				if err != nil {
+					break
+				}
 
+				select {
+				case <-causeCtx.Done():
+					break loop
+				case <-time.After(30 * time.Second):
+				}
+			}
+		}(causeCtx)
+	}
 	return err
-}
 
-// StartDelivery starts delivering online messages to peers.
-//
-// The method is designed to be run in its own goroutine and will
-// continue to deliver online messages until the context is canceled.
-//
-// The method will wait for 30 seconds between each delivery, unless
-// the context is canceled before the next delivery can be made.
-//
-// If an error occurs while delivering the online message, the method
-// will stop and return the error.
-func (agent *broadcastAgent) StartDelivery(ctx context.Context) {
-loop:
-	for {
-		err := agent.DeliverOnline()
-		if err != nil {
-			break
-		}
-
-		select {
-		case <-ctx.Done():
-			break loop
-		case <-time.After(30 * time.Second):
-		}
-	}
-}
-
-// StopDelivery stops the delivery of online messages to peers.
-//
-// The method cancels the context that was passed to the StartDelivery method.
-// If the context is already canceled, the method does nothing.
-//
-// The method is safe to call multiple times.
-func (agent *broadcastAgent) StopDelivery(cancel context.CancelCauseFunc) {
-	if cancel != nil {
-		cancel(ErrBroadcastAgentDeliverExit)
-	}
 }
 
 func packAgentPayload(payload []byte, sig []byte) []byte {

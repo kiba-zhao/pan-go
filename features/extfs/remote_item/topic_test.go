@@ -3,6 +3,7 @@ package remoteitem_test
 import (
 	"bytes"
 	"io"
+	libApp "pan/lib/app"
 	"pan/lib/peer"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ func TestReRemoteItemTopic(t *testing.T) {
 
 	setup := func() (peer.PeerApp, *remoteitem.RemoteItemTopic) {
 		topic := &remoteitem.RemoteItemTopic{}
-		app := peer.NewApp()
+		app := libApp.NewApp()
 		topic.SetupToPeer(app)
 
 		topic.RemoteItemService = &remoteitem.RemoteItemService{}
@@ -51,14 +52,14 @@ func TestReRemoteItemTopic(t *testing.T) {
 		})
 
 		// request and response
-		req := peer.NewRequest(remoteitem.SelectAllRemoteItems, nil)
-		reqReader := peer.MarshalRequest(req)
-		var ctx peer.Context
-		peer.InitContext(&ctx)
-		err := peer.UnmarshalRequest(reqReader, ctx.Request())
+		req := libApp.NewRequest(remoteitem.SelectAllRemoteItems, nil)
+		reqReader := libApp.MarshalRequest(req)
+		ctx := libApp.NewAppContext()
+		libApp.InitContext(ctx)
+		err := libApp.UnmarshalRequest(reqReader, ctx.Request())
 		assert.Nil(t, err)
 
-		err = app.Run(&ctx, nil)
+		err = app.Run(ctx, nil)
 		assert.Nil(t, err)
 
 		body, err := io.ReadAll(ctx)
@@ -102,14 +103,14 @@ func TestReRemoteItemTopic(t *testing.T) {
 		condition.Name = &nodeItem.Name
 		reqBody, err := proto.Marshal(&condition)
 		assert.Nil(t, err)
-		req := peer.NewRequest(remoteitem.SelectRemoteItem, bytes.NewReader(reqBody))
-		reqReader := peer.MarshalRequest(req)
-		var ctx peer.Context
-		peer.InitContext(&ctx)
-		err = peer.UnmarshalRequest(reqReader, ctx.Request())
+		req := libApp.NewRequest(remoteitem.SelectRemoteItem, bytes.NewReader(reqBody))
+		reqReader := libApp.MarshalRequest(req)
+		ctx := libApp.NewAppContext()
+		libApp.InitContext(ctx)
+		err = libApp.UnmarshalRequest(reqReader, ctx.Request())
 		assert.Nil(t, err)
 
-		err = app.Run(&ctx, nil)
+		err = app.Run(ctx, nil)
 		assert.Nil(t, err)
 
 		body, err := io.ReadAll(ctx)

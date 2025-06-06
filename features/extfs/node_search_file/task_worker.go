@@ -8,9 +8,11 @@ import (
 	"errors"
 	"os"
 	nodeitem "pan/features/extfs/node_item"
-	"pan/lib/web"
+	"pan/lib/log"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,201 +21,310 @@ var ErrNoFileRater = errors.New("nodesearchfile.Worker Error: No File Rater")
 var ErrGernerateRateFailed = errors.New("nodesearchfile.Worker Error: Generate Rate Failed")
 
 type TaskWorker interface {
-	// Reload triggers the reloading process for the task worker. It ensures that
-	// the necessary components are reinitialized or refreshed to reflect any updates
-	// or changes. This method is typically used when configurations or dependencies
-	// are updated and the worker needs to adapt to those changes.
+	RegisterFileRater(fileRater FileRater)
+	UnregisterFileRater(fileRater FileRater)
+	FileRaters() []FileRater
 	Reload()
 }
 
-type taskWorkerImpl struct {
+type stdTaskWorker struct {
 	NodeItemService       nodeitem.NodeItemInternalService
 	NodeSearchTaskRepo    NodeSearchTaskRepository
 	NodeSearchFileService *NodeSearchFileService
-	Agent                 Agent
 
-	reloadLocker sync.RWMutex
-	reload       bool
-	reloadChan   chan struct{}
-	reloadOnce   sync.Once
+	logger     log.Logger
+	reloadChan chan struct{}
+	reloadLock sync.Mutex
+	reload     bool
 
-	tasks       []NodeSearchTask
-	tasksLocker sync.RWMutex
+	parallelThreshold   uint16
+	parallelThresholdRW sync.RWMutex
+
+	fileRaters   []FileRater
+	fileRatersRW sync.RWMutex
+
+	taskIds []uint64
+	taskRW  sync.RWMutex
+	taskNum atomic.Int32
 }
 
-// ReloadChan returns a channel that receives a signal when the task worker needs to be reloaded.
-//
-// It is used by the task scheduler to reload the task worker.
-func (w *taskWorkerImpl) ReloadChan() chan struct{} {
-	w.reloadOnce.Do(func() {
-		w.reloadChan = make(chan struct{}, 1)
-	})
-	return w.reloadChan
+func (worker *stdTaskWorker) ParallelThreshold() uint16 {
+	worker.parallelThresholdRW.RLock()
+	defer worker.parallelThresholdRW.RUnlock()
+	return worker.parallelThreshold
 }
 
-// Reload triggers the reloading process for the task worker.
-//
-// It locks the reloadLocker to ensure thread-safety, checks if the reload flag is already set,
-// and if not, sets the flag to true and sends a signal to the reload channel to initiate the reload.
+func (worker *stdTaskWorker) SetParallelThreshold(threshold uint16) {
+	worker.parallelThresholdRW.Lock()
+	defer worker.parallelThresholdRW.Unlock()
+	worker.parallelThreshold = threshold
+	worker.Reload()
+}
 
-func (w *taskWorkerImpl) Reload() {
-	w.reloadLocker.Lock()
-	defer w.reloadLocker.Unlock()
-	if w.reload {
+func (worker *stdTaskWorker) FileRaters() []FileRater {
+	worker.fileRatersRW.RLock()
+	defer worker.fileRatersRW.RUnlock()
+	return worker.fileRaters
+}
+
+func (worker *stdTaskWorker) RegisterFileRater(fileRater FileRater) {
+	worker.fileRatersRW.Lock()
+	defer worker.fileRatersRW.Unlock()
+
+	worker.fileRaters = append(worker.fileRaters, fileRater)
+}
+
+func (worker *stdTaskWorker) UnregisterFileRater(fileRater FileRater) {
+	worker.fileRatersRW.Lock()
+	defer worker.fileRatersRW.Unlock()
+
+	for idx, rater := range worker.fileRaters {
+		if rater == fileRater {
+			worker.fileRaters = slices.Delete(worker.fileRaters, idx, idx+1)
+			break
+		}
+	}
+}
+
+func (worker *stdTaskWorker) HasTask(taskId uint64) bool {
+	worker.taskRW.RLock()
+	defer worker.taskRW.RUnlock()
+	_, ok := slices.BinarySearch(worker.taskIds, taskId)
+	return ok
+}
+
+func (worker *stdTaskWorker) PickTask() (*NodeSearchTask, error) {
+	worker.taskRW.Lock()
+	defer worker.taskRW.Unlock()
+
+	taskIds := worker.taskIds
+	task, err := worker.NodeSearchTaskRepo.SelectWithStatusExcludeIds(NodeSearchTaskStatusPending, taskIds)
+	if err != nil {
+		return nil, err
+	}
+
+	if taskIds == nil {
+		taskIds = make([]uint64, 0)
+		taskIds = append(taskIds, task.ID)
+	} else {
+		idx, _ := slices.BinarySearch(taskIds, task.ID)
+		taskIds = slices.Insert(taskIds, idx, task.ID)
+	}
+	worker.taskIds = taskIds
+
+	return &task, nil
+}
+
+func (worker *stdTaskWorker) ReleaseTask(taskId uint64) {
+	worker.taskRW.Lock()
+	defer worker.taskRW.Unlock()
+	taskIds := worker.taskIds
+	if len(taskIds) <= 0 {
 		return
 	}
-	w.reload = true
-	w.ReloadChan() <- struct{}{}
+	if idx, ok := slices.BinarySearch(taskIds, taskId); ok {
+		worker.taskIds = slices.Delete(taskIds, idx, idx+1)
+	}
 }
 
-func (w *taskWorkerImpl) Ready(ctx context.Context) error {
+func (worker *stdTaskWorker) Reload() {
+	worker.logger.Debug("nodesearchfile.TaskWorker", "Reload")
 
-	var tasks []NodeSearchTask
+	worker.reloadLock.Lock()
+	defer worker.reloadLock.Unlock()
+	if worker.reload {
+		return
+	}
+
+	worker.reload = true
+	worker.reloadChan <- struct{}{}
+}
+
+func (worker *stdTaskWorker) Run(ctx context.Context) error {
+	worker.logger.Debug("nodesearchfile.TaskWorker", "Run begin")
+	defer worker.logger.Debug("nodesearchfile.TaskWorker", "Run end")
+
 	var err error
-
-	total := int64(0)
-	closed := false
+	var closed bool
 
 	for {
-
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
 			closed = true
-		case <-w.ReloadChan():
+		case <-worker.reloadChan:
+			worker.reloadLock.Lock()
+			worker.reload = false
+			worker.reloadLock.Unlock()
 		}
-
-		w.reloadLocker.Lock()
-		if !closed {
-			settings := w.Agent.Settings()
-
-			var condition web.RangeCondition
-			condition.RangeEnd = int(settings.TaskNum)
-			condition.RangeStart = 0
-
-			total, tasks, err = w.NodeSearchTaskRepo.SearchWithStatus(NodeSearchTaskStatusPending, condition)
-			if err != nil {
-				w.reloadLocker.Unlock()
-				<-time.After(5 * time.Second)
-				continue
-			}
-
-			w.reload = total > 0 && total <= int64(len(tasks))
-			if w.reload {
-				w.reloadChan <- struct{}{}
-			}
-		}
-		w.reloadLocker.Unlock()
 
 		if closed {
 			break
 		}
 
-		if len(tasks) <= 0 {
-			continue
-		}
-
-		err = w.RunTasks(tasks)
-		if err != nil {
-			w.Reload()
+		parallelThreshold := int32(worker.ParallelThreshold())
+		for taskNum := worker.taskNum.Load(); taskNum < parallelThreshold; taskNum++ {
+			go worker.RunTask(ctx)
 		}
 
 	}
 	return err
 }
 
-// RunTasks runs the given node search tasks. It retrieves node items, uses file raters to
-// generate ratings for the items, and saves the results to the database. It returns an error
-// if any issues occur during the process. If a task is aborted, it returns ErrNodeSearchTaskAborted.
-// If no file rater is available, it returns ErrNoFileRater. If generating a rating fails, it
-// returns ErrGernerateRateFailed.
-func (w *taskWorkerImpl) RunTasks(tasks []NodeSearchTask) error {
+func (worker *stdTaskWorker) RunTask(ctx context.Context) error {
 
 	var err error
-	w.tasksLocker.Lock()
-	w.tasks = tasks
-	w.tasksLocker.Unlock()
+	var closed bool
+	var isAlive bool
+	timeCh := time.After(0)
 
-	for idx, task := range tasks {
-		items, err := w.NodeItemService.SelectAllWithEnabled(true)
-		if err != nil {
-			return err
+	for {
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			closed = true
+		case <-timeCh:
 		}
 
-		raters := w.Agent.FileRaters()
-		if len(raters) <= 0 {
-			return ErrNoFileRater
+		if closed {
+			break
 		}
 
-		err = w.NodeSearchFileService.InitWithTaskID(task.ID)
-		if err != nil {
-			return err
-		}
-
-		ratersTokens := make([]Tokens, 0)
-		for _, rater := range raters {
-			tokens := rater.Tokenize(task.Query)
-			ratersTokens = append(ratersTokens, tokens)
-		}
-
-		finishedCount := 0
-	items_loop:
-		for _, item := range items {
-			root := item.FilePath
-			filePaths, err := WalkRoot(root)
-			if err != nil {
+		parallelThreshold := int32(worker.ParallelThreshold())
+		taskNum := worker.taskNum.Load()
+		if isAlive {
+			if taskNum > parallelThreshold {
+				if ok := worker.taskNum.CompareAndSwap(taskNum, taskNum-1); ok {
+					break
+				}
+				timeCh = time.After(1 * time.Second)
 				continue
 			}
-
-			for filePath := range filePaths {
-				rate, err := w.NewNodeSearchFile(idx, item, filePath, raters, ratersTokens)
-				if errors.Is(err, ErrNodeSearchTaskAborted) {
-					break items_loop
-				}
-				if err != nil {
-					continue
-				}
-
-				_, err = w.NodeSearchFileService.SaveWithTaskID(task.ID, rate)
+		} else {
+			if taskNum >= parallelThreshold {
+				break
 			}
-			finishedCount++
+			if ok := worker.taskNum.CompareAndSwap(taskNum, taskNum+1); !ok {
+				timeCh = time.After(1 * time.Second)
+				continue
+			}
+			isAlive = true
 		}
 
-		if finishedCount < 0 {
+		task, err := worker.PickTask()
+		if err != nil {
+			if errors.Is(err, ErrNodeSearchTaskNotFound) {
+				worker.taskNum.Add(-1)
+				break
+			}
+			timeCh = time.After(5 * time.Second)
 			continue
 		}
 
-		if finishedCount == len(items) {
-			task.Status = NodeSearchTaskStatusSuccess
-		} else {
-			task.Status = NodeSearchTaskStatusWarning
+		for failed := 0; ; failed++ {
+			err = worker.RushTask(ctx, task)
+			if err == nil || err == ctx.Err() {
+				err = nil
+				break
+			}
+			worker.logger.Error("TaskWorker", "RunTask Error"+err.Error())
+			if failed >= 5 {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				break
+			case <-time.After(1 * time.Second):
+			}
 		}
 
-		_, err = w.NodeSearchTaskRepo.UpdateWithStatus(NodeSearchTaskStatusPending, task)
+		if err != nil {
+			task.Status = NodeSearchTaskStatusError
+			worker.NodeSearchTaskRepo.UpdateWithStatus(NodeSearchTaskStatusPending, *task)
+		}
+
+		worker.ReleaseTask(task.ID)
+		timeCh = time.After(0)
 	}
+
+	return err
+
+}
+
+func (worker *stdTaskWorker) RushTask(ctx context.Context, task *NodeSearchTask) error {
+
+	items, err := worker.NodeItemService.SelectAllWithEnabled(true)
+	if err != nil {
+		return err
+	}
+
+	raters := worker.FileRaters()
+	if len(raters) <= 0 {
+		return ErrNoFileRater
+	}
+
+	err = worker.NodeSearchFileService.InitWithTaskID(task.ID)
+	if err != nil {
+		return err
+	}
+
+	ratersTokens := make([]Tokens, 0)
+	for _, rater := range raters {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		tokens := rater.Tokenize(task.Query)
+		ratersTokens = append(ratersTokens, tokens)
+	}
+
+	finishedCount := 0
+
+	for _, item := range items {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		root := item.FilePath
+		filePaths, err := WalkRoot(root)
+		if err != nil {
+			continue
+		}
+
+		for filePath := range filePaths {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			rate, err := worker.NewNodeSearchFile(item, filePath, raters, ratersTokens)
+			if err == nil {
+				_, err = worker.NodeSearchFileService.SaveWithTaskID(task.ID, rate)
+			}
+
+		}
+		finishedCount++
+	}
+
+	if finishedCount == len(items) {
+		task.Status = NodeSearchTaskStatusSuccess
+	} else {
+		task.Status = NodeSearchTaskStatusWarning
+	}
+
+	_, err = worker.NodeSearchTaskRepo.UpdateWithStatus(NodeSearchTaskStatusPending, *task)
 
 	return err
 }
 
-// NewNodeSearchFile creates a new NodeSearchFile object based on the given item and
-// file path. It also rates the file using the given raters and tokens.
-//
-// It returns the new NodeSearchFile object and an error if any issues occur. If the
-// task is not pending, it returns ErrNodeSearchTaskAborted. If no file rater is
-// available, it returns ErrNoFileRater. If the file rating fails, it returns
-// ErrGernerateRateFailed.
-func (w *taskWorkerImpl) NewNodeSearchFile(taskIdx int, item nodeitem.NodeItem, filePath string, raters []FileRater, ratersTokens []Tokens) (NodeSearchFile, error) {
+func (w *stdTaskWorker) NewNodeSearchFile(item nodeitem.NodeItem, filePath string, raters []FileRater, ratersTokens []Tokens) (NodeSearchFile, error) {
 
 	var rate NodeSearchFile
-
-	w.tasksLocker.RLock()
-	task := w.tasks[taskIdx]
-	if task.Status != NodeSearchTaskStatusPending {
-		w.tasksLocker.RUnlock()
-		return rate, ErrNodeSearchTaskAborted
-	}
-	w.tasksLocker.RUnlock()
-
 	stat, err := os.Stat(filePath)
 	if err != nil {
 		return rate, err

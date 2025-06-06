@@ -20,7 +20,7 @@ func main() {
 	}
 	println("workspace path:" + workspace)
 
-	webDirPath := filepath.Join(workspace, "gui", "web")
+	webDirPath := filepath.Join(workspace, "web")
 	err = installDependencies(webDirPath)
 	if err != nil {
 		log.Fatal(err)

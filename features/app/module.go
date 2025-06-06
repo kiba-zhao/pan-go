@@ -5,20 +5,24 @@ import (
 	appbroadcast "pan/features/app/broadcast"
 	diskfile "pan/features/app/disk_file"
 	appnode "pan/features/app/node"
+	"pan/features/app/settings"
 	appsettings "pan/features/app/settings"
 	"pan/lib/bootstrap"
 	"pan/lib/broadcast"
 	"pan/lib/config"
+	"pan/lib/feature"
 	"pan/lib/injection"
+	"pan/lib/repository"
 	"path/filepath"
+	"sync"
 
 	"pan/lib/peer"
 	"pan/lib/quic"
 	"pan/lib/runtime"
-	"pan/lib/sample"
 	"pan/lib/web"
-	"sync"
 )
+
+const ModuleName = "app"
 
 // New returns the app module.
 //
@@ -29,15 +33,30 @@ import (
 // The module is initialized with the given ComponentStoreProvider, which is used to get the ComponentStore.
 // The ComponentStore is used to store components that are injected into other components.
 func New() interface{} {
+
+	// m := &module{}
+	// m.peerGuard = &appnode.PeerGuard{}
+	// m.store = injection.NewComponentStore()
+	// m.networkAddrGuide = &appnode.NetworkAddrGuide{}
+
+	// sampleModule := sample.New(m)
+	// m.sample = sampleModule
 	m := &module{}
-	m.peerGuard = &appnode.PeerGuard{}
-	m.store = injection.NewComponentStore()
-	m.networkAddrGuide = &appnode.NetworkAddrGuide{}
 
-	sampleModule := sample.New(m)
-	m.sample = sampleModule
+	appSettingsService := settings.AppSettingsService{}
+	m.appSettingsService = &appSettingsService
 
-	return runtime.NewModule(bootstrap.New(), config.New(), peer.New(), broadcast.New(m), quic.New(), web.New(), sampleModule)
+	return runtime.NewModule(
+		bootstrap.New(),
+		config.NewWithDefaults(ModuleName+".toml", config.NewDefaultSettings()),
+		repository.New(),
+		peer.New(),
+		broadcast.New(),
+		quic.New(),
+		web.New(),
+		feature.New(ModuleName, m),
+		m,
+	)
 }
 
 // Bootstrap returns the bootstrap engine for the application.
@@ -48,26 +67,68 @@ func Bootstrap() interface{} {
 	return bootstrap.Bootstrap()
 }
 
-const moduleName = "app"
-
 type module struct {
-	PeerModule       peer.PeerModule
-	Config           config.AppConfig
-	store            injection.ComponentStore
-	sample           sample.Sample
-	settings         config.AppSettings
-	settingsRW       sync.RWMutex
-	controllers      []web.WebController
-	controllersOnce  sync.Once
-	peerGuard        *appnode.PeerGuard
-	networkAddrGuide *appnode.NetworkAddrGuide
+	injection.BaseComponentStoreProvider
+
+	BroadcastModule broadcast.BroadcastModule
+	BroadcastStore  broadcast.BroadcastStore
+
+	PeerCluster peer.PeerCluster
+	PeerGuard   peer.PeerGuard
+
+	QuicExplorer      quic.QuicExplorer
+	QuicExplorerGuide quic.QuicExplorerGuide
+
+	AppConfig          config.AppConfig
+	PeerConfig         peer.PeerConfig
+	appSettingsService *settings.AppSettingsService
+
+	controllers     []feature.WebController
+	controllersOnce sync.Once
+
+	metaList     []feature.RepositoryMeta
+	metaListOnce sync.Once
 }
 
-// Name returns the name of the module, which is "app".
-// It implements simple.SampleProvider
-func (m *module) Name() string {
-	return moduleName
+var _ = (config.AppConfigListener)((*module)(nil))
+
+func (m *module) OnConfigUpdated(settings config.AppSettings) {
+	m.appSettingsService.SetConfigSettings(settings)
 }
+
+var _ = (peer.PeerConfigListener)((*module)(nil))
+
+func (m *module) OnPeerConfigUpdated(settings *peer.PeerSettings) {
+	peerId := peer.EncodePeerID(settings.PeerID())
+	m.appSettingsService.SetPeerID(peerId)
+}
+
+var _ (bootstrap.DeferModule) = (*module)(nil)
+
+func (m *module) Defer() error {
+	m.BroadcastModule.SetStore(m.BroadcastStore)
+	m.PeerCluster.RegisterPeerGuard(m.PeerGuard)
+	m.QuicExplorer.AddGuide(m.QuicExplorerGuide)
+
+	m.AppConfig.Subscribe(m)
+	m.PeerConfig.Subscribe(m)
+
+	rootPath := filepath.Dir(m.AppConfig.ConfigFilePath())
+	m.appSettingsService.SetRootPath(rootPath)
+	return nil
+}
+
+var _ = (bootstrap.DestroyModule)((*module)(nil))
+
+func (m *module) Destroy() {
+	m.PeerCluster.UnregisterPeerGuard(m.PeerGuard)
+	m.QuicExplorer.RemoveGuide(m.QuicExplorerGuide)
+
+	m.AppConfig.Unsubscribe(m)
+	m.PeerConfig.Unsubscribe(m)
+}
+
+var _ = (feature.WebControllerProvider)((*module)(nil))
 
 // WebControllers initializes and returns a slice of WebControllers for the app module.
 //
@@ -75,11 +136,9 @@ func (m *module) Name() string {
 // The method adds controllers for app node, disk file, and app settings to the
 // controllers slice. This setup is essential for the web application to handle
 // requests related to these components.
-
-func (m *module) WebControllers() []web.WebController {
+func (m *module) WebControllers() []feature.WebController {
 	m.controllersOnce.Do(func() {
-		// TODO: add web and node controllers
-		m.controllers = []web.WebController{
+		m.controllers = []feature.WebController{
 			&appnode.AppNodeController{},
 			&diskfile.DiskFileController{},
 			&appsettings.AppSettingsController{},
@@ -88,25 +147,29 @@ func (m *module) WebControllers() []web.WebController {
 	return m.controllers
 }
 
-// Models returns a slice of interfaces representing the models used by the app module.
-// It includes the AppNode and AppBroadcastInfo models, which are essential
-// for the node and broadcast functionalities within the application.
+var _ = (repository.Repository)((*module)(nil))
 
-func (m *module) Models() []interface{} {
-	return []interface{}{
-		&appnode.AppNode{},
+func (m *module) SetupToRepository(db repository.RepositoryDB) error {
+	return db.AutoMigrate(&appnode.AppNode{},
 		&appnode.NetworkAddr{},
-		&appbroadcast.AppBroadcastInfo{},
-	}
+		&appbroadcast.AppBroadcastInfo{})
 }
 
-// ComponentStore returns the ComponentStore associated with the app module.
-//
-// The ComponentStore is a map of components that are injected into other components.
-// It is used to store components that are managed by the app module.
-func (m *module) ComponentStore() injection.ComponentStore {
-	return m.store
+var _ = (feature.RepositoryMetaProvider)((*module)(nil))
+
+func (m *module) RepositoryMetaList() []feature.RepositoryMeta {
+	m.metaListOnce.Do(func() {
+		m.metaList = []feature.RepositoryMeta{
+			feature.NewRepositoryMeta[appnode.AppNodeRepository](appnode.NewAppNodeRepository()),
+			feature.NewRepositoryMeta[appnode.NetworkAddrRepository](appnode.NewNetworkAddrRepository()),
+			feature.NewRepositoryMeta[appbroadcast.AppBroadcastInfoRepository](appbroadcast.NewAppBroadcastInfoRepository()),
+		}
+	})
+
+	return m.metaList
 }
+
+var _ = (injection.ComponentProvider)((*module)(nil))
 
 // Components returns a slice of injection.Component representing the components
 // provided by the app module. This includes the app module itself, the peer
@@ -115,94 +178,17 @@ func (m *module) Components() []injection.Component {
 	// base
 	components := []injection.Component{
 		injection.NewComponent(m, injection.ComponentNoneScope),
-		// submodules
-		injection.NewComponent(m.peerGuard, injection.ComponentNoneScope),
-		injection.NewComponent(m.networkAddrGuide, injection.ComponentNoneScope),
 	}
 
 	// services
-	components = sample.AppendSampleComponent(components, &diskfile.DiskFileService{})
-	components = sample.AppendSampleExternalComponent[appsettings.AppSettingsExternalService](components, &appsettings.AppSettingsService{Provider: m})
-	components = sample.AppendSampleExternalComponent[appnode.AppNodeExternalService](components, &appnode.AppNodeService{})
-	components = sample.AppendSampleComponent(components, &appnode.NetworkAddrService{})
+	components = feature.AppendComponent(components, &diskfile.DiskFileService{})
+	components = feature.AppendExternalComponent[appsettings.AppSettingsExternalService](components, m.appSettingsService)
+	components = feature.AppendExternalComponent[appnode.AppNodeExternalService](components, &appnode.AppNodeService{})
+	components = feature.AppendComponent(components, &appnode.NetworkAddrService{})
 
-	// repositories
-	components = sample.AppendSampleComponent(components, appnode.NewAppNodeRepository(m.sample.DB()))
-	components = sample.AppendSampleComponent(components, appnode.NewNetworkAddrRepository(m.sample.DB()))
-	components = sample.AppendSampleComponent(components, appbroadcast.NewAppBroadcastInfoRepository(m.sample.DB()))
-
-	// controllers
-	for _, ctrl := range m.WebControllers() {
-		components = append(components, injection.NewComponent(ctrl, injection.ComponentNoneScope))
-	}
-
-	//  store
-	components = sample.AppendSampleInternalComponent[broadcast.BroadcastStore](components, &appbroadcast.BroadcastStore{})
+	//  others
+	components = feature.AppendInternalComponent[broadcast.BroadcastStore](components, &appbroadcast.BroadcastStore{})
+	components = feature.AppendComponent[peer.PeerGuard](components, &appnode.PeerGuard{})
+	components = feature.AppendComponent[quic.QuicExplorerGuide](components, &appnode.NetworkAddrGuide{})
 	return components
-}
-
-// OnConfigUpdated is called when the configuration is updated.
-//
-// It updates the configuration used by the app module.
-func (m *module) OnConfigUpdated(settings config.AppSettings) {
-	m.settingsRW.Lock()
-	defer m.settingsRW.Unlock()
-	m.settings = settings
-}
-
-// Settings returns a copy of the current configuration settings.
-//
-// The method returns a copy of the configuration settings used by the app module.
-// The returned settings are a snapshot of the current configuration and may be
-// outdated if the configuration is changed after calling this method.
-// The method is thread-safe and may be called concurrently.
-func (m *module) Settings() config.Settings {
-	m.settingsRW.RLock()
-	defer m.settingsRW.RUnlock()
-
-	settings := *m.settings
-	return settings
-}
-
-// SetSettings sets the given configuration settings to the underlying storage.
-//
-// It saves the given settings to the file specified by ConfigFilePath and
-// notifies all registered config listeners about the updates.
-// An error is returned if the saving process fails.
-func (m *module) SetSettings(settings config.Settings) error {
-	return m.Config.Save(&settings)
-}
-
-// RootPath returns the root path of the application.
-//
-// The root path is the path containing the configuration file. It is determined by
-// the environment variable "rootPath" if set, otherwise it defaults to the user's
-// home directory with the package name as a suffix.
-func (m *module) RootPath() string {
-	return filepath.Dir(m.Config.ConfigFilePath())
-}
-
-// PeerID returns the peer ID of the peer module, or an empty string if the peer
-// module is not available or the peer settings are not available.
-//
-// The peer ID is the marshaled bytes of the public key of the peer's certificate.
-func (m *module) PeerID() string {
-	if m.PeerModule == nil {
-		return ""
-	}
-
-	settings := m.PeerModule.PeerSettings()
-	if settings == nil || !settings.Available() {
-		return ""
-	}
-
-	return peer.EncodePeerID(settings.PeerID())
-}
-
-// Modules returns a slice of interfaces representing the sub-modules
-// of the app module. It currently includes the peer guard, which
-// provides access control and security features within the p2p module.
-
-func (m *module) Modules() []interface{} {
-	return []interface{}{m.peerGuard, m.networkAddrGuide}
 }

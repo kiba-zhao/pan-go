@@ -7,9 +7,10 @@ import (
 )
 
 type BroadcastStore struct {
-	Repo       AppBroadcastInfoRepository
-	PeerModule peer.PeerModule
+	Repo AppBroadcastInfoRepository
 }
+
+var _ = (broadcast.BroadcastStore)((*BroadcastStore)(nil))
 
 // SelectOrCreate selects or creates a BroadcastInfo from the store.
 //

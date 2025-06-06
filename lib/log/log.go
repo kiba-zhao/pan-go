@@ -1,137 +1,37 @@
-// Define log
 package log
 
 import (
-	"flag"
 	"log/slog"
 	"os"
-	"testing"
+	"sync"
+
+	"pan/lib/env"
 )
 
-type Logger = *slog.Logger
+var logger Logger
+var loggerOnce sync.Once
 
-const (
-	LevelTrace     = slog.Level(-8)
-	LevelDebug     = slog.LevelDebug
-	LevelInfo      = slog.LevelInfo
-	LevelNotice    = slog.Level(2)
-	LevelWarning   = slog.LevelWarn
-	LevelError     = slog.LevelError
-	LevelEmergency = slog.Level(12)
-)
-
-const (
-	Trace     = "TRACE"
-	Debug     = "DEBUG"
-	Info      = "INFO"
-	Notice    = "NOTICE"
-	Warning   = "WARNING"
-	Error     = "ERROR"
-	Emergency = "EMERGENCY"
-)
-
-func replaceAttr(groups []string, a slog.Attr) slog.Attr {
-	// Remove time from the output for predictable test output.
-	if a.Key == slog.TimeKey {
-		return slog.Attr{}
-	}
-
-	// Customize the name of the level key and the output string, including
-	// custom level values.
-	if a.Key == slog.LevelKey {
-		// Rename the level key from "level" to "sev".
-		a.Key = "sev"
-
-		// Handle custom level values.
-		level := a.Value.Any().(slog.Level)
-
-		// This could also look up the name from a map or other structure, but
-		// this demonstrates using a switch statement to rename levels. For
-		// maximum performance, the string values should be constants, but this
-		// example uses the raw strings for readability.
-		switch {
-		case level < LevelDebug:
-			a.Value = slog.StringValue(Trace)
-		case level < LevelInfo:
-			a.Value = slog.StringValue(Debug)
-		case level < LevelNotice:
-			a.Value = slog.StringValue(Info)
-		case level < LevelWarning:
-			a.Value = slog.StringValue(Notice)
-		case level < LevelError:
-			a.Value = slog.StringValue(Warning)
-		case level < LevelEmergency:
-			a.Value = slog.StringValue(Error)
-		default:
-			a.Value = slog.StringValue(Emergency)
-		}
-	}
-
-	return a
-}
-
-// New returns a new logger with the given level.
-//
-// The returned logger is a text-based logger that writes to os.Stdout.
-// The logger is configured to replace attributes according to the
-// replaceAttr function, which customizes the output string and level
-// key for the logger.
-func New(level slog.Level) Logger {
-	th := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level:       level,
-		ReplaceAttr: replaceAttr,
-	})
-	return slog.New(th)
-}
-
-// Default returns the default logger.
-//
-// The default logger is initialized with the level Info by default, but can be
-// changed by setting the trace-log flag. The default logger is also used by
-// the testing package to log test failures.
 func Default() Logger {
-	return slog.Default()
+
+	loggerOnce.Do(func() {
+		logger = newLogger()
+	})
+
+	return logger
 }
 
-// init initializes the logger for the application. It sets up the default
-// trace log level, parses command-line flags to determine the desired log
-// level, and configures the logger accordingly. The trace-log flag, if
-// provided, specifies the log level to use, with possible values including
-// TRACE, DEBUG, INFO, NOTICE, WARNING, ERROR, and EMERGENCY. The logger is
-// then set as the default logger for the application.
+func newLogger() Logger {
+	var logLevel slog.Level
 
-func init() {
-
-	defaultTraceLog := Info
-	if flag.Lookup("verbose") != nil {
-		defaultTraceLog = Trace
+	switch env.Mode() {
+	case env.DebugMode:
+		logLevel = slog.LevelDebug
+	case env.TestMode:
+		logLevel = slog.LevelDebug
+	default:
+		logLevel = slog.LevelInfo
 	}
 
-	traceLog := flag.String("trace-log", defaultTraceLog, "enable trace logging")
-
-	testing.Init()
-	flag.Parse()
-	var traceLevel slog.Level
-
-	if traceLog != nil {
-		switch *traceLog {
-		case Trace:
-			traceLevel = LevelTrace
-		case Debug:
-			traceLevel = LevelDebug
-		case Info:
-			traceLevel = LevelInfo
-		case Notice:
-			traceLevel = LevelNotice
-		case Warning:
-			traceLevel = LevelWarning
-		case Error:
-			traceLevel = LevelError
-		case Emergency:
-			traceLevel = LevelEmergency
-		}
-	}
-
-	logger := New(traceLevel)
-	slog.SetDefault(logger)
+	slogger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	return NewStdLogger(slogger, "%s %s")
 }

@@ -18,7 +18,7 @@ func (topic *RemoteFileStreamTopic) SetupToPeer(router peer.PeerRouter) error {
 	return nil
 }
 
-func (topic *RemoteFileStreamTopic) Select(ctx *peer.Context, next peer.Next) error {
+func (topic *RemoteFileStreamTopic) Select(ctx peer.PeerContext, next peer.PeerNext) error {
 	req := ctx.Request()
 	body, err := io.ReadAll(req)
 	if err != nil {

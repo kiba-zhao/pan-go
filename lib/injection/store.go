@@ -1,7 +1,10 @@
 // Define injection store
 package injection
 
-import "reflect"
+import (
+	"reflect"
+	"sync"
+)
 
 type ComponentStore = map[reflect.Type]interface{}
 
@@ -23,4 +26,18 @@ type ComponentStoreProvider interface {
 // other components.
 func NewComponentStore() ComponentStore {
 	return make(ComponentStore)
+}
+
+type BaseComponentStoreProvider struct {
+	store ComponentStore
+	once  sync.Once
+}
+
+var _ = (ComponentStoreProvider)((*BaseComponentStoreProvider)(nil))
+
+func (provider *BaseComponentStoreProvider) ComponentStore() ComponentStore {
+	provider.once.Do(func() {
+		provider.store = NewComponentStore()
+	})
+	return provider.store
 }

@@ -27,6 +27,8 @@ type readyEngine struct {
 	locker   sync.RWMutex
 }
 
+var _ = (runtime.InitializeModule)((*readyEngine)(nil))
+
 // Init initializes the ready engine with the given registry.
 //
 // It sets the registry and does not return an error.
@@ -37,6 +39,8 @@ func (re *readyEngine) Init(registry runtime.Registry) error {
 	return nil
 }
 
+var _ = (runtime.EngineExtensionModule)((*readyEngine)(nil))
+
 // EngineTypes returns a slice of reflect.Type representing the various engine types
 // associated with the ready engine. These types include:
 //
@@ -46,6 +50,8 @@ func (re *readyEngine) EngineTypes() []reflect.Type {
 		reflect.TypeFor[ReadyModule](),
 	}
 }
+
+var _ = (injection.ComponentProvider)((*readyEngine)(nil))
 
 // Components returns a slice of injection.Component representing the components
 // provided by the ready engine. Currently, the only component provided is the

@@ -16,7 +16,7 @@ type AppNodeExternalService interface {
 
 type AppNodeService struct {
 	AppNodeRepo AppNodeRepository
-	PeerModule  peer.PeerModule
+	PeerCluster peer.PeerCluster
 }
 
 func (s *AppNodeService) Search(conditions AppNodeSearchCondition) (total int64, items []AppNode, err error) {
@@ -29,14 +29,14 @@ func (s *AppNodeService) Search(conditions AppNodeSearchCondition) (total int64,
 		return
 	}
 
-	peerModule := s.PeerModule
-	if peerModule == nil {
+	peerCluster := s.PeerCluster
+	if peerCluster == nil {
 		return
 	}
 	items_ := make([]AppNode, 0)
 	for _, item := range items {
 		if !item.Blocked {
-			setPeerOnline(peerModule, &item)
+			setPeerOnline(peerCluster, &item)
 		}
 		if conditions.Online != nil && *conditions.Online != item.Online {
 			continue
@@ -57,9 +57,9 @@ func (s *AppNodeService) Select(id uint) (AppNode, error) {
 		model.NetworkAddrTexts = append(model.NetworkAddrTexts, networkAddr.Address)
 	}
 
-	peerModule := s.PeerModule
-	if !model.Blocked && peerModule != nil {
-		err = setPeerOnline(peerModule, &model)
+	peerCluster := s.PeerCluster
+	if !model.Blocked && peerCluster != nil {
+		err = setPeerOnline(peerCluster, &model)
 	}
 	return model, err
 }
@@ -67,9 +67,9 @@ func (s *AppNodeService) Select(id uint) (AppNode, error) {
 func (s *AppNodeService) SelectByName(name string) (AppNode, error) {
 	model, err := s.AppNodeRepo.SelectByName(name)
 	if err == nil && !model.Blocked {
-		peerModule := s.PeerModule
-		if peerModule != nil {
-			err = setPeerOnline(peerModule, &model)
+		peerCluster := s.PeerCluster
+		if peerCluster != nil {
+			err = setPeerOnline(peerCluster, &model)
 		}
 	}
 	return model, err
@@ -85,9 +85,9 @@ func (s *AppNodeService) Delete(id uint) error {
 		return err
 	}
 	if !model.Blocked {
-		peerModule := s.PeerModule
-		if peerModule != nil {
-			err = purgeWithPeerID(peerModule, &model)
+		peerCluster := s.PeerCluster
+		if peerCluster != nil {
+			err = purgeWithPeerID(peerCluster, &model)
 		}
 	}
 	return err
@@ -173,18 +173,18 @@ func (s *AppNodeService) Update(id uint, fields AppNodeFields) (AppNode, error) 
 	if dirty {
 		model, err = s.AppNodeRepo.Update(model)
 		if err == nil && needClosed {
-			peerModule := s.PeerModule
-			if peerModule != nil {
-				err = purgeWithPeerID(peerModule, &model)
+			peerCluster := s.PeerCluster
+			if peerCluster != nil {
+				err = purgeWithPeerID(peerCluster, &model)
 			}
 		}
 		model.NetworkAddrTexts = fields.NetworkAddrs
 	}
 
 	if err == nil && !model.Blocked {
-		peerModule := s.PeerModule
-		if peerModule != nil {
-			err = setPeerOnline(peerModule, &model)
+		peerCluster := s.PeerCluster
+		if peerCluster != nil {
+			err = setPeerOnline(peerCluster, &model)
 		}
 	}
 	return model, err
@@ -202,9 +202,9 @@ func (s *AppNodeService) AccessWithPeerID(peerId peer.PeerID) error {
 func (s *AppNodeService) TraverseAll(traverseFn func(model AppNode) error) error {
 	return s.AppNodeRepo.TraverseAll(func(an AppNode) error {
 		var err error
-		peerModule := s.PeerModule
-		if peerModule != nil {
-			err = setPeerOnline(peerModule, &an)
+		peerCluster := s.PeerCluster
+		if peerCluster != nil {
+			err = setPeerOnline(peerCluster, &an)
 		}
 		if err != nil {
 			return err
@@ -213,18 +213,18 @@ func (s *AppNodeService) TraverseAll(traverseFn func(model AppNode) error) error
 	})
 }
 
-func setPeerOnline(peerModule peer.PeerModule, model *AppNode) error {
+func setPeerOnline(peerCluster peer.PeerCluster, model *AppNode) error {
 	peerId, err := peer.DecodePeerID(model.PeerID)
 	if err == nil {
-		model.Online = peerModule.CanReach(peerId)
+		model.Online = peerCluster.CanReach(peerId)
 	}
 	return err
 }
 
-func purgeWithPeerID(peerModule peer.PeerModule, model *AppNode) error {
+func purgeWithPeerID(peerCluster peer.PeerCluster, model *AppNode) error {
 	peerId, err := peer.DecodePeerID(model.PeerID)
 	if err == nil {
-		err = peerModule.Purge(peerId)
+		err = peerCluster.Purge(peerId)
 	}
 	return err
 }

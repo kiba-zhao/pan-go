@@ -2,27 +2,30 @@ package node
 
 import (
 	"iter"
-	"pan/lib/sample"
-
-	"gorm.io/gorm"
+	"pan/lib/feature"
+	"pan/lib/repository"
 )
 
 type NetworkAddrRepository interface {
+	repository.Repository
+
 	SeqByPeerId(peerId string) (iter.Seq[NetworkAddr], error)
 }
 
 type networkAddrRepository struct {
-	db *gorm.DB
+	feature.Repository
 }
 
-func NewNetworkAddrRepository(db *gorm.DB) NetworkAddrRepository {
-	return &networkAddrRepository{db: db}
+func NewNetworkAddrRepository() NetworkAddrRepository {
+	return &networkAddrRepository{}
 }
+
+var _ = (NetworkAddrRepository)((*networkAddrRepository)(nil))
 
 func (repo *networkAddrRepository) SeqByPeerId(peerId string) (iter.Seq[NetworkAddr], error) {
-	db := repo.db
+	db := repo.DB()
 	if db == nil {
-		return nil, sample.ErrSampleDBUnavailable
+		return nil, feature.ErrFeatureRepositoryDBUnavailable
 	}
 
 	rows, err := db.Model(&NetworkAddr{}).InnerJoins("AppNode", db.Where(&AppNode{PeerID: peerId})).Rows()

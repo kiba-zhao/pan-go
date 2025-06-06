@@ -4,12 +4,14 @@ import (
 	"io"
 )
 
-type peerReader struct {
+type stdPeerReader struct {
 	io.Reader
 	haveRead bool
 }
 
-func (r *peerReader) Read(p []byte) (n int, err error) {
+var _ = (io.Reader)((*stdPeerReader)(nil))
+
+func (r *stdPeerReader) Read(p []byte) (n int, err error) {
 
 	if !r.haveRead {
 		r.haveRead = true

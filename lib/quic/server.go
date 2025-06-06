@@ -5,83 +5,149 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"pan/lib/log"
+	"slices"
 	"sync"
 
 	"github.com/quic-go/quic-go"
 )
 
-var ErrQuicPeerServerUnavailable = errors.New("quic.QuicPeerServer Error: Unavailable")
-var ErrQuicPeerSettingsUnavailable = errors.New("quic.QuicPeerServer Error: Peer Settings Unavailable")
+var ErrQuicServerUnavailable = errors.New("quic.QuicServer Error: Unavailable")
 
-type quicPeerServer struct {
-	quicPeerModule QuicPeerModule
-	locker         sync.RWMutex
-	ln             *quic.Listener
-	address        string
+type stdQuicServer struct {
+	logger  log.Logger
+	cluster *stdQuicCluster
+
+	addrs   []string
+	addrsRW sync.RWMutex
+
+	certificate   tls.Certificate
+	certificateRW sync.RWMutex
+
+	reloadChan chan struct{}
+	reloadLock sync.Mutex
+	reload     bool
 }
 
-// Shutdown closes the quic listener and cleans up the quicPeerServer.
-// Note that any new incoming connections will be closed immediately.
-// Shutdown will return ErrQuicPeerServerUnavailable if the quicPeerServer
-// is not available anymore.
-func (qs *quicPeerServer) Shutdown() error {
-	qs.locker.RLock()
-	ln := qs.ln
-	qs.locker.RUnlock()
-	if ln == nil {
-		return ErrQuicPeerServerUnavailable
-	}
-
-	qs.locker.Lock()
-	qs.ln = nil
-	qs.locker.Unlock()
-	return ln.Close()
+func (qs *stdQuicServer) Addrs() []string {
+	qs.addrsRW.RLock()
+	defer qs.addrsRW.RUnlock()
+	return qs.addrs
 }
 
-// ListenAndServe starts a QUIC server and listens for incoming connections.
-// It authenticates clients using the server's TLS certificate and handles
-// client connections using the associated quicPeerModule. The function will
-// return an error if the server is unavailable, the peer settings are
-// unavailable, or if there is an issue with accepting connections. It
-// gracefully shuts down when the context is canceled or when the server
-// encounters an internal error.
+func (qs *stdQuicServer) SetAddrs(addrs []string) {
+	qs.logger.Debug("QuicServer", "SetAddrs")
 
-func (qs *quicPeerServer) ListenAndServe(ctx context.Context) error {
+	qs.addrsRW.Lock()
+	defer qs.addrsRW.Unlock()
+	if slices.Equal(qs.addrs, addrs) {
+		return
+	}
+	qs.addrs = addrs
+	qs.Reload()
+}
 
-	if qs.quicPeerModule == nil {
-		return ErrQuicPeerServerUnavailable
+func (qs *stdQuicServer) Certificate() tls.Certificate {
+	qs.certificateRW.RLock()
+	defer qs.certificateRW.RUnlock()
+	return qs.certificate
+}
+
+func (qs *stdQuicServer) SetCertificate(certificate tls.Certificate) {
+	qs.certificateRW.Lock()
+	defer qs.certificateRW.Unlock()
+	qs.certificate = certificate
+	qs.Reload()
+}
+
+func (qs *stdQuicServer) Reload() {
+	qs.logger.Debug("QuicServer", "Reload")
+
+	qs.reloadLock.Lock()
+	defer qs.reloadLock.Unlock()
+	if qs.reload {
+		return
 	}
 
-	settings := qs.quicPeerModule.PeerSettings()
-	if settings == nil || !settings.Available() {
-		return ErrQuicPeerSettingsUnavailable
-	}
+	qs.reload = true
+	qs.reloadChan <- struct{}{}
+}
 
-	certificate := settings.Certificate()
-	tlsConf := &tls.Config{ClientAuth: tls.RequireAnyClientCert, Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
-	quicConf := &quic.Config{}
-	ln, err := quic.ListenAddr(qs.address, tlsConf, quicConf)
-	if err != nil {
-		return err
-	}
-	qs.locker.Lock()
-	qs.ln = ln
-	qs.locker.Unlock()
-	defer qs.Shutdown()
+func (qs *stdQuicServer) ListenAndServe(ctx context.Context) error {
+	qs.logger.Debug("QuicServer", "ListenAndServe begin")
+	defer qs.logger.Debug("QuicServer", "ListenAndServe end")
+
+	var err error
+	var closed bool
+
+	var wg sync.WaitGroup
+	var servers []*quic.Listener
 
 	for {
-		conn, err := ln.Accept(ctx)
-		if err != nil && conn != nil {
-			conn.CloseWithError(quic.ApplicationErrorCode(quic.InternalError), err.Error())
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			closed = true
+		case <-qs.reloadChan:
+			qs.reloadLock.Lock()
+			qs.reload = false
+			qs.reloadLock.Unlock()
 		}
-		if err == nil {
-			_, err = qs.quicPeerModule.Serve(conn, nil)
+
+		if len(servers) > 0 {
+			for _, server := range servers {
+				server.Close()
+			}
+			wg.Wait()
 		}
-		if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) {
+
+		if closed {
 			break
 		}
 
-	}
+		certificate := qs.Certificate()
+		addrs := qs.Addrs()
+		if len(addrs) <= 0 || len(certificate.Certificate) <= 0 {
+			continue
+		}
 
+		servers = make([]*quic.Listener, 0)
+		cluster := qs.cluster
+		tlsConf := &tls.Config{ClientAuth: tls.RequireAnyClientCert, Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
+		quicConf := &quic.Config{}
+		for _, addr := range addrs {
+			ln, lnErr := quic.ListenAddr(addr, tlsConf, quicConf)
+			if lnErr != nil {
+				qs.logger.Error("QuicServer", "quic.ListenAddr Error: "+addr)
+				continue
+			} else {
+				qs.logger.Info("QuicServer", "quic.ListenAddr Success: "+addr)
+			}
+
+			servers = append(servers, ln)
+			wg.Add(1)
+			go func(ln *quic.Listener) {
+				defer wg.Done()
+				for {
+					conn, err := ln.Accept(ctx)
+					if err != nil && conn != nil {
+						conn.CloseWithError(quic.ApplicationErrorCode(quic.InternalError), err.Error())
+					}
+					if err == nil {
+						_, err = cluster.Serve(conn, nil)
+					}
+					if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) {
+						break
+					}
+					if ctxErr := ctx.Err(); ctxErr != nil {
+						break
+					}
+					qs.logger.Error("QuicServer", "quic.Listener.Accept Error: "+err.Error())
+				}
+			}(ln)
+
+		}
+
+	}
 	return err
 }

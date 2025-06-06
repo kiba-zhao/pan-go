@@ -59,6 +59,8 @@ type registryImpl struct {
 	rw      sync.RWMutex
 }
 
+var _ = (Registry)((*registryImpl)(nil))
+
 // NewRegistry creates a new registry.
 //
 // The registry is a central location for all modules

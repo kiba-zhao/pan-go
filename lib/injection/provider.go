@@ -9,16 +9,16 @@ type ComponentProvider interface {
 // NewComponentProvider returns a ComponentProvider that manages the given
 // components.
 func NewComponentProvider(components ...Component) ComponentProvider {
-	provider := &simpleComponentProvider{}
+	provider := &stdComponentProvider{}
 	provider.components = components
 	return provider
 }
 
-type simpleComponentProvider struct {
+type stdComponentProvider struct {
 	components []Component
 }
 
-func (provider *simpleComponentProvider) Components() []Component {
+func (provider *stdComponentProvider) Components() []Component {
 	return provider.components
 }
 

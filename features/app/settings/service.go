@@ -2,33 +2,47 @@ package settings
 
 import (
 	"pan/lib/config"
+	"sync"
 )
-
-type AppSettingsProvider interface {
-	RootPath() string
-	PeerID() string
-	Settings() config.Settings
-	SetSettings(config.Settings) error
-}
 
 type AppSettingsExternalService interface {
 	Load() AppSettings
 }
 
 type AppSettingsService struct {
-	Provider AppSettingsProvider
+	AppConfig config.AppConfig
+
+	settings   AppSettings
+	settingsRW sync.RWMutex
 }
 
-func (s *AppSettingsService) Load() AppSettings {
-	settings := AppSettings{}
-	settings.Settings = s.Provider.Settings()
-	settings.PeerID = s.Provider.PeerID()
-	settings.RootPath = s.Provider.RootPath()
-	return settings
+func (service *AppSettingsService) Load() AppSettings {
+	service.settingsRW.RLock()
+	defer service.settingsRW.RUnlock()
+	return service.settings
+}
+
+func (service *AppSettingsService) SetConfigSettings(settings config.AppSettings) {
+	service.settingsRW.Lock()
+	defer service.settingsRW.Unlock()
+	service.settings.Settings = *settings
+}
+
+func (service *AppSettingsService) SetPeerID(peerId string) {
+	service.settingsRW.Lock()
+	defer service.settingsRW.Unlock()
+	service.settings.PeerID = peerId
+}
+
+func (service *AppSettingsService) SetRootPath(rootPath string) {
+	service.settingsRW.Lock()
+	defer service.settingsRW.Unlock()
+	service.settings.RootPath = rootPath
 }
 
 func (s *AppSettingsService) Save(fields AppSettingsFields) (AppSettings, error) {
-	settings := s.Provider.Settings()
+	appSettings := s.Load()
+	settings := &appSettings.Settings
 	if fields.Name != "" {
 		settings.Name = fields.Name
 	}
@@ -52,7 +66,7 @@ func (s *AppSettingsService) Save(fields AppSettingsFields) (AppSettings, error)
 		settings.GuardAccess = *fields.GuardAccess
 	}
 
-	err := s.Provider.SetSettings(settings)
+	err := s.AppConfig.Save(settings)
 	if err != nil {
 		return AppSettings{}, err
 	}
