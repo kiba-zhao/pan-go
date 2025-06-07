@@ -13,7 +13,7 @@ import (
 	"sync"
 )
 
-func New(featureName string, provider injection.ComponentStoreProvider) interface{} {
+func New(provider injection.ComponentStoreProvider) interface{} {
 	module := &stdModule{}
 	module.ComponentStoreProvider = provider
 
@@ -28,7 +28,7 @@ func New(featureName string, provider injection.ComponentStoreProvider) interfac
 	logger := log.Default()
 	worker.logger = logger
 	cleaner.logger = logger
-	return runtime.NewModule(feature.New(featureName, module), module)
+	return module
 }
 
 type NodeSearchFileConfig = config.Config[*NodeSearchFileSettings]

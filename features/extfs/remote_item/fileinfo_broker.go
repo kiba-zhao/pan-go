@@ -10,7 +10,7 @@ var SearchRemoteFileInfos = []byte("search_remote_fileinfos")
 var SelectRemoteFileInfo = []byte("select_remote_fileinfo")
 
 type RemoteFileInfoBroker struct {
-	feature.BrokerHelper
+	feature.BaseBroker
 }
 
 func (broker *RemoteFileInfoBroker) Search(peerId peer.PeerID, condition *RemoteFileInfoRecordSearchCondition) (*RemoteFileInfoRecordList, error) {

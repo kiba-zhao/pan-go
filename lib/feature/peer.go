@@ -13,10 +13,6 @@ type PeerTopicProvider interface {
 	PeerTopics() []PeerTopic
 }
 
-type PeerClusterProvider interface {
-	PeerCluster() peer.PeerCluster
-}
-
 var _ = (peer.PeerAppModule)((*stdFeatureModule)(nil))
 
 func (module *stdFeatureModule) SetupToPeer(app peer.PeerRouter) error {

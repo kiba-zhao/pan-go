@@ -12,7 +12,7 @@ import (
 var SearchRemoteSearchFiles = []byte("search_remote_search_files")
 
 type RemoteSearchFileBroker struct {
-	feature.BrokerHelper
+	feature.BaseBroker
 }
 
 // Search sends a request to search for remote search files based on the given peer ID and search condition.

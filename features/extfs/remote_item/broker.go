@@ -13,7 +13,7 @@ var SelectAllRemoteItems = []byte("select_all_remote_items")
 var SelectRemoteItem = []byte("select_remote_item")
 
 type RemoteItemBroker struct {
-	feature.BrokerHelper
+	feature.BaseBroker
 }
 
 // SelectAll sends a request to select all remote items with the given peer ID.

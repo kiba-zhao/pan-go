@@ -1,9 +1,11 @@
 package remoteitem_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"pan/lib/peer"
@@ -18,6 +20,7 @@ import (
 
 	nodeitem "pan/features/extfs/node_item"
 	remoteitem "pan/features/extfs/remote_item"
+	libApp "pan/lib/app"
 	mockedFeature "pan/mocks/pan/lib/feature"
 )
 
@@ -36,10 +39,10 @@ func TestRemoteItemController(t *testing.T) {
 	t.Run("GET /remotes/:peerId/remote-items/:id", func(t *testing.T) {
 		app, ctrl := setup()
 
-		// mock BrokerHelper
+		// mock for Broker
 		brokerHelper := &mockedFeature.MockBrokerHelper{}
 		defer brokerHelper.AssertExpectations(t)
-		ctrl.RemoteItemService.RemoteItemBroker.BrokerHelper = brokerHelper
+		ctrl.RemoteItemService.RemoteItemBroker.InitBroker(brokerHelper)
 		//
 
 		// mock response
@@ -56,10 +59,20 @@ func TestRemoteItemController(t *testing.T) {
 		resBody, err := proto.Marshal(&record)
 		assert.Nil(t, err)
 
-		brokerHelper.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectRemoteItem, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
-			resp := args.Get(3).(*remoteitem.RemoteItemRecord)
-			err := proto.Unmarshal(resBody, resp)
+		appCtx := libApp.NewAppContext()
+		appCtx.Respond(bytes.NewReader(resBody))
+
+		brokerHelper.On("Do", context.Background(), peerIdBytes, mock.Anything).Once().Return(&appCtx.Response, nil).Run(func(args mock.Arguments) {
+			peerReq := args.Get(2).(peer.PeerRequest)
+			assert.Equal(t, remoteitem.SelectRemoteItem, peerReq.Name())
+
+			bodyBytes, err := io.ReadAll(peerReq.Reader)
 			assert.Nil(t, err)
+
+			var condition remoteitem.RemoteItemRecordSelectCondition
+			err = proto.Unmarshal(bodyBytes, &condition)
+			assert.Nil(t, err)
+			assert.Equal(t, record.ID, *condition.ID)
 		})
 		//
 
@@ -92,7 +105,7 @@ func TestRemoteItemController(t *testing.T) {
 		// mock BrokerHelper
 		brokerHelper := &mockedFeature.MockBrokerHelper{}
 		defer brokerHelper.AssertExpectations(t)
-		ctrl.RemoteItemService.RemoteItemBroker.BrokerHelper = brokerHelper
+		ctrl.RemoteItemService.RemoteItemBroker.InitBroker(brokerHelper)
 		//
 
 		// mock response
@@ -111,10 +124,13 @@ func TestRemoteItemController(t *testing.T) {
 		resBody, err := proto.Marshal(&recordList)
 		assert.Nil(t, err)
 
-		brokerHelper.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectAllRemoteItems, mock.Anything, nil).Once().Return(nil).Run(func(args mock.Arguments) {
-			resp := args.Get(3).(*remoteitem.RemoteItemRecordList)
-			err := proto.Unmarshal(resBody, resp)
-			assert.Nil(t, err)
+		appCtx := libApp.NewAppContext()
+		appCtx.Respond(bytes.NewReader(resBody))
+
+		brokerHelper.On("Do", context.Background(), peerIdBytes, mock.Anything).Once().Return(&appCtx.Response, nil).Run(func(args mock.Arguments) {
+			peerReq := args.Get(2).(peer.PeerRequest)
+
+			assert.Equal(t, remoteitem.SelectAllRemoteItems, peerReq.Name())
 		})
 
 		peerId := peer.EncodePeerID(peerIdBytes)

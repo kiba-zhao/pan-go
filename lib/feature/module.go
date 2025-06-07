@@ -10,18 +10,13 @@ type stdFeatureModule struct {
 	RepositoryCluster repository.RepositoryCluster
 
 	featureHelper *stdFeatureHelper
-	brokerHelper  *stdBrokerHelper
 }
 
 func New(name string, feature interface{}) interface{} {
 	module := &stdFeatureModule{}
 
-	brokerHelper := &stdBrokerHelper{}
-	module.brokerHelper = brokerHelper
-
 	helper := &stdFeatureHelper{}
 	module.featureHelper = helper
-	brokerHelper.featureHelper = helper
 	helper.feature = feature
 	helper.name = name
 
@@ -31,10 +26,10 @@ func New(name string, feature interface{}) interface{} {
 var _ = (injection.ComponentProvider)((*stdFeatureModule)(nil))
 
 func (module *stdFeatureModule) Components() []injection.Component {
-	brokerHelper := module.brokerHelper
+
 	components := []injection.Component{
 		injection.NewComponent(module, injection.ComponentNoneScope),
-		injection.NewComponent[BrokerHelper](brokerHelper, injection.ComponentInternalScope),
+		injection.NewComponent(module.featureHelper, injection.ComponentNoneScope),
 	}
 
 	featureHelper := module.featureHelper
@@ -48,7 +43,7 @@ func (module *stdFeatureModule) Components() []injection.Component {
 	metaList := getRepositoryMetaList(featureHelper.feature)
 	if len(metaList) > 0 {
 		for _, meta := range metaList {
-			components = append(components, injection.NewComponentByType(meta.Type, meta.Repository, injection.ComponentInternalScope))
+			components = append(components, injection.NewComponentByType(meta.metaType, meta.target, injection.ComponentInternalScope))
 		}
 	}
 
@@ -59,6 +54,13 @@ func (module *stdFeatureModule) Components() []injection.Component {
 		}
 	}
 
+	// brokers
+	brokerMetaList := getBrokerMetaList(featureHelper.feature)
+	if len(brokerMetaList) > 0 {
+		for _, meta := range brokerMetaList {
+			components = append(components, injection.NewComponentByType(meta.metaType, meta.target, injection.ComponentInternalScope))
+		}
+	}
 	return components
 }
 
@@ -76,6 +78,17 @@ var _ = (bootstrap.DeferModule)((*stdFeatureModule)(nil))
 
 func (module *stdFeatureModule) Defer() error {
 	featureHelper := module.featureHelper
+
+	// init brokers
+	metaList := getBrokerMetaList(featureHelper.feature)
+	if len(metaList) > 0 {
+		for _, meta := range metaList {
+			meta.target.InitBroker(module.featureHelper)
+		}
+	}
+	//
+
+	// attach repositories
 	repository := getRepository(featureHelper.feature)
 	if repository == nil {
 		return nil
@@ -85,11 +98,13 @@ func (module *stdFeatureModule) Defer() error {
 		return module.RepositoryCluster.AttachTempModule(module)
 	}
 	return module.RepositoryCluster.AttachBaseModule(module)
+	//
 }
 
 var _ = (bootstrap.DestroyModule)((*stdFeatureModule)(nil))
 
 func (module *stdFeatureModule) Destroy() {
+	// detach repositories
 	featureHelper := module.featureHelper
 	repository := getRepository(featureHelper.feature)
 	if repository == nil {
@@ -101,6 +116,7 @@ func (module *stdFeatureModule) Destroy() {
 	} else {
 		module.RepositoryCluster.DetachBaseModule(module)
 	}
+	//
 }
 
 type RepositoryDBModule interface {

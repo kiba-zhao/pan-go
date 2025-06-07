@@ -37,7 +37,7 @@ func (server *stdVFSServer) Settings() VFSSettings {
 func (server *stdVFSServer) SetSettings(settings VFSSettings) {
 	server.settingsRW.Lock()
 	defer server.settingsRW.Unlock()
-	*server.settings = settings
+	server.settings = &settings
 }
 
 func (server *stdVFSServer) Reload() {

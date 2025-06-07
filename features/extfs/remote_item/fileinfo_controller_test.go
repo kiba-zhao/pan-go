@@ -1,9 +1,11 @@
 package remoteitem_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"pan/lib/peer"
@@ -15,6 +17,7 @@ import (
 
 	nodeitem "pan/features/extfs/node_item"
 	remoteitem "pan/features/extfs/remote_item"
+	libApp "pan/lib/app"
 
 	mockedNodeItem "pan/mocks/pan/features/extfs/node_item"
 
@@ -41,7 +44,7 @@ func TestRemoteFileInfoController(t *testing.T) {
 		// mock BrokerHelper
 		brokerHelper := &mockedFeature.MockBrokerHelper{}
 		defer brokerHelper.AssertExpectations(t)
-		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.BrokerHelper = brokerHelper
+		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.InitBroker(brokerHelper)
 		//
 
 		peerIdBytes := []byte("peerId")
@@ -59,12 +62,20 @@ func TestRemoteFileInfoController(t *testing.T) {
 		resBody, err := proto.Marshal(&record)
 		assert.Nil(t, err)
 
-		brokerHelper.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SelectRemoteFileInfo, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
-			resp := args.Get(3).(*remoteitem.RemoteFileInfoRecord)
-			err := proto.Unmarshal(resBody, resp)
+		appCtx := libApp.NewAppContext()
+		appCtx.Respond(bytes.NewReader(resBody))
+
+		brokerHelper.On("Do", context.Background(), peerIdBytes, mock.Anything).Once().Return(&appCtx.Response, nil).Run(func(args mock.Arguments) {
+			peerReq := args.Get(2).(peer.PeerRequest)
+
+			assert.Equal(t, remoteitem.SelectRemoteFileInfo, peerReq.Name())
+
+			bodyBytes, err := io.ReadAll(peerReq.Reader)
 			assert.Nil(t, err)
 
-			condition := args.Get(4).(*remoteitem.RemoteFileInfoRecordSelectCondition)
+			var condition remoteitem.RemoteFileInfoRecordSelectCondition
+			err = proto.Unmarshal(bodyBytes, &condition)
+			assert.Nil(t, err)
 			assert.Equal(t, record.ItemID, condition.ItemID)
 			assert.Equal(t, record.FilePath, condition.FilePath)
 		})
@@ -106,7 +117,7 @@ func TestRemoteFileInfoController(t *testing.T) {
 		// mock BrokerHelper
 		brokerHelper := &mockedFeature.MockBrokerHelper{}
 		defer brokerHelper.AssertExpectations(t)
-		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.BrokerHelper = brokerHelper
+		ctrl.RemoteFileInfoService.RemoteFileInfoBroker.InitBroker(brokerHelper)
 		//
 
 		// mock response
@@ -128,12 +139,19 @@ func TestRemoteFileInfoController(t *testing.T) {
 		resBody, err := proto.Marshal(&recordList)
 		assert.Nil(t, err)
 
-		brokerHelper.On("RequestWithProto", context.Background(), peerIdBytes, remoteitem.SearchRemoteFileInfos, mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
-			resp := args.Get(3).(*remoteitem.RemoteFileInfoRecordList)
-			err := proto.Unmarshal(resBody, resp)
+		appCtx := libApp.NewAppContext()
+		appCtx.Respond(bytes.NewReader(resBody))
+
+		brokerHelper.On("Do", context.Background(), peerIdBytes, mock.Anything).Once().Return(&appCtx.Response, nil).Run(func(args mock.Arguments) {
+			peerReq := args.Get(2).(peer.PeerRequest)
+			assert.Equal(t, remoteitem.SearchRemoteFileInfos, peerReq.Name())
+
+			bodyBytes, err := io.ReadAll(peerReq.Reader)
 			assert.Nil(t, err)
 
-			condition := args.Get(4).(*remoteitem.RemoteFileInfoRecordSearchCondition)
+			var condition remoteitem.RemoteFileInfoRecordSearchCondition
+			err = proto.Unmarshal(bodyBytes, &condition)
+			assert.Nil(t, err)
 			assert.Equal(t, record.ItemID, condition.ItemID)
 			assert.Equal(t, record.ParentPath, condition.ParentPath)
 		})

@@ -3,7 +3,6 @@ package feature
 import (
 	"errors"
 	"pan/lib/repository"
-	"reflect"
 	"sync"
 )
 
@@ -29,16 +28,10 @@ func (repo *Repository) DB() repository.RepositoryDB {
 	return repo.db
 }
 
-type RepositoryMeta struct {
-	Type       reflect.Type
-	Repository repository.Repository
-}
+type RepositoryMeta = Metadata[repository.Repository]
 
 func NewRepositoryMeta[T any](repo repository.Repository) RepositoryMeta {
-	return RepositoryMeta{
-		Type:       reflect.TypeFor[T](),
-		Repository: repo,
-	}
+	return newMetadata[T, repository.Repository](repo)
 }
 
 type RepositoryMetaProvider interface {
@@ -70,7 +63,7 @@ func (module *stdFeatureModule) SetupToRepository(db repository.RepositoryDB) er
 	}
 
 	for _, meta := range metaList {
-		err := meta.Repository.SetupToRepository(db)
+		err := meta.target.SetupToRepository(db)
 		if err != nil {
 			return err
 		}

@@ -21,12 +21,11 @@ const ModuleName = "extfs"
 
 func New() interface{} {
 	m := &module{}
-
+	nodesearchfileModule := nodesearchfile.New(m)
 	return runtime.NewModule(
 		vfs.New(m),
-		nodesearchfile.New(ModuleName, m),
-		feature.New(ModuleName, m),
-		m,
+		feature.New(ModuleName, nodesearchfileModule), nodesearchfileModule,
+		feature.New(ModuleName, m), m,
 	)
 }
 
@@ -38,6 +37,12 @@ type module struct {
 
 	topics     []feature.PeerTopic
 	topicsOnce sync.Once
+
+	metaList     []feature.RepositoryMeta
+	metaListOnce sync.Once
+
+	brokerMetaList     []feature.BrokerMeta
+	brokerMetaListOnce sync.Once
 }
 
 var _ = (feature.WebControllerProvider)((*module)(nil))
@@ -77,10 +82,27 @@ func (m *module) SetupToRepository(db repository.RepositoryDB) error {
 var _ = (feature.RepositoryMetaProvider)((*module)(nil))
 
 func (m *module) RepositoryMetaList() []feature.RepositoryMeta {
-	return []feature.RepositoryMeta{
-		feature.NewRepositoryMeta[nodeitem.NodeItemRepository](nodeitem.NewNodeItemRepository()),
-		feature.NewRepositoryMeta[searchitem.SearchItemRepository](searchitem.NewSearchItemRepository()),
-	}
+	m.metaListOnce.Do(func() {
+		m.metaList = []feature.RepositoryMeta{
+			feature.NewRepositoryMeta[nodeitem.NodeItemRepository](nodeitem.NewNodeItemRepository()),
+			feature.NewRepositoryMeta[searchitem.SearchItemRepository](searchitem.NewSearchItemRepository()),
+		}
+	})
+	return m.metaList
+}
+
+var _ = (feature.BrokerMetaProvider)((*module)(nil))
+
+func (m *module) BrokerMetaList() []feature.BrokerMeta {
+	m.brokerMetaListOnce.Do(func() {
+		m.brokerMetaList = []feature.BrokerMeta{
+			feature.NewBrokerMeta[*remoteitem.RemoteItemBroker](&remoteitem.RemoteItemBroker{}),
+			feature.NewBrokerMeta[*remoteitem.RemoteFileInfoBroker](&remoteitem.RemoteFileInfoBroker{}),
+			feature.NewBrokerMeta[*remoteitem.RemoteFileStreamBroker](&remoteitem.RemoteFileStreamBroker{}),
+			feature.NewBrokerMeta[*remotesearchfile.RemoteSearchFileBroker](&remotesearchfile.RemoteSearchFileBroker{}),
+		}
+	})
+	return m.brokerMetaList
 }
 
 var _ = (feature.PeerTopicProvider)((*module)(nil))
@@ -116,12 +138,6 @@ func (m *module) Components() []injection.Component {
 	// search file services
 	components = feature.AppendComponent(components, &searchitem.SearchItemService{})
 	components = feature.AppendComponent(components, &remotesearchfile.RemoteSearchFileService{})
-
-	// brokers
-	components = feature.AppendComponent(components, &remoteitem.RemoteItemBroker{})
-	components = feature.AppendComponent(components, &remoteitem.RemoteFileInfoBroker{})
-	components = feature.AppendComponent(components, &remoteitem.RemoteFileStreamBroker{})
-	components = feature.AppendComponent(components, &remotesearchfile.RemoteSearchFileBroker{})
 
 	return components
 }

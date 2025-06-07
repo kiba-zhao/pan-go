@@ -121,12 +121,12 @@ func (cfg *stdPeerConfig) EnsureConfig(configPath string) error {
 	cfg.configPath = configPath
 	cfg.configPathRW.Unlock()
 
-	settings, err := cfg.Load()
+	_, err := cfg.Load()
 	if err == nil {
 		return nil
 	}
 
-	settings, err = GeneratePeerSettings()
+	settings, err := GeneratePeerSettings()
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (cfg *stdPeerConfig) EnsureConfig(configPath string) error {
 }
 
 func (cfg *stdPeerConfig) ConfigListeners() []PeerConfigListener {
-	cfg.listenersRW.Lock()
+	cfg.listenersRW.RLock()
 	defer cfg.listenersRW.RUnlock()
 
 	return cfg.listeners

@@ -10,7 +10,7 @@ import (
 var SelectRemoteFileStream = []byte("select_remote_filestream")
 
 type RemoteFileStreamBroker struct {
-	feature.BrokerHelper
+	feature.BaseBroker
 }
 
 func (broker *RemoteFileStreamBroker) Select(peerId peer.PeerID, condition *RemoteFileStreamSelectCondition) (io.ReadCloser, error) {

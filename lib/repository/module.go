@@ -9,6 +9,10 @@ import (
 
 func New() interface{} {
 	module := &stdRepositoryModule{}
+
+	cluster := &stdRepositoryCluster{}
+	module.cluster = cluster
+
 	return module
 }
 
