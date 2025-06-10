@@ -1,10 +1,9 @@
 package repository
 
 import (
+	"context"
 	"pan/lib/bootstrap"
-	"pan/lib/config"
 	"pan/lib/injection"
-	"pan/lib/log"
 )
 
 func New() interface{} {
@@ -17,9 +16,6 @@ func New() interface{} {
 }
 
 type stdRepositoryModule struct {
-	AppConfig config.AppConfig
-
-	logger  log.Logger
 	cluster *stdRepositoryCluster
 }
 
@@ -32,29 +28,12 @@ func (m *stdRepositoryModule) Components() []injection.Component {
 	}
 }
 
-var _ = (config.AppConfigListener)((*stdRepositoryModule)(nil))
-
-func (m *stdRepositoryModule) OnConfigUpdated(settings config.AppSettings) {
-	err := m.cluster.InitBaseDB(settings.DBPath)
-	if err != nil {
-		m.logger.Error("RepositoryModule", "InitBaseDB Error: "+err.Error())
-	}
-
-	err = m.cluster.InitTempDB(settings.TempPath)
-	if err != nil {
-		m.logger.Error("RepositoryModule", "InitTempDB Error: "+err.Error())
-	}
-}
-
 var _ = (bootstrap.DeferModule)((*stdRepositoryModule)(nil))
 
-func (m *stdRepositoryModule) Defer() error {
-	m.AppConfig.Subscribe(m)
-	return nil
-}
-
-var _ = (bootstrap.DestroyModule)((*stdRepositoryModule)(nil))
-
-func (m *stdRepositoryModule) Destroy() {
-	m.AppConfig.Unsubscribe(m)
+func (m *stdRepositoryModule) Defer(ctx context.Context) error {
+	err := m.cluster.InitBaseDB(DBPath())
+	if err == nil {
+		err = m.cluster.InitTempDB(TempDBPath())
+	}
+	return err
 }

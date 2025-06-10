@@ -26,7 +26,7 @@ type Config[T any] interface {
 	SetDefaults(settings T)
 	Load() (T, error)
 	Save(settings T) error
-	EnsureConfig(configPath string) error
+	EnsureConfig() error
 	ConfigFilePath() string
 	ConfigListeners() []ConfigListener[T]
 	Subscribe(listener ConfigListener[T])
@@ -35,6 +35,7 @@ type Config[T any] interface {
 }
 
 type stdConfig[T any] struct {
+	filename    string
 	already     bool
 	settings    T
 	rw          sync.RWMutex
@@ -46,13 +47,14 @@ type stdConfig[T any] struct {
 	isPtrType bool
 }
 
-func NewConfig[T any]() Config[T] {
+func NewConfig[T any](filename string) Config[T] {
 
 	cfg := &stdConfig[T]{}
 
 	t := reflect.TypeFor[T]()
 	cfg.isPtrType = t.Kind() == reflect.Ptr
 	cfg.viper = viper.New()
+	cfg.filename = filename
 
 	return cfg
 }
@@ -145,7 +147,9 @@ func (cfg *stdConfig[T]) Save(settings T) error {
 // EnsureConfig ensures that the configuration directory exists.
 // It creates the directory if it does not exist.
 // It returns an error if any error occurs during the creation process.
-func (cfg *stdConfig[T]) EnsureConfig(configFilePath string) error {
+func (cfg *stdConfig[T]) EnsureConfig() error {
+
+	configFilePath := filepath.Join(RootPath(), cfg.filename)
 	cfg.viper.SetConfigFile(configFilePath)
 
 	configDirPath := filepath.Dir(configFilePath)

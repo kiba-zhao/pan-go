@@ -76,13 +76,13 @@ var _ = (runtime.InitializeModule)((*stdWebModule)(nil))
 // It sets the module's registry and then attempts to reload modules.
 // Returns an error if the module reloading fails.
 
-func (w *stdWebModule) Init(registry runtime.Registry) error {
+func (w *stdWebModule) Init(ctx context.Context, registry runtime.Registry) error {
 	w.rw.Lock()
 	w.registry = registry
 	w.rw.Unlock()
 
 	if w.already {
-		return w.ReloadModules()
+		return w.ReloadModules(ctx)
 	}
 	return nil
 }
@@ -94,9 +94,9 @@ var _ = (bootstrap.DeferModule)((*stdWebModule)(nil))
 // It calls ReloadModules, which reloads the web module's components.
 // Returns an error if reloading fails.
 
-func (w *stdWebModule) Defer() error {
+func (w *stdWebModule) Defer(ctx context.Context) error {
 	w.already = true
-	return w.ReloadModules()
+	return w.ReloadModules(ctx)
 }
 
 var _ = (bootstrap.ReadyModule)((*stdWebModule)(nil))
@@ -121,7 +121,7 @@ func (w *stdWebModule) EngineTypes() []reflect.Type {
 	}
 }
 
-func (w *stdWebModule) ReloadModules() error {
+func (w *stdWebModule) ReloadModules(ctx context.Context) error {
 	w.rw.RLock()
 	registry := w.registry
 	w.rw.RUnlock()
@@ -132,6 +132,9 @@ func (w *stdWebModule) ReloadModules() error {
 	app := NewWebApp()
 
 	err := runtime.TraverseRegistry(registry, func(module WebAppModule) error {
+		if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
+			return ctxErr
+		}
 		return module.SetupToWeb(app)
 	})
 

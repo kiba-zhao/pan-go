@@ -4,9 +4,8 @@ import (
 	"os"
 )
 
-const EnvMode = "PANGO_MODE"
-
 const (
+	EnvMode     = "PANGO_MODE"
 	DebugMode   = "debug"
 	ReleaseMode = "release"
 	TestMode    = "test"

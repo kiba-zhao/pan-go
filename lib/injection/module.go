@@ -4,6 +4,7 @@
 package injection
 
 import (
+	"context"
 	"pan/lib/runtime"
 	"reflect"
 )
@@ -17,10 +18,15 @@ func New() interface{} {
 
 var _ = (runtime.InitializeModule)((*stdInjectionModule)(nil))
 
-func (in *stdInjectionModule) Init(registry runtime.Registry) error {
+func (in *stdInjectionModule) Init(ctx context.Context, registry runtime.Registry) error {
 	engine := newStdInjectEngine()
 
 	err := runtime.TraverseRegistry(registry, func(provider ComponentProvider) error {
+
+		if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
+			return ctxErr
+		}
+
 		var internalStore ComponentStore
 		if storeProvider, ok := provider.(ComponentStoreProvider); ok {
 			internalStore = storeProvider.ComponentStore()

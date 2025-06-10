@@ -1,6 +1,7 @@
 package runtime_test
 
 import (
+	"context"
 	"errors"
 	"pan/lib/runtime"
 	"reflect"
@@ -23,7 +24,7 @@ func TestEngine(t *testing.T) {
 	}
 
 	setup := func() (engine *runtime.Engine) {
-		engine = runtime.New()
+		engine, _ = runtime.New()
 		return
 	}
 
@@ -65,12 +66,12 @@ func TestEngine(t *testing.T) {
 
 		err := e.Mount(initializeModule)
 		assert.Nil(t, err)
-		err = e.Bootstrap()
+		err = e.Bootstrap(context.Background())
 		assert.Equal(t, initErr, err)
 
 		initializeModule.On("Init", mock.AnythingOfType(registryTypeName)).Once().Return(nil)
 
-		err = e.Bootstrap()
+		err = e.Bootstrap(context.Background())
 		assert.Nil(t, err)
 	})
 

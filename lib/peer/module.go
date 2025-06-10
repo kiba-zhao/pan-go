@@ -4,14 +4,13 @@
 package peer
 
 import (
+	"context"
 	"errors"
 	"pan/lib/app"
 	"pan/lib/bootstrap"
-	"pan/lib/config"
 	"pan/lib/injection"
 	"pan/lib/log"
 	"pan/lib/runtime"
-	"path/filepath"
 	"reflect"
 	"sync"
 )
@@ -28,8 +27,6 @@ type PeerAppModule interface {
 }
 
 type stdPeerModule struct {
-	AppConfig config.AppConfig
-
 	cluster *stdPeerCluster
 	cfg     *stdPeerConfig
 
@@ -53,14 +50,14 @@ var _ = (runtime.InitializeModule)((*stdPeerModule)(nil))
 // Init initializes the peer module with the provided registry.
 //
 // It sets the module's registry and does not return an error.
-func (pn *stdPeerModule) Init(registry runtime.Registry) error {
+func (pn *stdPeerModule) Init(ctx context.Context, registry runtime.Registry) error {
 
 	pn.rw.Lock()
 	pn.registry = registry
 	pn.rw.Unlock()
 
 	if pn.already {
-		return pn.ReloadModules()
+		return pn.ReloadModules(ctx)
 	}
 	return nil
 }
@@ -75,13 +72,12 @@ var _ = (bootstrap.DeferModule)((*stdPeerModule)(nil))
 // If the registry is available, the function calls ReloadModules to reload the peer modules.
 //
 // ReloadModules is a no-op if the registry is not available.
-func (pn *stdPeerModule) Defer() error {
+func (pn *stdPeerModule) Defer(ctx context.Context) error {
 
-	configPath := filepath.Dir(pn.AppConfig.ConfigFilePath())
-	err := pn.cfg.EnsureConfig(configPath)
+	err := pn.cfg.EnsureConfig()
 	if err == nil {
 		pn.already = true
-		err = pn.ReloadModules()
+		err = pn.ReloadModules(ctx)
 	}
 
 	return err
@@ -113,7 +109,7 @@ func (pn *stdPeerModule) Components() []injection.Component {
 	}
 }
 
-func (pn *stdPeerModule) ReloadModules() error {
+func (pn *stdPeerModule) ReloadModules(ctx context.Context) error {
 	pn.rw.RLock()
 	registry := pn.registry
 	pn.rw.RUnlock()
@@ -121,6 +117,9 @@ func (pn *stdPeerModule) ReloadModules() error {
 	peerApp := app.NewApp()
 
 	err := runtime.TraverseRegistry(registry, func(module PeerAppModule) error {
+		if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
+			return ctxErr
+		}
 		return module.SetupToPeer(peerApp)
 	})
 

@@ -2,10 +2,11 @@
 package app
 
 import (
+	"context"
 	appbroadcast "pan/features/app/broadcast"
 	diskfile "pan/features/app/disk_file"
 	appnode "pan/features/app/node"
-	"pan/features/app/settings"
+
 	appsettings "pan/features/app/settings"
 	"pan/lib/bootstrap"
 	"pan/lib/broadcast"
@@ -19,44 +20,34 @@ import (
 	"pan/lib/peer"
 	"pan/lib/quic"
 	"pan/lib/runtime"
-	"pan/lib/web"
 )
 
 const ModuleName = "app"
 
-// New returns the app module.
-//
-// The app module is the core module for Pan.
-// It contains all the components and modules for the application.
-// The module is also a runtime.Module, and can be used to load components into the runtime.
-//
-// The module is initialized with the given ComponentStoreProvider, which is used to get the ComponentStore.
-// The ComponentStore is used to store components that are injected into other components.
-func New() interface{} {
-
-	// m := &module{}
-	// m.peerGuard = &appnode.PeerGuard{}
-	// m.store = injection.NewComponentStore()
-	// m.networkAddrGuide = &appnode.NetworkAddrGuide{}
-
-	// sampleModule := sample.New(m)
-	// m.sample = sampleModule
+func New(modules ...interface{}) interface{} {
 	m := &module{}
 
-	appSettingsService := settings.AppSettingsService{}
+	appSettingsService := appsettings.AppSettingsService{}
 	m.appSettingsService = &appSettingsService
 
-	return runtime.NewModule(
+	// base modules
+	modules_ := []interface{}{
 		bootstrap.New(),
 		config.NewWithDefaults(ModuleName+".toml", config.NewDefaultSettings()),
 		repository.New(),
 		peer.New(),
 		broadcast.New(),
 		quic.New(),
-		web.New(),
-		feature.New(ModuleName, m),
-		m,
-	)
+	}
+
+	// specific modules
+	if len(modules) > 0 {
+		modules_ = append(modules_, modules...)
+	}
+
+	// feature modules
+	modules_ = append(modules_, feature.New(ModuleName, m), m)
+	return runtime.NewModule(modules_...)
 }
 
 // Bootstrap returns the bootstrap engine for the application.
@@ -81,7 +72,7 @@ type module struct {
 
 	AppConfig          config.AppConfig
 	PeerConfig         peer.PeerConfig
-	appSettingsService *settings.AppSettingsService
+	appSettingsService *appsettings.AppSettingsService
 
 	controllers     []feature.WebController
 	controllersOnce sync.Once
@@ -105,7 +96,7 @@ func (m *module) OnPeerConfigUpdated(settings *peer.PeerSettings) {
 
 var _ (bootstrap.DeferModule) = (*module)(nil)
 
-func (m *module) Defer() error {
+func (m *module) Defer(ctx context.Context) error {
 	m.BroadcastModule.SetStore(m.BroadcastStore)
 	m.PeerCluster.RegisterPeerGuard(m.PeerGuard)
 	m.QuicExplorer.AddGuide(m.QuicExplorerGuide)
@@ -114,7 +105,7 @@ func (m *module) Defer() error {
 	m.PeerConfig.Subscribe(m)
 
 	rootPath := filepath.Dir(m.AppConfig.ConfigFilePath())
-	m.appSettingsService.SetRootPath(rootPath)
+	m.appSettingsService.SetConfigPath(rootPath)
 	return nil
 }
 

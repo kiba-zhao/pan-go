@@ -4,8 +4,8 @@ import "pan/lib/config"
 
 type AppSettings struct {
 	config.Settings
-	PeerID   string `json:"peerId" form:"peerId"`
-	RootPath string `json:"rootPath" form:"rootPath"`
+	PeerID     string `json:"peerId" form:"peerId"`
+	ConfigPath string `json:"cfgPath" form:"cfgPath"`
 }
 
 type AppSettingsFields struct {

@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"os"
+	"pan/lib/config"
 	"path/filepath"
 	"sync"
 )
@@ -19,16 +20,14 @@ type PeerConfig interface {
 	ConfigPath() string
 	Load() (*PeerSettings, error)
 	Save(settings *PeerSettings) error
-	EnsureConfig(configPath string) error
+	EnsureConfig() error
 	Subscribe(listener PeerConfigListener)
 	Unsubscribe(listener PeerConfigListener)
 	ConfigListeners() []PeerConfigListener
 }
 
 type stdPeerConfig struct {
-	configPath   string
-	locker       sync.Mutex
-	configPathRW sync.RWMutex
+	locker sync.Mutex
 
 	rw       sync.RWMutex
 	settings *PeerSettings
@@ -41,9 +40,7 @@ type stdPeerConfig struct {
 var _ = (PeerConfig)((*stdPeerConfig)(nil))
 
 func (cfg *stdPeerConfig) ConfigPath() string {
-	cfg.configPathRW.RLock()
-	defer cfg.configPathRW.RUnlock()
-	return cfg.configPath
+	return config.RootPath()
 }
 
 func (cfg *stdPeerConfig) Load() (*PeerSettings, error) {
@@ -116,10 +113,7 @@ func (cfg *stdPeerConfig) Save(settings *PeerSettings) error {
 	return err
 }
 
-func (cfg *stdPeerConfig) EnsureConfig(configPath string) error {
-	cfg.configPathRW.Lock()
-	cfg.configPath = configPath
-	cfg.configPathRW.Unlock()
+func (cfg *stdPeerConfig) EnsureConfig() error {
 
 	_, err := cfg.Load()
 	if err == nil {

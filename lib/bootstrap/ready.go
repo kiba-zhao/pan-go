@@ -32,7 +32,7 @@ var _ = (runtime.InitializeModule)((*readyEngine)(nil))
 // Init initializes the ready engine with the given registry.
 //
 // It sets the registry and does not return an error.
-func (re *readyEngine) Init(registry runtime.Registry) error {
+func (re *readyEngine) Init(ctx context.Context, registry runtime.Registry) error {
 	re.locker.Lock()
 	re.registry = registry
 	re.locker.Unlock()
@@ -73,6 +73,10 @@ func (re *readyEngine) bootstrap(ctx context.Context) error {
 	var wg sync.WaitGroup
 	causeCtx, causeCancel := context.WithCancelCause(ctx)
 	err := runtime.TraverseRegistry(registry, func(module ReadyModule) error {
+		if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
+			return ctxErr
+		}
+
 		wg.Add(1)
 		go func(readyModule ReadyModule) {
 			defer wg.Done()
@@ -82,12 +86,7 @@ func (re *readyEngine) bootstrap(ctx context.Context) error {
 			}
 		}(module)
 
-		select {
-		case <-causeCtx.Done():
-			return causeCtx.Err()
-		default:
-			return nil
-		}
+		return nil
 	})
 
 	if err == nil {

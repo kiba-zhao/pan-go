@@ -21,7 +21,7 @@ type DeferModule interface {
 	// It is used to defer the initialization of the application.
 	//
 	// The function will be called with a context that is canceled when the application exits.
-	Defer() error
+	Defer(ctx context.Context) error
 }
 
 type deferEngine struct {
@@ -34,7 +34,7 @@ var _ = (runtime.InitializeModule)((*deferEngine)(nil))
 // Init initializes the defer engine with the provided registry.
 //
 // It sets the registry and does not return an error.
-func (de *deferEngine) Init(registry runtime.Registry) error {
+func (de *deferEngine) Init(ctx context.Context, registry runtime.Registry) error {
 	de.locker.Lock()
 	de.registry = registry
 	de.locker.Unlock()
@@ -73,14 +73,9 @@ func (de *deferEngine) bootstrap(ctx context.Context) error {
 	}
 
 	return runtime.TraverseRegistry(registry, func(module DeferModule) error {
-		err := module.Defer()
-		if err == nil {
-			select {
-			case <-ctx.Done():
-				err = ctx.Err()
-			default:
-			}
+		if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
+			return ctxErr
 		}
-		return err
+		return module.Defer(ctx)
 	})
 }

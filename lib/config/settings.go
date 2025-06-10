@@ -2,9 +2,7 @@
 package config
 
 import (
-	"os"
 	"pan/lib/net"
-	"path/filepath"
 )
 
 type AppSettings = *Settings
@@ -20,8 +18,6 @@ type Settings struct {
 	GuardEnabled     bool     `json:"guardEnabled" form:"guardEnabled"`
 	GuardAccess      bool     `json:"guardAccess" form:"guardAccess"`
 	DiscoveryServer  []string `json:"discoveryServer" form:"discoveryServer"`
-	DBPath           string   `json:"dbPath" form:"dbPath"`
-	TempPath         string   `json:"tempPath" form:"tempPath"`
 }
 
 func NewDefaultSettings() AppSettings {
@@ -50,36 +46,10 @@ func NewDefaultSettings() AppSettings {
 		}
 	}
 
-	settings.Name = generateName()
+	settings.Name = HostName()
 	settings.PublicAddress = settings.PeerAddress
 	settings.GuardEnabled = true
 	settings.GuardAccess = true
-	settings.DBPath = getRootPath()
-	settings.TempPath = os.TempDir()
 
 	return settings
-}
-
-func generateName() string {
-	name, err := os.Hostname()
-	if err == nil {
-		return name
-	}
-
-	return "pan-go"
-}
-
-const PackageName = "pan-go"
-const RootPathName = "rootPath"
-const DefaultRootName = "." + PackageName
-
-func getRootPath() string {
-	rootPath, ok := os.LookupEnv(RootPathName)
-	if !ok {
-		homePath, err := os.UserHomeDir()
-		if err == nil {
-			rootPath = filepath.Join(homePath, DefaultRootName)
-		}
-	}
-	return rootPath
 }

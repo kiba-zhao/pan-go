@@ -22,7 +22,7 @@ type destroyEngine struct {
 
 var _ = (runtime.InitializeModule)((*destroyEngine)(nil))
 
-func (de *destroyEngine) Init(registry runtime.Registry) error {
+func (de *destroyEngine) Init(ctx context.Context, registry runtime.Registry) error {
 	de.locker.Lock()
 	de.registry = registry
 	de.locker.Unlock()

@@ -12,7 +12,7 @@ import (
 func TestSimpleModule(t *testing.T) {
 
 	setup := func() (engine *runtime.Engine) {
-		engine = runtime.New()
+		engine, _ = runtime.New()
 		return
 	}
 

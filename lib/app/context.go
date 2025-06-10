@@ -114,11 +114,16 @@ func (c *Context) ThrowError(code int, err error) {
 // It sets the response code to -1 (unknown), initializes the session as an empty slice,
 // and sets the request and response bodies to empty values.
 func InitContext(ctx *Context) {
+	request := &Request{}
+	InitRequest(request)
+	InitContextWithRequest(ctx, request)
+}
+
+func InitContextWithRequest(ctx *Context, request *Request) {
 	ctx.code = -1
 	ctx.session = make([]*SessionItem, 0)
 
-	ctx.request = &Request{}
-	InitRequest(ctx.request)
+	ctx.request = request
 
 	InitResponse(&ctx.Response)
 }

@@ -1,6 +1,7 @@
 package feature
 
 import (
+	"context"
 	"pan/lib/bootstrap"
 	"pan/lib/injection"
 	"pan/lib/repository"
@@ -61,6 +62,13 @@ func (module *stdFeatureModule) Components() []injection.Component {
 			components = append(components, injection.NewComponentByType(meta.metaType, meta.target, injection.ComponentInternalScope))
 		}
 	}
+
+	handlers := getSerlvetHandlers(featureHelper.feature)
+	if len(handlers) > 0 {
+		for _, handler := range handlers {
+			components = append(components, injection.NewComponent(handler, injection.ComponentNoneScope))
+		}
+	}
 	return components
 }
 
@@ -76,7 +84,7 @@ func (module *stdFeatureModule) ComponentStore() injection.ComponentStore {
 
 var _ = (bootstrap.DeferModule)((*stdFeatureModule)(nil))
 
-func (module *stdFeatureModule) Defer() error {
+func (module *stdFeatureModule) Defer(ctx context.Context) error {
 	featureHelper := module.featureHelper
 
 	// init brokers

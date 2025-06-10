@@ -34,10 +34,10 @@ func (service *AppSettingsService) SetPeerID(peerId string) {
 	service.settings.PeerID = peerId
 }
 
-func (service *AppSettingsService) SetRootPath(rootPath string) {
+func (service *AppSettingsService) SetConfigPath(cfgPath string) {
 	service.settingsRW.Lock()
 	defer service.settingsRW.Unlock()
-	service.settings.RootPath = rootPath
+	service.settings.ConfigPath = cfgPath
 }
 
 func (s *AppSettingsService) Save(fields AppSettingsFields) (AppSettings, error) {

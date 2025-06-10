@@ -20,3 +20,7 @@ func (helper *stdFeatureHelper) WebScope() string {
 func (helper *stdFeatureHelper) PeerScope() []byte {
 	return []byte(helper.FeatureName() + ".")
 }
+
+func (helper *stdFeatureHelper) SerlvetScope() []byte {
+	return helper.PeerScope()
+}

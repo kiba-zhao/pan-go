@@ -4,11 +4,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
-
-	"gorm.io/gorm"
 )
-
-type RepositoryDB = *gorm.DB
 
 type Repository interface {
 	SetupToRepository(db RepositoryDB) error

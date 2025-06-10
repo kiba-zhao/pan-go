@@ -10,6 +10,7 @@ application.
 package runtime
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"slices"
@@ -52,7 +53,7 @@ type InitializeModule interface {
 	// It sets up necessary configurations and dependencies required
 	// for the module to function correctly within the engine.
 	// Returns an error if initialization fails.
-	Init(registry Registry) error
+	Init(ctx context.Context, registry Registry) error
 }
 
 type Context = *errgroup.Group
@@ -67,13 +68,18 @@ type Engine struct {
 }
 
 // Create a new Engine instance.
-func New() *Engine {
+func New(modules ...interface{}) (*Engine, error) {
 	engine := &Engine{}
 	engine.Registry = NewRegistry()
 	engine.extTypes = []reflect.Type{
 		reflect.TypeFor[InitializeModule](),
 	}
-	return engine
+
+	var err error
+	if len(modules) > 0 {
+		err = engine.Mount(modules...)
+	}
+	return engine, err
 }
 
 // Mount module to engine.
@@ -158,9 +164,12 @@ func (engine *Engine) Mount(modules ...interface{}) error {
 // It calls the Init method with the engine's registry on each of the modules.
 // If any of the modules return an error during initialization, the error will be
 // returned and initialization will halt.
-func (engine *Engine) Bootstrap() error {
+func (engine *Engine) Bootstrap(ctx context.Context) error {
 	registry := engine.Registry
 	return TraverseRegistry(registry, func(module InitializeModule) error {
-		return module.Init(registry)
+		if err := EnsureContext(ctx); err != nil {
+			return err
+		}
+		return module.Init(ctx, registry)
 	})
 }

@@ -32,7 +32,7 @@ func TestAppSettingsController(t *testing.T) {
 		webApp, ctrl := setup()
 
 		peerId := "test peer id"
-		rootPath := "test root path"
+		cfgPath := "test root path"
 		settings := config.Settings{}
 		settings.Name = "test name"
 		settings.WebAddress = []string{"127.0.0.1:9002"}
@@ -41,12 +41,10 @@ func TestAppSettingsController(t *testing.T) {
 		settings.PublicAddress = []string{"127.0.0.1:9003"}
 		settings.GuardEnabled = true
 		settings.GuardAccess = true
-		settings.DBPath = "test db path"
-		settings.TempPath = "test temp path"
 
 		ctrl.AppSettingsService.SetConfigSettings(&settings)
 		ctrl.AppSettingsService.SetPeerID(peerId)
-		ctrl.AppSettingsService.SetRootPath(rootPath)
+		ctrl.AppSettingsService.SetConfigPath(cfgPath)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/settings", nil)
@@ -56,7 +54,7 @@ func TestAppSettingsController(t *testing.T) {
 		var results appsettings.AppSettings
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
-		assert.Equal(t, appsettings.AppSettings{Settings: settings, PeerID: peerId, RootPath: rootPath}, results)
+		assert.Equal(t, appsettings.AppSettings{Settings: settings, PeerID: peerId, ConfigPath: cfgPath}, results)
 
 	})
 
@@ -64,7 +62,7 @@ func TestAppSettingsController(t *testing.T) {
 		webApp, ctrl := setup()
 
 		peerId := "test peer id"
-		rootPath := "test root path"
+		cfgPath := "test root path"
 		settings := config.Settings{}
 		settings.Name = "test name"
 		settings.WebAddress = []string{"127.0.0.1:9002"}
@@ -73,12 +71,10 @@ func TestAppSettingsController(t *testing.T) {
 		settings.PublicAddress = []string{"127.0.0.1:9003"}
 		settings.GuardEnabled = true
 		settings.GuardAccess = true
-		settings.DBPath = "test db path"
-		settings.TempPath = "test temp path"
 
 		ctrl.AppSettingsService.SetConfigSettings(&settings)
 		ctrl.AppSettingsService.SetPeerID(peerId)
-		ctrl.AppSettingsService.SetRootPath(rootPath)
+		ctrl.AppSettingsService.SetConfigPath(cfgPath)
 
 		fields := appsettings.AppSettingsFields{}
 		fields.Name = "field name"
@@ -104,8 +100,6 @@ func TestAppSettingsController(t *testing.T) {
 			assert.Equal(t, fields.PublicAddress, settings_.PublicAddress)
 			assert.Equal(t, *fields.GuardEnabled, settings_.GuardEnabled)
 			assert.Equal(t, *fields.GuardAccess, settings_.GuardAccess)
-			assert.Equal(t, settings.DBPath, settings_.DBPath)
-			assert.Equal(t, settings.TempPath, settings_.TempPath)
 			ctrl.AppSettingsService.SetConfigSettings(settings_)
 		})
 
@@ -119,6 +113,6 @@ func TestAppSettingsController(t *testing.T) {
 		var results appsettings.AppSettings
 		err := json.Unmarshal(w.Body.Bytes(), &results)
 		assert.Nil(t, err)
-		assert.Equal(t, appsettings.AppSettings{Settings: *settings_, PeerID: peerId, RootPath: rootPath}, results)
+		assert.Equal(t, appsettings.AppSettings{Settings: *settings_, PeerID: peerId, ConfigPath: cfgPath}, results)
 	})
 }

@@ -6,11 +6,8 @@ package bootstrap
 import (
 	"context"
 	"errors"
-	"os"
-	"os/signal"
 	"pan/lib/injection"
 	"pan/lib/runtime"
-	"syscall"
 )
 
 var ErrBootstrapExit = errors.New("bootstrap.engine Error: bootstrap exit")
@@ -33,15 +30,7 @@ type stdBootstrapModule struct {
 
 var _ = (runtime.InitializeModule)((*stdBootstrapModule)(nil))
 
-func (e *stdBootstrapModule) Init(registry runtime.Registry) error {
-
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	ctx, cancel := context.WithCancelCause(context.Background())
-	go func() {
-		<-signals
-		cancel(ErrBootstrapExit)
-	}()
+func (e *stdBootstrapModule) Init(ctx context.Context, registry runtime.Registry) error {
 
 	err := e.DeferEngine.bootstrap(ctx)
 	if err == nil {
