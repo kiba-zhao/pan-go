@@ -1,9 +1,9 @@
 package config
 
 func InitAsDefaults() error {
-	err := InitHostName()
+	err := initHostNameAsDefault()
 	if err == nil {
-		err = InitRootPath()
+		err = initRootPathAsDefault()
 	}
 	return err
 }

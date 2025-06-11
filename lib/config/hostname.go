@@ -1,13 +1,15 @@
 package config
 
 import (
+	"errors"
 	"os"
-	"pan/lib/pkg"
 	"sync"
 )
 
 var hostname string
 var hostnameRW sync.RWMutex
+var hostnameAlready bool
+var errHostNameConflict = errors.New("config.HostName Error: Conflict")
 
 func HostName() string {
 	hostnameRW.RLock()
@@ -15,19 +17,21 @@ func HostName() string {
 	return hostname
 }
 
-func SetHostName(name string) {
+func InitHostName(name string) error {
 	hostnameRW.Lock()
 	defer hostnameRW.Unlock()
+	if hostnameAlready {
+		return errHostNameConflict
+	}
 	hostname = name
+	hostnameAlready = true
+	return nil
 }
 
-func InitHostName() error {
+func initHostNameAsDefault() error {
 	name, err := os.Hostname()
 	if err == nil {
-		SetHostName(name)
-	} else {
-		SetHostName(pkg.Name())
+		return InitHostName(name)
 	}
-
 	return err
 }

@@ -12,10 +12,24 @@ type Settings struct {
 	TempDBPath string
 }
 
-func initWithSettings(settings Settings) {
-	config.SetHostName(settings.HostName)
-	config.SetRootPath(settings.ConfigPath)
+func initWithSettings(settings Settings, logger Logger) {
+	var err error
+	err = config.InitHostName(settings.HostName)
+	if err != nil {
+		logger.Error("gomobile", "settings Error:"+err.Error())
+	}
+	err = config.InitRootPath(settings.ConfigPath)
+	if err != nil {
+		logger.Error("gomobile", "settings Error:"+err.Error())
+	}
 
-	repository.SetDBPath(settings.DBPath)
-	repository.SetTempDBPath(settings.TempDBPath)
+	err = repository.InitDBPath(settings.DBPath)
+	if err != nil {
+		logger.Error("gomobile", "settings Error:"+err.Error())
+	}
+
+	err = repository.InitTempDBPath(settings.TempDBPath)
+	if err != nil {
+		logger.Error("gomobile", "settings Error:"+err.Error())
+	}
 }

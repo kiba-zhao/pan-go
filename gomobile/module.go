@@ -8,7 +8,7 @@ import (
 )
 
 type stdModule struct {
-	Serlvet *libSerlvet.Serlvet
+	Serlvet libSerlvet.Serlvet
 
 	agent *GoMobileAgent
 }

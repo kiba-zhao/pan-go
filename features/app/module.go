@@ -14,7 +14,6 @@ import (
 	"pan/lib/feature"
 	"pan/lib/injection"
 	"pan/lib/repository"
-	"path/filepath"
 	"sync"
 
 	"pan/lib/peer"
@@ -104,8 +103,6 @@ func (m *module) Defer(ctx context.Context) error {
 	m.AppConfig.Subscribe(m)
 	m.PeerConfig.Subscribe(m)
 
-	rootPath := filepath.Dir(m.AppConfig.ConfigFilePath())
-	m.appSettingsService.SetConfigPath(rootPath)
 	return nil
 }
 

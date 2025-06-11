@@ -1,9 +1,9 @@
 package repository
 
 func InitAsDefaults() error {
-	err := InitDBPath()
+	err := initDBPathAsDefault()
 	if err == nil {
-		err = InitTempDBPath()
+		err = initTempDBPathAsDefault()
 	}
 	return err
 }

@@ -58,18 +58,20 @@ func TestEngine(t *testing.T) {
 	t.Run("Mount with initialize module", func(t *testing.T) {
 		e := setup()
 		registryTypeName := getRegistryImplTypeName()
+		ctx := context.Background()
 
 		initializeModule := &mocked.MockInitializeModule{}
 		defer initializeModule.AssertExpectations(t)
 		initErr := errors.New("test error")
-		initializeModule.On("Init", mock.AnythingOfType(registryTypeName)).Once().Return(initErr)
+		initializeModule.On("Init", ctx, mock.AnythingOfType(registryTypeName)).Once().Return(initErr)
 
 		err := e.Mount(initializeModule)
 		assert.Nil(t, err)
-		err = e.Bootstrap(context.Background())
+
+		err = e.Bootstrap(ctx)
 		assert.Equal(t, initErr, err)
 
-		initializeModule.On("Init", mock.AnythingOfType(registryTypeName)).Once().Return(nil)
+		initializeModule.On("Init", ctx, mock.AnythingOfType(registryTypeName)).Once().Return(nil)
 
 		err = e.Bootstrap(context.Background())
 		assert.Nil(t, err)

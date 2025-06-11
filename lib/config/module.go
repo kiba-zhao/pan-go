@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"pan/lib/injection"
 )
 
@@ -21,7 +22,7 @@ func NewWithDefaults[T any](filename string, settings T) interface{} {
 	return cfgModule
 }
 
-func (m *stdConfigModule[T]) Defer() error {
+func (m *stdConfigModule[T]) Defer(ctx context.Context) error {
 	return m.cfg.EnsureConfig()
 }
 

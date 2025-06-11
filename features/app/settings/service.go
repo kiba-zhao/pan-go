@@ -19,7 +19,11 @@ type AppSettingsService struct {
 func (service *AppSettingsService) Load() AppSettings {
 	service.settingsRW.RLock()
 	defer service.settingsRW.RUnlock()
-	return service.settings
+
+	settings := service.settings
+	settings.ConfigPath = config.RootPath()
+
+	return settings
 }
 
 func (service *AppSettingsService) SetConfigSettings(settings config.AppSettings) {
@@ -32,12 +36,6 @@ func (service *AppSettingsService) SetPeerID(peerId string) {
 	service.settingsRW.Lock()
 	defer service.settingsRW.Unlock()
 	service.settings.PeerID = peerId
-}
-
-func (service *AppSettingsService) SetConfigPath(cfgPath string) {
-	service.settingsRW.Lock()
-	defer service.settingsRW.Unlock()
-	service.settings.ConfigPath = cfgPath
 }
 
 func (s *AppSettingsService) Save(fields AppSettingsFields) (AppSettings, error) {

@@ -8,7 +8,8 @@ import (
 	"sync"
 )
 
-var ErrSerlvetUnavailable = errors.New("serlvet.Serlvet Error: Unavailable")
+var errSerlvetUnavailable = errors.New("serlvet.Serlvet Error: Unavailable")
+var errSerlvetNotFound = errors.New("serlvet.Serlvet Error:  Not Found")
 
 type SerlvetApp = *libApp.App
 type SerlvetRouter = libApp.AppHandleGroup
@@ -30,7 +31,7 @@ var _ = (Serlvet)((*stdSerlvet)(nil))
 func (serlvet *stdSerlvet) Do(ctx context.Context, action SerlvetAction, reader io.Reader) (io.ReadCloser, error) {
 	app := getApp(serlvet)
 	if app == nil {
-		return nil, ErrSerlvetUnavailable
+		return nil, errSerlvetUnavailable
 	}
 
 	req := libApp.NewRequest(action, reader)
@@ -39,8 +40,17 @@ func (serlvet *stdSerlvet) Do(ctx context.Context, action SerlvetAction, reader 
 	appCtx.Set(SerlvetDoContext, ctx)
 
 	err := app.Run(appCtx, nil)
+	defer releaseReader(reader)
 	if err != nil {
 		return nil, err
+	}
+
+	if appCtx.Code() < 0 {
+		return nil, errSerlvetNotFound
+	}
+
+	if appCtx.Code() != libApp.CodeOK {
+		return nil, appCtx.Err()
 	}
 
 	return appCtx, nil
@@ -56,4 +66,10 @@ func setApp(serlvet *stdSerlvet, app SerlvetApp) {
 	serlvet.appRW.Lock()
 	defer serlvet.appRW.Unlock()
 	serlvet.app = app
+}
+
+func releaseReader(reader io.Reader) {
+	if closer, ok := reader.(io.Closer); ok {
+		closer.Close()
+	}
 }

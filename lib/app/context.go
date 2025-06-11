@@ -32,6 +32,7 @@ type Context struct {
 	Response
 	request *Request
 	session Session
+	err     error
 }
 
 // Request returns the request associated with the context.
@@ -107,7 +108,12 @@ func (c *Context) Respond(body io.Reader) {
 // The error is converted to a string and set as the response body.
 func (c *Context) ThrowError(code int, err error) {
 	c.code = code
+	c.err = err
 	c.Reader = strings.NewReader(err.Error())
+}
+
+func (c *Context) Err() error {
+	return c.err
 }
 
 // InitContext initializes a Context with default values.

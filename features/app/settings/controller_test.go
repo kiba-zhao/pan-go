@@ -32,7 +32,7 @@ func TestAppSettingsController(t *testing.T) {
 		webApp, ctrl := setup()
 
 		peerId := "test peer id"
-		cfgPath := "test root path"
+		cfgPath := config.RootPath()
 		settings := config.Settings{}
 		settings.Name = "test name"
 		settings.WebAddress = []string{"127.0.0.1:9002"}
@@ -44,7 +44,6 @@ func TestAppSettingsController(t *testing.T) {
 
 		ctrl.AppSettingsService.SetConfigSettings(&settings)
 		ctrl.AppSettingsService.SetPeerID(peerId)
-		ctrl.AppSettingsService.SetConfigPath(cfgPath)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/settings", nil)
@@ -62,7 +61,7 @@ func TestAppSettingsController(t *testing.T) {
 		webApp, ctrl := setup()
 
 		peerId := "test peer id"
-		cfgPath := "test root path"
+		cfgPath := config.RootPath()
 		settings := config.Settings{}
 		settings.Name = "test name"
 		settings.WebAddress = []string{"127.0.0.1:9002"}
@@ -74,7 +73,6 @@ func TestAppSettingsController(t *testing.T) {
 
 		ctrl.AppSettingsService.SetConfigSettings(&settings)
 		ctrl.AppSettingsService.SetPeerID(peerId)
-		ctrl.AppSettingsService.SetConfigPath(cfgPath)
 
 		fields := appsettings.AppSettingsFields{}
 		fields.Name = "field name"
