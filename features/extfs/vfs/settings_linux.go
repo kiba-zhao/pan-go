@@ -4,17 +4,15 @@ package vfs
 
 import (
 	"os"
-	"path"
+	"pan/lib/pkg"
+	"path/filepath"
 )
 
-func generateDefaultMountPath() string {
+func initMountPathAsDefault() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return path.Join("/", "media")
+		return err
 	}
-	return path.Join(home, "extfs")
-}
-
-func init() {
-	MountPath = generateDefaultMountPath()
+	filePath := filepath.Join(home, pkg.Name())
+	return InitMountPath(filePath)
 }

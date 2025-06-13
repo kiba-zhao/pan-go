@@ -2,7 +2,7 @@ package gomobile
 
 import "pan/lib/log"
 
-func New(settings Settings, logger Logger) *GoMobileAgent {
+func New(settings *Settings, logger Logger) *GoMobileAgent {
 	log.InitDefault(logger)
 	initWithSettings(settings, logger)
 

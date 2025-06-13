@@ -82,8 +82,7 @@ func (m *stdVFSModule) Ready(ctx context.Context) error {
 	m.VFSConfig.Subscribe(m.vfsConfigProxy)
 	defer m.VFSConfig.Unsubscribe(m.vfsConfigProxy)
 
-	// TODO
-	return nil
+	return m.vfsServer.RunAndServe(ctx)
 }
 
 type stdVFSConfigProxy struct {
@@ -95,5 +94,6 @@ var _ = (config.ConfigListener[*VFSSettings])((*stdVFSConfigProxy)(nil))
 func (m *stdVFSConfigProxy) OnConfigUpdated(settings *VFSSettings) {
 	module := m.module
 	server := module.vfsServer
-	server.SetSettings(*settings)
+	server.SetHostName(settings.HostName)
+	server.SetMountPath(settings.MountPath)
 }

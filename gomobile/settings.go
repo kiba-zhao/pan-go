@@ -1,6 +1,7 @@
 package gomobile
 
 import (
+	"pan/features/extfs/vfs"
 	"pan/lib/config"
 	"pan/lib/repository"
 )
@@ -10,9 +11,10 @@ type Settings struct {
 	ConfigPath string
 	DBPath     string
 	TempDBPath string
+	MountPath  string
 }
 
-func initWithSettings(settings Settings, logger Logger) {
+func initWithSettings(settings *Settings, logger Logger) {
 	var err error
 	err = config.InitHostName(settings.HostName)
 	if err != nil {
@@ -29,6 +31,11 @@ func initWithSettings(settings Settings, logger Logger) {
 	}
 
 	err = repository.InitTempDBPath(settings.TempDBPath)
+	if err != nil {
+		logger.Error("gomobile", "settings Error:"+err.Error())
+	}
+
+	err = vfs.InitMountPath(settings.MountPath)
 	if err != nil {
 		logger.Error("gomobile", "settings Error:"+err.Error())
 	}

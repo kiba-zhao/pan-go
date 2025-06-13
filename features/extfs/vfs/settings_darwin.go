@@ -3,9 +3,11 @@
 package vfs
 
 import (
+	"pan/lib/pkg"
 	"path"
 )
 
-func init() {
-	MountPath = path.Join("/", "Volumes", "extfs")
+func initMountPathAsDefault() error {
+	filePath := path.Join("/", "Volumes", pkg.Name())
+	return InitMountPath(filePath)
 }

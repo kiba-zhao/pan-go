@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -15,8 +16,6 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 class MainActivity : ReactActivity() {
 
-    private lateinit var mainServiceBinder: MainService.MainServiceBinder
-    private lateinit var mainServiceConnection: ServiceConnection
     private var mainServiceAlready = false
 
   /**
@@ -36,7 +35,7 @@ class MainActivity : ReactActivity() {
         Log.d("MainActivity", "onCreate begin")
         super.onCreate(savedInstanceState)
 
-        bindMainService(true)
+        startMainService(true)
         Log.d("MainActivity", "onCreate end")
     }
 
@@ -44,11 +43,9 @@ class MainActivity : ReactActivity() {
         Log.d("MainActivity", "onDestroy begin")
         super.onDestroy()
 
-        unbindMainService()
+        stopMainService()
         Log.d("MainActivity", "onDestroy end")
     }
-
-    fun getMainServiceBinder(): MainService.MainServiceBinder = mainServiceBinder
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -58,59 +55,48 @@ class MainActivity : ReactActivity() {
         Log.d("MainActivity", "onRequestPermissionsResult begin $requestCode")
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_MAIN_SERVICE_PERMISSION){
-            bindMainService()
+            startMainService()
         }
         Log.d("MainActivity", "onRequestPermissionsResult end $requestCode")
     }
 
-    private fun bindMainService(tryRequestPermissions:Boolean=false){
+    private fun serviceIntent():Intent{
+        return Intent(this, MainService::class.java)
+    }
 
-        Log.d("MainActivity", "bindMainService begin $tryRequestPermissions")
+    private fun startMainService(tryRequestPermissions:Boolean=false){
+
+        Log.d("MainActivity", "startMainService begin $tryRequestPermissions")
 
         // check permissions
         val (available,permissions) = MainService.checkPermissions(this)
-        Log.d("MainActivity", "bindMainService checkPermissions $available, ${permissions.joinToString()}")
+        Log.d("MainActivity", "startMainService checkPermissions $available, ${permissions.joinToString()}")
         if (permissions.isNotEmpty()){
             if (tryRequestPermissions){
 //                if (ActivityCompat.shouldShowRequestPermissionRationale(this,Manifest.permission.POST_NOTIFICATIONS)){
 //
 //                }
                 ActivityCompat.requestPermissions(this, permissions,REQUEST_MAIN_SERVICE_PERMISSION)
-                Log.d("MainActivity", "bindMainService Try Request Permissions $tryRequestPermissions")
+                Log.d("MainActivity", "startMainService Try Request Permissions $tryRequestPermissions")
                 return
             }
             if(!available){
-                Log.w("MainActivity", "bindMainService Not Available $tryRequestPermissions")
+                Log.w("MainActivity", "startMainService Not Available $tryRequestPermissions")
                 return
             }
         }
         //
-
-        mainServiceConnection =
-            object : ServiceConnection {
-                override fun onServiceConnected(name: ComponentName, service: IBinder) {
-                    Log.d("MainActivity", "ServiceConnection.onServiceConnected before")
-                    mainServiceBinder = service as MainService.MainServiceBinder
-                    Log.d("MainActivity", "ServiceConnection.onServiceConnected end")
-                }
-
-                override fun onServiceDisconnected(name: ComponentName) {}
-            }
-        val serviceIntent = Intent(this, MainService::class.java)
-
-        bindService(serviceIntent, mainServiceConnection, Context.BIND_AUTO_CREATE)
+        ContextCompat.startForegroundService(this, serviceIntent())
         mainServiceAlready = true
-        Log.d("MainActivity", "bindMainService end $tryRequestPermissions")
+        Log.d("MainActivity", "startMainService end $tryRequestPermissions")
     }
 
-    private fun unbindMainService(){
-        Log.d("MainActivity", "unbindMainService begin")
-        if (!mainServiceAlready){
-            Log.d("MainActivity", "unbindMainService Not Already")
-            return
+    private fun stopMainService(){
+        Log.d("MainActivity", "stopMainService begin")
+        if (mainServiceAlready) {
+            stopService(serviceIntent())
         }
-        unbindService(mainServiceConnection)
-        Log.d("MainActivity", "unbindMainService end")
+        Log.d("MainActivity", "stopMainService end")
     }
 
     companion object {

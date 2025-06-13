@@ -15,18 +15,10 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 
 class MainService : Service() {
-    inner class MainServiceBinder : Binder() {
-        fun getService(): MainService = this@MainService
-    }
 
-    override fun onBind(intent: Intent): IBinder {
 
-        Log.d("MainService", "onBind begin")
-        val binder = MainServiceBinder()
-        Log.d("MainService", "onBind end")
-        return binder
-
-        //        return MainServiceBinder()
+    override fun onBind(intent: Intent): IBinder? {
+        return null
     }
 
     override fun onCreate() {
@@ -37,7 +29,7 @@ class MainService : Service() {
         super.onCreate()
 
         startForegroundMainService()
-        startGoBinder()
+        startServlet()
 
         Log.d("MainService", "onCreate end")
     }
@@ -46,7 +38,7 @@ class MainService : Service() {
         Log.d("MainService", "onDestroy begin")
         super.onDestroy()
 
-        stopGoBinder()
+        stopServlet()
         Log.d("MainService","onDestroy end")
     }
 
@@ -71,16 +63,26 @@ class MainService : Service() {
         Log.d("MainService", "startForegroundMainService end")
     }
 
-    private fun startGoBinder(){
-        Log.d("MainService", "startGoBinder begin")
-        // TODO: impelement
-        Log.d("MainService", "startGoBinder end")
+    private fun startServlet(){
+        Log.d("MainService", "startServlet begin")
+
+        val servlet = (application as MainApplication).servlet
+        Thread {
+            Log.d("MainService","startServlet before servlet.start")
+            servlet.start()
+            Log.d("MainService","startServlet after servlet.start")
+        }.start()
+
+        Log.d("MainService", "startServlet end")
     }
 
-    private fun stopGoBinder(){
-        Log.d("MainService", "stopGoBinder begin")
-        // TODO: impelement
-        Log.d("MainService", "stopGoBinder end")
+    private fun stopServlet(){
+        Log.d("MainService", "stopServlet begin")
+
+        val servlet = (application as MainApplication).servlet
+        servlet.stop()
+
+        Log.d("MainService", "stopServlet end")
     }
 
     companion object {

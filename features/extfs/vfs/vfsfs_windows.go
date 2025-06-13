@@ -19,10 +19,10 @@ const VFSWinFSPathSeparator = "/"
 
 type VFSWinFSNodeSystem = fuse.FileSystemInterface
 
-func NewVFSFS(runtime *stdVFSFSRuntime, settings VFSSettings) *VFSWinFS {
+func NewVFSFS(server *stdVFSServer) *VFSWinFS {
 	var vfsfs VFSWinFS
-	vfsfs.stdVFSFSRuntime = runtime
-	vfsfs.settings = &settings
+	vfsfs.stdVFSFSRuntime = server.runtime
+	vfsfs.vfsServer = server
 	vfsfs.nodeItemSys = nodeitem.NewVFSWinFS(&vfsfs)
 	vfsfs.remoteItemSys = remoteitem.NewVFSWinFS(&vfsfs)
 	return &vfsfs
@@ -31,27 +31,32 @@ func NewVFSFS(runtime *stdVFSFSRuntime, settings VFSSettings) *VFSWinFS {
 type VFSWinFS struct {
 	fuse.FileSystemBase
 	*stdVFSFSRuntime
-	settings      *VFSSettings
+	vfsServer     *stdVFSServer
 	locker        sync.Mutex
 	host          *fuse.FileSystemHost
 	nodeItemSys   VFSWinFSNodeSystem
 	remoteItemSys VFSWinFSNodeSystem
 }
 
+var _ = (VFSFS)((*VFSWinFS)(nil))
+
 func (winfs *VFSWinFS) Mount() error {
 	winfs.locker.Lock()
 	defer winfs.locker.Unlock()
 
-	settings := winfs.settings
+	vfsServer := winfs.vfsServer
+	mountPath := vfsServer.MountPath()
+	if len(mountPath) <= 0 {
+		return ErrVFSWinFSMountFailed
+	}
 
 	opts := make([]string, 0)
 	opts = append(opts, "-o", "uid=-1")
 	opts = append(opts, "-o", "gid=-1")
 	opts = append(opts, "--FileSystemName=extfs")
 
-	// TODO: implement
 	winfs.host = fuse.NewFileSystemHost(winfs)
-	ok := winfs.host.Mount(settings.MountPath, opts)
+	ok := winfs.host.Mount(mountPath, opts)
 	if !ok {
 		return ErrVFSWinFSMountFailed
 	}
@@ -85,8 +90,9 @@ func (winfs *VFSWinFS) lookupNodeSys(name string) (VFSWinFSNodeSystem, bool) {
 		return nil, false
 	}
 
-	settings := winfs.settings
-	if settings != nil && name == settings.LocalName {
+	vfsServer := winfs.vfsServer
+	hostname := vfsServer.HostName()
+	if len(hostname) > 0 && name == hostname {
 		return winfs.nodeItemSys, false
 	}
 	return winfs.remoteItemSys, true
@@ -125,9 +131,10 @@ func (winfs *VFSWinFS) Readdir(path string,
 
 	// fill(".", winfs.lookupNodeStat("."), 0)
 	// fill("..", winfs.lookupNodeStat(".."), 0)
-
-	if len(winfs.settings.LocalName) > 0 {
-		fill(winfs.settings.LocalName, winfs.lookupNodeStat(winfs.settings.LocalName), 0)
+	vfsServer := winfs.vfsServer
+	hostname := vfsServer.HostName()
+	if len(hostname) > 0 {
+		fill(hostname, winfs.lookupNodeStat(hostname), 0)
 	}
 
 	var remoteNodeArr []remotenode.RemoteNode
@@ -157,7 +164,9 @@ func (winfs *VFSWinFS) Getattr(path string, stat *fuse.Stat_t, fh uint64) (errc 
 	}
 
 	if len(name) > 0 {
-		if winfs.settings.LocalName != name {
+		vfsServer := winfs.vfsServer
+		hostname := vfsServer.HostName()
+		if len(hostname) > 0 && hostname != name {
 			remoteNodeService := winfs.RemoteNodeService()
 			if remoteNodeService == nil {
 				return fuse.ENOATTR

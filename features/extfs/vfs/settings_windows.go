@@ -6,16 +6,18 @@ import (
 	"os"
 )
 
-func generateDefaultMountPath() string {
+func initMountPathAsDefault() error {
+	var err error
+	var filePath string
 	for i := 'z'; i >= 'd'; i-- {
-		mountPath := string(i) + ":"
-		if _, err := os.Stat(mountPath); os.IsNotExist(err) {
-			return mountPath
+		filePath = string(i) + ":"
+		if _, err = os.Stat(filePath); os.IsNotExist(err) {
+			break
 		}
 	}
-	return ""
-}
 
-func init() {
-	MountPath = generateDefaultMountPath()
+	if !os.IsNotExist(err) {
+		return err
+	}
+	return InitMountPath(filePath)
 }

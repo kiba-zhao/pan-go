@@ -7,6 +7,7 @@ import (
 	"os"
 	"pan/features/app"
 	"pan/features/extfs"
+	"pan/features/extfs/vfs"
 	"pan/lib/config"
 	"pan/lib/env"
 	"pan/lib/log"
@@ -95,6 +96,13 @@ func prepare(logger log.Logger) error {
 	err = repository.InitAsDefaults()
 	if err != nil {
 		logger.Error("main", "repository Error:"+err.Error())
+		return err
+	}
+
+	// init as defaults for vfs
+	err = vfs.InitAsDefaults()
+	if err != nil {
+		logger.Error("main", "vfs Error:"+err.Error())
 		return err
 	}
 	return err

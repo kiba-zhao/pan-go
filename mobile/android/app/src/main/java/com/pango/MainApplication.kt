@@ -15,16 +15,17 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
+import com.pango.servlet.Servlet
 
 class MainApplication : Application(), ReactApplication {
+    val servlet = Servlet(this)
+
 
   override val reactNativeHost: ReactNativeHost =
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
-              // Packages that cannot be autolinked yet can be added manually here, for example:
-              // add(MyReactNativePackage())
-                add(NativeModulePackage())
+                add(servlet.reactPackage)
             }
 
         override fun getJSMainModuleName(): String = "index"
@@ -46,6 +47,7 @@ class MainApplication : Application(), ReactApplication {
   }
 
     private fun initForReactNative(){
+
         // init for react native
         SoLoader.init(this, OpenSourceMergedSoMapping)
         if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {

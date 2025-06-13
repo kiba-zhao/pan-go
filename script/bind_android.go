@@ -22,8 +22,8 @@ func buildLib(libPath string) error {
 		"go", "run", "golang.org/x/mobile/cmd/gomobile", "bind",
 		"-target=android",
 		"-androidapi=21",
-		"-o", filepath.Join(libPath, "pan-go.gobind.aar"),
-		"./gobind",
+		"-o", filepath.Join(libPath, "pan-go.gomobile.aar"),
+		"./gomobile",
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -45,7 +45,7 @@ func main() {
 	}
 	println("workspace path:" + workspace)
 
-	libPath := filepath.Join(workspace, "mobile", "android", "app", "lib")
+	libPath := filepath.Join(workspace, "mobile", "android", "servlet", "libs")
 	err = buildLib(libPath)
 	if err != nil {
 		slog.Error(err.Error())

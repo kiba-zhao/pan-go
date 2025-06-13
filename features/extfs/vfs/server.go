@@ -20,24 +20,46 @@ type stdVFSServer struct {
 	logger  log.Logger
 	runtime *stdVFSFSRuntime
 
-	settings   *VFSSettings
-	settingsRW sync.RWMutex
+	mountPath   string
+	mountPathRW sync.RWMutex
+
+	hostName   string
+	hostNameRW sync.RWMutex
 
 	reloadChan chan struct{}
 	reloadLock sync.Mutex
 	reload     bool
 }
 
-func (server *stdVFSServer) Settings() VFSSettings {
-	server.settingsRW.RLock()
-	defer server.settingsRW.RUnlock()
-	return *server.settings
+func (server *stdVFSServer) HostName() string {
+	server.hostNameRW.RLock()
+	defer server.hostNameRW.RUnlock()
+	return server.hostName
 }
 
-func (server *stdVFSServer) SetSettings(settings VFSSettings) {
-	server.settingsRW.Lock()
-	defer server.settingsRW.Unlock()
-	server.settings = &settings
+func (server *stdVFSServer) SetHostName(hostName string) {
+	server.hostNameRW.Lock()
+	defer server.hostNameRW.Unlock()
+	if server.hostName == hostName {
+		return
+	}
+	server.hostName = hostName
+}
+
+func (server *stdVFSServer) MountPath() string {
+	server.mountPathRW.RLock()
+	defer server.mountPathRW.RUnlock()
+	return server.mountPath
+}
+
+func (server *stdVFSServer) SetMountPath(mountPath string) {
+	server.mountPathRW.Lock()
+	defer server.mountPathRW.Unlock()
+	if server.mountPath == mountPath {
+		return
+	}
+	server.mountPath = mountPath
+	server.Reload()
 }
 
 func (server *stdVFSServer) Reload() {
@@ -80,13 +102,14 @@ func (server *stdVFSServer) RunAndServe(ctx context.Context) error {
 			break
 		}
 
-		settings := server.Settings()
-		if !settings.Enabled {
+		mountPath := server.MountPath()
+		if len(mountPath) <= 0 {
 			continue
 		}
-		vfsfs = NewVFSFS(server.runtime, settings)
+		vfsfs = NewVFSFS(server)
 		err := vfsfs.Mount()
 		if err != nil {
+			vfsfs = nil
 			server.logger.Error("VFSServer", "RunAndServe Error: "+err.Error())
 		}
 	}
