@@ -20,6 +20,6 @@ class AgentLogger :Logger{
         Log.w("$LOG_TAG","$tag:$msg")
     }
     companion object {
-        const val LOG_TAG = "GoLogger"
+        const val LOG_TAG = "AgentLogger"
     }
 }

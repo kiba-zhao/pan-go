@@ -46,7 +46,6 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.alibaba.fastjson2:fastjson2:2.0.57")
     /*
 implementation("com.google.android.material:material:1.10.0")
 testImplementation("junit:junit:4.13.2")

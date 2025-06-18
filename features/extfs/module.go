@@ -21,12 +21,20 @@ const ModuleName = "extfs"
 
 func New() interface{} {
 	m := &module{}
+
+	modules := make([]interface{}, 0)
+	if len(vfs.MountPath()) > 0 {
+		modules = append(modules, vfs.New(m))
+	}
+
 	nodesearchfileModule := nodesearchfile.New(m)
-	return runtime.NewModule(
-		vfs.New(m),
+	modules = append(modules,
 		feature.New(ModuleName, nodesearchfileModule), nodesearchfileModule,
-		feature.New(ModuleName, m), m,
+		feature.New(ModuleName, m),
+		m,
 	)
+
+	return runtime.NewModule(modules...)
 }
 
 type module struct {

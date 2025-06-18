@@ -54,6 +54,7 @@ class MainActivity : ReactActivity() {
     ) {
         Log.d("MainActivity", "onRequestPermissionsResult begin $requestCode")
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        Log.d("MainActivity", "onRequestPermissionsResult before $requestCode")
         if (requestCode == REQUEST_MAIN_SERVICE_PERMISSION){
             startMainService()
         }

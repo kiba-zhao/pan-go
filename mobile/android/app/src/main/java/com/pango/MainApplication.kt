@@ -18,7 +18,7 @@ import com.facebook.soloader.SoLoader
 import com.pango.servlet.Servlet
 
 class MainApplication : Application(), ReactApplication {
-    val servlet = Servlet(this)
+    val servlet = Servlet()
 
 
   override val reactNativeHost: ReactNativeHost =

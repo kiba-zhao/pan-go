@@ -1,44 +1,28 @@
 package com.pango.servlet
 
+import android.content.Context
+import com.facebook.react.ReactPackage
 
-import android.content.ContextWrapper
-import android.os.Build
-import gomobile.GoMobileAgent
-import gomobile.Settings
-import gomobile.Gomobile
+class Servlet {
 
-class Servlet(ctx: ContextWrapper) {
+    private val mAgentProxy = AgentProxy()
+    val reactPackage: ReactPackage = ReactNativePackage(mAgentProxy)
 
-    private val mAgent: GoMobileAgent? = newGoMobileAgent(ctx)
-    val reactPackage = ReactNativePackage(mAgent)
+    fun init(ctx: Context){
+        mAgentProxy.init(ctx)
+    }
 
     fun start(){
-        mAgent?.run()
+        mAgentProxy.run()
     }
 
     fun stop(){
-        mAgent?.terminate()
+        mAgentProxy.terminate()
     }
 
     companion object {
-        private fun newGoMobileAgent(ctx: ContextWrapper):GoMobileAgent?{
-
-            val mountDir = ctx.getExternalFilesDir(null) ?: return null
-            val settings = Settings()
-            settings.mountPath = mountDir.path+"/"+ctx.packageName
-
-            val appDBFile = ctx.getDatabasePath("app.db")
-            settings.dbPath = appDBFile.parent
-
-            settings.configPath = ctx.dataDir.path
-            settings.tempDBPath = ctx.cacheDir.path
-            settings.hostName = Build.MODEL
-
-
-
-            val logger = AgentLogger()
-            return Gomobile.new_(settings,logger)
+        fun checkPermissions(context: Context):Pair<Boolean,Array<String>>{
+            return AgentProxy.checkPermissions(context)
         }
     }
-
 }

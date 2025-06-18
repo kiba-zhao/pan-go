@@ -8,8 +8,8 @@ import com.facebook.react.uimanager.ReactShadowNode
 import com.facebook.react.uimanager.ViewManager
 import gomobile.GoMobileAgent
 
-class ReactNativePackage(agent: GoMobileAgent?): ReactPackage {
-    private val mAgent:GoMobileAgent? = agent
+internal class ReactNativePackage(agentProxy: AgentProxy): ReactPackage {
+    private val mAgentProxy = agentProxy
 
     override fun createViewManagers(
         reactContext: ReactApplicationContext
@@ -17,5 +17,5 @@ class ReactNativePackage(agent: GoMobileAgent?): ReactPackage {
 
     override fun createNativeModules(
         reactContext: ReactApplicationContext
-    ): MutableList<NativeModule> = listOf(AgentNativeModule(reactContext,mAgent)).toMutableList()
+    ): MutableList<NativeModule> = listOf(AgentNativeModule(reactContext,mAgentProxy)).toMutableList()
 }

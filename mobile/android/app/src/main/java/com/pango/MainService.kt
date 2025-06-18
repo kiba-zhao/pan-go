@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.os.Binder
+import com.pango.servlet.Servlet
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -15,7 +15,6 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 
 class MainService : Service() {
-
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -28,8 +27,13 @@ class MainService : Service() {
 
         super.onCreate()
 
-        startForegroundMainService()
-        startServlet()
+        try {
+            startForegroundMainService()
+            startServlet()
+        } catch (e:Exception){
+            Log.e("MainService", "onCreate Error:$e")
+            stopSelf()
+        }
 
         Log.d("MainService", "onCreate end")
     }
@@ -67,12 +71,19 @@ class MainService : Service() {
         Log.d("MainService", "startServlet begin")
 
         val servlet = (application as MainApplication).servlet
-        Thread {
+        try {
+            servlet.init(this)
+        }catch (e:Exception){
+            Log.e("MainService", "startServlet init Error:$e")
+            throw e
+        }
+
+        Thread{
             Log.d("MainService","startServlet before servlet.start")
             servlet.start()
+            stopSelf()
             Log.d("MainService","startServlet after servlet.start")
         }.start()
-
         Log.d("MainService", "startServlet end")
     }
 
@@ -89,6 +100,7 @@ class MainService : Service() {
         const val MAIN_SERVICE_ID = 1
         const val MAIN_SERVICE_CHANNEL_ID = "MainServiceForegroundChannel"
         fun checkPermissions(context: Context):Pair<Boolean,Array<String>>{
+
             val permissions = arrayListOf<String>()
             var available = true
             Log.d("MainService","checkPermissions POST_NOTIFICATIONS ${Build.VERSION.SDK_INT}")
@@ -116,6 +128,14 @@ class MainService : Service() {
             ) {
                 available = false
                 permissions.add(Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC)
+            }
+
+            val (servletAvailable,servletPermissions) = Servlet.checkPermissions(context)
+            if (servletPermissions.isNotEmpty()){
+                if (available){
+                    available = servletAvailable
+                }
+                permissions.addAll(servletPermissions)
             }
 
             return available to permissions.toTypedArray()
