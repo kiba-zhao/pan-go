@@ -1,15 +1,15 @@
 import {
-  CommonActions,
   DefaultTheme,
   NavigationContainer,
+  StackActions,
   useNavigation,
   type Theme as NavigationTheme,
 } from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
-import type {Theme} from '../Common/Theme';
+import type {Theme} from './Theme';
 
-export {CommonActions, NavigationContainer, useNavigation};
+export {StackActions as Actions, NavigationContainer, useNavigation};
 
 const Stack = createNativeStackNavigator();
 

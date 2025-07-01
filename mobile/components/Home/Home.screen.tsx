@@ -1,31 +1,29 @@
-import IonIcon from '@react-native-vector-icons/ionicons';
-import {ComponentProps} from 'react';
-import {Text} from 'react-native';
-import type {ScreenPropsOptions, TabBarIconType} from '../App/App.navigation';
-import {ScreenLayout} from '../Template/Screen.layout';
-import {HomeName, HomeTitle} from './Home.constants';
+import {Screen} from '../App/App.navigation';
+
+import {HomeName} from './Home.constants';
+import {Navigator} from './Home.navigation';
+
+import {AppHomeScreen, AppName} from './App.screen';
+import {DeviceHomeScreen} from './Device.screen';
+import {SettingsHomeScreen} from './Settings.screen';
 
 export const HomeScreenName = HomeName;
 
 const HomeScreen = () => {
   return (
-    <ScreenLayout>
-      <Text>Home Screen123</Text>
-    </ScreenLayout>
+    <Navigator initialRouteName={AppName}>
+      {AppHomeScreen()}
+      {DeviceHomeScreen()}
+      {SettingsHomeScreen()}
+    </Navigator>
   );
 };
 export default HomeScreen;
 
-type HomeScreenIconProps = ComponentProps<TabBarIconType>;
-const HomeScreenIcon = ({focused, size, color}: HomeScreenIconProps) => (
-  <IonIcon
-    name={focused ? 'apps-sharp' : 'apps-outline'}
-    size={size}
-    color={color}
+export const HomeAppScreen = () => (
+  <Screen
+    name={HomeScreenName}
+    component={HomeScreen}
+    options={{headerShown: false}}
   />
 );
-
-export const HomeScreenOptions: ScreenPropsOptions = {
-  title: HomeTitle,
-  tabBarIcon: HomeScreenIcon,
-};

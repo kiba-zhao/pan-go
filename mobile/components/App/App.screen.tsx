@@ -1,45 +1,47 @@
-import {
-  default as HomeScreen,
-  HomeScreenName,
-  HomeScreenOptions,
-} from '../Home/Home.screen';
+import {useMemo} from 'react';
+import {useColorScheme} from 'react-native';
 
+import {DarkTheme, DefaultTheme, ThemeProvider} from '../Common/Theme';
 import {
-  default as DeviceScreen,
-  DeviceScreenName,
-  DeviceScreenOptions,
-} from '../Device/Device.screen';
+  createTheme as createNavigationTheme,
+  Group,
+  NavigationContainer,
+  Navigator,
+} from './App.navigation';
 
-import {
-  default as SettingsScreen,
-  SettingsScreenName,
-  SettingsScreenOptions,
-} from '../Settings/Settings.screen';
-
-import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {Navigator, Screen} from './App.navigation';
+import {DeviceStorageAppScreen} from '../DeviceStorage/DeviceStorage.screen';
+import {HomeAppScreen, HomeScreenName} from '../Home/Home.screen';
+import {StorageAppScreen} from '../Storage/Storage.screen';
 
 const AppScreen = () => {
+  const scheme = useColorScheme();
+
+  const {theme, navigationTheme} = useMemo(
+    () =>
+      scheme === 'dark'
+        ? {
+            theme: DarkTheme,
+            navigationTheme: createNavigationTheme(DarkTheme, true),
+          }
+        : {
+            theme: DefaultTheme,
+            navigationTheme: createNavigationTheme(DefaultTheme, false),
+          },
+    [scheme],
+  );
+
   return (
-    <SafeAreaProvider>
-      <Navigator initialRouteName={HomeScreenName}>
-        <Screen
-          name={HomeScreenName}
-          component={HomeScreen}
-          options={HomeScreenOptions}
-        />
-        <Screen
-          name={DeviceScreenName}
-          component={DeviceScreen}
-          options={DeviceScreenOptions}
-        />
-        <Screen
-          name={SettingsScreenName}
-          component={SettingsScreen}
-          options={SettingsScreenOptions}
-        />
-      </Navigator>
-    </SafeAreaProvider>
+    <ThemeProvider theme={theme}>
+      <NavigationContainer theme={navigationTheme}>
+        <Navigator initialRouteName={HomeScreenName}>
+          <Group>{HomeAppScreen()}</Group>
+          <Group>
+            {StorageAppScreen()}
+            {DeviceStorageAppScreen()}
+          </Group>
+        </Navigator>
+      </NavigationContainer>
+    </ThemeProvider>
   );
 };
 
