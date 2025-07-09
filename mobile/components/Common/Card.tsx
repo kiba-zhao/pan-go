@@ -1,42 +1,46 @@
-import type {TextProps, TextStyle, ViewProps, ViewStyle} from 'react-native';
-import {StyleSheet, Text, View} from 'react-native';
+import type {ViewProps, ViewStyle} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {OpacityPressable} from './Pressable';
 import {scale, verticalScale} from './SizeMatters';
 import {withTheme} from './StyleSheet';
 import {Theme} from './Theme';
 
 const styles = StyleSheet.create({
-  cardPanel: {},
+  card: {
+    boxShadow: [
+      {
+        color: 'rgba(0,0,0, .2)',
+        offsetX: 0,
+        offsetY: 2,
+        blurRadius: 1,
+        spreadDistance: -1,
+      },
+      {
+        color: 'rgba(0,0,0, .14)',
+        offsetX: 0,
+        offsetY: 1,
+        blurRadius: 1,
+        spreadDistance: 0,
+      },
+      {
+        color: 'rgba(0,0,0, .12)',
+        offsetX: 0,
+        offsetY: 1,
+        blurRadius: 3,
+        spreadDistance: 0,
+      },
+    ],
+  },
 });
 
-export const CardPanel = withTheme<ViewStyle, ViewProps, Theme>(
+export const Card = withTheme<ViewStyle, ViewProps, Theme>(
   View,
-  ({colors, sizes}) => ({
-    ...styles.cardPanel,
+  ({sizes, colors}) => ({
+    ...styles.card,
     paddingHorizontal: scale(sizes.base),
     paddingVertical: verticalScale(sizes.base),
     borderRadius: scale(sizes.base),
-    backgroundColor: colors.surfaceVariant,
-  }),
-);
-
-export const CardTitleText = withTheme<TextStyle, TextProps, Theme>(
-  Text,
-  ({colors, sizes, fonts}) => ({
-    color: colors.onSurfaceVariant,
-    fontFamily: fonts.medium.fontFamily,
-    fontWeight: fonts.medium.fontWeight as TextStyle['fontWeight'],
-    fontSize: scale(sizes.text),
-  }),
-);
-
-export const CardText = withTheme<TextStyle, TextProps, Theme>(
-  Text,
-  ({colors, sizes, fonts}) => ({
-    color: colors.onSurfaceVariant,
-    fontFamily: fonts.regular.fontFamily,
-    fontWeight: fonts.regular.fontWeight as TextStyle['fontWeight'],
-    fontSize: scale(sizes.text * 0.8),
+    backgroundColor: colors.surface,
   }),
 );
 

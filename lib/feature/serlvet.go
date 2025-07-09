@@ -19,14 +19,14 @@ func (module *stdFeatureModule) SetupToSerlvet(app serlvet.SerlvetApp) error {
 
 	var errs []error
 	featureHelper := module.featureHelper
-	controllers := getSerlvetHandlers(featureHelper.feature)
-	if len(controllers) <= 0 {
+	handlers := getSerlvetHandlers(featureHelper.feature)
+	if len(handlers) <= 0 {
 		return nil
 	}
 
 	router := app.Route(featureHelper.SerlvetScope())
-	for _, controller := range controllers {
-		err := controller.SetupToSerlvet(router)
+	for _, handler := range handlers {
+		err := handler.SetupToSerlvet(router)
 		if err != nil {
 			errs = append(errs, err)
 		}

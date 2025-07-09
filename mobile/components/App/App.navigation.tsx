@@ -28,9 +28,9 @@ export const createTheme = <T extends Theme>(
     colors: {
       primary: colors.primary,
       background: colors.background,
-      card: colors.background,
-      text: colors.onBackground,
-      border: colors.outline,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.divider,
       notification: colors.error,
     },
     fonts: DefaultTheme.fonts,

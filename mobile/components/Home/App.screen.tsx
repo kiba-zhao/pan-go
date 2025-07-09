@@ -2,14 +2,10 @@ import {StyleSheet, View} from 'react-native';
 import {scale, verticalScale} from 'react-native-size-matters';
 
 import {CommonActions, useNavigation} from '../App/App.navigation';
-import {
-  CardPanel,
-  CardText,
-  CardTitleText,
-  PressableCard,
-} from '../Common/Card';
-import {default as Icon} from '../Common/Icon';
+import {Card, PressableCard} from '../Common/Card';
+import Icon from '../Common/Icon';
 import {Layout, RowLayout} from '../Common/Layout';
+import Text from '../Common/Text';
 import {useTheme} from '../Common/Theme';
 import {Screen} from './Home.navigation';
 import {newTabBarIcon} from './Home.tab';
@@ -64,19 +60,23 @@ const StorageBox = () => {
   };
   return (
     <PressableCard onPress={handlePress}>
-      <CardPanel style={{minWidth: scale(sizes.text) * 13}}>
-        <CardTitleText>Storage</CardTitleText>
-        <CardText>14151 Files</CardText>
+      <Card style={{minWidth: scale(sizes.text) * 13}}>
+        <Text font="bold" color="textPrimary">
+          Storage
+        </Text>
+        <Text color="textSecondary" size="small">
+          14151 Files
+        </Text>
         <View style={{paddingVertical: verticalScale(sizes.base)}}>
-          <Icon color={colors.primary} name="folder" size={scale(sizes.h2)} />
+          <Icon color="primary" name="folder" size="large" />
         </View>
-      </CardPanel>
+      </Card>
     </PressableCard>
   );
 };
 
 const DeviceStorageBox = () => {
-  const {sizes, colors} = useTheme();
+  const {sizes} = useTheme();
 
   const navigation = useNavigation();
   const handlePress = () => {
@@ -84,14 +84,18 @@ const DeviceStorageBox = () => {
   };
   return (
     <PressableCard onPress={handlePress}>
-      <CardPanel
+      <Card
         style={{...styles.deviceBoxPanel, minWidth: scale(sizes.text) * 10}}>
-        <CardTitleText>Device</CardTitleText>
-        <CardText>11 / 32</CardText>
+        <Text font="bold" color="textPrimary">
+          Device
+        </Text>
+        <Text color="textSecondary" size="small">
+          12 / 32
+        </Text>
         <View style={{paddingVertical: verticalScale(sizes.base)}}>
-          <Icon color={colors.primary} name="radio" size={scale(sizes.h2)} />
+          <Icon color="primary" name="radio" size="large" />
         </View>
-      </CardPanel>
+      </Card>
     </PressableCard>
   );
 };

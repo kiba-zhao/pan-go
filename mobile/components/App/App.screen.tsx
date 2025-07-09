@@ -33,9 +33,20 @@ const AppScreen = () => {
   return (
     <ThemeProvider theme={theme}>
       <NavigationContainer theme={navigationTheme}>
-        <Navigator initialRouteName={HomeScreenName}>
-          <Group>{HomeAppScreen()}</Group>
-          <Group>
+        <Navigator
+          initialRouteName={HomeScreenName}
+          screenOptions={{
+            headerShadowVisible: false,
+            headerStyle: {backgroundColor: theme.colors.background},
+            headerTitleStyle: {
+              fontSize: theme.sizes.text + theme.sizes.base * 0.25,
+            },
+          }}>
+          {HomeAppScreen()}
+          <Group
+            screenOptions={{
+              animation: 'slide_from_right',
+            }}>
             {StorageAppScreen()}
             {DeviceStorageAppScreen()}
           </Group>

@@ -6,7 +6,26 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import {useTheme, type Theme} from './Theme';
+import {withTheme as withThemeBase, type Theme} from './Theme';
+
+type CreatePropsFunc<
+  BaseProps extends {},
+  Props extends {},
+  T extends Theme,
+> = Parameters<typeof withThemeBase<BaseProps, Props, T>>[1];
+
+function createStyleWithTheme<
+  T extends Theme,
+  Style extends ViewStyle | TextStyle | ImageStyle,
+  Props extends {style?: StyleProp<Style>},
+>(
+  createStyleHandleFunc: (theme: T) => Style,
+): CreatePropsFunc<Props, Props, T> {
+  return (theme, props) => {
+    const themeStyle = createStyleHandleFunc(theme);
+    return {...props, style: StyleSheet.compose(themeStyle, props.style)};
+  };
+}
 
 export function withTheme<
   T extends ViewStyle | TextStyle | ImageStyle,
@@ -14,18 +33,9 @@ export function withTheme<
   U extends Theme,
 >(
   BaseComponent: ComponentType<V>,
-  withThemeHandleFunc: (theme: U) => T,
+  createStyle: (theme: U) => T,
 ): ComponentType<V> {
-  return ({...props}: V) => {
-    const theme = useTheme<U>();
-    const themeStyle = withThemeHandleFunc(theme);
-    return (
-      <BaseComponent
-        {...props}
-        style={StyleSheet.compose(themeStyle, props.style)}
-      />
-    );
-  };
+  return withThemeBase(BaseComponent, createStyleWithTheme(createStyle));
 }
 
 export function withStyle<

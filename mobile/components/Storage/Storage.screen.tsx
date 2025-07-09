@@ -1,8 +1,8 @@
 import {HeaderAction, HeaderActions} from '../App/App.header';
 import {Screen} from '../App/App.navigation';
-import {HeaderActionIcon} from '../Common/Icon';
+import Icon from '../Common/Icon';
 import {Layout} from '../Common/Layout';
-import {Text} from '../Common/Text';
+import Text from '../Common/Text';
 
 import {StorageName} from './Storage.constants';
 
@@ -11,7 +11,7 @@ export const StorageScreenName = StorageName;
 export const StorageScreen = () => {
   return (
     <Layout>
-      <Text>Storage Screen</Text>
+      <Text color="textPrimary">Storage Screen</Text>
     </Layout>
   );
 };
@@ -43,7 +43,7 @@ const StorageHeaderSearchAction = () => {
   };
   return (
     <HeaderAction onPress={handlePress}>
-      <HeaderActionIcon name="search-sharp" />
+      <Icon name="search-sharp" size="medium" color="textPrimary" />
     </HeaderAction>
   );
 };

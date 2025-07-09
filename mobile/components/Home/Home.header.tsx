@@ -13,7 +13,6 @@ export const HeaderActions = withTheme<ViewStyle, ViewProps, Theme>(
   ({sizes}) => ({
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: scale(sizes.base),
     paddingRight: scale(sizes.base),
   }),
 );

@@ -1,17 +1,40 @@
 import IonIcon from '@react-native-vector-icons/ionicons';
 import {scale} from './SizeMatters';
-import {Theme, withTheme} from './Theme';
+import {Theme, useTheme} from './Theme';
 
-import type {ComponentProps} from 'react';
+import {useMemo, type ComponentProps} from 'react';
 
-export default IonIcon;
+const IconSizeFactors = {
+  small: 2,
+  medium: 3,
+  large: 4,
+};
+type IconSizeFactorsKey = keyof typeof IconSizeFactors;
+type ThemeColorsKey = keyof Theme['colors'];
+type IonIconProps = ComponentProps<typeof IonIcon>;
+type IconProps = Omit<IonIconProps, 'size' | 'color'> & {
+  size?: IconSizeFactorsKey | IonIconProps['size'];
+  color?: ThemeColorsKey | IonIconProps['color'];
+};
+const Icon = ({color = 'inherit', size = 'medium', ...props}: IconProps) => {
+  const {sizes, colors} = useTheme();
 
-type IconProps = ComponentProps<typeof IonIcon>;
-export const HeaderActionIcon = withTheme<IconProps, IconProps, Theme>(
-  IonIcon,
-  ({colors, sizes}, customProps) => ({
-    color: colors.onBackground,
-    size: scale(sizes.h4),
-    ...customProps,
-  }),
-);
+  const color_ = useMemo(
+    () =>
+      typeof color === 'string' && colors[color as ThemeColorsKey] !== void 0
+        ? colors[color as ThemeColorsKey]
+        : color,
+    [color, colors],
+  );
+
+  const size_ = useMemo(() => {
+    if (typeof size === 'number') {
+      return scale(size);
+    }
+    const factor = IconSizeFactors[size];
+    return scale(sizes.base) * factor;
+  }, [size, sizes]);
+  return <IonIcon color={color_} size={size_} {...props} />;
+};
+
+export default Icon;

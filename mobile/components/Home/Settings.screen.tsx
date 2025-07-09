@@ -1,4 +1,4 @@
-import {Text} from 'react-native';
+import Text from '../Common/Text';
 
 import {Layout} from '../Common/Layout';
 import {Screen} from './Home.navigation';
@@ -9,7 +9,7 @@ export const SettingsName = `settings`;
 const SettingsScreen = () => {
   return (
     <Layout>
-      <Text>Settings Screen</Text>
+      <Text color="textPrimary">Settings Screen</Text>
     </Layout>
   );
 };
