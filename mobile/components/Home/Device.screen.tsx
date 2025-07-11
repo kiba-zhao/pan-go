@@ -1,10 +1,15 @@
 import {Device} from '@pango/datatype';
-import {ComponentProps, Fragment} from 'react';
-import {Card} from '../Common/Card';
+import {ComponentProps} from 'react';
 import Icon from '../Common/Icon';
-import {Layout} from '../Common/Layout';
-import {ListItem, withList} from '../Common/List';
+import {ScreenLayout} from '../Common/Layout';
+import {withList} from '../Common/List';
 import {useQuery} from '../Common/ReactQuery';
+import {
+  Section,
+  SectionBox,
+  SectionHeader,
+  SectionItem,
+} from '../Common/Section';
 import Text from '../Common/Text';
 import {searchDevices} from '../Native/Device.spec';
 import {HeaderAction, HeaderActions} from './Home.header';
@@ -15,9 +20,9 @@ export const DeviceName = `device`;
 
 const DeviceScreen = () => {
   return (
-    <Layout>
+    <ScreenLayout>
       <DeviceSection />
-    </Layout>
+    </ScreenLayout>
   );
 };
 
@@ -85,29 +90,34 @@ const DeviceSection = () => {
 
   const entities = data && data[1];
   return (
-    <Fragment>
-      <Text font="bold" size="small" color="textSecondary">
-        Active Devices
-      </Text>
+    <Section>
+      <SectionHeader>
+        <Text font="bold" size="small" color="textSecondary">
+          Active Devices
+        </Text>
+      </SectionHeader>
       <DeviceBox data={entities || []}>
-        <Text size="h6" font="medium" color="textPrimary">
+        <Text size="title" font="medium" color="textPrimary">
           Empty Device
         </Text>
       </DeviceBox>
-    </Fragment>
+    </Section>
   );
 };
 
-const DeviceBox = withList<Device, ComponentProps<typeof Card>>(
-  Card,
+const DeviceBox = withList<Device, ComponentProps<typeof SectionBox>>(
+  SectionBox,
   (value, index, items) => {
     return (
-      <ListItem
+      <SectionItem
         key={index}
-        icon={<Icon name="desktop-outline" color="textDisabled" />}
-        text={<Text color="textPrimary">{value.name}</Text>}>
-        <Icon name="chevron-forward" size="small" color="textPrimary" />
-      </ListItem>
+        variant={index < items.length - 1 ? 'divider' : 'default'}
+        icon={<Icon name="desktop-outline" color="textPrimary" />}
+        extra={
+          <Icon name="chevron-forward" size="small" color="textPrimary" />
+        }>
+        <Text color="textPrimary">{value.name}</Text>
+      </SectionItem>
     );
   },
 );

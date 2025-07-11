@@ -1,6 +1,6 @@
 import Text from '../Common/Text';
 
-import {Layout} from '../Common/Layout';
+import {ScreenLayout} from '../Common/Layout';
 import {Screen} from './Home.navigation';
 import {newTabBarIcon} from './Home.tab';
 
@@ -8,9 +8,9 @@ export const SettingsName = `settings`;
 
 const SettingsScreen = () => {
   return (
-    <Layout>
+    <ScreenLayout>
       <Text color="textPrimary">Settings Screen</Text>
-    </Layout>
+    </ScreenLayout>
   );
 };
 

@@ -10,13 +10,9 @@ import {type Theme, useTheme} from './Theme';
 
 const TextSizeFactors = {
   text: 0,
+  xsmall: -0.5,
   small: -0.25,
-  h6: 0.25,
-  h5: 0.5,
-  h4: 1.25,
-  h3: 2.25,
-  h2: 3.25,
-  h1: 3.75,
+  title: 0.25,
 };
 type TextSizeKey = keyof typeof TextSizeFactors;
 type ThemeColorsKey = keyof Theme['colors'];

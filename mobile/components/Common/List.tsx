@@ -1,18 +1,8 @@
-import type {ComponentType, PropsWithChildren, ReactNode} from 'react';
-import {StyleSheet, View} from 'react-native';
-import {scale, verticalScale} from 'react-native-size-matters';
-import {useTheme} from './Theme';
-
-const styles = StyleSheet.create({
-  listItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  listItemText: {
-    flexGrow: 1,
-  },
-});
+import {
+  type ComponentType,
+  type PropsWithChildren,
+  type ReactNode,
+} from 'react';
 
 type ListProps<T extends any, Props extends PropsWithChildren<{}>> = Props & {
   data: T[];
@@ -39,20 +29,3 @@ export function withList<
     );
   };
 }
-
-type ListItemProps = PropsWithChildren<{icon?: ReactNode; text: ReactNode}>;
-export const ListItem = ({children, icon, text}: ListItemProps) => {
-  const {sizes} = useTheme();
-  return (
-    <View
-      style={StyleSheet.compose(styles.listItem, {
-        gap: scale(sizes.base),
-        paddingVertical: verticalScale(sizes.base),
-        paddingHorizontal: scale(sizes.base),
-      })}>
-      {icon && <View>{icon}</View>}
-      <View style={styles.listItemText}>{text}</View>
-      {children}
-    </View>
-  );
-};

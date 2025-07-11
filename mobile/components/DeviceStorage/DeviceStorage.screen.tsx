@@ -1,7 +1,7 @@
 import {HeaderAction, HeaderActions} from '../App/App.header';
 import {Screen} from '../App/App.navigation';
 import Icon from '../Common/Icon';
-import {Layout} from '../Common/Layout';
+import {ScreenLayout} from '../Common/Layout';
 import Text from '../Common/Text';
 
 import {DeviceStorageName} from './DeviceStorage.constants';
@@ -10,9 +10,9 @@ export const DeviceStorageScreenName = DeviceStorageName;
 
 export const DeviceStorageScreen = () => {
   return (
-    <Layout>
+    <ScreenLayout>
       <Text color="textPrimary">Device Storage Screen</Text>
-    </Layout>
+    </ScreenLayout>
   );
 };
 

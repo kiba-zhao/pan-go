@@ -1,9 +1,6 @@
-import type {ViewProps, ViewStyle} from 'react-native';
 import {StyleSheet, View} from 'react-native';
+import {withLayout} from './Layout';
 import {OpacityPressable} from './Pressable';
-import {scale, verticalScale} from './SizeMatters';
-import {withTheme} from './StyleSheet';
-import {Theme} from './Theme';
 
 const styles = StyleSheet.create({
   card: {
@@ -33,15 +30,11 @@ const styles = StyleSheet.create({
   },
 });
 
-export const Card = withTheme<ViewStyle, ViewProps, Theme>(
-  View,
-  ({sizes, colors}) => ({
-    ...styles.card,
-    paddingHorizontal: scale(sizes.base),
-    paddingVertical: verticalScale(sizes.base),
-    borderRadius: scale(sizes.base),
-    backgroundColor: colors.surface,
-  }),
-);
+export const Card = withLayout(View, {
+  color: 'surface',
+  style: styles.card,
+  padding: 1,
+  radius: 1,
+});
 
 export const PressableCard = OpacityPressable;

@@ -4,7 +4,7 @@ import {scale, verticalScale} from 'react-native-size-matters';
 import {CommonActions, useNavigation} from '../App/App.navigation';
 import {Card, PressableCard} from '../Common/Card';
 import Icon from '../Common/Icon';
-import {Layout, RowLayout} from '../Common/Layout';
+import {RowLayout, ScreenLayout} from '../Common/Layout';
 import Text from '../Common/Text';
 import {useTheme} from '../Common/Theme';
 import {Screen} from './Home.navigation';
@@ -17,9 +17,9 @@ export const AppName = `app`;
 
 const AppScreen = () => {
   return (
-    <Layout>
+    <ScreenLayout>
       <ExtFSFragment />
-    </Layout>
+    </ScreenLayout>
   );
 };
 
@@ -42,9 +42,8 @@ export const AppHomeScreen = () => (
 );
 
 const ExtFSFragment = () => {
-  const {sizes} = useTheme();
   return (
-    <RowLayout style={{gap: scale(sizes.base)}}>
+    <RowLayout>
       <StorageBox />
       <DeviceStorageBox />
     </RowLayout>
