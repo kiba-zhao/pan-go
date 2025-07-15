@@ -1,22 +1,23 @@
 import {Device} from '@pango/datatype';
-import {ComponentProps} from 'react';
+import {Fragment} from 'react';
+import {View} from 'react-native';
+import {CommonActions, useNavigation} from '../App/App.navigation';
 import Icon from '../Common/Icon';
-import {ScreenLayout} from '../Common/Layout';
-import {withList} from '../Common/List';
+import {FlexRowLayout, RowLayout, ScreenLayout} from '../Common/Layout';
 import {useQuery} from '../Common/ReactQuery';
 import {
-  Section,
-  SectionBox,
+  default as Section,
   SectionHeader,
-  SectionItem,
+  SectionList,
 } from '../Common/Section';
 import Text from '../Common/Text';
+import {DeviceScreenName} from '../Device/Device.screen';
 import {searchDevices} from '../Native/Device.spec';
 import {HeaderAction, HeaderActions} from './Home.header';
 import {Screen} from './Home.navigation';
 import {newTabBarIcon} from './Home.tab';
 
-export const DeviceName = `device`;
+export const DeviceName = `home.device`;
 
 const DeviceScreen = () => {
   return (
@@ -47,7 +48,7 @@ export const DeviceHomeScreen = () => (
     name={DeviceName}
     component={DeviceScreen}
     options={{
-      title: DeviceName.toUpperCase(),
+      title: 'Device',
       tabBarIcon: DeviceIcon,
       headerRight: DeviceHeaderActions,
     }}
@@ -83,41 +84,60 @@ const DeviceSection = () => {
     _start: 0,
     _end: 10,
   } as Parameters<typeof searchDevices>[0];
+
   const {data, isFetching} = useQuery({
     queryKey: ['devices', condition],
     queryFn: async () => await searchDevices(condition),
   });
 
   const entities = data && data[1];
+
+  const navigation = useNavigation();
+  const handleItemPress = (entity: Device) => {
+    navigation.dispatch(
+      CommonActions.navigate(DeviceScreenName, {
+        id: entity.id,
+      }),
+    );
+  };
   return (
     <Section>
       <SectionHeader>
         <Text font="bold" size="small" color="textSecondary">
-          Active Devices
+          Recently Devices
         </Text>
       </SectionHeader>
-      <DeviceBox data={entities || []}>
-        <Text size="title" font="medium" color="textPrimary">
-          Empty Device
-        </Text>
-      </DeviceBox>
+      <SectionList<Device>
+        itemProps={{
+          gap: 1,
+          onPress: handleItemPress,
+        }}
+        entities={entities || []}
+        extractKey={device => device.id}
+        renderItem={(entity, index, entities) => (
+          <DeviceItem entity={entity} index={index} entities={entities} />
+        )}></SectionList>
     </Section>
   );
 };
 
-const DeviceBox = withList<Device, ComponentProps<typeof SectionBox>>(
-  SectionBox,
-  (value, index, items) => {
-    return (
-      <SectionItem
-        key={index}
-        variant={index < items.length - 1 ? 'divider' : 'default'}
-        icon={<Icon name="desktop-outline" color="textPrimary" />}
-        extra={
-          <Icon name="chevron-forward" size="small" color="textPrimary" />
-        }>
-        <Text color="textPrimary">{value.name}</Text>
-      </SectionItem>
-    );
-  },
-);
+type DeviceItemProps = {
+  entity: Device;
+  index: number;
+  entities: Device[];
+};
+const DeviceItem = ({entity, index, entities}: DeviceItemProps) => {
+  return (
+    <Fragment>
+      <Icon name="desktop-outline" color="textPrimary" />
+      <FlexRowLayout style={{alignItems: 'stretch'}}>
+        <View style={{flex: 1}}>
+          <Text color="textPrimary">{entity.name}</Text>
+        </View>
+        <RowLayout style={{alignItems: 'center'}}>
+          <Icon name="radio-button-off" size="small" color="textPrimary" />
+        </RowLayout>
+      </FlexRowLayout>
+    </Fragment>
+  );
+};

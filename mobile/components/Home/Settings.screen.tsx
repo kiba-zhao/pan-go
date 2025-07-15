@@ -4,7 +4,7 @@ import {ScreenLayout} from '../Common/Layout';
 import {Screen} from './Home.navigation';
 import {newTabBarIcon} from './Home.tab';
 
-export const SettingsName = `settings`;
+export const SettingsName = `home.settings`;
 
 const SettingsScreen = () => {
   return (
@@ -26,7 +26,7 @@ export const SettingsHomeScreen = () => (
     name={SettingsName}
     component={SettingsScreen}
     options={{
-      title: SettingsName.toUpperCase(),
+      title: 'Settings',
       tabBarIcon: SettingsIcon,
     }}
   />

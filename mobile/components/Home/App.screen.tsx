@@ -2,9 +2,10 @@ import {StyleSheet, View} from 'react-native';
 import {scale, verticalScale} from 'react-native-size-matters';
 
 import {CommonActions, useNavigation} from '../App/App.navigation';
-import {Card, PressableCard} from '../Common/Card';
+import Box from '../Common/Box';
 import Icon from '../Common/Icon';
-import {RowLayout, ScreenLayout} from '../Common/Layout';
+import {ScreenLayout} from '../Common/Layout';
+import Paper from '../Common/Paper';
 import Text from '../Common/Text';
 import {useTheme} from '../Common/Theme';
 import {Screen} from './Home.navigation';
@@ -13,12 +14,12 @@ import {newTabBarIcon} from './Home.tab';
 import {DeviceStorageScreenName} from '../DeviceStorage/DeviceStorage.screen';
 import {StorageScreenName} from '../Storage/Storage.screen';
 
-export const AppName = `app`;
+export const AppName = `home.app`;
 
 const AppScreen = () => {
   return (
     <ScreenLayout>
-      <ExtFSFragment />
+      <StorageFragment />
     </ScreenLayout>
   );
 };
@@ -35,42 +36,43 @@ export const AppHomeScreen = () => (
     name={AppName}
     component={AppScreen}
     options={{
-      title: AppName.toUpperCase(),
+      title: 'Home',
       tabBarIcon: AppIcon,
     }}
   />
 );
 
-const ExtFSFragment = () => {
+const StorageFragment = () => {
   return (
-    <RowLayout>
+    <Paper bgColor="transparent" gap={1} style={styles.storageFragment}>
       <StorageBox />
       <DeviceStorageBox />
-    </RowLayout>
+    </Paper>
   );
 };
 
 const StorageBox = () => {
-  const {sizes, colors} = useTheme();
+  const {sizes} = useTheme();
 
   const navigation = useNavigation();
   const handlePress = () => {
     navigation.dispatch(CommonActions.navigate(StorageScreenName));
   };
   return (
-    <PressableCard onPress={handlePress}>
-      <Card style={{minWidth: scale(sizes.text) * 13}}>
-        <Text font="bold" color="textPrimary">
-          Storage
-        </Text>
-        <Text color="textSecondary" size="small">
-          14151 Files
-        </Text>
-        <View style={{paddingVertical: verticalScale(sizes.base)}}>
-          <Icon color="primary" name="folder" size="large" />
-        </View>
-      </Card>
-    </PressableCard>
+    <Box
+      onPress={handlePress}
+      style={{minWidth: scale(sizes.text) * 13}}
+      borderColor="transparent">
+      <Text font="bold" color="textPrimary">
+        Storage
+      </Text>
+      <Text color="textSecondary" size="small">
+        14151 Files
+      </Text>
+      <View style={{paddingVertical: verticalScale(sizes.base)}}>
+        <Icon color="primary" name="folder" size="large" />
+      </View>
+    </Box>
   );
 };
 
@@ -82,25 +84,29 @@ const DeviceStorageBox = () => {
     navigation.dispatch(CommonActions.navigate(DeviceStorageScreenName));
   };
   return (
-    <PressableCard onPress={handlePress}>
-      <Card
-        style={{...styles.deviceBoxPanel, minWidth: scale(sizes.text) * 10}}>
-        <Text font="bold" color="textPrimary">
-          Device
-        </Text>
-        <Text color="textSecondary" size="small">
-          12 / 32
-        </Text>
-        <View style={{paddingVertical: verticalScale(sizes.base)}}>
-          <Icon color="primary" name="radio" size="large" />
-        </View>
-      </Card>
-    </PressableCard>
+    <Box
+      onPress={handlePress}
+      style={[styles.deviceBoxPaper, {minWidth: scale(sizes.text) * 10}]}
+      borderColor="transparent">
+      <Text font="bold" color="textPrimary">
+        Device
+      </Text>
+      <Text color="textSecondary" size="small">
+        12 / 32
+      </Text>
+      <View style={{paddingVertical: verticalScale(sizes.base)}}>
+        <Icon color="primary" name="radio" size="large" />
+      </View>
+    </Box>
   );
 };
 
 const styles = StyleSheet.create({
-  deviceBoxPanel: {
+  storageFragment: {
+    flexWrap: 'wrap',
+    flexDirection: 'row',
+  },
+  deviceBoxPaper: {
     alignItems: 'center',
     justifyContent: 'space-between',
   },

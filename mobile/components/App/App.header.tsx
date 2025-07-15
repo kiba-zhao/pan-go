@@ -1,15 +1,24 @@
 import {HeaderButton} from '@react-navigation/elements';
+import type {ViewStyle} from 'react-native';
 import {View} from 'react-native';
 
-import {withLayout} from '../Common/Layout';
+import {scale} from '../Common/SizeMatters';
+import {withTheme} from '../Common/StyleSheet';
 
-export const HeaderAction = withLayout(HeaderButton, {
-  padding: 1,
-});
+export const HeaderAction = withTheme(
+  HeaderButton,
+  ({sizes}) =>
+    ({
+      padding: scale(sizes.base),
+    } as ViewStyle),
+);
 
-export const HeaderActions = withLayout(View, {
-  style: {alignItems: 'flex-end'},
-  direction: 'row',
-  gap: 0,
-  margin: [0, -1, 0, 0],
-});
+export const HeaderActions = withTheme(
+  View,
+  ({sizes}) =>
+    ({
+      alignItems: 'flex-end',
+      flexDirection: 'row',
+      marginRight: scale(sizes.base) * -1,
+    } as ViewStyle),
+);

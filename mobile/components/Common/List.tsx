@@ -3,29 +3,42 @@ import {
   type PropsWithChildren,
   type ReactNode,
 } from 'react';
+import type {ViewProps} from 'react-native';
+import {View} from 'react-native';
 
-type ListProps<T extends any, Props extends PropsWithChildren<{}>> = Props & {
+type ListBaseProps<
+  T extends unknown,
+  Props extends PropsWithChildren<{}>,
+> = Props & {
   data: T[];
 };
 
 export function withList<
-  T extends any,
+  T extends unknown,
   BaseProps extends PropsWithChildren<{}>,
 >(
   BaseComponent: ComponentType<BaseProps>,
   renderItem: (item: T, index: number, items: T[]) => ReactNode,
-): ComponentType<ListProps<T, BaseProps>> {
-  return ({data, children, ...props}: ListProps<T, BaseProps>) => {
-    if (data.length <= 0)
-      return (
-        <BaseComponent {...(props as unknown as BaseProps)}>
-          {children}
-        </BaseComponent>
-      );
-    return (
-      <BaseComponent {...(props as unknown as BaseProps)}>
-        {data.map(renderItem)}
-      </BaseComponent>
-    );
-  };
+): ComponentType<ListBaseProps<T, BaseProps>> {
+  return ({data, children, ...props}: ListBaseProps<T, BaseProps>) => (
+    <BaseComponent {...(props as unknown as BaseProps)}>
+      {data.length > 0 ? data.map(renderItem) : children}
+    </BaseComponent>
+  );
 }
+
+type ListProps<T extends unknown> = ListBaseProps<T, ViewProps> & {
+  renderItem: (item: T, index: number, items: T[]) => ReactNode;
+};
+const List = <T extends unknown>({
+  data,
+  renderItem,
+  children,
+  ...props
+}: ListProps<T>) => {
+  return (
+    <View {...props}>{data.length > 0 ? data.map(renderItem) : children}</View>
+  );
+};
+
+export default List;

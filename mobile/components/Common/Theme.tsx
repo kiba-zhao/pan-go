@@ -1,6 +1,7 @@
 import type {ComponentType, PropsWithChildren} from 'react';
 import {createContext, useContext} from 'react';
 
+import {ColorValue} from 'react-native';
 import {withContext} from './Component';
 import {darkColors, default as defaultColors} from './theming/colors';
 import fonts from './theming/fonts';
@@ -51,4 +52,14 @@ export function withTheme<
   createProps: (theme: T, props: Props) => BaseProps,
 ): ComponentType<Props> {
   return withContext(BaseComponent, Context, createProps);
+}
+
+export function transformColor<Colors extends Theme['colors']>(
+  colors: Colors,
+  color: NoInfer<keyof Colors> | ColorValue,
+): ColorValue | undefined {
+  if (typeof color === 'string' && Object.hasOwn(colors, color)) {
+    return colors[color as keyof Colors] as ColorValue;
+  }
+  return color as ColorValue;
 }

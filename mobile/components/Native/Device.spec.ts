@@ -38,7 +38,18 @@ export function searchDevices(
   }
 
   return exec<SearchCondition, SearchResults<Device>>(
-    'search_devices',
+    'search:devices',
     condition,
   );
+}
+
+export function selectDevice(id: Device['id']): Promise<Device> {
+  if (__DEV__) {
+    const {mockEnabled, findById, readData} = require('../Common/FakeData');
+
+    if (mockEnabled()) {
+      return findById(id, readData('devices'));
+    }
+  }
+  return exec('select:devices', id);
 }

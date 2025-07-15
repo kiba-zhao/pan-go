@@ -4,6 +4,7 @@ const sizes = Platform.select({
   default: {
     base: 8,
     text: 14,
+    border: 1,
     // padding: 20,
     // // font sizes
     // h1: 44,

@@ -1,3 +1,4 @@
+import type {Route} from '@react-navigation/core';
 import {
   CommonActions,
   DefaultTheme,
@@ -5,8 +6,10 @@ import {
   useNavigation,
   type Theme as NavigationTheme,
 } from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
+import type {ReactNode} from 'react';
 import type {Theme} from '../Common/Theme';
 
 export {CommonActions, NavigationContainer, useNavigation};
@@ -36,3 +39,15 @@ export const createTheme = <T extends Theme>(
     fonts: DefaultTheme.fonts,
   };
 };
+
+export type ScreenComponentProps<Param extends object | undefined> = {
+  navigation: NativeStackNavigationProp<{}>;
+  route: Route<string, Param>;
+};
+
+export type ScreenComponent = () => ReactNode;
+
+export type ScreenOptions = Exclude<
+  typeof Stack.config.screenOptions,
+  Function | undefined
+>;

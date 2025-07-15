@@ -64,6 +64,7 @@ const Text = ({
           fontSize: size_,
           fontFamily: font_.fontFamily,
           fontWeight: font_.fontWeight as TextStyle['fontWeight'],
+          verticalAlign: 'middle',
         },
         style,
       )}

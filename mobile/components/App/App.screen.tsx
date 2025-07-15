@@ -9,6 +9,7 @@ import {
   Navigator,
 } from './App.navigation';
 
+import {DeviceAppScreen} from '../Device/Device.screen';
 import {DeviceStorageAppScreen} from '../DeviceStorage/DeviceStorage.screen';
 import {HomeAppScreen, HomeScreenName} from '../Home/Home.screen';
 import {StorageAppScreen} from '../Storage/Storage.screen';
@@ -49,6 +50,7 @@ const AppScreen = () => {
             }}>
             {StorageAppScreen()}
             {DeviceStorageAppScreen()}
+            {DeviceAppScreen()}
           </Group>
         </Navigator>
       </NavigationContainer>
