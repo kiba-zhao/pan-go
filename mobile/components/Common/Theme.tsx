@@ -24,6 +24,8 @@ export type Theme = {
   fonts: typeof fonts;
 };
 
+export type ThemeColor = keyof Theme['colors'] | ColorValue;
+
 const Context = createContext<Theme | null>(null);
 
 export const ThemeProvider = <T extends Theme>({
@@ -62,4 +64,8 @@ export function transformColor<Colors extends Theme['colors']>(
     return colors[color as keyof Colors] as ColorValue;
   }
   return color as ColorValue;
+}
+
+export function raidoOf(target: number, base: number) {
+  return target / base;
 }

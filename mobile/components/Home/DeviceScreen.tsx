@@ -1,27 +1,41 @@
-import {Device} from '@pango/datatype';
+import type {Device, SearchResults} from '@pango/data';
 import {Fragment} from 'react';
 import {View} from 'react-native';
-import {CommonActions, useNavigation} from '../App/App.navigation';
+import {CommonActions, useNavigation} from '../App/Navigation';
+import {QRScannerScreenName} from '../CameraScanner/Screen';
+import {QRScannerScope} from '../CameraScanner/ScreenRoute';
+
 import Icon from '../Common/Icon';
-import {FlexRowLayout, RowLayout, ScreenLayout} from '../Common/Layout';
-import {useQuery} from '../Common/ReactQuery';
+import {FlexRowLayout, RowLayout} from '../Common/Layout';
+import {useIsFetching, useQuery, useQueryClient} from '../Common/ReactQuery';
+import {ScreenLayout, ScreenRefreshControl} from '../Common/ScreenBase';
 import {
   default as Section,
   SectionHeader,
   SectionList,
 } from '../Common/Section';
 import Text from '../Common/Text';
-import {DeviceScreenName} from '../Device/Device.screen';
-import {searchDevices} from '../Native/Device.spec';
-import {HeaderAction, HeaderActions} from './Home.header';
-import {Screen} from './Home.navigation';
-import {newTabBarIcon} from './Home.tab';
-
-export const DeviceName = `home.device`;
+import {RecentlyQueryKey as HomeDeviceRecentlyQueryKey} from '../Device/ReactQuery';
+import {DeviceEditorScreenName} from '../Device/Screen';
+import {searchDevices} from '../Spec/Device';
+import {HeaderAction, HeaderActions} from './ScreenBase';
 
 const DeviceScreen = () => {
+  const isFetching = useIsFetching({
+    queryKey: HomeDeviceRecentlyQueryKey,
+  });
+  const queryClient = useQueryClient();
+  const handleRefresh = () => {
+    if (isFetching) return;
+    queryClient.refetchQueries({
+      queryKey: HomeDeviceRecentlyQueryKey,
+      type: 'active',
+    });
+  };
+
   return (
-    <ScreenLayout>
+    <ScreenLayout
+      refreshControl={<ScreenRefreshControl onRefresh={handleRefresh} />}>
       <DeviceSection />
     </ScreenLayout>
   );
@@ -29,33 +43,32 @@ const DeviceScreen = () => {
 
 export default DeviceScreen;
 
-const DeviceIcon = newTabBarIcon({
-  focusedName: 'radio-sharp',
-  defaultName: 'radio-outline',
-});
-
-const DeviceHeaderActions = () => {
+export const DeviceHeaderActions = () => {
   return (
     <HeaderActions>
-      <DeviceScreenSearchButton />
-      <DeviceScreenMenuButton />
+      <DeviceScreenNewAction />
+      <DeviceScreenMenuAction />
     </HeaderActions>
   );
 };
 
-export const DeviceHomeScreen = () => (
-  <Screen
-    name={DeviceName}
-    component={DeviceScreen}
-    options={{
-      title: 'Device',
-      tabBarIcon: DeviceIcon,
-      headerRight: DeviceHeaderActions,
-    }}
-  />
-);
+const DeviceScreenNewAction = () => {
+  const navigation = useNavigation();
+  const handlePress = () => {
+    navigation.dispatch(
+      CommonActions.navigate(QRScannerScreenName, {
+        scope: [QRScannerScope.Device],
+      }),
+    );
+  };
+  return (
+    <HeaderAction onPress={handlePress}>
+      <Icon name="add-sharp" color="textPrimary" />
+    </HeaderAction>
+  );
+};
 
-const DeviceScreenSearchButton = () => {
+const DeviceScreenSearchAction = () => {
   const handlePress = () => {
     console.log('search');
   };
@@ -66,7 +79,7 @@ const DeviceScreenSearchButton = () => {
   );
 };
 
-const DeviceScreenMenuButton = () => {
+const DeviceScreenMenuAction = () => {
   const handlePress = () => {
     console.log('menu');
   };
@@ -84,26 +97,24 @@ const DeviceSection = () => {
     _start: 0,
     _end: 10,
   } as Parameters<typeof searchDevices>[0];
-
-  const {data, isFetching} = useQuery({
-    queryKey: ['devices', condition],
+  const {data, isFetching} = useQuery<SearchResults<Device>>({
+    queryKey: HomeDeviceRecentlyQueryKey,
     queryFn: async () => await searchDevices(condition),
   });
 
-  const entities = data && data[1];
-
+  const entities = !isFetching && data !== void 0 ? data[1] : [];
   const navigation = useNavigation();
   const handleItemPress = (entity: Device) => {
     navigation.dispatch(
-      CommonActions.navigate(DeviceScreenName, {
+      CommonActions.navigate(DeviceEditorScreenName, {
         id: entity.id,
       }),
     );
   };
   return (
     <Section>
-      <SectionHeader>
-        <Text font="bold" size="small" color="textSecondary">
+      <SectionHeader style={{flexDirection: 'row', alignItems: 'center'}}>
+        <Text font="bold" size="small" color="textSecondary" style={{flex: 1}}>
           Recently Devices
         </Text>
       </SectionHeader>

@@ -1,24 +1,45 @@
-import type {Route} from '@react-navigation/core';
 import {
   CommonActions,
   DefaultTheme,
   NavigationContainer,
+  StackActions,
   useNavigation,
+  useRoute,
   type Theme as NavigationTheme,
+  type StackActionType,
 } from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {
+  createNativeStackNavigator,
+  type NativeStackHeaderLeftProps,
+} from '@react-navigation/native-stack';
+import type {ComponentProps} from 'react';
+import {Suspense} from 'react';
 
-import type {ReactNode} from 'react';
+import {ScreenLoading} from '../Common/ScreenBase';
 import type {Theme} from '../Common/Theme';
 
-export {CommonActions, NavigationContainer, useNavigation};
+export {
+  CommonActions,
+  NavigationContainer,
+  StackActions,
+  useNavigation,
+  useRoute,
+};
+export type {NativeStackHeaderLeftProps, StackActionType};
 
 const Stack = createNativeStackNavigator();
 
 export const Navigator = Stack.Navigator;
 export const Screen = Stack.Screen;
 export const Group = Stack.Group;
+
+type NavigatorScreenLayout = ComponentProps<typeof Navigator>['screenLayout'];
+type ScreenLayoutProps = Parameters<
+  Extract<NavigatorScreenLayout, Function>
+>[0];
+export const ScreenLayout = ({children}: ScreenLayoutProps) => (
+  <Suspense fallback={<ScreenLoading />}>{children}</Suspense>
+);
 
 export const createTheme = <T extends Theme>(
   theme: T,
@@ -39,15 +60,3 @@ export const createTheme = <T extends Theme>(
     fonts: DefaultTheme.fonts,
   };
 };
-
-export type ScreenComponentProps<Param extends object | undefined> = {
-  navigation: NativeStackNavigationProp<{}>;
-  route: Route<string, Param>;
-};
-
-export type ScreenComponent = () => ReactNode;
-
-export type ScreenOptions = Exclude<
-  typeof Stack.config.screenOptions,
-  Function | undefined
->;

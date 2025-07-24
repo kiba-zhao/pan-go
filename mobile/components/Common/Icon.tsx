@@ -6,6 +6,7 @@ import {useMemo, type ComponentProps} from 'react';
 
 const IconSizeFactors = {
   small: 2,
+  default: 2.5,
   medium: 3,
   large: 4,
 };
@@ -16,7 +17,7 @@ type IconProps = Omit<IonIconProps, 'size' | 'color'> & {
   size?: IconSizeFactorsKey | IonIconProps['size'];
   color?: ThemeColorsKey | IonIconProps['color'];
 };
-const Icon = ({color = 'inherit', size = 'medium', ...props}: IconProps) => {
+const Icon = ({color = 'inherit', size = 'default', ...props}: IconProps) => {
   const {sizes, colors} = useTheme();
 
   const color_ = useMemo(

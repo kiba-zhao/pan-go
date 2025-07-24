@@ -1,5 +1,10 @@
-import type {ComponentType, Context} from 'react';
-import {useContext} from 'react';
+import type {
+  ComponentType,
+  Context,
+  LazyExoticComponent,
+  ReactNode,
+} from 'react';
+import {Suspense, useContext} from 'react';
 
 export function withTransform<
   Props extends {},
@@ -29,5 +34,18 @@ export function withContext<
   return (props: Props) => {
     const state = useContext(context) as Enhance;
     return <BaseComponent {...createProps(state, props)} />;
+  };
+}
+
+export function withLazy<P extends {}>(
+  BaseComponent: LazyExoticComponent<ComponentType<P>>,
+  fallback?: ReactNode,
+) {
+  return (props: P) => {
+    return (
+      <Suspense fallback={fallback}>
+        <BaseComponent {...props} />
+      </Suspense>
+    );
   };
 }

@@ -8,6 +8,7 @@ import Paper from './Paper';
 import {scale} from './SizeMatters';
 import {withTheme as withThemeStyle} from './StyleSheet';
 import Text from './Text';
+import {useTheme} from './Theme';
 
 const styles = StyleSheet.create({
   sectionList: {
@@ -46,12 +47,14 @@ type SectionItemProps = BoxProps & {
 export const SectionItem = ({
   variant = 'default',
   radius,
-  borderColor,
   bgColor,
+  borderWidth,
   padding,
   children,
   ...props
 }: SectionItemProps) => {
+  const {sizes} = useTheme();
+
   const radius_ = useMemo<BoxProps['radius']>(() => {
     if (radius === void 0) {
       if (variant === 'row-start') {
@@ -67,32 +70,42 @@ export const SectionItem = ({
     return radius;
   }, [radius, variant]);
 
-  const padding_ = useMemo<BoxProps['padding']>(
-    () => padding || 1.5,
-    [padding, variant],
-  );
-
-  const borderColor_ = useMemo<BoxProps['borderColor']>(() => {
-    if (borderColor === void 0) {
-      const defaultColor = bgColor || 'surface';
+  const padding_ = useMemo<BoxProps['padding']>(() => {
+    if (padding === void 0) {
       if (variant === 'row-start') {
-        return ['divider', 'divider', defaultColor, 'divider'];
+        return [1.5 + sizes.borderRatio / 2, 1.5];
       }
       if (variant === 'row-end') {
-        return [defaultColor, 'divider', 'divider', 'divider'];
+        return [1.5 + sizes.borderRatio / 2, 1.5];
       }
       if (variant === 'row') {
-        return [defaultColor, 'divider'];
+        return [1.5 + sizes.borderRatio, 1.5];
+      }
+      return 1.5;
+    }
+    return padding;
+  }, [padding, variant]);
+
+  const borderWidth_ = useMemo<BoxProps['borderWidth']>(() => {
+    if (borderWidth === void 0) {
+      if (variant === 'row-start') {
+        return [1, 1, 0, 1];
+      }
+      if (variant === 'row-end') {
+        return [0, 1, 1, 1];
+      }
+      if (variant === 'row') {
+        return [0, 1, 0, 1];
       }
     }
-    return borderColor;
-  }, [bgColor, borderColor, variant]);
+    return borderWidth;
+  }, [borderWidth, variant]);
 
   return (
     <Box
       radius={radius_}
       padding={padding_}
-      borderColor={borderColor_}
+      borderWidth={borderWidth_}
       style={styles.sectionItem}
       {...props}>
       {children}

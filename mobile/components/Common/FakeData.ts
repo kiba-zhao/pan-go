@@ -2,6 +2,7 @@ import {
   create,
   destroy,
   findById,
+  findOne,
   newNanoID,
   nextID,
   replace,
@@ -21,7 +22,17 @@ export function readData<
   return fakeData[name] as Value;
 }
 
-export {create, destroy, findById, newNanoID, nextID, replace, search, update};
+export {
+  create,
+  destroy,
+  findById,
+  findOne,
+  newNanoID,
+  nextID,
+  replace,
+  search,
+  update,
+};
 
 export function mockEnabled(): boolean {
   return config.MOCK_ENABLED === 'true';

@@ -1,6 +1,7 @@
+import type {ComponentProps} from 'react';
 import {useMemo} from 'react';
-import type {ViewProps, ViewStyle} from 'react-native';
-import {StyleSheet, View} from 'react-native';
+import type {PressableStateCallbackType, ViewStyle} from 'react-native';
+import {Pressable as NativePressable, StyleSheet} from 'react-native';
 import {
   transformBorderColor,
   transformBorderWidthStyle,
@@ -12,7 +13,8 @@ import {
 import type {ThemeColor} from './Theme';
 import {transformColor, useTheme} from './Theme';
 
-export type PaperProps = ViewProps & {
+type NativePressableProps = ComponentProps<typeof NativePressable>;
+export type PressableProps = {
   bgColor?: ThemeColor;
   borderColor?:
     | ThemeColor
@@ -23,20 +25,20 @@ export type PaperProps = ViewProps & {
   radius?: number | [number, number] | [number, number, number, number];
   borderWidth?: number | [number, number] | [number, number, number, number];
   gap?: number;
-};
+} & NativePressableProps;
 
-const Paper = ({
-  bgColor = 'surface',
+const Pressable = ({
+  bgColor = 'transparent',
   borderColor = 'transparent',
   padding = 0,
   margin = 0,
-  radius = 1,
-  borderWidth = 1,
+  radius = 0,
+  borderWidth = 0,
   gap = 0,
   children,
   style,
   ...props
-}: PaperProps) => {
+}: PressableProps) => {
   const {colors, sizes} = useTheme();
 
   const backgroundColor_ = useMemo(
@@ -74,34 +76,36 @@ const Paper = ({
     [sizes, gap],
   );
 
-  const style_ = useMemo(
-    () =>
-      StyleSheet.compose(style, {
-        backgroundColor: backgroundColor_,
-        ...borderColorStyle,
-        ...paddingStyle,
-        ...marginStyle,
-        ...radiusStyle,
-        ...borderWidthStyle,
-        ...gapStyle,
-      }),
-    [
-      backgroundColor_,
-      borderColorStyle,
-      paddingStyle,
-      marginStyle,
-      radiusStyle,
-      borderWidthStyle,
-      gapStyle,
-      style,
-    ],
-  );
-
+  const style_ = useMemo(() => {
+    const customStyle = {
+      backgroundColor: backgroundColor_,
+      ...borderColorStyle,
+      ...paddingStyle,
+      ...marginStyle,
+      ...radiusStyle,
+      ...borderWidthStyle,
+      ...gapStyle,
+    } as ViewStyle;
+    if (typeof style === 'function') {
+      return (state: PressableStateCallbackType) =>
+        StyleSheet.compose(style(state), customStyle);
+    }
+    return StyleSheet.compose(style, customStyle);
+  }, [
+    backgroundColor_,
+    borderColorStyle,
+    paddingStyle,
+    marginStyle,
+    radiusStyle,
+    borderWidthStyle,
+    gapStyle,
+    style,
+  ]);
   return (
-    <View style={style_} {...props}>
+    <NativePressable style={style_} {...props}>
       {children}
-    </View>
+    </NativePressable>
   );
 };
 
-export default Paper;
+export default Pressable;

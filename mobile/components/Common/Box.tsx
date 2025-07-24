@@ -1,7 +1,7 @@
 import {useMemo} from 'react';
 import type {PressableProps, ViewProps, ViewStyle} from 'react-native';
 import {Pressable, StyleSheet, View} from 'react-native';
-import type {PaperColor} from './Paper';
+
 import {
   transformBorderColor,
   transformBorderWidthStyle,
@@ -10,6 +10,7 @@ import {
   transformPaddingStyle,
   transformRadiusStyle,
 } from './StyleSheet';
+import type {ThemeColor} from './Theme';
 import {transformColor, useTheme} from './Theme';
 
 export type BoxPressableProps = Pick<
@@ -17,21 +18,20 @@ export type BoxPressableProps = Pick<
   'onPress' | 'onLongPress' | 'onPressIn' | 'onPressOut'
 >;
 
-type BoxColor = PaperColor;
 export type BoxProps = BoxPressableProps &
   Omit<ViewProps, 'children'> & {
-    bgColor?: BoxColor;
+    bgColor?: ThemeColor;
     borderColor?:
-      | BoxColor
-      | [BoxColor, BoxColor]
-      | [BoxColor, BoxColor, BoxColor, BoxColor];
+      | ThemeColor
+      | [ThemeColor, ThemeColor]
+      | [ThemeColor, ThemeColor, ThemeColor, ThemeColor];
     padding?: number | [number, number] | [number, number, number, number];
     margin?: number | [number, number] | [number, number, number, number];
     radius?: number | [number, number] | [number, number, number, number];
     borderWidth?: number | [number, number] | [number, number, number, number];
     gap?: number;
     pressedOpacity?: number;
-    pressedColor?: BoxColor;
+    pressedColor?: ThemeColor;
     children?: PressableProps['children'];
   };
 const Box = ({

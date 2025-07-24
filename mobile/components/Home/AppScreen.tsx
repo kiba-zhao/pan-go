@@ -1,20 +1,16 @@
 import {StyleSheet, View} from 'react-native';
 import {scale, verticalScale} from 'react-native-size-matters';
 
-import {CommonActions, useNavigation} from '../App/App.navigation';
+import {CommonActions, useNavigation} from '../App/Navigation';
 import Box from '../Common/Box';
 import Icon from '../Common/Icon';
-import {ScreenLayout} from '../Common/Layout';
 import Paper from '../Common/Paper';
+import {ScreenLayout} from '../Common/ScreenBase';
 import Text from '../Common/Text';
 import {useTheme} from '../Common/Theme';
-import {Screen} from './Home.navigation';
-import {newTabBarIcon} from './Home.tab';
 
-import {DeviceStorageScreenName} from '../DeviceStorage/DeviceStorage.screen';
-import {StorageScreenName} from '../Storage/Storage.screen';
-
-export const AppName = `home.app`;
+import {ExplorerScreenName as DeviceStorageScreenName} from '../DeviceStorage/Screen';
+import {ExplorerScreenName as StorageScreenName} from '../Storage/Screen';
 
 const AppScreen = () => {
   return (
@@ -25,22 +21,6 @@ const AppScreen = () => {
 };
 
 export default AppScreen;
-
-const AppIcon = newTabBarIcon({
-  focusedName: 'apps-sharp',
-  defaultName: 'apps-outline',
-});
-
-export const AppHomeScreen = () => (
-  <Screen
-    name={AppName}
-    component={AppScreen}
-    options={{
-      title: 'Home',
-      tabBarIcon: AppIcon,
-    }}
-  />
-);
 
 const StorageFragment = () => {
   return (

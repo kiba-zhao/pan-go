@@ -7,12 +7,14 @@ import {
   Group,
   NavigationContainer,
   Navigator,
-} from './App.navigation';
+  ScreenLayout,
+} from './Navigation';
 
-import {DeviceAppScreen} from '../Device/Device.screen';
-import {DeviceStorageAppScreen} from '../DeviceStorage/DeviceStorage.screen';
-import {HomeAppScreen, HomeScreenName} from '../Home/Home.screen';
-import {StorageAppScreen} from '../Storage/Storage.screen';
+import CameraScannerAppScreen from '../CameraScanner/Screen';
+import DeviceAppScreen from '../Device/Screen';
+import DeviceStorageAppScreen from '../DeviceStorage/Screen';
+import {default as HomeAppScreen, HomeScreenName} from '../Home/Screen';
+import StorageAppScreen from '../Storage/Screen';
 
 const AppScreen = () => {
   const scheme = useColorScheme();
@@ -36,6 +38,7 @@ const AppScreen = () => {
       <NavigationContainer theme={navigationTheme}>
         <Navigator
           initialRouteName={HomeScreenName}
+          screenLayout={ScreenLayout}
           screenOptions={{
             headerShadowVisible: false,
             headerStyle: {backgroundColor: theme.colors.background},
@@ -51,6 +54,7 @@ const AppScreen = () => {
             {StorageAppScreen()}
             {DeviceStorageAppScreen()}
             {DeviceAppScreen()}
+            {CameraScannerAppScreen()}
           </Group>
         </Navigator>
       </NavigationContainer>
