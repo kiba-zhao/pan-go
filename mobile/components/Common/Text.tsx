@@ -20,7 +20,7 @@ const TextSizeFactors = {
 };
 type TextSizeKey = keyof typeof TextSizeFactors;
 type ThemeFontsKey = keyof Theme['fonts'];
-type TextProps = NativeTextProps & {
+export type TextProps = NativeTextProps & {
   color?: ThemeColor;
   size?: TextSizeKey;
   font?: ThemeFontsKey;
@@ -33,8 +33,10 @@ type TextProps = NativeTextProps & {
   margin?: number | [number, number] | [number, number, number, number];
   radius?: number | [number, number] | [number, number, number, number];
   borderWidth?: number | [number, number] | [number, number, number, number];
+  lines?: number;
 };
 const Text = ({
+  lines,
   bgColor = 'transparent',
   borderColor = 'transparent',
   padding = 0,
@@ -98,6 +100,11 @@ const Text = ({
     [borderWidth, sizes],
   );
 
+  const minHeight = useMemo(
+    () => (lines === void 0 ? void 0 : scale(size_ * lines)),
+    [lines, size_],
+  );
+
   const style_ = useMemo(
     () =>
       StyleSheet.compose(style, {
@@ -106,6 +113,7 @@ const Text = ({
         fontFamily: font_.fontFamily,
         fontWeight: font_.fontWeight as TextStyle['fontWeight'],
         backgroundColor: backgroundColor_,
+        minHeight,
         ...borderColorStyle,
         ...paddingStyle,
         ...marginStyle,
@@ -123,6 +131,7 @@ const Text = ({
       radiusStyle,
       borderWidthStyle,
       style,
+      minHeight,
     ],
   );
 

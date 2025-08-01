@@ -22,6 +22,7 @@ export type PaperProps = ViewProps & {
   margin?: number | [number, number] | [number, number, number, number];
   radius?: number | [number, number] | [number, number, number, number];
   borderWidth?: number | [number, number] | [number, number, number, number];
+
   gap?: number;
 };
 

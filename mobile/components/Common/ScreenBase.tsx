@@ -29,7 +29,6 @@ export const ScreenLayout = ({
     <ScrollView
       {...props}
       style={StyleSheet.compose({paddingHorizontal: scale(sizes.base)}, style)}>
-      <View style={{height: scale(sizes.base * 1.5)}} />
       {children}
     </ScrollView>
   );

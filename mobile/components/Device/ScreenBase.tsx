@@ -1,29 +1,21 @@
-import type {Device} from '@pango/data';
+import {CommonActions, useNavigation} from '../App/Navigation';
 import {HeaderAction} from '../App/ScreenBase';
 import Icon from '../Common/Icon';
-import {useIsFetching, useQueryClient} from '../Common/ReactQuery';
-import {QueryKey} from './ReactQuery';
+import {DeviceSearchScreenName} from './ScreenRoute';
 
-export const DeviceRefreshHeaderAction = ({id}: {id: Device['id']}) => {
-  const isFetching = useIsFetching({
-    queryKey: [...QueryKey, id],
-  });
+export const DeviceSearchHeaderAction = ({disabled}: {disabled?: boolean}) => {
+  const navigation = useNavigation();
 
-  const queryClient = useQueryClient();
   const handlePress = () => {
-    if (isFetching > 0) return;
-    queryClient.refetchQueries({
-      queryKey: [...QueryKey, id],
-      type: 'active',
-    });
+    navigation.dispatch(CommonActions.navigate(DeviceSearchScreenName));
   };
 
   return (
-    <HeaderAction onPress={handlePress} disabled={isFetching > 0}>
+    <HeaderAction onPress={handlePress}>
       <Icon
-        name="refresh-outline"
+        name="search-sharp"
+        color={disabled ? 'textDisabled' : 'textPrimary'}
         size="medium"
-        color={isFetching > 0 ? 'textDisabled' : 'textPrimary'}
       />
     </HeaderAction>
   );

@@ -9,13 +9,17 @@ import {
   useReducer,
   useState,
 } from 'react';
-import {Button, TextInput} from 'react-native';
 import {useNavigation, useRoute} from '../App/Navigation';
 import Box from '../Common/Box';
 import Icon from '../Common/Icon';
 import {DeviceQRCode, DeviceQRCodeModal} from './QRCode';
 
-import {useMutation, useQuery, useQueryClient} from '../Common/ReactQuery';
+import {
+  useIsFetching,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '../Common/ReactQuery';
 import Text from '../Common/Text';
 import {destroyDevice, selectDevice, updateDevice} from '../Spec/Device';
 import {QueryKey} from './ReactQuery';
@@ -24,13 +28,17 @@ import {EditorParam} from './ScreenRoute';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {HeaderActions} from '../App/ScreenBase';
 import Alert from '../Common/Alert';
-import {RowLayout} from '../Common/Layout';
+import {
+  IconFieldItem,
+  SwitchFieldItem,
+  TextFieldItem,
+  TextFieldModal,
+} from '../Common/Field';
 import Paper from '../Common/Paper';
 import Pressable from '../Common/Pressable';
 import {
   ScreenLayout,
   ScreenLoading,
-  ScreenModal,
   ScreenRefreshControl,
   ScreenSafetyFooter,
 } from '../Common/ScreenBase';
@@ -40,9 +48,8 @@ import {
   SectionItem,
   SectionList,
 } from '../Common/Section';
-import Switch from '../Common/Switch';
-import {RecentlyQueryKey} from './ReactQuery';
-import {DeviceRefreshHeaderAction} from './ScreenBase';
+import {invalidateListQueryCache} from './ReactQuery';
+import {DeviceSearchHeaderAction} from './ScreenBase';
 
 type DeviceScreenState = {
   nameModalVisible?: boolean;
@@ -115,9 +122,14 @@ export default DeviceEditorScreen;
 export const DeviceEditorHeaderActions = () => {
   const route = useRoute();
   const {id} = route.params as EditorParam;
+
+  const isFetching = useIsFetching({
+    queryKey: [...QueryKey, id],
+  });
+
   return (
     <HeaderActions>
-      <DeviceRefreshHeaderAction id={id} />
+      <DeviceSearchHeaderAction disabled={isFetching > 0} />
     </HeaderActions>
   );
 };
@@ -171,7 +183,7 @@ const DeviceActionSection = (props: DeviceSectionProps) => {
     <Paper
       bgColor="transparent"
       padding={[0, 0, 2.5, 0]}
-      gap={1}
+      gap={3}
       style={{
         flexDirection: 'row',
         justifyContent: 'center',
@@ -191,9 +203,7 @@ const DeviceRemoveAction = ({id, device}: DeviceActionProps) => {
   const {mutate} = useMutation({
     mutationFn: async () => await destroyDevice(device?.id || 0),
     onSuccess: data => {
-      queryClient.invalidateQueries({
-        queryKey: RecentlyQueryKey,
-      });
+      invalidateListQueryCache(queryClient, data);
       navigation.goBack();
     },
     onError: error => {
@@ -216,13 +226,14 @@ const DeviceRemoveAction = ({id, device}: DeviceActionProps) => {
       style={{alignItems: 'center'}}
       padding={[1.5, 3]}
       borderColor="transparent"
+      gap={0.5}
       onPress={handlePress}>
       <Icon
         name="trash-outline"
         color={device ? 'textSecondary' : 'textDisabled'}
       />
       <Text size="small" color={device ? 'textSecondary' : 'textDisabled'}>
-        移除设备
+        移除
       </Text>
     </Box>
   );
@@ -230,13 +241,13 @@ const DeviceRemoveAction = ({id, device}: DeviceActionProps) => {
 
 const DeviceSyncAction = ({id, device}: DeviceActionProps) => {
   return (
-    <Paper style={{alignItems: 'center'}} padding={[1.5, 3]}>
+    <Paper style={{alignItems: 'center'}} gap={0.5} padding={[1.5, 3]}>
       <Icon
         name="sync-outline"
         color={device ? 'textSecondary' : 'textDisabled'}
       />
       <Text size="small" color={device ? 'textSecondary' : 'textDisabled'}>
-        同步设备
+        同步
       </Text>
     </Paper>
   );
@@ -244,13 +255,13 @@ const DeviceSyncAction = ({id, device}: DeviceActionProps) => {
 
 const DeviceExportAction = ({id, device}: DeviceActionProps) => {
   return (
-    <Paper style={{alignItems: 'center'}} padding={[1.5, 3]}>
+    <Paper style={{alignItems: 'center'}} gap={0.5} padding={[1.5, 3]}>
       <Icon
         name="share-social-outline"
         color={device ? 'textSecondary' : 'textDisabled'}
       />
       <Text size="small" color={device ? 'textSecondary' : 'textDisabled'}>
-        导出设备
+        导出
       </Text>
     </Paper>
   );
@@ -261,40 +272,35 @@ const DeviceFieldsSection = ({device}: DeviceSectionProps) => {
   const handlePressName = () => {
     dispatch?.({nameModalVisible: true});
   };
+
+  const handlePressPeerID = () => {
+    if (!device?.peerId) return;
+    Clipboard.setString(device.peerId);
+  };
+
   return (
     <Section>
       <SectionItem variant="row-start" onPress={handlePressName}>
-        <DeviceNameItem device={device} />
+        <TextFieldItem label="Name" text={device?.name} editable />
       </SectionItem>
       <SectionItem variant="row">
         <DeviceEnabledItem device={device} />
       </SectionItem>
       <SectionItem variant="row">
-        <DevicePeerIDItem device={device} />
+        <IconFieldItem
+          label="Peer ID"
+          disabled={!device}
+          name="open-outline"
+          onPress={handlePressPeerID}
+        />
       </SectionItem>
       <SectionItem variant="row">
-        <DeviceCreatedAtItem device={device} />
+        <TextFieldItem label="Created At" text={device?.createdAt} />
       </SectionItem>
       <SectionItem variant="row-end">
-        <DeviceUpdatedAtItem device={device} />
+        <TextFieldItem label="Updated At" text={device?.updatedAt} />
       </SectionItem>
     </Section>
-  );
-};
-
-const DeviceNameItem = ({device}: DeviceFieldItemProps) => {
-  return (
-    <Fragment>
-      <Text
-        size="small"
-        style={{flex: 1}}
-        color={device?.name ? 'textPrimary' : 'textDisabled'}>
-        Name
-      </Text>
-      <Text size="small" color="textSecondary">
-        {device?.name}
-      </Text>
-    </Fragment>
   );
 };
 
@@ -311,9 +317,7 @@ const DeviceEnabledItem = ({device}: DeviceFieldItemProps) => {
       await updateDevice({enabled}, device?.id || 0),
     onSuccess: data => {
       queryClient.setQueryData([...QueryKey, data.id], data);
-      queryClient.invalidateQueries({
-        queryKey: RecentlyQueryKey,
-      });
+      invalidateListQueryCache(queryClient, data);
     },
     onError: error => {
       Alert.alert(error.name, error.message);
@@ -342,68 +346,13 @@ const DeviceEnabledItem = ({device}: DeviceFieldItemProps) => {
   };
 
   return (
-    <Fragment>
-      <Text
-        size="small"
-        style={{flex: 1}}
-        color={enabled === void 0 ? 'textDisabled' : 'textPrimary'}>
-        Enabled
-      </Text>
-      <Switch
-        value={!!enabled}
-        disabled={enabled === void 0}
-        onValueChange={handleChange}
-      />
-    </Fragment>
+    <SwitchFieldItem
+      label="Enabled"
+      value={enabled}
+      onValueChange={handleChange}
+    />
   );
 };
-
-const DevicePeerIDItem = ({device}: DeviceFieldItemProps) => {
-  const handlePress = () => {
-    if (!device?.peerId) return;
-    Clipboard.setString(device.peerId);
-  };
-
-  return (
-    <Fragment>
-      <Text
-        size="small"
-        style={{flex: 1}}
-        color={device?.peerId ? 'textPrimary' : 'textDisabled'}>
-        Peer ID
-      </Text>
-      <Icon
-        onPress={handlePress}
-        name="open-outline"
-        color={device?.peerId ? 'textPrimary' : 'textDisabled'}
-      />
-    </Fragment>
-  );
-};
-
-const DeviceCreatedAtItem = ({device}: DeviceFieldItemProps) => (
-  <Fragment>
-    <Text
-      size="small"
-      style={{flex: 1}}
-      color={device?.createdAt ? 'textSecondary' : 'textDisabled'}>
-      Created At
-    </Text>
-    <Text size="small">{device?.createdAt}</Text>
-  </Fragment>
-);
-
-const DeviceUpdatedAtItem = ({device}: DeviceFieldItemProps) => (
-  <Fragment>
-    <Text
-      size="small"
-      style={{flex: 1}}
-      color={device?.updatedAt ? 'textSecondary' : 'textDisabled'}>
-      Updated At
-    </Text>
-    <Text size="small">{device?.updatedAt}</Text>
-  </Fragment>
-);
 
 const DeviceNetworkAddressSection = ({id, device}: DeviceSectionProps) => {
   const addrs = useMemo(
@@ -428,30 +377,20 @@ const DeviceNetworkAddressSection = ({id, device}: DeviceSectionProps) => {
 };
 
 const DeviceNameModal = ({id, device}: DeviceSectionProps) => {
-  const [name, setName] = useState(device?.name);
-
-  useEffect(() => {
-    setName(device?.name);
-  }, [device?.name]);
-
   const {nameModalVisible} = useContext(Context);
   const dispatch = useContext(DispatchContext);
 
   const handleClose = () => {
     dispatch?.({nameModalVisible: false});
-    setName(device?.name);
   };
 
   const queryClient = useQueryClient();
   const {mutate} = useMutation({
-    mutationFn: async (name: string) =>
-      await updateDevice({name}, device?.id || 0),
+    mutationFn: async (name: string) => await updateDevice({name}, id),
     onSuccess: data => {
-      queryClient.setQueryData([...QueryKey, data.id], data);
+      queryClient.setQueryData([...QueryKey, id], data);
       dispatch?.({nameModalVisible: false});
-      queryClient.invalidateQueries({
-        queryKey: RecentlyQueryKey,
-      });
+      invalidateListQueryCache(queryClient, data);
     },
     onError: error => {
       Alert.alert(error.name, error.message);
@@ -459,29 +398,19 @@ const DeviceNameModal = ({id, device}: DeviceSectionProps) => {
     },
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = (name?: string) => {
     if (!name) return;
     mutate(name);
   };
 
   return (
-    <ScreenModal visible={!!nameModalVisible} onClose={handleClose}>
-      <RowLayout>
-        <Text style={{flex: 1}}>Device Name</Text>
-        <Icon name="close-outline" onPress={handleClose} />
-      </RowLayout>
-      <TextInput
-        autoComplete="name"
-        inputMode="text"
-        placeholder={device?.name}
-        value={name}
-        onChangeText={setName}
-        onSubmitEditing={handleSubmit}
-        style={{width: '100%', borderColor: 'black', borderBottomWidth: 1}}
-      />
-      <Paper bgColor="transparent" padding={[3, 0, 1, 0]}>
-        <Button onPress={handleSubmit} title="Submit" disabled={!name} />
-      </Paper>
-    </ScreenModal>
+    <TextFieldModal
+      title="Device Name"
+      submitLabel="修改"
+      visible={!!nameModalVisible}
+      value={device?.name}
+      onClose={handleClose}
+      onSubmit={handleSubmit}
+    />
   );
 };

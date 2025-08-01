@@ -2,11 +2,17 @@ import {Fragment, lazy} from 'react';
 import {Screen} from '../App/Navigation';
 import {withLazy} from '../Common/Component';
 import {HeaderBackHomeAction} from '../Home/ScreenBase';
+import {
+  DeviceCreatorScreenName,
+  DeviceEditorScreenName,
+  DeviceSearchScreenName,
+} from './ScreenRoute';
 
 const DeviceAppScreen = () => (
   <Fragment>
     {DeviceEditorAppScreen()}
     {DeviceCreatorAppScreen()}
+    {DeviceSearchAppScreen()}
   </Fragment>
 );
 
@@ -16,7 +22,6 @@ const DeviceEditorScreen = lazy(() => import('./EditorScreen'));
 const DeviceEditorHeaderActions = lazy(() =>
   import('./EditorScreen').then(m => ({default: m.DeviceEditorHeaderActions})),
 );
-export const DeviceEditorScreenName = 'device.editor';
 
 const DeviceEditorAppScreen = () => (
   <Screen
@@ -33,7 +38,6 @@ const DeviceEditorAppScreen = () => (
 const DeviceEditorHeaderRight = withLazy(DeviceEditorHeaderActions);
 
 const DeviceCreatorScreen = lazy(() => import('./CreatorScreen'));
-export const DeviceCreatorScreenName = 'device.creator';
 
 const DeviceCreatorAppScreen = () => (
   <Screen
@@ -41,6 +45,18 @@ const DeviceCreatorAppScreen = () => (
     component={DeviceCreatorScreen}
     options={{
       title: 'New Device',
+    }}
+  />
+);
+
+const DeviceSearchScreen = lazy(() => import('./SearchScreen'));
+
+const DeviceSearchAppScreen = () => (
+  <Screen
+    name={DeviceSearchScreenName}
+    component={DeviceSearchScreen}
+    options={{
+      headerShown: false,
     }}
   />
 );

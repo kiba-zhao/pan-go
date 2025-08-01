@@ -19,7 +19,7 @@ const HomeAppScreen = () => (
   <AppNavigationScreen
     name={HomeScreenName}
     component={HomeScreen}
-    options={{title: HomeScreenName.toUpperCase(), headerShown: false}}
+    options={{headerShown: false}}
   />
 );
 export default HomeAppScreen;
@@ -52,7 +52,7 @@ const AppHomeScreen = () => (
     name={HomeAppScreenName}
     component={AppScreen}
     options={{
-      title: 'Home',
+      title: HomeScreenName.toUpperCase(),
       tabBarIcon: AppIcon,
     }}
   />

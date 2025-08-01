@@ -8,7 +8,7 @@ import type {
 } from '@pango/data';
 import {exec} from '../Native/AgentModule';
 
-type SearchCondition = Partial<Pick<Device, 'enabled' | 'online'>> &
+export type SearchCondition = Partial<Pick<Device, 'enabled' | 'online'>> &
   SearchQueryFields<string> &
   SearchRangeFields &
   SearchSortFields<'updatedAt' | 'createdAt' | 'enabled'>;
@@ -92,4 +92,20 @@ export async function selectDeviceByName(name: string): Promise<Device> {
     }
   }
   return await exec('select:devices?name', {name});
+}
+
+export async function createDevice(fields: DeviceFields): Promise<Device> {
+  if (__DEV__) {
+    const {
+      mockEnabled,
+      nextID,
+      create,
+      readData,
+    } = require('../Common/FakeData');
+
+    if (mockEnabled()) {
+      return create(fields, readData('devices'), nextID);
+    }
+  }
+  return await exec('create:devices', fields);
 }

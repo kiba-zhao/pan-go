@@ -14,7 +14,8 @@ export const HeaderAction = withTheme(
   HeaderButton,
   ({sizes}) =>
     ({
-      padding: scale(sizes.base),
+      paddingVertical: scale(sizes.base),
+      paddingHorizontal: scale(sizes.base),
     } as ViewStyle),
 );
 

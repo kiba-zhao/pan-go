@@ -5,6 +5,7 @@ import {Theme, useTheme} from './Theme';
 import {useMemo, type ComponentProps} from 'react';
 
 const IconSizeFactors = {
+  xsmall: 1.5,
   small: 2,
   default: 2.5,
   medium: 3,
@@ -13,7 +14,7 @@ const IconSizeFactors = {
 type IconSizeFactorsKey = keyof typeof IconSizeFactors;
 type ThemeColorsKey = keyof Theme['colors'];
 type IonIconProps = ComponentProps<typeof IonIcon>;
-type IconProps = Omit<IonIconProps, 'size' | 'color'> & {
+export type IconProps = Omit<IonIconProps, 'size' | 'color'> & {
   size?: IconSizeFactorsKey | IonIconProps['size'];
   color?: ThemeColorsKey | IonIconProps['color'];
 };

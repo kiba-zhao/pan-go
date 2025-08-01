@@ -1,3 +1,4 @@
+import type {MutationFunction} from '@tanstack/react-query';
 import {
   QueryClient,
   QueryClientProvider,
@@ -15,3 +16,4 @@ export const ReactQueryProvider = ({children}: {children: React.ReactNode}) => {
 };
 
 export {useIsFetching, useMutation, useQuery, useQueryClient};
+export type {MutationFunction, QueryClient};
