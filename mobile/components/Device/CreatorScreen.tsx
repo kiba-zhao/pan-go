@@ -125,11 +125,18 @@ const DeviceActionSection = () => {
     mutationFn: createDevice,
     onSuccess: data => {
       invalidateListQueryCache(queryClient, data);
-      navigation.dispatch(
-        CommonActions.navigate(DeviceEditorScreenName, {
-          id: data.id,
-        }),
-      );
+
+      navigation.dispatch(state => {
+        const routes = state.routes.slice(0, -2);
+        return CommonActions.reset({
+          ...state,
+          routes: [
+            ...routes,
+            {name: DeviceEditorScreenName, params: {id: data.id}},
+          ],
+          index: routes.length,
+        });
+      });
     },
     onError: error => {
       Alert.alert(error.name, error.message);

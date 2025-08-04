@@ -41,7 +41,7 @@ export const SectionHeader = withThemeStyle(
     } as ViewStyle),
 );
 
-type SectionItemVariant = 'default' | 'row' | 'row-start' | 'row-end';
+export type SectionItemVariant = 'default' | 'row' | 'row-start' | 'row-end';
 type SectionItemProps = BoxProps & {
   variant?: SectionItemVariant;
 };
@@ -188,7 +188,7 @@ export const SectionList = <Entity extends unknown>({
   );
 };
 
-function generateSectionItemVariant(
+export function generateSectionItemVariant(
   offset: number,
   total: number,
 ): SectionItemVariant {

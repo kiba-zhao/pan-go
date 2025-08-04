@@ -1,7 +1,6 @@
 import {Fragment, lazy} from 'react';
 import {Screen} from '../App/Navigation';
 import {withLazy} from '../Common/Component';
-import {HeaderBackHomeAction} from '../Home/ScreenBase';
 import {
   DeviceCreatorScreenName,
   DeviceEditorScreenName,
@@ -30,7 +29,6 @@ const DeviceEditorAppScreen = () => (
     options={{
       title: 'Device Settings',
       headerRight: DeviceEditorHeaderRight,
-      headerLeft: HeaderBackHomeAction,
     }}
   />
 );

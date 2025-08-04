@@ -8,12 +8,13 @@ import {
   replace,
   search,
   seed,
+  sort,
   update,
 } from '@pango/fakedata';
 import config from 'react-native-config';
 
 type FakeData = ReturnType<typeof seed>;
-const fakeData = seed({count: 10});
+const fakeData = seed({count: 100});
 
 export function readData<
   Key extends keyof FakeData,
@@ -31,6 +32,7 @@ export {
   nextID,
   replace,
   search,
+  sort,
   update,
 };
 

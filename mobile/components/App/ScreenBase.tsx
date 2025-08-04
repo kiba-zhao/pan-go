@@ -4,7 +4,7 @@ import type {ViewStyle} from 'react-native';
 import {StyleSheet, View} from 'react-native';
 
 import {Fragment, type ComponentProps} from 'react';
-import {CommonActions, useNavigation} from '../App/Navigation';
+import {CommonActions, useNavigation, useRoute} from '../App/Navigation';
 import Icon from '../Common/Icon';
 import {scale} from '../Common/SizeMatters';
 import {withTheme} from '../Common/StyleSheet';
@@ -33,18 +33,24 @@ type HeaderBackActionProps = Omit<
   ComponentProps<typeof HeaderButton>,
   'children'
 > & {
-  action?: CommonActions.Action;
+  screenName?: string;
 };
 export const HeaderBackAction = ({
-  action = CommonActions.goBack(),
+  screenName,
   onPress,
   style,
   ...props
 }: HeaderBackActionProps) => {
   const {sizes} = useTheme();
+  const route = useRoute();
+
   const navigation = useNavigation();
   const handlePress = () => {
     onPress?.();
+    const action =
+      screenName === void 0
+        ? CommonActions.goBack()
+        : CommonActions.navigate(screenName, {}, {pop: true});
     navigation.dispatch(action);
   };
   return (

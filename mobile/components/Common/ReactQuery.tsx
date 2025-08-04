@@ -1,7 +1,12 @@
-import type {MutationFunction} from '@tanstack/react-query';
+import type {
+  InfiniteData,
+  MutationFunction,
+  QueryKey,
+} from '@tanstack/react-query';
 import {
   QueryClient,
   QueryClientProvider,
+  useInfiniteQuery,
   useIsFetching,
   useMutation,
   useQuery,
@@ -15,5 +20,5 @@ export const ReactQueryProvider = ({children}: {children: React.ReactNode}) => {
   );
 };
 
-export {useIsFetching, useMutation, useQuery, useQueryClient};
-export type {MutationFunction, QueryClient};
+export {useInfiniteQuery, useIsFetching, useMutation, useQuery, useQueryClient};
+export type {InfiniteData, MutationFunction, QueryClient, QueryKey};

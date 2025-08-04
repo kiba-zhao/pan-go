@@ -27,7 +27,7 @@ import {
   DeviceEditorScreenName,
   DeviceSearchScreenName,
 } from '../Device/ScreenRoute';
-import {SearchCondition, searchDevices} from '../Spec/Device';
+import {type SearchCondition, searchDevices} from '../Spec/Device';
 import {HeaderAction, HeaderActions} from './ScreenBase';
 
 type DeviceScreenState = {

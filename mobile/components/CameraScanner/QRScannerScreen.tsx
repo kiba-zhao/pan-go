@@ -4,7 +4,7 @@ import {Alert, StyleSheet} from 'react-native';
 import type {Code} from 'react-native-vision-camera';
 import {Camera, useCodeScanner} from 'react-native-vision-camera';
 import {CommonActions, useNavigation, useRoute} from '../App/Navigation.tsx';
-import {DeviceCreatorScreenName} from '../Device/Screen.tsx';
+import {DeviceCreatorScreenName} from '../Device/ScreenRoute';
 import {CameraScannerScreen} from './ScreenBase.tsx';
 import {type QRScannerParam, QRScannerScope} from './ScreenRoute.ts';
 
