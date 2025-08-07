@@ -11,6 +11,7 @@ const config = {
   watchFolders: [
     path.resolve(__dirname, '../packages/data'),
     path.resolve(__dirname, '../packages/fakedata'),
+    path.resolve(__dirname, './locales'),
   ],
   resolver: {
     unstable_enableSymlinks: true,

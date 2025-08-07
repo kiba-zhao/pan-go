@@ -1,0 +1,30 @@
+{
+  "screen": {
+    "device": {
+      "name": "授权设备",
+      "tabs": {
+        "recently": "最新",
+        "online": "在线",
+        "disabled": "禁用"
+      }
+    },
+    "settings": {"name": "应用设置"},
+    "home": {
+      "box": {
+        "storage": {
+          "title": "本地存储",
+          "desc": "{{num}} 文件"
+        },
+        "device-storage": {
+          "title": "授权设备",
+          "desc": "{{enabled}} / {{all}}"
+        }
+      }
+    }
+  },
+  "action": {
+    "find-more": "查找更多",
+    "cancel": "取消",
+    "new": "新建"
+  }
+}

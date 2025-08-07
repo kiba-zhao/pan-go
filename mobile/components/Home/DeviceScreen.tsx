@@ -6,6 +6,7 @@ import {QRScannerScope} from '../CameraScanner/ScreenRoute';
 
 import type {Dispatch, PropsWithChildren} from 'react';
 import {ActivityIndicator, StyleSheet, View} from 'react-native';
+import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
 import {FlexRowLayout, RowLayout} from '../Common/Layout';
 import {useIsFetching, useQuery, useQueryClient} from '../Common/ReactQuery';
@@ -161,6 +162,7 @@ const DeviceSection = () => {
 const DeviceSectionHeader = () => {
   const {sizes} = useTheme();
 
+  const {t} = useTranslation();
   const {queryKey} = useContext(Context);
 
   const isFetching = useIsFetching({
@@ -171,9 +173,18 @@ const DeviceSectionHeader = () => {
     <SectionHeader
       style={{flexDirection: 'row', alignItems: 'center', paddingLeft: 0}}>
       <RowLayout style={{gap: scale(sizes.base), flex: 1}}>
-        <DeviceTab text="Recently" queryKey={HomeDeviceRecentlyQueryKey} />
-        <DeviceTab text="Online" queryKey={HomeDeviceOnlineQueryKey} />
-        <DeviceTab text="Disabled" queryKey={HomeDeviceDisabledQueryKey} />
+        <DeviceTab
+          text={t('screen.device.tabs.recently')}
+          queryKey={HomeDeviceRecentlyQueryKey}
+        />
+        <DeviceTab
+          text={t('screen.device.tabs.online')}
+          queryKey={HomeDeviceOnlineQueryKey}
+        />
+        <DeviceTab
+          text={t('screen.device.tabs.disabled')}
+          queryKey={HomeDeviceDisabledQueryKey}
+        />
       </RowLayout>
       {isFetching > 0 ? (
         <ActivityIndicator size={sizes.text} />
@@ -225,6 +236,7 @@ const DeviceTab = ({text, queryKey: tabQueryKey}: DeviceTabProps) => {
 };
 
 const DeviceNewAction = () => {
+  const {t} = useTranslation();
   const navigation = useNavigation();
   const handlePressNew = () => {
     navigation.dispatch(
@@ -235,7 +247,7 @@ const DeviceNewAction = () => {
   };
   return (
     <Text size="small" font="bold" color="primary" onPress={handlePressNew}>
-      New
+      {t('action.new')}
     </Text>
   );
 };
@@ -277,6 +289,7 @@ const DeviceActionSection = () => {
 };
 
 const DeviceMoreAction = () => {
+  const {t} = useTranslation();
   const navigation = useNavigation();
   const handlePress = () => {
     navigation.dispatch(CommonActions.navigate(DeviceSearchScreenName));
@@ -284,7 +297,7 @@ const DeviceMoreAction = () => {
   return (
     <View style={[styles.moreContainer]}>
       <Text size="small" font="bold" color="primary" onPress={handlePress}>
-        More
+        {t('action.find-more')}
       </Text>
     </View>
   );

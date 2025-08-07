@@ -1,0 +1,30 @@
+{
+  "screen": {
+    "device": {
+      "name": "Device",
+      "tabs": {
+        "recently": "Recently",
+        "online": "Online",
+        "disabled": "Disabled"
+      }
+    },
+    "settings": {"name": "Settings"},
+    "home": {
+      "box": {
+        "storage": {
+          "title": "Storage",
+          "desc": "{{num}} Files"
+        },
+        "device-storage": {
+          "title": "Device",
+          "desc": "{{enabled}} / {{all}}"
+        }
+      }
+    }
+  },
+  "action": {
+    "find-more": "More",
+    "cancel": "Cancel",
+    "new": "New"
+  }
+}

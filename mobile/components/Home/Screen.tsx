@@ -2,6 +2,7 @@ import {Screen as AppNavigationScreen} from '../App/Navigation';
 
 import {Navigator, Screen} from './Navigation';
 
+import {useTranslation} from '../Common/I18Next';
 import {useTheme} from '../Common/Theme';
 import {newTabBarIcon} from './ScreenBase';
 import {
@@ -27,6 +28,7 @@ export default HomeAppScreen;
 export {HomeScreenName};
 
 const HomeScreen = () => {
+  const {t} = useTranslation();
   const {colors, sizes} = useTheme();
   return (
     <Navigator
@@ -39,8 +41,8 @@ const HomeScreen = () => {
         },
       }}>
       {AppHomeScreen()}
-      {DeviceHomeScreen()}
-      {SettingsHomeScreen()}
+      {DeviceHomeScreen(t(`screen.device.name`))}
+      {SettingsHomeScreen(t(`screen.settings.name`))}
     </Navigator>
   );
 };
@@ -68,12 +70,12 @@ const AppIcon = newTabBarIcon({
 //   import('./DeviceScreen').then(m => ({default: m.DeviceHeaderActions})),
 // );
 
-const DeviceHomeScreen = () => (
+const DeviceHomeScreen = (title: string) => (
   <Screen
     name={HomeDeviceScreenName}
     component={DeviceScreen}
     options={{
-      title: 'Device',
+      title,
       tabBarIcon: DeviceIcon,
       headerRight: DeviceHeaderActions,
     }}
@@ -89,12 +91,12 @@ const DeviceIcon = newTabBarIcon({
 
 // const SettingsScreen = lazy(() => import('./SettingsScreen'));
 
-const SettingsHomeScreen = () => (
+const SettingsHomeScreen = (title: string) => (
   <Screen
     name={HomeSettingsScreenName}
     component={SettingsScreen}
     options={{
-      title: 'Settings',
+      title,
       tabBarIcon: SettingsIcon,
     }}
   />

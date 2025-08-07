@@ -3,6 +3,7 @@ import {scale, verticalScale} from 'react-native-size-matters';
 
 import {CommonActions, useNavigation} from '../App/Navigation';
 import Box from '../Common/Box';
+import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
 import Paper from '../Common/Paper';
 import {ScreenLayout} from '../Common/ScreenBase';
@@ -32,6 +33,7 @@ const StorageFragment = () => {
 };
 
 const StorageBox = () => {
+  const {t} = useTranslation();
   const {sizes} = useTheme();
 
   const navigation = useNavigation();
@@ -44,10 +46,10 @@ const StorageBox = () => {
       style={{minWidth: scale(sizes.text) * 13}}
       borderColor="transparent">
       <Text font="bold" color="textPrimary">
-        Storage
+        {t('screen.home.box.storage.title')}
       </Text>
       <Text color="textSecondary" size="small">
-        14151 Files
+        {t('screen.home.box.storage.desc', {num: 14151})}
       </Text>
       <View style={{paddingVertical: verticalScale(sizes.base)}}>
         <Icon color="primary" name="folder" size="large" />
@@ -57,6 +59,7 @@ const StorageBox = () => {
 };
 
 const DeviceStorageBox = () => {
+  const {t} = useTranslation();
   const {sizes} = useTheme();
 
   const navigation = useNavigation();
@@ -69,10 +72,10 @@ const DeviceStorageBox = () => {
       style={[styles.deviceBoxPaper, {minWidth: scale(sizes.text) * 10}]}
       borderColor="transparent">
       <Text font="bold" color="textPrimary">
-        Device
+        {t('screen.home.box.device-storage.title')}
       </Text>
       <Text color="textSecondary" size="small">
-        12 / 32
+        {t('screen.home.box.device-storage.desc', {enabled: 12, all: 32})}
       </Text>
       <View style={{paddingVertical: verticalScale(sizes.base)}}>
         <Icon color="primary" name="radio" size="large" />
