@@ -5,7 +5,7 @@ import {QRScannerScreenName} from '../CameraScanner/Screen';
 import {QRScannerScope} from '../CameraScanner/ScreenRoute';
 
 import type {Dispatch, PropsWithChildren} from 'react';
-import {ActivityIndicator} from 'react-native';
+import {ActivityIndicator, StyleSheet, View} from 'react-native';
 import Icon from '../Common/Icon';
 import {FlexRowLayout, RowLayout} from '../Common/Layout';
 import {useIsFetching, useQuery, useQueryClient} from '../Common/ReactQuery';
@@ -81,6 +81,7 @@ const DeviceScreen = () => {
       refreshControl={<ScreenRefreshControl onRefresh={handleRefresh} />}>
       <DeviceScreenStateProvider>
         <DeviceSection />
+        <DeviceActionSection />
       </DeviceScreenStateProvider>
     </ScreenLayout>
   );
@@ -257,3 +258,41 @@ const DeviceItem = ({entity, index, entities}: DeviceItemProps) => {
     </Fragment>
   );
 };
+
+const DeviceActionSection = () => {
+  const {queryKey} = useContext(Context);
+  const isFetching = useIsFetching({
+    queryKey: queryKey,
+  });
+
+  const queryClient = useQueryClient();
+  const data = queryClient.getQueryData<SearchResults<Device>>(queryKey);
+  const hasMore = useMemo(() => {
+    if (isFetching || !data) return false;
+    const [total, entities] = data;
+    return total > entities.length;
+  }, [isFetching, data]);
+
+  return <Fragment>{hasMore ? <DeviceMoreAction /> : void 0}</Fragment>;
+};
+
+const DeviceMoreAction = () => {
+  const navigation = useNavigation();
+  const handlePress = () => {
+    navigation.dispatch(CommonActions.navigate(DeviceSearchScreenName));
+  };
+  return (
+    <View style={[styles.moreContainer]}>
+      <Text size="small" font="bold" color="primary" onPress={handlePress}>
+        More
+      </Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  moreContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

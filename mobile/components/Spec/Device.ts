@@ -4,7 +4,6 @@ import type {
   Device,
   DeviceFields,
   FetchResults,
-  FetchResultsMeta,
   QFields,
   RangeFields,
   SearchResults,
@@ -126,7 +125,7 @@ export async function fetchDevices(
   condition: FetchCondition,
 ): Promise<FetchDevicesResults> {
   if (__DEV__) {
-    const {mockEnabled, sort, readData} = require('../Common/FakeData');
+    const {mockEnabled, sort, readData, fetch} = require('../Common/FakeData');
     if (mockEnabled()) {
       const data = readData('devices').filter((entity: Device) => {
         if (
@@ -145,51 +144,7 @@ export async function fetchDevices(
         data,
       );
 
-      if (sorted.length <= 0) {
-        return [{tag: '', offset: 0}, []];
-      }
-
-      const tag = (sorted.at(0) as Device).updatedAt;
-      const {_cursor, _limit} = condition as FetchCursorCondition;
-      if (_limit === 0) {
-        return [{tag, offset: 0}, []];
-      }
-
-      let start_ = -1;
-      let end_ = sorted.length;
-
-      if (_cursor !== void 0) {
-        start_ = sorted.findIndex(entity => entity.updatedAt === _cursor);
-        if (start_ < 0) {
-          return [{tag, offset: start_}, []];
-        }
-      }
-
-      if (_limit !== void 0) {
-        if (_limit > 0) {
-          if (start_ >= end_ - 1) return [{tag, offset: end_}, []];
-          start_++;
-          end_ = start_ + _limit;
-          if (end_ >= sorted.length) end_ = sorted.length;
-        } else {
-          if (start_ === 0) return [{tag, offset: start_}, []];
-          if (start_ > 0) end_ = start_;
-          start_ = end_ + _limit;
-          if (start_ < 0) start_ = 0;
-        }
-      }
-
-      const entities = sorted.slice(start_, end_);
-      const meta = {tag, offset: start_} as FetchResultsMeta<string, string>;
-      meta.prev = entities.at(0)?.updatedAt;
-      meta.next = entities.at(-1)?.updatedAt;
-      if (start_ === 0) {
-        meta.prev = void 0;
-      }
-      if (end_ === sorted.length) {
-        meta.next = void 0;
-      }
-      return [meta, entities];
+      return fetch(condition, sorted, 'updatedAt', '') as FetchDevicesResults;
     }
   }
   return await exec<FetchCondition, FetchResults<Device, string, string>>(

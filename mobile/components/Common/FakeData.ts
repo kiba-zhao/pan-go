@@ -1,6 +1,7 @@
 import {
   create,
   destroy,
+  fetch,
   findById,
   findOne,
   newNanoID,
@@ -14,7 +15,7 @@ import {
 import config from 'react-native-config';
 
 type FakeData = ReturnType<typeof seed>;
-const fakeData = seed({count: 100});
+const fakeData = seed({count: 20});
 
 export function readData<
   Key extends keyof FakeData,
@@ -26,6 +27,7 @@ export function readData<
 export {
   create,
   destroy,
+  fetch,
   findById,
   findOne,
   newNanoID,

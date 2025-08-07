@@ -1,6 +1,7 @@
 import type {Key, PropsWithChildren} from 'react';
 import {Fragment, useMemo} from 'react';
-import {StyleSheet, View, type ViewStyle} from 'react-native';
+import type {ViewStyle} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import type {BoxPressableProps, BoxProps} from './Box';
 import Box from './Box';
 import type {PaperProps} from './Paper';
