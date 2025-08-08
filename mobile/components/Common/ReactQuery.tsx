@@ -6,9 +6,11 @@ import type {
 import {
   QueryClient,
   QueryClientProvider,
+  QueryObserver,
   useInfiniteQuery,
   useIsFetching,
   useMutation,
+  usePrefetchQuery,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
@@ -20,5 +22,13 @@ export const ReactQueryProvider = ({children}: {children: React.ReactNode}) => {
   );
 };
 
-export {useInfiniteQuery, useIsFetching, useMutation, useQuery, useQueryClient};
+export {
+  QueryObserver,
+  useInfiniteQuery,
+  useIsFetching,
+  useMutation,
+  usePrefetchQuery,
+  useQuery,
+  useQueryClient,
+};
 export type {InfiniteData, MutationFunction, QueryClient, QueryKey};

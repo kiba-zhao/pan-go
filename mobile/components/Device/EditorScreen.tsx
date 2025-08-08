@@ -51,6 +51,9 @@ import {
 import {invalidateListQueryCache} from './ReactQuery';
 import {DeviceSearchHeaderAction} from './ScreenBase';
 
+/**
+ *  define context for editor screen
+ */
 type DeviceScreenState = {
   nameModalVisible?: boolean;
   qrCodeModalVisible?: boolean;
@@ -80,6 +83,7 @@ const DeviceScreenStateProvider = ({children}: PropsWithChildren<{}>) => {
     </Context.Provider>
   );
 };
+// end define context
 
 const DeviceEditorScreen = () => {
   const route = useRoute();

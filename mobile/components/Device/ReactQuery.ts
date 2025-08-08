@@ -6,20 +6,14 @@ export const QueryKey = ['devices'];
 export const RecentlyQueryKey = [
   ...QueryKey,
   {
-    _sort: 'updatedAt',
-    _order: 'desc',
-    _start: 0,
-    _end: 10,
+    _limit: 10,
   },
 ];
 
 export const OnlineQueryKey = [
   ...QueryKey,
   {
-    _sort: 'updatedAt',
-    _order: 'desc',
-    _start: 0,
-    _end: 10,
+    _limit: 10,
     online: true,
   },
 ];
@@ -27,10 +21,7 @@ export const OnlineQueryKey = [
 export const DisabledQueryKey = [
   ...QueryKey,
   {
-    _sort: 'updatedAt',
-    _order: 'desc',
-    _start: 0,
-    _end: 10,
+    _limit: 10,
     enabled: false,
   },
 ];

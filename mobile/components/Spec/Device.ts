@@ -5,47 +5,8 @@ import type {
   DeviceFields,
   FetchResults,
   QFields,
-  RangeFields,
-  SearchResults,
-  SortFields,
 } from '@pango/data';
 import {exec} from '../Native/AgentModule';
-
-export type SearchCondition = Partial<Pick<Device, 'enabled' | 'online'>> &
-  QFields<string> &
-  RangeFields &
-  SortFields<'updatedAt' | 'createdAt' | 'enabled'>;
-export async function searchDevices(
-  condition: SearchCondition,
-): Promise<SearchResults<Device>> {
-  if (__DEV__) {
-    const {mockEnabled, search, readData} = require('../Common/FakeData');
-
-    if (mockEnabled()) {
-      return search(
-        (entity: Device): boolean => {
-          if (
-            condition.enabled !== void 0 &&
-            entity.enabled !== condition.enabled
-          )
-            return false;
-          if (condition.online !== void 0 && entity.online !== condition.online)
-            return false;
-          if (condition.q !== void 0 && entity.name.indexOf(condition.q) < 0)
-            return false;
-          return true;
-        },
-        condition,
-        readData('devices'),
-      );
-    }
-  }
-
-  return await exec<SearchCondition, SearchResults<Device>>(
-    'search:devices',
-    condition,
-  );
-}
 
 export async function selectDevice(id: Device['id']): Promise<Device> {
   if (__DEV__) {
@@ -117,12 +78,12 @@ type FetchBaseCondition = Partial<Pick<Device, 'enabled' | 'online'>> &
   QFields<string> &
   ActionFields<'search'>;
 type FetchCursorCondition = CursorFields<string> & FetchBaseCondition;
-export type FetchCondition = FetchCursorCondition;
+export type FetchDeviceCondition = FetchCursorCondition;
 
 export type FetchDevicesResults = FetchResults<Device, string, string>;
 
 export async function fetchDevices(
-  condition: FetchCondition,
+  condition: FetchDeviceCondition,
 ): Promise<FetchDevicesResults> {
   if (__DEV__) {
     const {mockEnabled, sort, readData, fetch} = require('../Common/FakeData');
@@ -147,7 +108,7 @@ export async function fetchDevices(
       return fetch(condition, sorted, 'updatedAt', '') as FetchDevicesResults;
     }
   }
-  return await exec<FetchCondition, FetchResults<Device, string, string>>(
+  return await exec<FetchDeviceCondition, FetchResults<Device, string, string>>(
     'fetch:devices',
     condition,
   );

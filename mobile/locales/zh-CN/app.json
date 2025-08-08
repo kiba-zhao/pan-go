@@ -8,7 +8,18 @@
         "disabled": "禁用"
       }
     },
-    "settings": {"name": "应用设置"},
+    "settings": {
+      "name": "应用设置",
+      "sections": {
+        "name": "设备名",
+        "peerId": "设备ID",
+        "qrcode": "设备二维码",
+        "netSection": "网络设置",
+        "peerPort": "设备端口",
+        "broadcastAddress": "广播地址",
+        "publicAddress": "发布地址"
+      }
+    },
     "home": {
       "box": {
         "storage": {
@@ -25,6 +36,7 @@
   "action": {
     "find-more": "查找更多",
     "cancel": "取消",
-    "new": "新建"
+    "new": "新建",
+    "save": "保存"
   }
 }

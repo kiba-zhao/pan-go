@@ -24,6 +24,13 @@ export function readData<
   return fakeData[name] as Value;
 }
 
+export function writeData<
+  Key extends keyof FakeData,
+  Value extends FakeData[Key],
+>(name: Key, value: Value): void {
+  fakeData[name] = value;
+}
+
 export {
   create,
   destroy,

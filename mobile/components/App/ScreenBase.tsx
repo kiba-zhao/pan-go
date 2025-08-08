@@ -3,8 +3,10 @@ import {HeaderButton} from '@react-navigation/elements';
 import type {ViewStyle} from 'react-native';
 import {StyleSheet, View} from 'react-native';
 
-import {Fragment, type ComponentProps} from 'react';
+import type {ComponentProps} from 'react';
+import {Fragment, useEffect} from 'react';
 import {CommonActions, useNavigation, useRoute} from '../App/Navigation';
+import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
 import {scale} from '../Common/SizeMatters';
 import {withTheme} from '../Common/StyleSheet';
@@ -70,4 +72,21 @@ export const HeaderBackAction = ({
       <View style={{width: scale(sizes.base * 2)}} />
     </Fragment>
   );
+};
+
+export const HeaderTitle = ({
+  i18nKey,
+  text,
+}: {
+  text?: string;
+  i18nKey?: string;
+}) => {
+  const {t} = useTranslation();
+  const navigation = useNavigation();
+  useEffect(() => {
+    navigation.setOptions({
+      title: i18nKey ? t(i18nKey) : text,
+    });
+  }, []);
+  return null;
 };

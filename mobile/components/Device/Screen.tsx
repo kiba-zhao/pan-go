@@ -29,6 +29,7 @@ const DeviceEditorAppScreen = () => (
     options={{
       title: 'Device Settings',
       headerRight: DeviceEditorHeaderRight,
+      animation: 'slide_from_right',
     }}
   />
 );

@@ -4,7 +4,6 @@ import {useColorScheme} from 'react-native';
 import {DarkTheme, DefaultTheme, ThemeProvider} from '../Common/Theme';
 import {
   createTheme as createNavigationTheme,
-  Group,
   NavigationContainer,
   Navigator,
   ScreenLayout,
@@ -14,6 +13,7 @@ import CameraScannerAppScreen from '../CameraScanner/Screen';
 import DeviceAppScreen from '../Device/Screen';
 import DeviceStorageAppScreen from '../DeviceStorage/Screen';
 import {default as HomeAppScreen, HomeScreenName} from '../Home/Screen';
+import SettingsAppScreen from '../Settings/Screen';
 import StorageAppScreen from '../Storage/Screen';
 
 const AppScreen = () => {
@@ -47,15 +47,11 @@ const AppScreen = () => {
             },
           }}>
           {HomeAppScreen()}
-          <Group
-            screenOptions={{
-              animation: 'slide_from_right',
-            }}>
-            {StorageAppScreen()}
-            {DeviceStorageAppScreen()}
-            {DeviceAppScreen()}
-            {CameraScannerAppScreen()}
-          </Group>
+          {StorageAppScreen()}
+          {DeviceStorageAppScreen()}
+          {DeviceAppScreen()}
+          {CameraScannerAppScreen()}
+          {SettingsAppScreen()}
         </Navigator>
       </NavigationContainer>
     </ThemeProvider>

@@ -1,16 +1,35 @@
-import type {Device, SearchResults} from '@pango/data';
-import {createContext, Fragment, useContext, useMemo, useReducer} from 'react';
+import type {Device} from '@pango/data';
+import {
+  createContext,
+  Fragment,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+} from 'react';
 import {CommonActions, useNavigation} from '../App/Navigation';
 import {QRScannerScreenName} from '../CameraScanner/Screen';
 import {QRScannerScope} from '../CameraScanner/ScreenRoute';
 
 import type {Dispatch, PropsWithChildren} from 'react';
-import {ActivityIndicator, StyleSheet, View} from 'react-native';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  RefreshControlProps,
+  StyleSheet,
+  View,
+} from 'react-native';
 import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
 import {FlexRowLayout, RowLayout} from '../Common/Layout';
-import {useIsFetching, useQuery, useQueryClient} from '../Common/ReactQuery';
-import {ScreenLayout, ScreenRefreshControl} from '../Common/ScreenBase';
+import {
+  QueryObserver,
+  useIsFetching,
+  useQuery,
+  useQueryClient,
+} from '../Common/ReactQuery';
+import {ScreenLayout} from '../Common/ScreenBase';
 import {
   default as Section,
   SectionHeader,
@@ -28,7 +47,8 @@ import {
   DeviceEditorScreenName,
   DeviceSearchScreenName,
 } from '../Device/ScreenRoute';
-import {type SearchCondition, searchDevices} from '../Spec/Device';
+import type {FetchDeviceCondition, FetchDevicesResults} from '../Spec/Device';
+import {fetchDevices} from '../Spec/Device';
 import {HeaderAction, HeaderActions} from './ScreenBase';
 
 type DeviceScreenState = {
@@ -65,26 +85,13 @@ const DeviceScreenStateProvider = ({children}: PropsWithChildren<{}>) => {
 };
 
 const DeviceScreen = () => {
-  const isFetching = useIsFetching({
-    queryKey: HomeDeviceRecentlyQueryKey,
-  });
-  const queryClient = useQueryClient();
-  const handleRefresh = () => {
-    if (isFetching) return;
-    queryClient.refetchQueries({
-      queryKey: HomeDeviceRecentlyQueryKey,
-      type: 'active',
-    });
-  };
-
   return (
-    <ScreenLayout
-      refreshControl={<ScreenRefreshControl onRefresh={handleRefresh} />}>
-      <DeviceScreenStateProvider>
+    <DeviceScreenStateProvider>
+      <ScreenLayout refreshControl={<DeviceScreenRefreshControl />}>
         <DeviceSection />
         <DeviceActionSection />
-      </DeviceScreenStateProvider>
-    </ScreenLayout>
+      </ScreenLayout>
+    </DeviceScreenStateProvider>
   );
 };
 
@@ -124,12 +131,37 @@ const DeviceScreenMenuAction = () => {
   );
 };
 
+type DeviceScreenRefreshControlProps = Partial<
+  Pick<RefreshControlProps, 'refreshing'>
+> &
+  Omit<RefreshControlProps, 'refreshing'>;
+const DeviceScreenRefreshControl = ({
+  refreshing,
+  ...props
+}: DeviceScreenRefreshControlProps) => {
+  const {queryKey} = useContext(Context);
+  const queryClient = useQueryClient();
+  const handleRefresh = () => {
+    queryClient.refetchQueries({
+      queryKey: queryKey,
+      type: 'active',
+    });
+  };
+  return (
+    <RefreshControl
+      {...props}
+      refreshing={refreshing || false}
+      onRefresh={handleRefresh}
+    />
+  );
+};
+
 const DeviceSection = () => {
   const {queryKey} = useContext(Context);
-  const condition = queryKey.at(-1) as SearchCondition;
-  const {data} = useQuery<SearchResults<Device>>({
+  const condition = queryKey.at(-1) as FetchDeviceCondition;
+  const {data} = useQuery<FetchDevicesResults>({
     queryKey,
-    queryFn: async () => await searchDevices(condition),
+    queryFn: async () => await fetchDevices(condition),
     placeholderData: _ => _,
   });
 
@@ -272,18 +304,24 @@ const DeviceItem = ({entity, index, entities}: DeviceItemProps) => {
 };
 
 const DeviceActionSection = () => {
-  const {queryKey} = useContext(Context);
-  const isFetching = useIsFetching({
-    queryKey: queryKey,
-  });
+  const [hasMore, setHasMore] = useState(false);
 
   const queryClient = useQueryClient();
-  const data = queryClient.getQueryData<SearchResults<Device>>(queryKey);
-  const hasMore = useMemo(() => {
-    if (isFetching || !data) return false;
-    const [total, entities] = data;
-    return total > entities.length;
-  }, [isFetching, data]);
+  const {queryKey} = useContext(Context);
+
+  useEffect(() => {
+    const observer = new QueryObserver<FetchDevicesResults>(queryClient, {
+      queryKey: queryKey,
+    });
+
+    return observer.subscribe(({data, isFetching}) => {
+      if (isFetching) {
+        return;
+      }
+      const meta = data !== void 0 ? data[0] : void 0;
+      setHasMore(meta?.next !== void 0);
+    });
+  }, [queryKey, queryClient]);
 
   return <Fragment>{hasMore ? <DeviceMoreAction /> : void 0}</Fragment>;
 };

@@ -90,6 +90,7 @@ const DeviceSearchView = () => {
       queryFn: async ({pageParam}) =>
         await fetchDevices({
           q,
+          _action: 'search',
           ...pageParam,
         }),
       enabled: q !== void 0 && q.length > 0,

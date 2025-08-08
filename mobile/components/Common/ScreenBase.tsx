@@ -4,6 +4,7 @@ import {
   Modal as NativeModal,
   Pressable as NativePressable,
   RefreshControl,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   View,
@@ -26,11 +27,16 @@ export const ScreenLayout = ({
   const {sizes} = useTheme();
 
   return (
-    <ScrollView
-      {...props}
-      style={StyleSheet.compose({paddingHorizontal: scale(sizes.base)}, style)}>
-      {children}
-    </ScrollView>
+    <SafeAreaView>
+      <ScrollView
+        {...props}
+        style={StyleSheet.compose(
+          {paddingHorizontal: scale(sizes.base)},
+          style,
+        )}>
+        {children}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -51,7 +57,7 @@ export const ScreenLoading = () => {
 };
 
 type NativeRefreshControlProps = ComponentProps<typeof RefreshControl>;
-type ScreenRefreshControlProps = Partial<
+export type ScreenRefreshControlProps = Partial<
   Pick<NativeRefreshControlProps, 'refreshing'>
 > &
   Omit<NativeRefreshControlProps, 'refreshing'>;

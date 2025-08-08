@@ -5,12 +5,13 @@
  */
 import i18next from 'i18next';
 import resourcesToBackend from 'i18next-resources-to-backend';
+import type {I18nextProviderProps} from 'react-i18next';
 import {I18nextProvider, initReactI18next, useTranslation} from 'react-i18next';
 import * as RNLocalize from 'react-native-localize';
 
 export {useTranslation};
 
-import {type ReactNode} from 'react';
+import {PropsWithChildren} from 'react';
 
 export const DefaultNS = 'app';
 export const SupportLanguages = [
@@ -42,15 +43,21 @@ i18next
   .use(resourcesToBackend(importLanguage))
   .init({
     ns: [DefaultNS],
-    defaultNS: DefaultNS,
     fallbackNS: [DefaultNS],
     lng: PreferredLng,
     fallbackLng: PreferredLng,
     supportedLngs: SupporLngs,
   });
 
-export const Provider = ({children}: {children: ReactNode}) => {
-  return <I18nextProvider i18n={i18next}>{children}</I18nextProvider>;
+export type ProviderProps = PropsWithChildren<
+  Pick<I18nextProviderProps, 'defaultNS'>
+>;
+export const Provider = ({children, defaultNS = DefaultNS}: ProviderProps) => {
+  return (
+    <I18nextProvider i18n={i18next} defaultNS={defaultNS}>
+      {children}
+    </I18nextProvider>
+  );
 };
 
 type LanguageSourceLoader = () => Promise<Record<string, any>>;
