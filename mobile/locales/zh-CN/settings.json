@@ -6,6 +6,14 @@
     "nameEditor": {
       "name": "编辑设备名",
       "reminder": "设备名最多50个字符,过长的设备名不便于识别"
+    },
+    "peerID": {
+      "name": "我的设备ID"
+    },
+    "peerPortEditor": {
+      "name": "编辑设备端口",
+      "reminder": "设备端口为1~65535范围内的整数",
+      "placeholder": "e.g. 9000"
     }
   }
 }

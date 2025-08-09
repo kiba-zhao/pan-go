@@ -1,18 +1,13 @@
 import {AppSettings} from '@pango/data';
-import {useQuery} from '@tanstack/react-query';
 import {HeaderTitle} from '../App/ScreenBase';
 import Paper from '../Common/Paper';
 import {ScreenLayout, ScreenRefreshControl} from '../Common/ScreenBase';
 import Text from '../Common/Text';
-import {load} from '../Spec/AppSettings';
-import {QueryKey} from './ReactQuery';
+import {useSettings} from './ReactQuery';
 import {DeviceQRCode, I18NextProvider} from './ScreenBase';
 
 const QRCodeScreen = () => {
-  const {data, refetch} = useQuery({
-    queryKey: QueryKey,
-    queryFn: load,
-  });
+  const {data, refetch} = useSettings();
 
   return (
     <I18NextProvider>

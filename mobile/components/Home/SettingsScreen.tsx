@@ -14,7 +14,12 @@ import {ScreenLayout, ScreenRefreshControl} from '../Common/ScreenBase';
 import Section, {SectionHeader, SectionItem} from '../Common/Section';
 import Text from '../Common/Text';
 import {QueryKey as SettingsQueryKey} from '../Settings/ReactQuery';
-import {NameEditorScreenName, QRCodeScreenName} from '../Settings/ScreenRoute';
+import {
+  NameEditorScreenName,
+  PeerIDScreenName,
+  PeerPortEditorScreenName,
+  QRCodeScreenName,
+} from '../Settings/ScreenRoute';
 import {load as loadSettings} from '../Spec/AppSettings';
 
 /**
@@ -85,6 +90,10 @@ const BaseSection = ({settings}: BaseSectionProps) => {
     navigation.dispatch(CommonActions.navigate(NameEditorScreenName));
   };
 
+  const handlePeerIDPress = () => {
+    navigation.dispatch(CommonActions.navigate(PeerIDScreenName));
+  };
+
   return (
     <Fragment>
       <Section>
@@ -104,7 +113,7 @@ const BaseSection = ({settings}: BaseSectionProps) => {
             editable
           />
         </SectionItem>
-        <SectionItem variant="row">
+        <SectionItem variant="row" onPress={handlePeerIDPress}>
           <IconFieldItem
             label={t('screen.settings.sections.peerId')}
             disabled={!settings}
@@ -119,6 +128,11 @@ const BaseSection = ({settings}: BaseSectionProps) => {
 type NetSectionProps = BaseSectionProps;
 const NetSection = ({settings}: NetSectionProps) => {
   const {t} = useTranslation();
+  const navigation = useNavigation();
+
+  const handlePeerPortPress = () => {
+    navigation.dispatch(CommonActions.navigate(PeerPortEditorScreenName));
+  };
   return (
     <Section>
       <SectionHeader>
@@ -126,7 +140,7 @@ const NetSection = ({settings}: NetSectionProps) => {
           {t('screen.settings.sections.netSection')}
         </Text>
       </SectionHeader>
-      <SectionItem variant="row">
+      <SectionItem variant="row" onPress={handlePeerPortPress}>
         <TextFieldItem
           label={t('screen.settings.sections.peerPort')}
           text={settings?.peerPort ? settings.peerPort.toString() : ''}

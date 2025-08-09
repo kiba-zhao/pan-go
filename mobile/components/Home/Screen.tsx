@@ -39,6 +39,7 @@ const HomeScreen = () => {
         headerTitleStyle: {
           fontSize: sizes.text + sizes.base * 0.5,
         },
+        animation: 'shift',
       }}>
       {AppHomeScreen()}
       {DeviceHomeScreen(t(`screen.device.name`))}

@@ -1,5 +1,5 @@
-import type {AppSettingsFields} from '@pango/data';
-import {Fragment, useEffect, useState} from 'react';
+import {AppSettingsFields} from '@pango/data';
+import {Fragment, useState} from 'react';
 import {View} from 'react-native';
 import {useNavigation} from '../App/Navigation';
 import {HeaderTitle} from '../App/ScreenBase';
@@ -16,39 +16,45 @@ import {save} from '../Spec/AppSettings';
 import {QueryKey, useSettings} from './ReactQuery';
 import {I18NextProvider} from './ScreenBase';
 
-const NameEditorScreen = () => {
+const PeerPortEditorScreen = () => {
   const {data, refetch} = useSettings();
-
   return (
     <I18NextProvider>
       <ScreenLayout
         refreshControl={<ScreenRefreshControl onRefresh={refetch} />}>
-        <HeaderTitle i18nKey="screen.nameEditor.name" />
-        <EditorSection value={data?.name} />
+        <HeaderTitle i18nKey="screen.peerPortEditor.name" />
+        <EditorSection value={data?.peerPort} />
       </ScreenLayout>
     </I18NextProvider>
   );
 };
 
-export default NameEditorScreen;
+export default PeerPortEditorScreen;
 
-type EditorSectionProps = {
-  value?: string;
-};
-const EditorSection = ({value}: EditorSectionProps) => {
+const EditorSection = ({value}: {value?: number}) => {
+  const {t} = useTranslation();
   const {sizes, colors} = useTheme();
 
-  const {t} = useTranslation();
+  const [text, setText] = useState(value ? value.toString() : '');
+
+  const handleChange = (text: string) => {
+    if (text.length > 0) {
+      const num = parseInt(text);
+      if (num > 65535) {
+        return;
+      }
+      if (num.toString() !== text) {
+        return;
+      }
+    }
+    setText(text);
+  };
+
   const navigation = useNavigation();
-  const [text, setText] = useState(value);
-
-  useEffect(() => {
-    setText(value);
-  }, [value]);
-
   const queryClient = useQueryClient();
-  const {mutate} = useMutation({
-    mutationFn: async (name: string) => await save({name} as AppSettingsFields),
+  const {mutate, isPending} = useMutation({
+    mutationFn: async (peerPort: number) =>
+      await save({peerPort} as AppSettingsFields),
     onSuccess: data => {
       queryClient.setQueryData(QueryKey, data);
       navigation.goBack();
@@ -58,9 +64,9 @@ const EditorSection = ({value}: EditorSectionProps) => {
     },
   });
 
-  const handleSubmit = (name?: string) => {
-    if (!name) return;
-    mutate(name);
+  const handleSubmit = (text: string) => {
+    if (text.length <= 0 || isPending) return;
+    mutate(parseInt(text));
   };
 
   return (
@@ -72,18 +78,23 @@ const EditorSection = ({value}: EditorSectionProps) => {
             borderColor: colors.divider,
             borderBottomWidth: 1,
           }}
+          editable={!isPending}
+          maxLength={text === '0' ? 1 : 5}
           value={text}
-          onChangeText={setText}
+          placeholder={t('screen.peerPortEditor.placeholder')}
+          onChangeText={handleChange}
           onSubmitEditing={() => handleSubmit(text)}
-          maxLength={50}
+          inputMode="numeric"
         />
         <Text padding={[0, 0.5]} color="textSecondary" size="small">
-          {t('screen.nameEditor.reminder')}
+          {t('screen.peerPortEditor.reminder')}
         </Text>
       </View>
       <Button
         title={t('action.save')}
-        disabled={!text || text.length <= 0 || value === text}
+        disabled={
+          isPending || !text || text.length <= 0 || value?.toString() === text
+        }
         onPress={() => handleSubmit(text)}
       />
     </Fragment>
