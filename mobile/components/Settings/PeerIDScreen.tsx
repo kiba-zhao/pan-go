@@ -1,9 +1,14 @@
 import Clipboard from '@react-native-clipboard/clipboard';
-import {HeaderAction, HeaderActions, HeaderTitle} from '../App/ScreenBase';
+import {
+  HeaderAction,
+  HeaderActions,
+  HeaderTitle,
+  ScreenLayout,
+} from '../App/ScreenBase';
 import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
 import Paper from '../Common/Paper';
-import {ScreenLayout, ScreenRefreshControl} from '../Common/ScreenBase';
+import {ScreenRefreshControl} from '../Common/ScreenBase';
 import Text from '../Common/Text';
 import {useSettings} from './ReactQuery';
 import {I18NextProvider} from './ScreenBase';

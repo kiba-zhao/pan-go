@@ -1,13 +1,17 @@
 import {HeaderButton} from '@react-navigation/elements';
 
-import type {ViewStyle} from 'react-native';
+import type {ViewProps, ViewStyle} from 'react-native';
 import {StyleSheet, View} from 'react-native';
 
 import type {ComponentProps} from 'react';
-import {Fragment, useEffect} from 'react';
+import {Fragment, useEffect, useRef} from 'react';
 import {CommonActions, useNavigation, useRoute} from '../App/Navigation';
 import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
+import type {SwipePanResponderOpts} from '../Common/PanResponder';
+import {createSwipePanResponder} from '../Common/PanResponder';
+import type {ScreenLayoutProps as ScreenLayoutBaseProps} from '../Common/ScreenBase';
+import {ScreenLayout as ScreenLayoutBase} from '../Common/ScreenBase';
 import {scale} from '../Common/SizeMatters';
 import {withTheme} from '../Common/StyleSheet';
 import {useTheme} from '../Common/Theme';
@@ -89,4 +93,55 @@ export const HeaderTitle = ({
     });
   }, []);
   return null;
+};
+
+type ScreenLayoutProps = {
+  swipeOpts?: SwipePanResponderOpts;
+} & ScreenLayoutBaseProps;
+export const ScreenLayout = ({
+  swipeOpts,
+  style,
+  children,
+  ...props
+}: ScreenLayoutProps) => {
+  const navigation = useNavigation();
+  const handleSwipeRight = () => {
+    navigation.goBack();
+  };
+  const panResponder = useRef(
+    createSwipePanResponder(swipeOpts || {onSwipeRight: handleSwipeRight}),
+  ).current;
+
+  return (
+    <ScreenLayoutBase
+      {...panResponder?.panHandlers}
+      style={StyleSheet.compose({minHeight: '100%'}, style)}
+      {...props}>
+      {children}
+    </ScreenLayoutBase>
+  );
+};
+
+type ScreenViewLayoutProps = Pick<ScreenLayoutProps, 'swipeOpts'> & ViewProps;
+export const ScreenViewLayout = ({
+  swipeOpts,
+  style,
+  children,
+  ...props
+}: ScreenViewLayoutProps) => {
+  const navigation = useNavigation();
+  const handleSwipeRight = () => {
+    navigation.goBack();
+  };
+  const panResponder = useRef(
+    createSwipePanResponder(swipeOpts || {onSwipeRight: handleSwipeRight}),
+  ).current;
+  return (
+    <View
+      {...panResponder?.panHandlers}
+      style={StyleSheet.compose({minHeight: '100%'}, style)}
+      {...props}>
+      {children}
+    </View>
+  );
 };

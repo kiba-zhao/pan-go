@@ -1,16 +1,11 @@
 import {AppSettings} from '@pango/data';
-import {
-  createContext,
-  Dispatch,
-  Fragment,
-  PropsWithChildren,
-  useReducer,
-} from 'react';
+import {Fragment} from 'react';
 import {CommonActions, useNavigation} from '../App/Navigation';
+import {ScreenLayout} from '../App/ScreenBase';
 import {IconFieldItem, TextFieldItem} from '../Common/Field';
 import {useTranslation} from '../Common/I18Next';
 import {useQuery} from '../Common/ReactQuery';
-import {ScreenLayout, ScreenRefreshControl} from '../Common/ScreenBase';
+import {ScreenRefreshControl} from '../Common/ScreenBase';
 import Section, {SectionHeader, SectionItem} from '../Common/Section';
 import Text from '../Common/Text';
 import {QueryKey as SettingsQueryKey} from '../Settings/ReactQuery';
@@ -21,40 +16,14 @@ import {
   QRCodeScreenName,
 } from '../Settings/ScreenRoute';
 import {load as loadSettings} from '../Spec/AppSettings';
-
-/**
- *  define context for editor screen
- */
-
-type ScreenState = {
-  nameModalVisible?: boolean;
-};
-
-type ScreenAction = ScreenState;
-const reducer = (state: ScreenState, action: ScreenAction) => ({
-  ...state,
-  ...action,
-});
-
-const Context = createContext<ScreenState>({});
-const DispatchContext = createContext<Dispatch<ScreenAction> | null>(null);
-
-const ScreenProvider = ({children}: PropsWithChildren<{}>) => {
-  const [state, dispatch] = useReducer(reducer, {});
-  return (
-    <Context.Provider value={state}>
-      <DispatchContext.Provider value={dispatch}>
-        {children}
-      </DispatchContext.Provider>
-    </Context.Provider>
-  );
-};
-
-/**
- * end define context
- */
+import {HomeDeviceScreenName} from './ScreenRoute';
 
 const SettingsScreen = () => {
+  const navigation = useNavigation();
+  const handleSwipeRight = () => {
+    navigation.dispatch(CommonActions.navigate(HomeDeviceScreenName));
+  };
+
   const {refetch, data} = useQuery({
     queryKey: SettingsQueryKey,
     queryFn: loadSettings,
@@ -68,7 +37,10 @@ const SettingsScreen = () => {
   return (
     <ScreenLayout
       style={{paddingHorizontal: 0}}
-      refreshControl={<ScreenRefreshControl onRefresh={handleRefresh} />}>
+      refreshControl={<ScreenRefreshControl onRefresh={handleRefresh} />}
+      swipeOpts={{
+        onSwipeRight: handleSwipeRight,
+      }}>
       <BaseSection settings={data} />
       <NetSection settings={data} />
     </ScreenLayout>

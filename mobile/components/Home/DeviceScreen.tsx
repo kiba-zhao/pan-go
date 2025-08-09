@@ -20,6 +20,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import {ScreenLayout} from '../App/ScreenBase';
 import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
 import {FlexRowLayout, RowLayout} from '../Common/Layout';
@@ -29,7 +30,6 @@ import {
   useQuery,
   useQueryClient,
 } from '../Common/ReactQuery';
-import {ScreenLayout} from '../Common/ScreenBase';
 import {
   default as Section,
   SectionHeader,
@@ -50,6 +50,7 @@ import {
 import type {FetchDeviceCondition, FetchDevicesResults} from '../Spec/Device';
 import {fetchDevices} from '../Spec/Device';
 import {HeaderAction, HeaderActions} from './ScreenBase';
+import {HomeAppScreenName, HomeSettingsScreenName} from './ScreenRoute';
 
 type DeviceScreenState = {
   queryKey: any[];
@@ -85,9 +86,21 @@ const DeviceScreenStateProvider = ({children}: PropsWithChildren<{}>) => {
 };
 
 const DeviceScreen = () => {
+  const navigation = useNavigation();
+  const handleSwipeLeft = () => {
+    navigation.dispatch(CommonActions.navigate(HomeSettingsScreenName));
+  };
+  const handleSwipeRight = () => {
+    navigation.dispatch(CommonActions.navigate(HomeAppScreenName));
+  };
   return (
     <DeviceScreenStateProvider>
-      <ScreenLayout refreshControl={<DeviceScreenRefreshControl />}>
+      <ScreenLayout
+        refreshControl={<DeviceScreenRefreshControl />}
+        swipeOpts={{
+          onSwipeLeft: handleSwipeLeft,
+          onSwipeRight: handleSwipeRight,
+        }}>
         <DeviceSection />
         <DeviceActionSection />
       </ScreenLayout>

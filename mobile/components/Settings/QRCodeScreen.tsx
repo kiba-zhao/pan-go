@@ -1,7 +1,7 @@
 import {AppSettings} from '@pango/data';
-import {HeaderTitle} from '../App/ScreenBase';
+import {HeaderTitle, ScreenLayout} from '../App/ScreenBase';
 import Paper from '../Common/Paper';
-import {ScreenLayout, ScreenRefreshControl} from '../Common/ScreenBase';
+import {ScreenRefreshControl} from '../Common/ScreenBase';
 import Text from '../Common/Text';
 import {useSettings} from './ReactQuery';
 import {DeviceQRCode, I18NextProvider} from './ScreenBase';

@@ -1,21 +1,28 @@
 import {StyleSheet, View} from 'react-native';
+
 import {scale, verticalScale} from 'react-native-size-matters';
 
 import {CommonActions, useNavigation} from '../App/Navigation';
+import {ScreenLayout} from '../App/ScreenBase';
 import Box from '../Common/Box';
 import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
 import Paper from '../Common/Paper';
-import {ScreenLayout} from '../Common/ScreenBase';
 import Text from '../Common/Text';
 import {useTheme} from '../Common/Theme';
 
 import {ExplorerScreenName as DeviceStorageScreenName} from '../DeviceStorage/Screen';
 import {ExplorerScreenName as StorageScreenName} from '../Storage/Screen';
+import {HomeDeviceScreenName} from './ScreenRoute';
 
 const AppScreen = () => {
+  const navigation = useNavigation();
+  const handleSwipeLeft = () => {
+    navigation.dispatch(CommonActions.navigate(HomeDeviceScreenName));
+  };
+
   return (
-    <ScreenLayout>
+    <ScreenLayout swipeOpts={{onSwipeLeft: handleSwipeLeft}}>
       <StorageFragment />
     </ScreenLayout>
   );

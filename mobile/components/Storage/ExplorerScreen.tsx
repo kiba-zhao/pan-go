@@ -1,4 +1,4 @@
-import {ScreenLayout} from '../Common/ScreenBase';
+import {ScreenLayout} from '../App/ScreenBase';
 import Text from '../Common/Text';
 
 const ExplorerScreen = () => {

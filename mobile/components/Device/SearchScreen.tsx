@@ -13,6 +13,7 @@ import {
 import {ActivityIndicator, VirtualizedList} from 'react-native';
 
 import {CommonActions, useNavigation} from '../App/Navigation';
+import {ScreenViewLayout} from '../App/ScreenBase';
 import Icon from '../Common/Icon';
 import {FlexRowLayout} from '../Common/Layout';
 import Paper from '../Common/Paper';
@@ -58,7 +59,9 @@ const ScreenStateProvider = ({children}: PropsWithChildren<{}>) => {
 const DeviceSearchScreen = () => {
   return (
     <ScreenStateProvider>
-      <DeviceSearchView />
+      <ScreenViewLayout>
+        <DeviceSearchView />
+      </ScreenViewLayout>
     </ScreenStateProvider>
   );
 };
