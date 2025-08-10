@@ -1,7 +1,10 @@
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {useNavigation} from '@react-navigation/native';
 import type {ComponentProps} from 'react';
 import {Suspense} from 'react';
 import {ScreenLoading} from '../Common/ScreenBase';
+
+export {useNavigation};
 
 const Tab = createBottomTabNavigator();
 

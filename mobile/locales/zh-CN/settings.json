@@ -13,7 +13,12 @@
     "peerPortEditor": {
       "name": "编辑设备端口",
       "reminder": "设备端口为1~65535范围内的整数",
-      "placeholder": "e.g. 9000"
+      "placeholder": "例如 9000"
+    },
+    "broadcastAddressEditor": {
+      "name": "编辑广播地址",
+      "searchPlaceholder": "例如 9000",
+      "deleteAlertMessage": "是否永久移除广播地址 {{address}}?"
     }
   }
 }

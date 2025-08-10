@@ -10,6 +10,7 @@ import Section, {SectionHeader, SectionItem} from '../Common/Section';
 import Text from '../Common/Text';
 import {QueryKey as SettingsQueryKey} from '../Settings/ReactQuery';
 import {
+  BroadcastAddressEditorScreenName,
   NameEditorScreenName,
   PeerIDScreenName,
   PeerPortEditorScreenName,
@@ -105,6 +106,12 @@ const NetSection = ({settings}: NetSectionProps) => {
   const handlePeerPortPress = () => {
     navigation.dispatch(CommonActions.navigate(PeerPortEditorScreenName));
   };
+
+  const handleBroadcastAddressPress = () => {
+    navigation.dispatch(
+      CommonActions.navigate(BroadcastAddressEditorScreenName),
+    );
+  };
   return (
     <Section>
       <SectionHeader>
@@ -119,7 +126,7 @@ const NetSection = ({settings}: NetSectionProps) => {
           editable
         />
       </SectionItem>
-      <SectionItem variant="row">
+      <SectionItem variant="row" onPress={handleBroadcastAddressPress}>
         <IconFieldItem
           label={t('screen.settings.sections.broadcastAddress')}
           disabled={

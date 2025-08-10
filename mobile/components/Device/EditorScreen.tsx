@@ -103,6 +103,7 @@ const DeviceEditorScreen = () => {
 
   return (
     <Fragment>
+      <DeviceEditorHeaderActions />
       {isFetching && <ScreenLoading />}
       <ScreenLayout
         refreshControl={<ScreenRefreshControl onRefresh={handleRefresh} />}>
@@ -122,7 +123,7 @@ const DeviceEditorScreen = () => {
 
 export default DeviceEditorScreen;
 
-export const DeviceEditorHeaderActions = () => {
+const DeviceEditorHeaderActions = () => {
   const route = useRoute();
   const {id} = route.params as EditorParam;
 

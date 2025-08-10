@@ -95,6 +95,7 @@ const DeviceScreen = () => {
   };
   return (
     <DeviceScreenStateProvider>
+      <DeviceHeaderActions />
       <ScreenLayout
         refreshControl={<DeviceScreenRefreshControl />}
         swipeOpts={{
@@ -110,7 +111,7 @@ const DeviceScreen = () => {
 
 export default DeviceScreen;
 
-export const DeviceHeaderActions = () => {
+const DeviceHeaderActions = () => {
   return (
     <HeaderActions>
       <DeviceScreenSearchAction />
@@ -340,13 +341,14 @@ const DeviceActionSection = () => {
 };
 
 const DeviceMoreAction = () => {
+  const {sizes} = useTheme();
   const {t} = useTranslation();
   const navigation = useNavigation();
   const handlePress = () => {
     navigation.dispatch(CommonActions.navigate(DeviceSearchScreenName));
   };
   return (
-    <View style={[styles.moreContainer]}>
+    <View style={[styles.moreContainer, {paddingBottom: scale(sizes.base)}]}>
       <Text size="small" font="bold" color="primary" onPress={handlePress}>
         {t('action.find-more')}
       </Text>

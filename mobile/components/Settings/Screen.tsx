@@ -3,6 +3,7 @@ import {Screen} from '../App/Navigation';
 import {withLazy} from '../Common/Component';
 import {addLanguageSource} from '../Common/I18Next';
 import {
+  BroadcastAddressEditorScreenName,
   NameEditorScreenName,
   Namespace,
   PeerIDScreenName,
@@ -23,6 +24,7 @@ const SettingsAppScreen = () => (
     {NameEditorAppScreen()}
     {PeerIDAppScreen()}
     {PeerPorEditorAppScreen()}
+    {BroadcastAddressEditorAppScreen()}
   </Fragment>
 );
 
@@ -66,6 +68,18 @@ const PeerPorEditorAppScreen = () => (
   <Screen
     name={PeerPortEditorScreenName}
     component={PeerPortEditorScreen}
+    options={{title: ''}}
+  />
+);
+
+const BroadcastAddressEditorScreen = lazy(
+  () => import('./BroadcastAddressEditorScreen'),
+);
+
+const BroadcastAddressEditorAppScreen = () => (
+  <Screen
+    name={BroadcastAddressEditorScreenName}
+    component={BroadcastAddressEditorScreen}
     options={{title: ''}}
   />
 );

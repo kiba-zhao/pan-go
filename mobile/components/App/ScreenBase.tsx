@@ -3,8 +3,9 @@ import {HeaderButton} from '@react-navigation/elements';
 import type {ViewProps, ViewStyle} from 'react-native';
 import {StyleSheet, View} from 'react-native';
 
-import type {ComponentProps} from 'react';
+import type {ComponentProps, PropsWithChildren} from 'react';
 import {Fragment, useEffect, useRef} from 'react';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {CommonActions, useNavigation, useRoute} from '../App/Navigation';
 import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
@@ -16,6 +17,23 @@ import {scale} from '../Common/SizeMatters';
 import {withTheme} from '../Common/StyleSheet';
 import {useTheme} from '../Common/Theme';
 
+export const HeaderTitle = ({
+  i18nKey,
+  text,
+}: {
+  text?: string;
+  i18nKey?: string;
+}) => {
+  const {t} = useTranslation();
+  const navigation = useNavigation();
+  useEffect(() => {
+    navigation.setOptions({
+      title: i18nKey ? t(i18nKey) : text,
+    });
+  }, []);
+  return null;
+};
+
 export const HeaderAction = withTheme(
   HeaderButton,
   ({sizes}) =>
@@ -25,7 +43,17 @@ export const HeaderAction = withTheme(
     } as ViewStyle),
 );
 
-export const HeaderActions = withTheme(
+export const HeaderActions = ({children}: PropsWithChildren<{}>) => {
+  const navigation = useNavigation();
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <HeaderActionsLayout>{children}</HeaderActionsLayout>,
+    });
+  }, []);
+  return null;
+};
+
+const HeaderActionsLayout = withTheme(
   View,
   ({sizes}) =>
     ({
@@ -78,23 +106,6 @@ export const HeaderBackAction = ({
   );
 };
 
-export const HeaderTitle = ({
-  i18nKey,
-  text,
-}: {
-  text?: string;
-  i18nKey?: string;
-}) => {
-  const {t} = useTranslation();
-  const navigation = useNavigation();
-  useEffect(() => {
-    navigation.setOptions({
-      title: i18nKey ? t(i18nKey) : text,
-    });
-  }, []);
-  return null;
-};
-
 type ScreenLayoutProps = {
   swipeOpts?: SwipePanResponderOpts;
 } & ScreenLayoutBaseProps;
@@ -137,11 +148,11 @@ export const ScreenViewLayout = ({
     createSwipePanResponder(swipeOpts || {onSwipeRight: handleSwipeRight}),
   ).current;
   return (
-    <View
+    <SafeAreaView
       {...panResponder?.panHandlers}
       style={StyleSheet.compose({minHeight: '100%'}, style)}
       {...props}>
       {children}
-    </View>
+    </SafeAreaView>
   );
 };

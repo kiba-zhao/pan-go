@@ -13,7 +13,7 @@ import {
 } from './ScreenRoute';
 
 import {default as AppScreen} from './AppScreen';
-import {DeviceHeaderActions, default as DeviceScreen} from './DeviceScreen';
+import {default as DeviceScreen} from './DeviceScreen';
 import {default as SettingsScreen} from './SettingsScreen';
 
 const HomeAppScreen = () => (
@@ -78,7 +78,6 @@ const DeviceHomeScreen = (title: string) => (
     options={{
       title,
       tabBarIcon: DeviceIcon,
-      headerRight: DeviceHeaderActions,
     }}
   />
 );

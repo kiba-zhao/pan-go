@@ -3,12 +3,14 @@ import type {ComponentProps} from 'react';
 import {withTransform} from '../Common/Component';
 import Icon from '../Common/Icon';
 
-import {Screen} from './Navigation';
+import {Screen, useNavigation} from './Navigation';
 
 import {HeaderButton} from '@react-navigation/elements';
 import type {ViewStyle} from 'react-native';
 import {View} from 'react-native';
 
+import type {PropsWithChildren} from 'react';
+import {useEffect} from 'react';
 import {scale} from '../Common/SizeMatters';
 import {withTheme} from '../Common/StyleSheet';
 
@@ -46,7 +48,7 @@ export function newTabBarIcon({
 
 export const HeaderAction = HeaderButton;
 
-export const HeaderActions = withTheme(
+const HeaderActionsLayout = withTheme(
   View,
   ({sizes}) =>
     ({
@@ -55,3 +57,13 @@ export const HeaderActions = withTheme(
       paddingRight: scale(sizes.base),
     } as ViewStyle),
 );
+
+export const HeaderActions = ({children}: PropsWithChildren<{}>) => {
+  const navigation = useNavigation();
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <HeaderActionsLayout>{children}</HeaderActionsLayout>,
+    });
+  }, []);
+  return null;
+};

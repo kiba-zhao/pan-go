@@ -1,6 +1,5 @@
 import {Fragment, lazy} from 'react';
 import {Screen} from '../App/Navigation';
-import {withLazy} from '../Common/Component';
 import {
   DeviceCreatorScreenName,
   DeviceEditorScreenName,
@@ -18,9 +17,6 @@ const DeviceAppScreen = () => (
 export default DeviceAppScreen;
 
 const DeviceEditorScreen = lazy(() => import('./EditorScreen'));
-const DeviceEditorHeaderActions = lazy(() =>
-  import('./EditorScreen').then(m => ({default: m.DeviceEditorHeaderActions})),
-);
 
 const DeviceEditorAppScreen = () => (
   <Screen
@@ -28,13 +24,10 @@ const DeviceEditorAppScreen = () => (
     component={DeviceEditorScreen}
     options={{
       title: 'Device Settings',
-      headerRight: DeviceEditorHeaderRight,
       animation: 'slide_from_right',
     }}
   />
 );
-
-const DeviceEditorHeaderRight = withLazy(DeviceEditorHeaderActions);
 
 const DeviceCreatorScreen = lazy(() => import('./CreatorScreen'));
 
