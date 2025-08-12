@@ -17,7 +17,7 @@
         "netSection": "网络设置",
         "peerPort": "设备端口",
         "broadcastAddress": "广播地址",
-        "publicAddress": "发布地址"
+        "publicAddress": "公开地址"
       }
     },
     "home": {
@@ -38,10 +38,12 @@
   },
   "action": {
     "find-more": "查找更多",
+    "submit": "提交",
     "cancel": "取消",
     "new": "新建",
     "save": "保存",
     "delete": "删除",
+    "change": "修改",
     "ok": "确定"
   },
   "alert": {

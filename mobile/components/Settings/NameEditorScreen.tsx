@@ -78,7 +78,7 @@ const EditorSection = ({value}: EditorSectionProps) => {
           maxLength={50}
         />
         <Text padding={[0, 0.5]} color="textSecondary" size="small">
-          {t('screen.nameEditor.reminder')}
+          {t('screen.nameEditor.helper')}
         </Text>
       </View>
       <Button

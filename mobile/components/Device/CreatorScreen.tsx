@@ -171,8 +171,7 @@ const DeviceNameModal = () => {
 
   return (
     <TextFieldModal
-      title="Device Name"
-      submitLabel="修改"
+      labelText="Device Name"
       visible={!!nameModalVisible}
       value={fields?.name}
       onClose={handleClose}

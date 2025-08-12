@@ -2,19 +2,19 @@ import type {ModalProps, ViewStyle} from 'react-native';
 import {
   ActivityIndicator,
   Modal as NativeModal,
-  Pressable as NativePressable,
   RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import {scale} from './SizeMatters';
 import {withTheme as withStyleTheme} from './StyleSheet';
 
-import type {ComponentProps} from 'react';
-import type {GestureResponderEvent, NativeSyntheticEvent} from 'react-native';
-import type {PressableProps} from './Pressable';
+import {useCallback, type ComponentProps} from 'react';
+import type {NativeSyntheticEvent} from 'react-native';
+import type {PressableProps, PressableStateCallbackType} from './Pressable';
 import Pressable from './Pressable';
 import {useTheme} from './Theme';
 
@@ -82,49 +82,68 @@ export type ScreenModalProps = {
 } & Omit<ModalProps, 'children'> &
   Pick<PressableProps, 'children'>;
 export const ScreenModal = ({
-  onClose,
   containerProps = {},
+  onClose,
   children,
   backdropColor = 'transparent',
   onRequestClose,
+  animationType = 'slide',
   ...props
 }: ScreenModalProps) => {
-  const {sizes} = useTheme();
-  const handleRequestClose = (event: NativeSyntheticEvent<any>) => {
-    onRequestClose?.(event);
-    onClose?.(event);
-  };
+  const handleRequestClose = useCallback(
+    (event: NativeSyntheticEvent<any>) => {
+      (onRequestClose || onClose)?.(event);
+    },
+    [onRequestClose, onClose],
+  );
 
-  const handleBreakPress = (event: GestureResponderEvent) => {
-    event.stopPropagation();
-    containerProps.onPress?.(event);
-  };
+  const {style, onPress, ...containerProps_} = containerProps;
+
+  const handlePress = useCallback(
+    (event: NativeSyntheticEvent<any>) => {
+      console.log(`handlePress in ScreenModal`);
+      (onPress || onClose)?.(event);
+    },
+    [onPress, onClose],
+  );
+
+  const style_ = useCallback(
+    (state: PressableStateCallbackType) => {
+      const customStyle = typeof style === 'function' ? style(state) : style;
+      return StyleSheet.compose(
+        {
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          height: '100%',
+          width: '100%',
+        },
+        customStyle,
+      );
+    },
+    [style],
+  );
+
+  const children_ = useCallback(
+    (state: PressableStateCallbackType) => {
+      return typeof children === 'function' ? (
+        <TouchableWithoutFeedback>{children(state)}</TouchableWithoutFeedback>
+      ) : (
+        <TouchableWithoutFeedback>{children}</TouchableWithoutFeedback>
+      );
+    },
+    [children],
+  );
+
   return (
     <NativeModal
       onRequestClose={handleRequestClose}
       backdropColor={backdropColor}
-      animationType="fade"
+      animationType={animationType}
       visible={false}
       {...props}>
-      <NativePressable
-        style={{
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100%',
-          width: '100%',
-          paddingHorizontal: scale(sizes.base * 2),
-        }}
-        onPress={onClose}>
-        <Pressable
-          bgColor={'surface'}
-          radius={1}
-          padding={1.5}
-          style={{width: '100%', maxWidth: 400}}
-          {...containerProps}
-          onPress={handleBreakPress}>
-          {children}
-        </Pressable>
-      </NativePressable>
+      <Pressable style={style_} onPress={handlePress} {...containerProps_}>
+        {children_}
+      </Pressable>
     </NativeModal>
   );
 };

@@ -5,20 +5,25 @@
     },
     "nameEditor": {
       "name": "编辑设备名",
-      "reminder": "设备名最多50个字符,过长的设备名不便于识别"
+      "helper": "设备名最多50个字符,过长的设备名不便于识别"
     },
     "peerID": {
       "name": "我的设备ID"
     },
     "peerPortEditor": {
       "name": "编辑设备端口",
-      "reminder": "设备端口为1~65535范围内的整数",
-      "placeholder": "例如 9000"
+      "helper": "设备端口为1~65535范围内的整数",
+      "example": "例如 9000"
     },
     "broadcastAddressEditor": {
       "name": "编辑广播地址",
       "searchPlaceholder": "例如 9000",
-      "deleteAlertMessage": "是否永久移除广播地址 {{address}}?"
+      "deleteAlertMessage": "是否永久移除广播地址 {{address}}?",
+      "addressModal": {
+        "label": "广播地址",
+        "example": "例如 224.0.0.2:9100",
+        "helper": "仅支持填写 IPv4 / IPv6的组播地址"
+      }
     }
   }
 }

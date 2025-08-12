@@ -3,6 +3,7 @@ import {useMemo, useState} from 'react';
 import {ActivityIndicator, VirtualizedList} from 'react-native';
 import {HeaderActions, HeaderTitle, ScreenViewLayout} from '../App/ScreenBase';
 import Alert from '../Common/Alert';
+import {TextFieldModal} from '../Common/Field';
 import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
 import Paper from '../Common/Paper';
@@ -21,6 +22,10 @@ type AddressInfo = {
   index: number;
 };
 const BroadcastAddressEditorScreen = () => {
+  const [selectedInfo, setSelectedInfo] = useState<AddressInfo | undefined>(
+    void 0,
+  );
+
   const {data, refetch, isRefetching} = useSettings();
   const [filterText, setFilterText] = useState<string>('');
 
@@ -37,11 +42,15 @@ const BroadcastAddressEditorScreen = () => {
   }, [data?.broadcastAddress, filterText]);
 
   const handleNew = () => {
-    console.log('handleNew');
+    setSelectedInfo({index: -1, value: ''});
   };
 
   const handleEdit = (info: AddressInfo) => {
-    console.log('handleEdit', info);
+    setSelectedInfo(info);
+  };
+
+  const handleModalClose = () => {
+    setSelectedInfo(void 0);
   };
 
   return (
@@ -49,6 +58,11 @@ const BroadcastAddressEditorScreen = () => {
       <HeaderTitle i18nKey="screen.broadcastAddressEditor.name" />
       <BroadcastAddressHeaderActions onNewPress={handleNew} />
       <ScreenViewLayout>
+        <BroadcastAddressModal
+          onClose={handleModalClose}
+          info={selectedInfo}
+          addressList={data?.broadcastAddress}
+        />
         <VirtualizedList<AddressInfo>
           ListHeaderComponent={
             <BroadcastAddressHeader
@@ -210,5 +224,61 @@ const BroadcastAddressItem = ({
         </Text>
       )}
     </SectionItem>
+  );
+};
+
+type BroadcastAddressModalProps = {
+  info?: AddressInfo;
+  addressList?: AppSettings['broadcastAddress'];
+  onClose?: () => void;
+};
+const BroadcastAddressModal = ({
+  info,
+  addressList,
+  onClose,
+}: BroadcastAddressModalProps) => {
+  const queryClient = useQueryClient();
+  const {mutate} = useMutation({
+    mutationFn: async (broadcastAddress: string[]) =>
+      await save({broadcastAddress} as AppSettingsFields),
+    onSuccess: data => {
+      queryClient.setQueryData(QueryKey, data);
+      onClose?.();
+    },
+    onError: error => {
+      Alert.alert(error.name, error.message);
+    },
+  });
+
+  const handleSubmit = (address: string) => {
+    if (address.length <= 0) return;
+    let addresses = addressList?.slice(0) || [];
+    if (info?.index === void 0 || info?.index < 0) {
+      addresses.push(address);
+    } else {
+      addresses.splice(info?.index || 0, 1, address);
+    }
+    console.log(3333, addresses);
+    mutate(addresses);
+  };
+
+  const handleValid = (text?: string): boolean | Error => {
+    if (text === void 0 || text.length <= 0) return false;
+    if (addressList?.includes(text)) return false;
+    return true;
+  };
+
+  return (
+    <TextFieldModal
+      visible={!!info}
+      value={info?.value}
+      labelI18nKey="screen.broadcastAddressEditor.addressModal.label"
+      onValid={handleValid}
+      onSubmit={handleSubmit}
+      onClose={onClose}
+      keyboardType="numeric"
+      placeholderI18nKey="screen.broadcastAddressEditor.addressModal.example"
+      helperI18nKey="screen.broadcastAddressEditor.addressModal.helper"
+    />
   );
 };

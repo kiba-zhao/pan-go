@@ -14,6 +14,7 @@ import type {ThemeColor} from './Theme';
 import {transformColor, useTheme} from './Theme';
 
 type NativePressableProps = ComponentProps<typeof NativePressable>;
+export {PressableStateCallbackType};
 export type PressableProps = {
   bgColor?: ThemeColor;
   borderColor?:

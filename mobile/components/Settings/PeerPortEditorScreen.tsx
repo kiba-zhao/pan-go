@@ -81,13 +81,13 @@ const EditorSection = ({value}: {value?: number}) => {
           editable={!isPending}
           maxLength={text === '0' ? 1 : 5}
           value={text}
-          placeholder={t('screen.peerPortEditor.placeholder')}
+          placeholder={t('screen.peerPortEditor.example')}
           onChangeText={handleChange}
           onSubmitEditing={() => handleSubmit(text)}
           inputMode="numeric"
         />
         <Text padding={[0, 0.5]} color="textSecondary" size="small">
-          {t('screen.peerPortEditor.reminder')}
+          {t('screen.peerPortEditor.helper')}
         </Text>
       </View>
       <Button

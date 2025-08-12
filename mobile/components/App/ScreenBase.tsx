@@ -1,4 +1,4 @@
-import {HeaderButton} from '@react-navigation/elements';
+import {HeaderButton, useHeaderHeight} from '@react-navigation/elements';
 
 import type {ViewProps, ViewStyle} from 'react-native';
 import {StyleSheet, View} from 'react-native';
@@ -16,6 +16,8 @@ import {ScreenLayout as ScreenLayoutBase} from '../Common/ScreenBase';
 import {scale} from '../Common/SizeMatters';
 import {withTheme} from '../Common/StyleSheet';
 import {useTheme} from '../Common/Theme';
+
+export {useHeaderHeight};
 
 export const HeaderTitle = ({
   i18nKey,

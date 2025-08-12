@@ -409,8 +409,7 @@ const DeviceNameModal = ({id, device}: DeviceSectionProps) => {
 
   return (
     <TextFieldModal
-      title="Device Name"
-      submitLabel="修改"
+      labelText="Device Name"
       visible={!!nameModalVisible}
       value={device?.name}
       onClose={handleClose}

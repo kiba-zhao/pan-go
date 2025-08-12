@@ -2,6 +2,7 @@ import type {DeviceQRCodeValue} from '@pango/data';
 import {MarshalDeviceQRCode} from '@pango/data';
 import type {ComponentProps} from 'react';
 import {useMemo} from 'react';
+import {StyleSheet} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Button from '../Common/Button';
 import Paper from '../Common/Paper';
@@ -51,24 +52,38 @@ export const DeviceQRCodeModal = ({
 }: DeviceQRCodeModalProps) => {
   return (
     <ScreenModal
-      containerProps={{style: {alignItems: 'center'}}}
       onClose={onClose}
+      containerProps={{
+        padding: [6, 0, 0, 0],
+        style: styles.modalContainer,
+      }}
       {...props}>
-      <DeviceQRCode size={QRCodeSize} name={name} peerId={peerId} />
-      <Text size="small" margin={[1.5, 0, 0, 0]}>
-        设备: {name}
-      </Text>
-      <Paper
-        bgColor="transparent"
-        padding={[3, 0, 1, 0]}
-        gap={1.5}
-        style={{width: QRCodeSize}}>
-        <Button
-          onPress={event => onClose?.(event)}
-          title="关闭"
-          disabled={name.length <= 0 || peerId.length <= 0}
-        />
+      <Paper padding={1.5} style={styles.modalView}>
+        <DeviceQRCode size={QRCodeSize} name={name} peerId={peerId} />
+        <Text size="small" margin={[1.5, 0, 0, 0]}>
+          设备: {name}
+        </Text>
+        <Paper
+          bgColor="transparent"
+          padding={[3, 0, 1, 0]}
+          gap={1.5}
+          style={{width: QRCodeSize}}>
+          <Button
+            onPress={event => onClose?.(event)}
+            title="关闭"
+            disabled={name.length <= 0 || peerId.length <= 0}
+          />
+        </Paper>
       </Paper>
     </ScreenModal>
   );
 };
+
+const styles = StyleSheet.create({
+  modalContainer: {
+    justifyContent: 'flex-start',
+  },
+  modalView: {
+    alignItems: 'center',
+  },
+});
