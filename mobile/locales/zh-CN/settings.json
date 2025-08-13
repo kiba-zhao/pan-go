@@ -15,9 +15,20 @@
       "helper": "设备端口为1~65535范围内的整数",
       "example": "例如 9000"
     },
+
+    "publicAddressEditor": {
+      "name": "编辑设备地址",
+      "searchExample": "例如 hostname",
+      "deleteAlertMessage": "是否永久移除设备地址 {{address}}?",
+      "addressModal": {
+        "label": "设备地址",
+        "example": "例如 hostname.com",
+        "helper": "支持填写 主机名/域名/IP地址,可指定端口"
+      }
+    },
     "broadcastAddressEditor": {
       "name": "编辑广播地址",
-      "searchPlaceholder": "例如 9000",
+      "searchExample": "例如 9000",
       "deleteAlertMessage": "是否永久移除广播地址 {{address}}?",
       "addressModal": {
         "label": "广播地址",

@@ -17,7 +17,7 @@
         "netSection": "网络设置",
         "peerPort": "设备端口",
         "broadcastAddress": "广播地址",
-        "publicAddress": "公开地址"
+        "publicAddress": "设备地址"
       }
     },
     "home": {

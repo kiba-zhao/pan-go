@@ -14,6 +14,7 @@ import {
   NameEditorScreenName,
   PeerIDScreenName,
   PeerPortEditorScreenName,
+  PublicAddressEditorScreenName,
   QRCodeScreenName,
 } from '../Settings/ScreenRoute';
 import {load as loadSettings} from '../Spec/AppSettings';
@@ -107,6 +108,10 @@ const NetSection = ({settings}: NetSectionProps) => {
     navigation.dispatch(CommonActions.navigate(PeerPortEditorScreenName));
   };
 
+  const handlePublicAddressPress = () => {
+    navigation.dispatch(CommonActions.navigate(PublicAddressEditorScreenName));
+  };
+
   const handleBroadcastAddressPress = () => {
     navigation.dispatch(
       CommonActions.navigate(BroadcastAddressEditorScreenName),
@@ -126,6 +131,17 @@ const NetSection = ({settings}: NetSectionProps) => {
           editable
         />
       </SectionItem>
+      <SectionItem variant="row" onPress={handlePublicAddressPress}>
+        <IconFieldItem
+          label={t('screen.settings.sections.publicAddress')}
+          disabled={
+            !settings ||
+            !settings.publicAddress ||
+            settings.publicAddress.length <= 0
+          }
+          name="chevron-forward-outline"
+        />
+      </SectionItem>
       <SectionItem variant="row" onPress={handleBroadcastAddressPress}>
         <IconFieldItem
           label={t('screen.settings.sections.broadcastAddress')}
@@ -133,17 +149,6 @@ const NetSection = ({settings}: NetSectionProps) => {
             !settings ||
             !settings.broadcastAddress ||
             settings.broadcastAddress.length <= 0
-          }
-          name="chevron-forward-outline"
-        />
-      </SectionItem>
-      <SectionItem variant="row">
-        <IconFieldItem
-          label={t('screen.settings.sections.publicAddress')}
-          disabled={
-            !settings ||
-            !settings.publicAddress ||
-            settings.publicAddress.length <= 0
           }
           name="chevron-forward-outline"
         />

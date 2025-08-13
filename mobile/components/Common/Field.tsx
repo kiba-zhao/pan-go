@@ -132,6 +132,7 @@ export const TextFieldModal = ({
 
   useEffect(() => {
     setText(value);
+    setValidState(false);
   }, [value]);
 
   const handleValid = useCallback(

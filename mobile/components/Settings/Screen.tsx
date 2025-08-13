@@ -8,6 +8,7 @@ import {
   Namespace,
   PeerIDScreenName,
   PeerPortEditorScreenName,
+  PublicAddressEditorScreenName,
   QRCodeScreenName,
 } from './ScreenRoute';
 
@@ -24,6 +25,7 @@ const SettingsAppScreen = () => (
     {NameEditorAppScreen()}
     {PeerIDAppScreen()}
     {PeerPorEditorAppScreen()}
+    {PublicAddressEditorAppScreen()}
     {BroadcastAddressEditorAppScreen()}
   </Fragment>
 );
@@ -68,6 +70,18 @@ const PeerPorEditorAppScreen = () => (
   <Screen
     name={PeerPortEditorScreenName}
     component={PeerPortEditorScreen}
+    options={{title: ''}}
+  />
+);
+
+const PublicAddressEditorScreen = lazy(
+  () => import('./PublicAddressEditorScreen'),
+);
+
+const PublicAddressEditorAppScreen = () => (
+  <Screen
+    name={PublicAddressEditorScreenName}
+    component={PublicAddressEditorScreen}
     options={{title: ''}}
   />
 );

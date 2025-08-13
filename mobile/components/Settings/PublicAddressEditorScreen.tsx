@@ -1,6 +1,6 @@
 import {AppSettings, AppSettingsFields} from '@pango/data';
 import {useMemo, useState} from 'react';
-import {ActivityIndicator, VirtualizedList} from 'react-native';
+import {ActivityIndicator, StyleSheet, VirtualizedList} from 'react-native';
 import {HeaderActions, HeaderTitle, ScreenViewLayout} from '../App/ScreenBase';
 import Alert from '../Common/Alert';
 import {TextFieldModal} from '../Common/Field';
@@ -8,10 +8,8 @@ import {useTranslation} from '../Common/I18Next';
 import Icon from '../Common/Icon';
 import Paper from '../Common/Paper';
 import {useMutation, useQueryClient} from '../Common/ReactQuery';
-import type {SectionItemVariant} from '../Common/Section';
-import {SectionItem} from '../Common/Section';
-import type {TextProps} from '../Common/Text';
-import Text from '../Common/Text';
+import {SectionItem, SectionItemVariant} from '../Common/Section';
+import Text, {TextProps} from '../Common/Text';
 import TextInput from '../Common/TextInput';
 import {save} from '../Spec/AppSettings';
 import {QueryKey, useSettings} from './ReactQuery';
@@ -21,7 +19,7 @@ type AddressInfo = {
   value: string;
   index: number;
 };
-const BroadcastAddressEditorScreen = () => {
+const PublicAddressEditorScreen = () => {
   const [selectedInfo, setSelectedInfo] = useState<AddressInfo | undefined>(
     void 0,
   );
@@ -30,7 +28,7 @@ const BroadcastAddressEditorScreen = () => {
   const [filterText, setFilterText] = useState<string>('');
 
   const addressInfoList = useMemo(() => {
-    let list = (data?.broadcastAddress || []).map((value, index) => ({
+    let list = (data?.publicAddress || []).map((value, index) => ({
       value,
       index,
     }));
@@ -39,7 +37,7 @@ const BroadcastAddressEditorScreen = () => {
       list = list.filter(item => item.value.includes(filterText));
     }
     return list;
-  }, [data?.broadcastAddress, filterText]);
+  }, [data?.publicAddress, filterText]);
 
   const handleNew = () => {
     setSelectedInfo({index: -1, value: ''});
@@ -55,27 +53,22 @@ const BroadcastAddressEditorScreen = () => {
 
   return (
     <I18NextProvider>
-      <HeaderTitle i18nKey="screen.broadcastAddressEditor.name" />
-      <BroadcastAddressHeaderActions onNewPress={handleNew} />
+      <HeaderTitle i18nKey="screen.publicAddressEditor.name" />
+      <PublicAddressHeaderActions onNew={handleNew} />
       <ScreenViewLayout>
-        <BroadcastAddressModal
-          onClose={handleModalClose}
+        <PublicAddressModal
           info={selectedInfo}
-          addressList={data?.broadcastAddress}
+          addressList={data?.publicAddress}
+          onClose={handleModalClose}
         />
         <VirtualizedList<AddressInfo>
           ListHeaderComponent={
-            <BroadcastAddressHeader
-              value={filterText}
-              onChange={setFilterText}
-            />
+            <PublicAddressHeader value={filterText} onChange={setFilterText} />
           }
           data={addressInfoList}
           renderItem={info => (
-            <BroadcastAddressItem
-              addresses={
-                data?.broadcastAddress as AppSettings['broadcastAddress']
-              }
+            <PublicAddressItem
+              addresses={data?.publicAddress as AppSettings['publicAddress']}
               info={info.item}
               onPress={() => handleEdit(info.item)}
             />
@@ -92,26 +85,27 @@ const BroadcastAddressEditorScreen = () => {
   );
 };
 
-export default BroadcastAddressEditorScreen;
+export default PublicAddressEditorScreen;
 
-type BroadcastAddressHeaderActionsProps = {
-  onNewPress?: TextProps['onPress'];
+type PublicAddressHeaderActionsProps = {
+  onNew: () => void;
 };
-const BroadcastAddressHeaderActions = ({
-  onNewPress,
-}: BroadcastAddressHeaderActionsProps) => {
+const PublicAddressHeaderActions = ({
+  onNew,
+}: PublicAddressHeaderActionsProps) => {
   return (
     <HeaderActions>
-      <BroadcastAddressNewHeaderAction onPress={onNewPress} />
+      <PublicAddressNewHeaderAction onPress={onNew} />
     </HeaderActions>
   );
 };
 
-const BroadcastAddressNewHeaderAction = ({
-  onPress,
-}: {
+type PublicAddressNewHeaderActionProps = {
   onPress?: TextProps['onPress'];
-}) => {
+};
+const PublicAddressNewHeaderAction = ({
+  onPress,
+}: PublicAddressNewHeaderActionProps) => {
   const {t} = useTranslation();
   return (
     <Text color="primary" font="bold" onPress={onPress}>
@@ -120,44 +114,35 @@ const BroadcastAddressNewHeaderAction = ({
   );
 };
 
-type BroadcastAddressHeaderProps = BroadcastAddressSearchInputProps;
-const BroadcastAddressHeader = ({
-  value,
-  onChange,
-}: BroadcastAddressHeaderProps) => {
+type PublicAddressHeaderProps = PublicAddressSearchInputProps;
+const PublicAddressHeader = ({value, onChange}: PublicAddressHeaderProps) => {
   return (
     <Paper
       bgColor={'transparent'}
       padding={1}
       gap={1}
-      style={{flexDirection: 'row', alignItems: 'center'}}>
-      <BroadcastAddressSearchInput value={value} onChange={onChange} />
+      style={styles.headerPaper}>
+      <PublicAddressSearchInput value={value} onChange={onChange} />
     </Paper>
   );
 };
 
-type BroadcastAddressSearchInputProps = {
+type PublicAddressSearchInputProps = {
   value?: string;
   onChange?: (value: string) => void;
 };
-const BroadcastAddressSearchInput = ({
+
+const PublicAddressSearchInput = ({
   value,
   onChange,
-}: BroadcastAddressSearchInputProps) => {
+}: PublicAddressSearchInputProps) => {
   const {t} = useTranslation();
   return (
-    <Paper
-      padding={[0, 1, 0, 1]}
-      style={{
-        flex: 1,
-        height: '100%',
-        flexDirection: 'row',
-        alignItems: 'center',
-      }}>
+    <Paper padding={[0, 1, 0, 1]} style={styles.searchInputPaper}>
       <Icon name="search-outline" color="textPrimary" />
       <TextInput
-        placeholder={t('screen.broadcastAddressEditor.searchExample')}
-        style={{flex: 1}}
+        placeholder={t('screen.publicAddressEditor.searchExample')}
+        style={styles.searchInput}
         value={value}
         onChangeText={onChange}
       />
@@ -165,24 +150,24 @@ const BroadcastAddressSearchInput = ({
   );
 };
 
-type BroadcastAddressItemProps = {
-  addresses: AppSettings['broadcastAddress'];
-  info?: AddressInfo;
+type PublicAddressItemProps = {
   variant?: SectionItemVariant;
+  info: AddressInfo;
   onPress?: () => void;
+  addresses: AppSettings['publicAddress'];
 };
-const BroadcastAddressItem = ({
-  addresses,
+const PublicAddressItem = ({
   info,
-  variant = 'row',
   onPress,
-}: BroadcastAddressItemProps) => {
+  addresses,
+  variant = 'row',
+}: PublicAddressItemProps) => {
   const {t} = useTranslation();
 
   const queryClient = useQueryClient();
   const {mutate, isPending} = useMutation({
-    mutationFn: async (field: AppSettings['broadcastAddress']) =>
-      await save({broadcastAddress: field} as AppSettingsFields),
+    mutationFn: async (field: AppSettings['publicAddress']) =>
+      await save({publicAddress: field} as AppSettingsFields),
     onSuccess: data => {
       queryClient.setQueryData(QueryKey, data);
     },
@@ -200,12 +185,17 @@ const BroadcastAddressItem = ({
   const handleDelete = () => {
     Alert.alert(
       t('alert.warningTitle'),
-      t('screen.broadcastAddressEditor.deleteAlertMessage', {
-        address: info?.value,
+      t('screen.publicAddressEditor.deleteAlertMessage', {
+        address: info.value,
       }),
       [
-        {text: t('action.cancel')},
-        {text: t('action.ok'), onPress: handleConfirm},
+        {
+          text: t('action.cancel'),
+        },
+        {
+          text: t('action.ok'),
+          onPress: handleConfirm,
+        },
       ],
     );
   };
@@ -213,8 +203,8 @@ const BroadcastAddressItem = ({
   return (
     <SectionItem variant={variant} gap={1} onPress={onPress}>
       <Icon name="create-outline" color="textPrimary" />
-      <Text color="textPrimary" style={{flex: 1}}>
-        {info?.value}
+      <Text color="textPrimary" style={styles.sectionItemText}>
+        {info.value}
       </Text>
       {isPending ? (
         <ActivityIndicator />
@@ -227,20 +217,20 @@ const BroadcastAddressItem = ({
   );
 };
 
-type BroadcastAddressModalProps = {
+type PublicAddressModalProps = {
   info?: AddressInfo;
-  addressList?: AppSettings['broadcastAddress'];
+  addressList?: AppSettings['publicAddress'];
   onClose?: () => void;
 };
-const BroadcastAddressModal = ({
+const PublicAddressModal = ({
   info,
   addressList,
   onClose,
-}: BroadcastAddressModalProps) => {
+}: PublicAddressModalProps) => {
   const queryClient = useQueryClient();
   const {mutate} = useMutation({
-    mutationFn: async (broadcastAddress: string[]) =>
-      await save({broadcastAddress} as AppSettingsFields),
+    mutationFn: async (publicAddress: string[]) =>
+      await save({publicAddress} as AppSettingsFields),
     onSuccess: data => {
       queryClient.setQueryData(QueryKey, data);
       onClose?.();
@@ -271,13 +261,31 @@ const BroadcastAddressModal = ({
     <TextFieldModal
       visible={!!info}
       value={info?.value}
-      labelI18nKey="screen.broadcastAddressEditor.addressModal.label"
-      onValid={handleValid}
+      labelI18nKey="screen.publicAddressEditor.addressModal.label"
+      placeholderI18nKey="screen.publicAddressEditor.addressModal.example"
+      helperI18nKey="screen.publicAddressEditor.addressModal.helper"
       onSubmit={handleSubmit}
+      onValid={handleValid}
       onClose={onClose}
-      keyboardType="numeric"
-      placeholderI18nKey="screen.broadcastAddressEditor.addressModal.example"
-      helperI18nKey="screen.broadcastAddressEditor.addressModal.helper"
     />
   );
 };
+
+const styles = StyleSheet.create({
+  headerPaper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchInputPaper: {
+    flex: 1,
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchInput: {
+    flex: 1,
+  },
+  sectionItemText: {
+    flex: 1,
+  },
+});
