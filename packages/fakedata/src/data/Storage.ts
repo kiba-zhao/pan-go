@@ -10,7 +10,7 @@ export function seedStorage(opts?: SeedOptions) {
 function newStorage() {
   const fileType = faker.helpers.arrayElement(["F", "D"]);
   const mimeType = fileType === "F" ? newMimeType() : "";
-  const extname = fileType === "F" ? newMimeType() : "";
+  const extname = fileType === "F" ? faker.system.fileExt(mimeType) : "";
   const name =
     fileType === "F"
       ? faker.system.commonFileName(extname)

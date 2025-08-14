@@ -16,6 +16,7 @@ import {useCallback, type ComponentProps} from 'react';
 import type {NativeSyntheticEvent} from 'react-native';
 import type {PressableProps, PressableStateCallbackType} from './Pressable';
 import Pressable from './Pressable';
+import Text from './Text';
 import {useTheme} from './Theme';
 
 export type ScreenLayoutProps = ComponentProps<typeof ScrollView>;
@@ -145,5 +146,28 @@ export const ScreenModal = ({
         {children_}
       </Pressable>
     </NativeModal>
+  );
+};
+
+type ScreenEmptyProps = ComponentProps<typeof View>;
+export const ScreenEmpty = ({children, style, ...props}: ScreenEmptyProps) => {
+  const {sizes} = useTheme();
+
+  const style_ = style || {
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    paddingVertical: scale(sizes.base * 8),
+  };
+
+  return (
+    <View style={style_} {...props}>
+      {typeof children === 'string' ? (
+        <Text font="bold" color="textDisabled" size="title">
+          {children}
+        </Text>
+      ) : (
+        children
+      )}
+    </View>
   );
 };

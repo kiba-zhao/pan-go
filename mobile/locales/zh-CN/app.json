@@ -23,11 +23,11 @@
     "home": {
       "box": {
         "storage": {
-          "title": "本地存储",
+          "title": "我的文件",
           "desc": "{{num}} 文件"
         },
         "device-storage": {
-          "title": "授权设备",
+          "title": "外部存储",
           "desc": "{{enabled}} / {{all}}"
         }
       }

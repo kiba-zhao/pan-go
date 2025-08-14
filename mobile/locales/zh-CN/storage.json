@@ -1,0 +1,11 @@
+{
+  "screen": {
+    "explorer": {
+      "name": "我的文件",
+      "empty": "尚未添加文件",
+      "totalDesc": "共 {{num}} 项",
+      "refresh": "获取最新",
+      "selectFiles": "选择本地文件"
+    }
+  }
+}

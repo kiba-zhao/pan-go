@@ -1,6 +1,6 @@
 import {StyleSheet, View} from 'react-native';
 
-import {scale, verticalScale} from 'react-native-size-matters';
+import {scale, verticalScale} from '../Common/SizeMatters';
 
 import {CommonActions, useNavigation} from '../App/Navigation';
 import {ScreenLayout} from '../App/ScreenBase';
@@ -12,7 +12,7 @@ import Text from '../Common/Text';
 import {useTheme} from '../Common/Theme';
 
 import {ExplorerScreenName as DeviceStorageScreenName} from '../DeviceStorage/Screen';
-import {ExplorerScreenName as StorageScreenName} from '../Storage/Screen';
+import {ExplorerScreenName as StorageScreenName} from '../Storage/ScreenRoute';
 import {HomeDeviceScreenName} from './ScreenRoute';
 
 const AppScreen = () => {
@@ -85,7 +85,7 @@ const DeviceStorageBox = () => {
         {t('screen.home.box.device-storage.desc', {enabled: 12, all: 32})}
       </Text>
       <View style={{paddingVertical: verticalScale(sizes.base)}}>
-        <Icon color="primary" name="radio" size="large" />
+        <Icon color="primary" name="file-tray" size="large" />
       </View>
     </Box>
   );

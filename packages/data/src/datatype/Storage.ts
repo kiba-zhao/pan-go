@@ -1,8 +1,13 @@
+enum FileType {
+  File = "F",
+  Directory = "D",
+}
+
 export type Storage = {
   id: number;
   name: string;
   filePath: string;
-  fileType: "F" | "D";
+  fileType: FileType;
   mimeType: string;
   size: number;
   enabled: boolean;

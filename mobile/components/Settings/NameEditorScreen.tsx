@@ -21,9 +21,9 @@ const NameEditorScreen = () => {
 
   return (
     <I18NextProvider>
+      <HeaderTitle i18nKey="screen.nameEditor.name" />
       <ScreenLayout
         refreshControl={<ScreenRefreshControl onRefresh={refetch} />}>
-        <HeaderTitle i18nKey="screen.nameEditor.name" />
         <EditorSection value={data?.name} />
       </ScreenLayout>
     </I18NextProvider>
