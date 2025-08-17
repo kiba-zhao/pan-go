@@ -35,12 +35,11 @@ func TestAppSettingsController(t *testing.T) {
 		cfgPath := config.RootPath()
 		settings := config.Settings{}
 		settings.Name = "test name"
-		settings.WebAddress = []string{"127.0.0.1:9002"}
-		settings.PeerAddress = []string{"127.0.0.1:9001"}
-		settings.BroadcastAddress = []string{"127.0.0.1:9000"}
-		settings.PublicAddress = []string{"127.0.0.1:9003"}
-		settings.GuardEnabled = true
-		settings.GuardAccess = true
+		settings.WebAddr = "127.0.0.1:9002"
+		settings.PeerPort = 9001
+		settings.BroadcastAddrs = []string{"127.0.0.1:9000"}
+		settings.PublicAddrs = []string{"127.0.0.1:9003"}
+		settings.Enabled = true
 
 		ctrl.AppSettingsService.SetConfigSettings(&settings)
 		ctrl.AppSettingsService.SetPeerID(peerId)
@@ -64,26 +63,25 @@ func TestAppSettingsController(t *testing.T) {
 		cfgPath := config.RootPath()
 		settings := config.Settings{}
 		settings.Name = "test name"
-		settings.WebAddress = []string{"127.0.0.1:9002"}
-		settings.PeerAddress = []string{"127.0.0.1:9001"}
-		settings.BroadcastAddress = []string{"127.0.0.1:9000"}
-		settings.PublicAddress = []string{"127.0.0.1:9003"}
-		settings.GuardEnabled = true
-		settings.GuardAccess = true
+		settings.WebAddr = "127.0.0.1:9002"
+		settings.PeerPort = 9001
+		settings.BroadcastAddrs = []string{"127.0.0.1:9000"}
+		settings.PublicAddrs = []string{"127.0.0.1:9003"}
+		settings.Enabled = true
 
 		ctrl.AppSettingsService.SetConfigSettings(&settings)
 		ctrl.AppSettingsService.SetPeerID(peerId)
 
 		fields := appsettings.AppSettingsFields{}
 		fields.Name = "field name"
-		fields.WebAddress = []string{"0.0.0.0:9002"}
-		fields.PeerAddress = []string{"0.0.0.0:9001"}
-		fields.BroadcastAddress = []string{"0.0.0.0:9000"}
-		fields.PublicAddress = []string{"0.0.0.0:9003"}
-		fields.GuardEnabled = new(bool)
-		*fields.GuardEnabled = false
-		fields.GuardAccess = new(bool)
-		*fields.GuardAccess = false
+		webAddr := "0.0.0.0:9002"
+		fields.WebAddr = &webAddr
+		peerPort := uint16(9007)
+		fields.PeerPort = &peerPort
+		fields.BroadcastAddrs = []string{"0.0.0.0:9000"}
+		fields.PublicAddrs = []string{"0.0.0.0:9003"}
+		enabled := false
+		fields.Enabled = &enabled
 
 		var settings_ config.AppSettings
 		appConfig := &configMocked.MockAppConfig[config.AppSettings]{}
@@ -92,12 +90,11 @@ func TestAppSettingsController(t *testing.T) {
 		appConfig.On("Save", mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
 			settings_ = args.Get(0).(config.AppSettings)
 			assert.Equal(t, fields.Name, settings_.Name)
-			assert.Equal(t, fields.WebAddress, settings_.WebAddress)
-			assert.Equal(t, fields.PeerAddress, settings_.PeerAddress)
-			assert.Equal(t, fields.BroadcastAddress, settings_.BroadcastAddress)
-			assert.Equal(t, fields.PublicAddress, settings_.PublicAddress)
-			assert.Equal(t, *fields.GuardEnabled, settings_.GuardEnabled)
-			assert.Equal(t, *fields.GuardAccess, settings_.GuardAccess)
+			assert.Equal(t, *fields.WebAddr, settings_.WebAddr)
+			assert.Equal(t, *fields.PeerPort, settings_.PeerPort)
+			assert.Equal(t, fields.BroadcastAddrs, settings_.BroadcastAddrs)
+			assert.Equal(t, fields.PublicAddrs, settings_.PublicAddrs)
+			assert.Equal(t, *fields.Enabled, settings_.Enabled)
 			ctrl.AppSettingsService.SetConfigSettings(settings_)
 		})
 

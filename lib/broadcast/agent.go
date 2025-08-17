@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"net"
 	"pan/lib/log"
 	"pan/lib/peer"
 	"pan/lib/quic"
@@ -21,7 +20,7 @@ import (
 
 var ErrBroadcastAgentDeliverExit = errors.New("broadcast.BroadcastAgent Error: Deliver Exit")
 var ErrBroadcastAgentPayloadInvalid = errors.New("broadcast.BroadcastAgent Error: Payload Invalid")
-var ErrBroadcastAgentDeliverOnlineUnavailable = errors.New("broadcast.BroadcastAgent Error: Deliver Online Unavailable")
+var ErrBroadcastAgentUnavailable = errors.New("broadcast.BroadcastAgent Error: Unavailable")
 
 const (
 	BroadcastTypeOnline = uint8(iota + 1)
@@ -34,6 +33,12 @@ const (
 	BroadcastMulticastTypeIPV6Local
 )
 
+type BroadcastAgentRuntime interface {
+	QuicCluster() quic.QuicCluster
+	PeerSettings() *peer.PeerSettings
+	Store() BroadcastStore
+}
+
 type stdBroadcastAgent struct {
 	logger log.Logger
 
@@ -41,41 +46,8 @@ type stdBroadcastAgent struct {
 	reloadLock sync.Mutex
 	reload     bool
 
-	publicAddrs   []string
-	publicAddrsRW sync.RWMutex
-
-	peerSettings   *peer.PeerSettings
-	peerSettingsRW sync.RWMutex
-
-	store   BroadcastStore
-	storeRW sync.RWMutex
-
-	quicCluster   quic.QuicCluster
-	quicClusterRW sync.RWMutex
-
-	cluster *stdBroadcastCluster
-}
-
-// PublicAddrs returns the list of public addresses that the broadcast agent can use.
-//
-// The addresses are used to broadcast messages publicly.
-//
-// The addresses are retrieved from the registry, and the list is deduplicated
-// before being returned.
-func (agent *stdBroadcastAgent) PublicAddrs() []string {
-	agent.publicAddrsRW.RLock()
-	defer agent.publicAddrsRW.RUnlock()
-	return agent.publicAddrs
-}
-
-func (agent *stdBroadcastAgent) SetPublicAddrs(addrs []string) {
-	agent.publicAddrsRW.Lock()
-	defer agent.publicAddrsRW.Unlock()
-	if slices.Equal(agent.publicAddrs, addrs) {
-		return
-	}
-	agent.publicAddrs = addrs
-	agent.Reload()
+	runtime BroadcastAgentRuntime
+	cluster BroadcastCluster
 }
 
 func (agent *stdBroadcastAgent) Reload() {
@@ -106,46 +78,6 @@ func (agent *stdBroadcastAgent) ServeBroadcast(payload []byte, addr string) erro
 	return err
 }
 
-func (agent *stdBroadcastAgent) PeerSettings() *peer.PeerSettings {
-	agent.peerSettingsRW.RLock()
-	defer agent.peerSettingsRW.RUnlock()
-	return agent.peerSettings
-}
-
-func (agent *stdBroadcastAgent) SetPeerSettings(settings *peer.PeerSettings) {
-	agent.peerSettingsRW.Lock()
-	defer agent.peerSettingsRW.Unlock()
-	agent.peerSettings = settings
-
-	agent.Reload()
-}
-
-func (agent *stdBroadcastAgent) Store() BroadcastStore {
-	agent.storeRW.RLock()
-	defer agent.storeRW.RUnlock()
-	return agent.store
-}
-
-func (agent *stdBroadcastAgent) SetStore(store BroadcastStore) {
-	agent.storeRW.Lock()
-	defer agent.storeRW.Unlock()
-	agent.store = store
-
-	agent.Reload()
-}
-
-func (agent *stdBroadcastAgent) QuicCluster() quic.QuicCluster {
-	agent.quicClusterRW.RLock()
-	defer agent.quicClusterRW.RUnlock()
-	return agent.quicCluster
-}
-
-func (agent *stdBroadcastAgent) SetQuicCluster(cluster quic.QuicCluster) {
-	agent.quicClusterRW.Lock()
-	defer agent.quicClusterRW.Unlock()
-	agent.quicCluster = cluster
-}
-
 // DeliverOnline sends the online message to the peers.
 //
 // The message is sent to the peers whose addresses are in the parameter list.
@@ -154,24 +86,15 @@ func (agent *stdBroadcastAgent) SetQuicCluster(cluster quic.QuicCluster) {
 // Returns an error if the broadcast agent is unavailable or if there is an issue delivering the online message.
 func (agent *stdBroadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 
-	store := agent.Store()
+	agentRuntime := agent.runtime
+	if agentRuntime == nil {
+		return ErrBroadcastAgentUnavailable
+	}
+	store := agentRuntime.Store()
 	cluster := agent.cluster
-	settings := agent.PeerSettings()
+	settings := agentRuntime.PeerSettings()
 	if settings == nil || cluster == nil || store == nil {
-		return ErrBroadcastAgentDeliverOnlineUnavailable
-	}
-
-	if len(deliverAddrs) <= 0 {
-		deliverAddrs = cluster.DeliverAddrs()
-	}
-
-	if len(deliverAddrs) <= 0 {
-		return nil
-	}
-
-	publicAddrs := agent.PublicAddrs()
-	if len(publicAddrs) <= 0 {
-		return nil
+		return ErrBroadcastAgentUnavailable
 	}
 
 	info := BroadcastInfo{}
@@ -183,79 +106,22 @@ func (agent *stdBroadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 		return err
 	}
 
-	//
-	addrsMap := make(map[uint8][]string)
-	for _, addr := range deliverAddrs {
-		udpAddr, err := net.ResolveUDPAddr("udp", addr)
-		if err != nil {
-			continue
-		}
-		multicastType := selectBroadcastMulticastType(udpAddr.IP)
-		if multicastType != 0 {
-			addrsMap[multicastType] = append(addrsMap[multicastType], addr)
-		}
+	// deliver online
+	var msg PeerOnline
+	msg.PeerId = settings.PeerID()
+	msg.Heightest = info.Heightest
+	data, err := proto.Marshal(&msg)
+	if err != nil {
+		return err
 	}
-
-	// deliver with public addrs
-	for _, publicAddr := range publicAddrs {
-		ip, _, err := net.SplitHostPort(publicAddr)
-		if err != nil {
-			continue
-		}
-		ipAddr, err := net.ResolveIPAddr("ip", ip)
-		if err != nil || ipAddr.IP.IsMulticast() {
-			continue
-		}
-
-		var addrs []string
-
-		if ipAddr.IP.IsUnspecified() {
-			addrs = deliverAddrs
-		} else {
-			addrsList := make([][]string, 0)
-			if ipAddr.IP.IsLinkLocalUnicast() || ipAddr.IP.IsPrivate() {
-				if ipAddr.IP.To4() != nil {
-					addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeLocal])
-				} else {
-					addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeIPV6Local])
-				}
-			}
-			if ipAddr.IP.IsGlobalUnicast() && !ipAddr.IP.IsPrivate() {
-				if ipAddr.IP.To4() != nil {
-					addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeGlobal])
-				} else {
-					addrsList = append(addrsList, addrsMap[BroadcastMulticastTypeIPV6Global])
-				}
-			}
-			addrs = slices.Concat(addrsList...)
-		}
-
-		if len(addrs) <= 0 {
-			continue
-		}
-
-		// deliver online
-		var msg PeerOnline
-		msg.PeerId = settings.PeerID()
-		msg.Addr = publicAddr
-		msg.Heightest = info.Heightest
-		data, err := proto.Marshal(&msg)
-		if err != nil {
-			continue
-		}
-		sig, err := peer.Sign(data, settings.PrivateKey())
-		if err != nil {
-			continue
-		}
-		payload := packAgentPayload(data, sig)
-		payload = slices.Insert(payload, 0, BroadcastTypeOnline)
-		err = cluster.Deliver(payload, addrs...)
-		if err != nil {
-			log.Default().Error("BroadcastAgent", "Deliver Error: "+err.Error())
-		}
+	sig, err := peer.Sign(data, settings.PrivateKey())
+	if err != nil {
+		return err
 	}
+	payload := packAgentPayload(data, sig)
+	payload = slices.Insert(payload, 0, BroadcastTypeOnline)
 
-	return nil
+	return cluster.Deliver(payload, deliverAddrs...)
 }
 
 // AcceptOnline accepts an online message from a peer.
@@ -264,11 +130,16 @@ func (agent *stdBroadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 //
 // Returns an error if the message is invalid or if there is an issue routing the peer.
 func (agent *stdBroadcastAgent) AcceptOnline(payload []byte, addr string) error {
-	quicCluster := agent.QuicCluster()
-	store := agent.Store()
-	settings := agent.PeerSettings()
+	agentRuntime := agent.runtime
+	if agentRuntime == nil {
+		return ErrBroadcastAgentUnavailable
+	}
+
+	quicCluster := agentRuntime.QuicCluster()
+	store := agentRuntime.Store()
+	settings := agentRuntime.PeerSettings()
 	if settings == nil || store == nil || quicCluster == nil {
-		return ErrBroadcastAgentDeliverOnlineUnavailable
+		return ErrBroadcastAgentUnavailable
 	}
 
 	data, sig, err := unpackAgentPayload(payload)
@@ -284,33 +155,14 @@ func (agent *stdBroadcastAgent) AcceptOnline(payload []byte, addr string) error 
 		}
 		err = peer.Verify(data, sig, msg.PeerId)
 	}
+	if err == nil {
+		err = store.SaveHighest(msg.PeerId, msg.Heightest)
+	}
 	if err != nil {
 		return err
 	}
 
-	addrIP, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		return err
-	}
-	msgAddr := msg.Addr
-	host, port, err := net.SplitHostPort(msgAddr)
-	if err != nil {
-		return err
-	}
-	if addrIP != host {
-		ipAddr, err := net.ResolveIPAddr("ip", host)
-		if err != nil || !ipAddr.IP.IsUnspecified() {
-			return err
-		}
-		msgAddr = net.JoinHostPort(addrIP, port)
-	}
-
-	err = store.SaveHighest(msg.PeerId, msg.Heightest)
-	if err != nil {
-		return err
-	}
-
-	return quicCluster.Route(msg.PeerId, msgAddr)
+	return quicCluster.Route(msg.PeerId, addr)
 }
 
 func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
@@ -322,6 +174,7 @@ func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 	var cancel context.CancelCauseFunc
+	var timer <-chan time.Time
 
 	for {
 		select {
@@ -329,6 +182,10 @@ func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
 			err = ctx.Err()
 			closed = true
 		case <-agent.reloadChan:
+			if timer != nil {
+				<-timer
+				timer = nil
+			}
 			agent.reloadLock.Lock()
 			agent.reload = false
 			agent.reloadLock.Unlock()
@@ -344,8 +201,15 @@ func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
 			break
 		}
 
-		peerSettings := agent.PeerSettings()
-		store := agent.Store()
+		agentRuntime := agent.runtime
+		if ctx == nil {
+			timer = time.After(time.Second * 5)
+			agent.Reload()
+			continue
+		}
+
+		peerSettings := agentRuntime.PeerSettings()
+		store := agentRuntime.Store()
 		if peerSettings == nil || store == nil {
 			continue
 		}
@@ -363,6 +227,7 @@ func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
 			for {
 				err := agent.DeliverOnline()
 				if err != nil {
+					agent.logger.Error("BroadcastAgent", " DeliverOnline Error: "+err.Error())
 					break
 				}
 
@@ -393,30 +258,4 @@ func unpackAgentPayload(buffer []byte) ([]byte, []byte, error) {
 	sig := buffer[2:offset]
 	payload := buffer[offset:]
 	return payload, sig, nil
-}
-
-func selectBroadcastMulticastType(ip net.IP) uint8 {
-
-	var isGlobal bool
-	if ip.IsMulticast() {
-		isGlobal = isGlobalMulticastIP(ip)
-	} else {
-		isGlobal = ip.IsGlobalUnicast() && !ip.IsPrivate()
-	}
-
-	var multicastType uint8
-	if isGlobal {
-		if ip.To16() == nil {
-			multicastType = BroadcastMulticastTypeGlobal
-		} else {
-			multicastType = BroadcastMulticastTypeIPV6Global
-		}
-	} else {
-		if ip.To4() != nil {
-			multicastType = BroadcastMulticastTypeLocal
-		} else {
-			multicastType = BroadcastMulticastTypeIPV6Local
-		}
-	}
-	return multicastType
 }

@@ -21,12 +21,10 @@ type stdBroadcastModule struct {
 	PeerConfig  peer.PeerConfig
 	QuicCluster quic.QuicCluster
 
+	runtime *stdBroadcastRuntime
 	cluster *stdBroadcastCluster
 	agent   *stdBroadcastAgent
 	server  *stdBroadcastServer
-
-	store   BroadcastStore
-	storeRW sync.RWMutex
 }
 
 func New() interface{} {
@@ -34,24 +32,39 @@ func New() interface{} {
 
 	cluster := &stdBroadcastCluster{}
 	module.cluster = cluster
-	cluster.SetDeliverLimitSize(65535)
-	setDefualtMTU(cluster)
 
 	agent := &stdBroadcastAgent{}
 	module.agent = agent
+
 	agent.reloadChan = make(chan struct{}, 1)
 	agent.cluster = cluster
-	cluster.RegisterServeModule(agent)
 
 	server := &stdBroadcastServer{}
 	module.server = server
 	server.reloadChan = make(chan struct{}, 1)
 	server.cluster = cluster
 
+	// init broadcast runtime
+	runtime := &stdBroadcastRuntime{}
+	module.runtime = runtime
+
+	server.runtime = runtime
+	runtime.server = server
+	setDefualtMTU(runtime)
+
+	agent.runtime = runtime
+	runtime.agent = agent
+
+	cluster.runtime = runtime
+	runtime.RegisterServeModule(agent)
+	runtime.setDeliverLimitSize(65535)
+	//
+
 	logger := log.Default()
 	cluster.logger = logger
 	agent.logger = logger
 	server.logger = logger
+	runtime.logger = logger
 
 	return module
 }
@@ -59,15 +72,7 @@ func New() interface{} {
 var _ = (BroadcastModule)((*stdBroadcastModule)(nil))
 
 func (module *stdBroadcastModule) SetStore(store BroadcastStore) {
-	module.storeRW.Lock()
-	defer module.storeRW.Unlock()
-	module.store = store
-}
-
-func (module *stdBroadcastModule) Store() BroadcastStore {
-	module.storeRW.RLock()
-	defer module.storeRW.RUnlock()
-	return module.store
+	module.runtime.setStore(store)
 }
 
 var _ = (injection.ComponentProvider)((*stdBroadcastModule)(nil))
@@ -83,7 +88,7 @@ func (module *stdBroadcastModule) Components() []injection.Component {
 var _ = (bootstrap.ReadyModule)((*stdBroadcastModule)(nil))
 
 func (module *stdBroadcastModule) Ready(ctx context.Context) error {
-	module.agent.SetQuicCluster(module.QuicCluster)
+	module.runtime.setQuicCluster(module.QuicCluster)
 
 	module.AppConfig.Subscribe(module)
 	defer module.AppConfig.Unsubscribe(module)
@@ -110,26 +115,24 @@ func (module *stdBroadcastModule) Ready(ctx context.Context) error {
 var _ = (config.AppConfigListener)((*stdBroadcastModule)(nil))
 
 func (module *stdBroadcastModule) OnConfigUpdated(settings config.AppSettings) {
-	module.cluster.SetDeliverAddr(settings.BroadcastAddress)
-	module.agent.SetPublicAddrs(settings.PublicAddress)
-	module.server.SetAddrs(settings.BroadcastAddress)
+	module.runtime.setAddrs(settings.BroadcastAddrs)
 }
 
 var _ = (peer.PeerConfigListener)((*stdBroadcastModule)(nil))
 
 func (module *stdBroadcastModule) OnPeerConfigUpdated(settings *peer.PeerSettings) {
-	module.agent.SetPeerSettings(settings)
+	module.runtime.setPeerSettings(settings)
 }
 
-func setDefualtMTU(cluster *stdBroadcastCluster) {
+func setDefualtMTU(runtime *stdBroadcastRuntime) {
 	ifs, err := net.Interfaces()
 
 	if err != nil {
-		cluster.SetMTU(1500)
+		runtime.setMTU(1500)
 		return
 	}
 
-	mtu := cluster.DeliverLimitSize()
+	mtu := runtime.DeliverLimitSize()
 	for _, i := range ifs {
 		if addrs, err := i.Addrs(); err == nil && len(addrs) > 0 {
 			if i.MTU > 0 && i.MTU < mtu {
@@ -137,5 +140,5 @@ func setDefualtMTU(cluster *stdBroadcastCluster) {
 			}
 		}
 	}
-	cluster.SetMTU(mtu)
+	runtime.setMTU(mtu)
 }

@@ -8,15 +8,12 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net"
 	"pan/lib/log"
-	"slices"
 
 	"sync"
 	"time"
 
 	"github.com/quic-go/quic-go"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -78,26 +75,6 @@ type stdQuicAgent struct {
 	cluster *stdQuicCluster
 	matrix  [][]*stdQuicReception
 	locker  sync.Mutex
-
-	publicAddrs   []string
-	publicAddrsRW sync.RWMutex
-}
-
-func (agent *stdQuicAgent) SetPublicAddrs(addrs []string) {
-	agent.logger.Debug("QuicAgent", "SetPublicAddrs")
-
-	agent.publicAddrsRW.Lock()
-	defer agent.publicAddrsRW.Unlock()
-	if slices.Equal(agent.publicAddrs, addrs) {
-		return
-	}
-	agent.publicAddrs = addrs
-}
-
-func (agent *stdQuicAgent) PublicAddrs() []string {
-	agent.publicAddrsRW.RLock()
-	defer agent.publicAddrsRW.RUnlock()
-	return agent.publicAddrs
 }
 
 // Follow processes the given QuicConn by searching for associated receptions
@@ -121,67 +98,13 @@ func (agent *stdQuicAgent) Follow(conn QuicConn) error {
 	return nil
 }
 
-// Greet sends a QuicConnFlagGreet message over the given connection
-// containing the public addresses of the local node. If the local node
-// has no public addresses, the function returns immediately. The method
-// simply marshals a QuicGreet message and calls doQuicConn with the result.
 func (agent *stdQuicAgent) Greet(conn QuicConn) error {
-	addrs := agent.PublicAddrs()
-	if len(addrs) <= 0 {
-		return nil
-	}
-
-	greetMsg := QuicGreet{
-		Addrs: addrs,
-	}
-	data, err := proto.Marshal(&greetMsg)
-	if err != nil {
-		return err
-	}
-
-	return doQuicConn(conn, QuicConnFlagGreet, bytes.NewReader(data))
+	return doQuicConn(conn, QuicConnFlagGreet, nil)
 }
 
-// AcceptGreet handles a QuicConnFlagGreet message sent by the peer, by unmarshaling
-// the message and adding the remote addresses to the peer routing table. The method
-// returns an error if the message unmarshaling fails.
 func (agent *stdQuicAgent) AcceptGreet(stream quic.ReceiveStream, conn QuicConn) error {
 	defer stream.CancelRead(quic.StreamErrorCode(quic.NoError))
-
-	data, err := io.ReadAll(stream)
-	if err != nil {
-		return err
-	}
-
-	var greetMsg QuicGreet
-	err = proto.Unmarshal(data, &greetMsg)
-	if err == nil {
-
-		remoteAddr := conn.RemoteAddr()
-		ip, _, remoteAddrErr := net.SplitHostPort(remoteAddr.String())
-		if remoteAddrErr != nil {
-			return remoteAddrErr
-		}
-
-		for _, addr := range greetMsg.Addrs {
-
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil {
-				continue
-			}
-
-			if ip != host {
-				ipAddr, err := net.ResolveIPAddr("ip", host)
-				if err != nil || !ipAddr.IP.IsUnspecified() {
-					continue
-				}
-				addr = net.JoinHostPort(ip, port)
-			}
-
-			agent.cluster.Route(conn.PeerID(), addr)
-		}
-	}
-
+	_, err := agent.cluster.route(conn.PeerID(), conn.RemoteAddr().String())
 	return err
 }
 

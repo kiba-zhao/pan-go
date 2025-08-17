@@ -5,7 +5,6 @@ option go_package = "lib/broadcast;broadcast";
 
 message PeerOnline{
     bytes PeerId = 1;
-     string Addr = 2;
-     uint64 Heightest = 3;
+     uint64 Heightest = 2;
 }
 

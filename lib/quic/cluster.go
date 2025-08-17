@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"io"
+	"net"
 	"pan/lib/peer"
 	"sync"
 
@@ -38,6 +39,8 @@ type QuicCluster interface {
 	Invite(peerId peer.PeerID) (QuicConn, error)
 	Do(context.Context, QuicConn, io.Reader) (quic.Stream, error)
 	Route(peerId peer.PeerID, addr string) error
+
+	ServeUDPConn() *net.UDPConn
 }
 
 type stdQuicCluster struct {
@@ -47,7 +50,8 @@ type stdQuicCluster struct {
 	peerCluster   peer.PeerCluster
 	peerClusterRW sync.RWMutex
 
-	agent *stdQuicAgent
+	agent  *stdQuicAgent
+	server *stdQuicServer
 
 	networkRW sync.RWMutex
 	connMgr   *stdQuicConnMgr
@@ -178,7 +182,7 @@ outer_loop:
 			}
 
 			var serveConn QuicConn
-			conn, err := dialAddr(dialCtx, addr, cluster.Certificate())
+			conn, err := dialAddr(dialCtx, cluster.serveTransport(), addr, cluster.Certificate())
 			if err == nil {
 				serveConn, err = cluster.Serve(conn, peerId)
 			}
@@ -324,13 +328,28 @@ func (cluster *stdQuicCluster) Do(ctx context.Context, conn QuicConn, reader io.
 
 func (cluster *stdQuicCluster) Route(peerId peer.PeerID, addr string) error {
 
+	serveConn, err := cluster.route(peerId, addr)
+	if err != nil || serveConn == nil {
+		return err
+	}
+
+	agent := cluster.agent
+	if agent != nil {
+		err = cluster.agent.Greet(serveConn)
+	}
+
+	return err
+}
+
+func (cluster *stdQuicCluster) route(peerId peer.PeerID, addr string) (QuicConn, error) {
+
 	peerCluster := cluster.PeerCluster()
 	if peerCluster != nil {
-		return ErrQuicClusterUnavailable
+		return nil, ErrQuicClusterUnavailable
 	}
 
 	if err := peerCluster.Access(peerId); err != nil {
-		return err
+		return nil, err
 	}
 
 	route := cluster.routeMgr.Search(peerId)
@@ -343,11 +362,11 @@ func (cluster *stdQuicCluster) Route(peerId peer.PeerID, addr string) error {
 	defer route.Unlock()
 
 	if route.Contains(addr) {
-		return nil
+		return nil, nil
 	}
 
 	var serveConn QuicConn
-	conn, err := dialAddr(context.Background(), addr, cluster.Certificate())
+	conn, err := dialAddr(context.Background(), cluster.serveTransport(), addr, cluster.Certificate())
 	if err == nil {
 		serveConn, err = cluster.Serve(conn, peerId)
 	}
@@ -358,12 +377,27 @@ func (cluster *stdQuicCluster) Route(peerId peer.PeerID, addr string) error {
 		}
 	}
 
-	agent := cluster.agent
-	if err == nil && agent != nil {
-		err = cluster.agent.Greet(serveConn)
+	return serveConn, err
+}
+
+func (cluster *stdQuicCluster) ServeUDPConn() *net.UDPConn {
+	tr := cluster.serveTransport()
+	if tr == nil {
+		return nil
 	}
 
-	return err
+	if udpConn, ok := tr.Conn.(*net.UDPConn); ok {
+		return udpConn
+	}
+	return nil
+}
+
+func (cluster *stdQuicCluster) serveTransport() *quic.Transport {
+	server := cluster.server
+	if server == nil {
+		return nil
+	}
+	return server.Transport()
 }
 
 func parsePeerID(conn quic.Connection) (peer.PeerID, error) {
@@ -372,14 +406,22 @@ func parsePeerID(conn quic.Connection) (peer.PeerID, error) {
 	return x509.MarshalPKIXPublicKey(certificate.PublicKey)
 }
 
-func dialAddr(ctx context.Context, addr string, certificate tls.Certificate) (quic.Connection, error) {
+func dialAddr(ctx context.Context, tr *quic.Transport, addr string, certificate tls.Certificate) (quic.Connection, error) {
+	if tr == nil {
+		return nil, ErrQuicClusterUnavailable
+	}
+	remoteAddr, remoteAddrErr := net.ResolveUDPAddr("udp", addr)
+	if remoteAddrErr != nil {
+		return nil, remoteAddrErr
+	}
+
 	tlsConf := &tls.Config{Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
 	quicConf := &quic.Config{}
 
 	var conn quic.Connection
 	var err error
 	for i := 0; i < 3; i++ {
-		conn, err = quic.DialAddr(ctx, addr, tlsConf, quicConf)
+		conn, err = tr.Dial(ctx, remoteAddr, tlsConf, quicConf)
 		if err == nil {
 			break
 		}

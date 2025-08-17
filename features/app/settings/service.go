@@ -44,24 +44,21 @@ func (s *AppSettingsService) Save(fields AppSettingsFields) (AppSettings, error)
 	if fields.Name != "" {
 		settings.Name = fields.Name
 	}
-	if fields.WebAddress != nil {
-		settings.WebAddress = fields.WebAddress
+	if fields.WebAddr != nil {
+		settings.WebAddr = *fields.WebAddr
 	}
-	if fields.PeerAddress != nil {
-		settings.PeerAddress = fields.PeerAddress
+	if fields.PeerPort != nil {
+		settings.PeerPort = *fields.PeerPort
 	}
-	if fields.BroadcastAddress != nil {
-		settings.BroadcastAddress = fields.BroadcastAddress
+	if fields.BroadcastAddrs != nil {
+		settings.BroadcastAddrs = fields.BroadcastAddrs
 	}
-	if fields.PublicAddress != nil {
-		settings.PublicAddress = fields.PublicAddress
+	if fields.PublicAddrs != nil {
+		settings.PublicAddrs = fields.PublicAddrs
 	}
 
-	if fields.GuardEnabled != nil {
-		settings.GuardEnabled = *fields.GuardEnabled
-	}
-	if fields.GuardAccess != nil {
-		settings.GuardAccess = *fields.GuardAccess
+	if fields.Enabled != nil {
+		settings.Enabled = *fields.Enabled
 	}
 
 	err := s.AppConfig.Save(settings)

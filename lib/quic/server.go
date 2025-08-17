@@ -5,9 +5,12 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"net"
 	"pan/lib/log"
-	"slices"
+	libNet "pan/lib/net"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/quic-go/quic-go"
 )
@@ -18,8 +21,11 @@ type stdQuicServer struct {
 	logger  log.Logger
 	cluster *stdQuicCluster
 
-	addrs   []string
-	addrsRW sync.RWMutex
+	transport   *quic.Transport
+	transportRW sync.RWMutex
+
+	port   uint16
+	portRW sync.RWMutex
 
 	certificate   tls.Certificate
 	certificateRW sync.RWMutex
@@ -29,21 +35,33 @@ type stdQuicServer struct {
 	reload     bool
 }
 
-func (qs *stdQuicServer) Addrs() []string {
-	qs.addrsRW.RLock()
-	defer qs.addrsRW.RUnlock()
-	return qs.addrs
+func (qs *stdQuicServer) Transport() *quic.Transport {
+	qs.transportRW.RLock()
+	defer qs.transportRW.RUnlock()
+	return qs.transport
 }
 
-func (qs *stdQuicServer) SetAddrs(addrs []string) {
-	qs.logger.Debug("QuicServer", "SetAddrs")
+func (qs *stdQuicServer) setTransport(transport *quic.Transport) {
+	qs.transportRW.Lock()
+	defer qs.transportRW.Unlock()
+	qs.transport = transport
+}
 
-	qs.addrsRW.Lock()
-	defer qs.addrsRW.Unlock()
-	if slices.Equal(qs.addrs, addrs) {
+func (qs *stdQuicServer) Port() uint16 {
+	qs.portRW.RLock()
+	defer qs.portRW.RUnlock()
+	return qs.port
+}
+
+func (qs *stdQuicServer) SetPort(port uint16) {
+	qs.logger.Debug("QuicServer", "SetPort")
+
+	qs.portRW.Lock()
+	defer qs.portRW.Unlock()
+	if qs.port == port {
 		return
 	}
-	qs.addrs = addrs
+	qs.port = port
 	qs.Reload()
 }
 
@@ -81,7 +99,7 @@ func (qs *stdQuicServer) ListenAndServe(ctx context.Context) error {
 	var closed bool
 
 	var wg sync.WaitGroup
-	var servers []*quic.Listener
+	var timer <-chan time.Time
 
 	for {
 		select {
@@ -89,15 +107,19 @@ func (qs *stdQuicServer) ListenAndServe(ctx context.Context) error {
 			err = ctx.Err()
 			closed = true
 		case <-qs.reloadChan:
+			if timer != nil {
+				<-timer
+				timer = nil
+			}
 			qs.reloadLock.Lock()
 			qs.reload = false
 			qs.reloadLock.Unlock()
 		}
 
-		if len(servers) > 0 {
-			for _, server := range servers {
-				server.Close()
-			}
+		server := qs.Transport()
+		if server != nil {
+			server.Close()
+			qs.setTransport(nil)
 			wg.Wait()
 		}
 
@@ -106,48 +128,77 @@ func (qs *stdQuicServer) ListenAndServe(ctx context.Context) error {
 		}
 
 		certificate := qs.Certificate()
-		addrs := qs.Addrs()
-		if len(addrs) <= 0 || len(certificate.Certificate) <= 0 {
+		port := qs.port
+		if port <= 0 || len(certificate.Certificate) <= 0 {
 			continue
 		}
 
-		servers = make([]*quic.Listener, 0)
+		addrStat, addrStatErr := libNet.StatAddr()
+		if addrStatErr != nil {
+			timer = time.After(time.Second * 5)
+			qs.Reload()
+			continue
+		}
+
+		var addr string
+		if addrStat.IPv6Enabled {
+			addr = "[::]:" + strconv.FormatUint(uint64(port), 10)
+		} else {
+			addr = "0.0.0.0:" + strconv.FormatUint(uint64(port), 10)
+		}
+
 		cluster := qs.cluster
 		tlsConf := &tls.Config{ClientAuth: tls.RequireAnyClientCert, Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
 		quicConf := &quic.Config{}
-		for _, addr := range addrs {
-			ln, lnErr := quic.ListenAddr(addr, tlsConf, quicConf)
-			if lnErr != nil {
-				qs.logger.Error("QuicServer", "quic.ListenAddr Error: "+addr)
-				continue
-			} else {
-				qs.logger.Info("QuicServer", "quic.ListenAddr Success: "+addr)
-			}
 
-			servers = append(servers, ln)
-			wg.Add(1)
-			go func(ln *quic.Listener) {
-				defer wg.Done()
-				for {
-					conn, err := ln.Accept(ctx)
-					if err != nil && conn != nil {
-						conn.CloseWithError(quic.ApplicationErrorCode(quic.InternalError), err.Error())
-					}
-					if err == nil {
-						_, err = cluster.Serve(conn, nil)
-					}
-					if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) {
-						break
-					}
-					if ctxErr := ctx.Err(); ctxErr != nil {
-						break
-					}
-					qs.logger.Error("QuicServer", "quic.Listener.Accept Error: "+err.Error())
-				}
-			}(ln)
-
+		udpAddr, udpAddrErr := net.ResolveUDPAddr("udp", addr)
+		if udpAddrErr != nil {
+			qs.logger.Error("QuicServer", "net.ResolveUDPAddr Error: "+addr)
+			continue
 		}
 
+		udpConn, udpConnErr := net.ListenUDP("udp", udpAddr)
+		if udpConnErr != nil {
+			qs.logger.Error("QuicServer", "net.ListenUDP Error: "+addr)
+			continue
+		}
+
+		tr := quic.Transport{
+			Conn: udpConn,
+		}
+		qs.setTransport(&tr)
+
+		ln, lnErr := tr.Listen(tlsConf, quicConf)
+		if lnErr != nil {
+			qs.logger.Error("QuicServer", "quic.ListenAddr Error: "+addr)
+			continue
+		} else {
+			qs.logger.Info("QuicServer", "quic.ListenAddr Success: "+addr)
+		}
+
+		wg.Add(1)
+		go func(ln *quic.Listener, udpConn *net.UDPConn) {
+			defer wg.Done()
+			defer udpConn.Close()
+			for {
+				conn, err := ln.Accept(ctx)
+				if err != nil && conn != nil {
+					conn.CloseWithError(quic.ApplicationErrorCode(quic.InternalError), err.Error())
+				}
+				if err == nil {
+					_, err = cluster.Serve(conn, nil)
+				}
+				if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) {
+					break
+				}
+				if ctxErr := ctx.Err(); ctxErr != nil {
+					break
+				}
+				qs.logger.Error("QuicServer", "quic.Listener.Accept Error: "+err.Error())
+			}
+		}(ln, udpConn)
+
 	}
+
 	return err
 }

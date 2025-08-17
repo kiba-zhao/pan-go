@@ -67,7 +67,7 @@ var _ = (config.AppConfigListener)((*stdWebModule)(nil))
 // It checks if the web address is changed, and if so, updates the address and
 // triggers a reload by sending a signal to the reload channel.
 func (w *stdWebModule) OnConfigUpdated(settings config.AppSettings) {
-	w.server.SetAddrs(settings.WebAddress)
+	w.server.SetAddr(settings.WebAddr)
 }
 
 var _ = (runtime.InitializeModule)((*stdWebModule)(nil))

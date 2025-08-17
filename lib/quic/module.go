@@ -44,6 +44,7 @@ func New() interface{} {
 	module.server = server
 	server.logger = logger
 	server.cluster = cluster
+	cluster.server = server
 	server.reloadChan = make(chan struct{}, 1)
 
 	return &module
@@ -66,8 +67,7 @@ func (qm *stdQuicModule) OnConfigUpdated(settings config.AppSettings) {
 		return
 	}
 
-	qm.agent.SetPublicAddrs(settings.PublicAddress)
-	qm.server.SetAddrs(settings.PeerAddress)
+	qm.server.SetPort(settings.PeerPort)
 
 }
 

@@ -1,8 +1,16 @@
 import type {CursorFields, Storage} from '@pango/data';
+import {pickDirectory} from '@react-native-documents/picker';
 import {Fragment, useMemo, useState} from 'react';
 import {ActivityIndicator, VirtualizedList} from 'react-native';
-import {HeaderTitle, ScreenViewLayout} from '../App/ScreenBase';
+import {} from 'react-native-fs';
+import {
+  HeaderAction,
+  HeaderActions,
+  HeaderTitle,
+  ScreenViewLayout,
+} from '../App/ScreenBase';
 import {useTranslation} from '../Common/I18Next';
+import Icon from '../Common/Icon';
 import {RowLayout} from '../Common/Layout';
 import type {QueryKey as ReactQueryKey} from '../Common/ReactQuery';
 import {InfiniteData, useInfiniteQuery} from '../Common/ReactQuery';
@@ -81,9 +89,11 @@ const ExplorerScreen = () => {
     if (!hasNextPage || isFetching) return;
     return () => fetchNextPage();
   }, [isFetching, hasNextPage, fetchNextPage]);
+
   return (
     <I18NextProvider>
       <HeaderTitle i18nKey="screen.explorer.name" />
+      <ExplorerScreenHeaderActions />
       <ScreenViewLayout>
         <VirtualizedList<Storage>
           ListHeaderComponent={() => (
@@ -112,6 +122,33 @@ const ExplorerScreen = () => {
 
 export default ExplorerScreen;
 
+const ExplorerScreenHeaderActions = () => {
+  return (
+    <HeaderActions>
+      <AddFileHeaderAction />
+    </HeaderActions>
+  );
+};
+
+type AddFileHeaderActionProps = {disabled?: boolean};
+const AddFileHeaderAction = ({disabled}: AddFileHeaderActionProps) => {
+  const handlePress = async () => {
+    const results = await pickDirectory({
+      requestLongTermAccess: true,
+    });
+    console.log(1111, results);
+  };
+  return (
+    <HeaderAction onPress={handlePress}>
+      <Icon
+        name="add-sharp"
+        color={disabled ? 'textDisabled' : 'textPrimary'}
+        size="medium"
+      />
+    </HeaderAction>
+  );
+};
+
 const ExplorerHeader = ({
   isDirty,
   total,
@@ -123,6 +160,7 @@ const ExplorerHeader = ({
 }) => {
   const {t} = useTranslation();
   const {sizes} = useTheme();
+
   return (
     <Fragment>
       <RowLayout
@@ -134,15 +172,12 @@ const ExplorerHeader = ({
         <Text color="textSecondary" size="small" font="bold">
           {t('screen.explorer.totalDesc', {num: total})}
         </Text>
-        <Text color="primary" size="small">
-          {t('screen.explorer.selectFiles')}
-        </Text>
+        {isDirty && (
+          <Text color="primary" size="small" onPress={onRefresh}>
+            {t('screen.explorer.refresh')}
+          </Text>
+        )}
       </RowLayout>
-      {isDirty && (
-        <Text color="primary" size="small" onPress={onRefresh}>
-          {t('screen.explorer.refresh')}
-        </Text>
-      )}
     </Fragment>
   );
 };

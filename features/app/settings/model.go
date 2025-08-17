@@ -9,12 +9,10 @@ type AppSettings struct {
 }
 
 type AppSettingsFields struct {
-	Name             string   `form:"name" json:"name"  binding:"omitempty"`
-	WebAddress       []string `form:"webAddress" json:"webAddress"  binding:"omitempty"`
-	PeerAddress      []string `form:"peerAddress" json:"peerAddress"  binding:"omitempty"`
-	BroadcastAddress []string `form:"broadcastAddress" json:"broadcastAddress"  binding:"omitempty"`
-	PublicAddress    []string `form:"publicAddress" json:"publicAddress"  binding:"omitempty"`
-	DiscoveryServer  []string `form:"discoveryServer" json:"discoveryServer"  binding:"omitempty"`
-	GuardEnabled     *bool    `form:"guardEnabled" json:"guardEnabled"  binding:"omitempty"`
-	GuardAccess      *bool    `form:"guardAccess" json:"guardAccess"  binding:"omitempty"`
+	Name           string   `form:"name" json:"name"  binding:"omitempty"`
+	PeerPort       *uint16  `form:"peerPort" json:"peerPort"  binding:"omitempty"`
+	BroadcastAddrs []string `form:"broadcastAddrs" json:"broadcastAddrs"  binding:"omitempty"`
+	PublicAddrs    []string `form:"publicAddrs" json:"publicAddrs"  binding:"omitempty"`
+	Enabled        *bool    `form:"enabled" json:"enabled"  binding:"omitempty"`
+	WebAddr        *string  `form:"webAddr" json:"webAddr"  binding:"omitempty"`
 }

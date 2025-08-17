@@ -27,35 +27,20 @@ type PacketConn interface {
 	LeaveGroup(ifi *net.Interface, group net.Addr) error
 }
 
+type BroadcastServerRuntime interface {
+	Addrs() []string
+	MTU() int
+}
+
 type stdBroadcastServer struct {
 	logger log.Logger
 
-	cluster *stdBroadcastCluster
+	runtime BroadcastServerRuntime
+	cluster BroadcastCluster
 
 	reloadChan chan struct{}
 	reloadLock sync.Mutex
 	reload     bool
-
-	addrs   []string
-	addrsRW sync.RWMutex
-}
-
-func (server *stdBroadcastServer) Addrs() []string {
-	server.addrsRW.RLock()
-	defer server.addrsRW.RUnlock()
-	return server.addrs
-}
-
-func (server *stdBroadcastServer) SetAddrs(addrs []string) {
-	server.logger.Debug("BroadcastServer", "SetAddrs")
-
-	server.addrsRW.Lock()
-	defer server.addrsRW.Unlock()
-	if slices.Equal(server.addrs, addrs) {
-		return
-	}
-	server.addrs = addrs
-	server.Reload()
 }
 
 func (server *stdBroadcastServer) Reload() {
@@ -81,6 +66,7 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 	var connections []*net.UDPConn
+	var timer <-chan time.Time
 
 	for {
 		select {
@@ -88,6 +74,10 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 			err = ctx.Err()
 			closed = true
 		case <-server.reloadChan:
+			if timer != nil {
+				<-timer
+				timer = nil
+			}
 			server.reloadLock.Lock()
 			server.reload = false
 			server.reloadLock.Unlock()
@@ -104,7 +94,13 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 			break
 		}
 
-		addrs := seqForMulitcastAddrs(server.logger, server.Addrs())
+		serverRuntime := server.runtime
+		if serverRuntime == nil {
+			timer = time.After(time.Second * 5)
+			server.Reload()
+			continue
+		}
+		addrs := seqForMulitcastAddrs(server.logger, serverRuntime.Addrs())
 		if addrs == nil {
 			continue
 		}
@@ -131,11 +127,12 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 }
 
 func (server *stdBroadcastServer) serve(conn *net.UDPConn) error {
+	serverRuntime := server.runtime
 	cluster := server.cluster
-	if cluster == nil {
+	if cluster == nil || serverRuntime == nil {
 		return ErrBroadcastServerUnavailable
 	}
-	mtu := cluster.MTU()
+	mtu := serverRuntime.MTU()
 	if mtu <= 0 {
 		return ErrBroadcastServerUnavailable
 	}
@@ -267,7 +264,7 @@ func newMulticastConn(port int, groups []net.IP) (*net.UDPConn, error) {
 	if addrStat.IPv6Enabled {
 		mAddr = &net.UDPAddr{IP: net.IPv6zero, Port: port}
 	} else {
-		mAddr = &net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: port}
+		mAddr = &net.UDPAddr{IP: net.IPv4zero, Port: port}
 	}
 
 	conn, err := net.ListenUDP("udp", mAddr)
@@ -294,12 +291,11 @@ func newMulticastConn(port int, groups []net.IP) (*net.UDPConn, error) {
 					ipv4Conn = ipv4.NewPacketConn(conn)
 				}
 				packetConn = ipv4Conn
-			} else {
+			} else if mIP = group.To16(); mIP != nil {
 				if ipv6Conn == nil {
 					ipv6Conn = ipv6.NewPacketConn(conn)
 				}
 				packetConn = ipv6Conn
-				mIP = mAddr.IP
 			}
 
 			packetConn.JoinGroup(&iface, &net.UDPAddr{IP: mIP})

@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"pan/lib/log"
-	"slices"
 	"sync"
 )
 
@@ -15,27 +14,27 @@ type stdWebServer struct {
 	reloadLock sync.Mutex
 	reload     bool
 
-	app     WebApp
-	appRW   sync.RWMutex
-	addrs   []string
-	addrsRW sync.RWMutex
+	app    WebApp
+	appRW  sync.RWMutex
+	addr   string
+	addrRW sync.RWMutex
 }
 
-func (ws *stdWebServer) Addrs() []string {
-	ws.addrsRW.RLock()
-	defer ws.addrsRW.RUnlock()
-	return ws.addrs
+func (ws *stdWebServer) Addr() string {
+	ws.addrRW.RLock()
+	defer ws.addrRW.RUnlock()
+	return ws.addr
 }
 
-func (ws *stdWebServer) SetAddrs(addrs []string) {
-	ws.logger.Debug("WebServer", "SetAddrs")
+func (ws *stdWebServer) SetAddr(addr string) {
+	ws.logger.Debug("WebServer", "SetAddr")
 
-	ws.addrsRW.Lock()
-	defer ws.addrsRW.Unlock()
-	if slices.Equal(ws.addrs, addrs) {
+	ws.addrRW.Lock()
+	defer ws.addrRW.Unlock()
+	if ws.addr == addr {
 		return
 	}
-	ws.addrs = addrs
+	ws.addr = addr
 	ws.Reload()
 }
 
@@ -82,7 +81,7 @@ func (ws *stdWebServer) ListenAndServe(ctx context.Context) error {
 	var closed bool
 
 	var wg sync.WaitGroup
-	var servers []*http.Server
+	var server *http.Server
 	for {
 		select {
 		case <-ctx.Done():
@@ -94,10 +93,8 @@ func (ws *stdWebServer) ListenAndServe(ctx context.Context) error {
 			ws.reloadLock.Unlock()
 		}
 
-		if len(servers) > 0 {
-			for _, server := range servers {
-				server.Shutdown(context.Background())
-			}
+		if server != nil {
+			server.Shutdown(context.Background())
 			wg.Wait()
 		}
 
@@ -105,8 +102,8 @@ func (ws *stdWebServer) ListenAndServe(ctx context.Context) error {
 			break
 		}
 
-		addrs := ws.Addrs()
-		if len(addrs) <= 0 {
+		addr := ws.Addr()
+		if len(addr) <= 0 {
 			continue
 		}
 
@@ -117,25 +114,22 @@ func (ws *stdWebServer) ListenAndServe(ctx context.Context) error {
 			handler = ws
 		}
 
-		servers = make([]*http.Server, 0)
-		for _, address := range addrs {
-			httpServer := &http.Server{
-				Addr:    address,
-				Handler: handler,
-			}
-
-			servers = append(servers, httpServer)
-			wg.Add(1)
-			go func(s *http.Server) {
-				defer wg.Done()
-				err = s.ListenAndServe()
-				if err != nil {
-					ws.logger.Error("WebServer", "http.Server.ListenAndServe Error: "+err.Error())
-				} else {
-					ws.logger.Info("WebServer", "http.Server.ListenAndServe Success: "+s.Addr)
-				}
-			}(httpServer)
+		httpServer := &http.Server{
+			Addr:    addr,
+			Handler: handler,
 		}
+
+		server = httpServer
+		wg.Add(1)
+		go func(s *http.Server) {
+			defer wg.Done()
+			err = s.ListenAndServe()
+			if err != nil {
+				ws.logger.Error("WebServer", "http.Server.ListenAndServe Error: "+err.Error())
+			} else {
+				ws.logger.Info("WebServer", "http.Server.ListenAndServe Success: "+s.Addr)
+			}
+		}(httpServer)
 
 	}
 
