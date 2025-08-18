@@ -9,7 +9,7 @@ export async function load(): Promise<AppSettings> {
       return readData('appSettings');
     }
   }
-  return await exec('load:app.settings');
+  return await exec('app.settings/load');
 }
 
 export async function save(fields: AppSettingsFields): Promise<AppSettings> {
@@ -22,5 +22,5 @@ export async function save(fields: AppSettingsFields): Promise<AppSettings> {
       return settings;
     }
   }
-  return await exec('save:app.settings', fields);
+  return await exec('app.settings/save', fields);
 }

@@ -8,6 +8,14 @@ import (
 	"sync"
 )
 
+const (
+	CodeOK            = libApp.CodeOK
+	CodeInternalError = 500
+	CodeNotFound      = 404
+	CodeBadRequest    = 400
+	CodeForbidden     = 403
+)
+
 var errSerlvetUnavailable = errors.New("serlvet.Serlvet Error: Unavailable")
 var errSerlvetNotFound = errors.New("serlvet.Serlvet Error:  Not Found")
 

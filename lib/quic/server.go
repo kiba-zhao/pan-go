@@ -135,6 +135,7 @@ func (qs *stdQuicServer) ListenAndServe(ctx context.Context) error {
 
 		addrStat, addrStatErr := libNet.StatAddr()
 		if addrStatErr != nil {
+			qs.logger.Warn("QuicServer", "ListenAndServe StatAddr Error: "+addrStatErr.Error())
 			timer = time.After(time.Second * 5)
 			qs.Reload()
 			continue

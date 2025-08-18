@@ -73,6 +73,9 @@ type module struct {
 	PeerConfig         peer.PeerConfig
 	appSettingsService *appsettings.AppSettingsService
 
+	serlvetHandlers     []feature.SerlvetHandler
+	serlvetHandlersOnce sync.Once
+
 	controllers     []feature.WebController
 	controllersOnce sync.Once
 
@@ -114,6 +117,17 @@ func (m *module) Destroy() {
 
 	m.AppConfig.Unsubscribe(m)
 	m.PeerConfig.Unsubscribe(m)
+}
+
+var _ = (feature.SerlvetHandlerProvider)((*module)(nil))
+
+func (m *module) SerlvetHandlers() []feature.SerlvetHandler {
+	m.serlvetHandlersOnce.Do(func() {
+		m.serlvetHandlers = []feature.SerlvetHandler{
+			&appsettings.AppSettingsSerlvet{},
+		}
+	})
+	return m.serlvetHandlers
 }
 
 var _ = (feature.WebControllerProvider)((*module)(nil))

@@ -2,22 +2,28 @@ import { faker } from "@faker-js/faker";
 import type { AppSettings } from "@pango/data";
 
 export function newAppSettings(): AppSettings {
-  const broadcastAddress = faker.helpers.multiple(newAddress, {
+  const broadcastAddrs = faker.helpers.multiple(newAddress, {
     count: { min: 1, max: 3 },
   });
-  const publicAddress = faker.helpers.multiple(newAddress, {
+  const publicAddrs = faker.helpers.multiple(newAddress, {
     count: { min: 1, max: 3 },
   });
+  const peerPort = faker.number.int({ min: 1, max: 65535 });
   return {
-    rootPath: faker.system.directoryPath(),
     name: faker.internet.domainName(),
+    rootPath: faker.system.directoryPath(),
     peerId: faker.helpers.arrayElement(["", faker.string.nanoid()]),
-    webPort: faker.number.int({ min: 1, max: 65535 }),
-    peerPort: faker.number.int({ min: 1, max: 65535 }),
-    broadcastAddress,
-    publicAddress,
-    guardEnabled: faker.datatype.boolean(),
-    guardAccess: faker.datatype.boolean(),
+    peerPort,
+    broadcastAddrs,
+    publicAddrs,
+    enabled: faker.datatype.boolean(),
+    webAddr: faker.helpers.arrayElement([
+      "127.0.0.1:" + peerPort.toString(),
+      "0.0.0.0:" + peerPort.toString(),
+      "localhost:" + peerPort.toString(),
+      "[::1]:" + peerPort.toString(),
+      "[::]:" + peerPort.toString(),
+    ]),
   } as AppSettings;
 }
 

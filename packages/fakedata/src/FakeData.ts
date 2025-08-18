@@ -9,10 +9,23 @@ import { seedStorageFile } from "./data/StorageFile";
 import { seedStorageSearchFile } from "./data/StorageSearchFile";
 import { seedStorageSearchItem } from "./data/StorageSearchItem";
 
-export function seed(opts?: SeedOptions) {
+export function seed(opts?: SeedOptions, isMobile?: boolean) {
   const appSettings = newAppSettings();
 
   const devices = seedDevice(opts);
+  if (isMobile)
+    return {
+      appSettings,
+      devices,
+      devicesStorages: [],
+      devicesStorageFiles: [],
+      storages: [],
+      storageFiles: [],
+      storageSearchItems: [],
+      storageSearchFiles: [],
+      deviceStorageSearchFiles: [],
+    };
+
   const devicesStorages = seedDeviceStorage(devices, opts);
   const devicesStorageFiles = seedDeviceStorageFile(devicesStorages, opts);
 

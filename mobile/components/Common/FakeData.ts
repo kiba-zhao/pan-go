@@ -15,7 +15,7 @@ import {
 import config from 'react-native-config';
 
 type FakeData = ReturnType<typeof seed>;
-const fakeData = seed({count: 20});
+const fakeData = seed({count: 20}, true);
 
 export function readData<
   Key extends keyof FakeData,

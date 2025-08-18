@@ -13,6 +13,11 @@ type Settings struct {
 }
 
 func initWithSettings(settings *Settings, logger Logger) {
+	logger.Debug("gomobile", "settings.HostName:"+settings.HostName)
+	logger.Debug("gomobile", "settings.ConfigPath:"+settings.ConfigPath)
+	logger.Debug("gomobile", "settings.DBPath:"+settings.DBPath)
+	logger.Debug("gomobile", "settings.TempDBPath:"+settings.TempDBPath)
+
 	var err error
 	err = config.InitHostName(settings.HostName)
 	if err != nil {

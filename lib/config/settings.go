@@ -3,6 +3,7 @@ package config
 
 import (
 	"pan/lib/net"
+	"strconv"
 )
 
 type AppSettings = *Settings
@@ -26,20 +27,21 @@ func NewDefaultSettings() AppSettings {
 
 	addrStat, err := net.StatAddr()
 	if err == nil {
+		webPort := strconv.FormatUint(uint64(settings.PeerPort), 10)
 		if addrStat.IPv6Enabled {
-			settings.WebAddr = "[::1]:9002"
-			settings.BroadcastAddrs = append(settings.BroadcastAddrs, "[FF02::1]:9100")
+			settings.WebAddr = "[::1]:" + webPort
+			settings.BroadcastAddrs = append(settings.BroadcastAddrs, "[FF02::1]:9001")
 		}
 		if addrStat.IPv4Enabled {
-			settings.WebAddr = "127.0.0.1:9002"
-			settings.BroadcastAddrs = append(settings.BroadcastAddrs, "224.0.0.2:9100")
+			settings.WebAddr = "127.0.0.1:" + webPort
+			settings.BroadcastAddrs = append(settings.BroadcastAddrs, "224.0.0.2:9001")
 		}
 		// Temporary annotation, awaiting completion of broadcast optimization
 		// if addrStat.IPv6GlobalEnabled {
-		// 	settings.BroadcastAddress = append(settings.BroadcastAddress, "[FF0E::1]:9100")
+		// 	settings.BroadcastAddress = append(settings.BroadcastAddress, "[FF0E::1]:9001")
 		// }
 		if addrStat.IPv4GlobalEnabled {
-			settings.BroadcastAddrs = append(settings.BroadcastAddrs, "224.0.1.1:9100")
+			settings.BroadcastAddrs = append(settings.BroadcastAddrs, "224.0.1.1:9001")
 		}
 	}
 
