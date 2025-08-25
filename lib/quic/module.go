@@ -10,44 +10,54 @@ import (
 )
 
 type stdQuicModule struct {
-	AppConfig   config.AppConfig
-	PeerConfig  peer.PeerConfig
-	PeerCluster peer.PeerCluster
+	PeerGuard  peer.PeerGuard
+	PeerServer peer.PeerServer
+	PeerClient peer.PeerClient
 
-	cluster  *stdQuicCluster
-	explorer *stdQuicExplorer
-	agent    *stdQuicAgent
-	server   *stdQuicServer
+	configurer QuicConfigurer
+	network    *stdQuicNetwork
+	explorer   *stdQuicExplorer
+	agent      *stdQuicAgent
+	server     *stdQuicServer
 }
 
 func New() interface{} {
 
 	logger := log.Default()
 
-	var module stdQuicModule
-	cluster := &stdQuicCluster{}
-	module.cluster = cluster
-	cluster.connMgr = &stdQuicConnMgr{}
-	cluster.routeMgr = &stdQuicRouteMgr{}
-
-	explorer := &stdQuicExplorer{}
-	module.explorer = explorer
-	explorer.cluster = cluster
+	network := &stdQuicNetwork{}
+	network.logger = logger
+	network.connMgr = &stdQuicConnMgr{}
+	network.routeMgr = &stdQuicRouteMgr{}
 
 	agent := &stdQuicAgent{}
-	module.agent = agent
 	agent.logger = logger
-	agent.cluster = cluster
-	cluster.agent = agent
+	agent.network = network
+	network.agent = agent
+
+	explorer := &stdQuicExplorer{}
+	explorer.network = network
 
 	server := &stdQuicServer{}
-	module.server = server
 	server.logger = logger
-	server.cluster = cluster
-	cluster.server = server
+	server.network = network
 	server.reloadChan = make(chan struct{}, 1)
 
-	return &module
+	provider := &stdQuicTransportProvider{}
+	provider.transportMap = make(map[string]*QuicTransport)
+	network.provider = provider
+	server.provider = provider
+
+	module := &stdQuicModule{}
+	module.agent = agent
+	module.network = network
+	module.explorer = explorer
+	module.server = server
+
+	configurer := config.NewConfigurer[QuicConfig](logger)
+	module.configurer = configurer
+
+	return module
 }
 
 var _ = (injection.ComponentProvider)((*stdQuicModule)(nil))
@@ -55,49 +65,35 @@ var _ = (injection.ComponentProvider)((*stdQuicModule)(nil))
 func (qm *stdQuicModule) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(qm, injection.ComponentNoneScope),
-		injection.NewComponent[QuicCluster](qm.cluster, injection.ComponentExternalScope),
+		injection.NewComponent[QuicNetwork](qm.network, injection.ComponentExternalScope),
 		injection.NewComponent[QuicExplorer](qm.explorer, injection.ComponentExternalScope),
+		injection.NewComponent[QuicConfigurer](qm.configurer, injection.ComponentExternalScope),
 	}
 }
 
-var _ = (config.AppConfigListener)((*stdQuicModule)(nil))
+var _ = (QuicConfigListener)((*stdQuicModule)(nil))
 
-func (qm *stdQuicModule) OnConfigUpdated(settings config.AppSettings) {
-	if settings == nil {
+func (qm *stdQuicModule) OnConfigUpdated(config QuicConfig) {
+	if config == nil {
 		return
 	}
-
-	qm.server.SetPort(settings.PeerPort)
-
-}
-
-var _ = (peer.PeerConfigListener)((*stdQuicModule)(nil))
-
-func (qm *stdQuicModule) OnPeerConfigUpdated(settings *peer.PeerSettings) {
-	if settings == nil {
-		return
-	}
-
-	certificate := settings.Certificate()
-	qm.cluster.SetCertificate(certificate)
-	qm.server.SetCertificate(certificate)
+	qm.network.Setup(config)
+	qm.server.Reload(config)
 }
 
 var _ = (bootstrap.ReadyModule)((*stdQuicModule)(nil))
 
 func (qm *stdQuicModule) Ready(ctx context.Context) error {
-	qm.cluster.SetPeerCluster(qm.PeerCluster)
+	qm.network.SetPeerServer(qm.PeerServer)
+	qm.network.SetPeerGuard(qm.PeerGuard)
 
-	qm.cluster.peerCluster.RegisterPeerNetwork(qm.cluster)
-	defer qm.cluster.peerCluster.UnregisterPeerNetwork(qm.cluster)
-	qm.cluster.peerCluster.RegisterPeerNetwork(qm.explorer)
-	defer qm.cluster.peerCluster.UnregisterPeerNetwork(qm.explorer)
+	qm.PeerClient.RegisterPeerTransport(qm.network)
+	defer qm.PeerClient.UnregisterPeerTransport(qm.network)
+	qm.PeerClient.RegisterPeerTransport(qm.explorer)
+	defer qm.PeerClient.UnregisterPeerTransport(qm.explorer)
 
-	qm.AppConfig.Subscribe(qm)
-	defer qm.AppConfig.Unsubscribe(qm)
-
-	qm.PeerConfig.Subscribe(qm)
-	defer qm.PeerConfig.Unsubscribe(qm)
+	qm.configurer.Subscribe(qm)
+	defer qm.configurer.Unsubscribe(qm)
 
 	return qm.server.ListenAndServe(ctx)
 }

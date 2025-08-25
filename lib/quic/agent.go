@@ -72,7 +72,7 @@ func doQuicConn(conn QuicConn, flag uint8, reader io.Reader) error {
 type stdQuicAgent struct {
 	logger log.Logger
 
-	cluster *stdQuicCluster
+	network *stdQuicNetwork
 	matrix  [][]*stdQuicReception
 	locker  sync.Mutex
 }
@@ -104,7 +104,7 @@ func (agent *stdQuicAgent) Greet(conn QuicConn) error {
 
 func (agent *stdQuicAgent) AcceptGreet(stream quic.ReceiveStream, conn QuicConn) error {
 	defer stream.CancelRead(quic.StreamErrorCode(quic.NoError))
-	_, err := agent.cluster.route(conn.PeerID(), conn.RemoteAddr().String())
+	_, err := agent.network.route(conn.PeerID(), conn.RemoteAddr().String())
 	return err
 }
 
@@ -156,7 +156,8 @@ func (agent *stdQuicAgent) Invite(conn QuicConn) (QuicConn, error) {
 // the error.
 func (agent *stdQuicAgent) AcceptInvite(stream quic.ReceiveStream, conn QuicConn) error {
 	defer stream.CancelRead(quic.StreamErrorCode(quic.NoError))
-	_, err := agent.cluster.Dial(context.Background(), conn.PeerID())
+
+	_, err := agent.network.Dial(context.Background(), conn.PeerID())
 	if err != nil {
 		agent.DeclineInvite(conn)
 	}

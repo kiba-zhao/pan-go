@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"pan/lib/log"
-	libNet "pan/lib/net"
 
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -30,6 +29,7 @@ type PacketConn interface {
 type BroadcastServerRuntime interface {
 	Addrs() []string
 	MTU() int
+	IPV6Enabled() bool
 }
 
 type stdBroadcastServer struct {
@@ -107,7 +107,7 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 
 		connections = make([]*net.UDPConn, 0)
 		for port, groups := range addrs {
-			conn, err := newMulticastConn(port, groups)
+			conn, err := newMulticastConn(port, groups, server.logger, serverRuntime.IPV6Enabled())
 			if err != nil {
 				server.logger.Error("BroadcastServer", "Conn Error: "+err.Error())
 				continue
@@ -249,19 +249,10 @@ func seqForMulitcastAddrs(logger log.Logger, addrs []string) iter.Seq2[int, []ne
 	}
 }
 
-func newMulticastConn(port int, groups []net.IP) (*net.UDPConn, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
-
-	addrStat, err := libNet.StatAddr()
-	if err != nil {
-		return nil, err
-	}
+func newMulticastConn(port int, groups []net.IP, logger log.Logger, ipv6Enabled bool) (*net.UDPConn, error) {
 
 	var mAddr *net.UDPAddr
-	if addrStat.IPv6Enabled {
+	if ipv6Enabled {
 		mAddr = &net.UDPAddr{IP: net.IPv6zero, Port: port}
 	} else {
 		mAddr = &net.UDPAddr{IP: net.IPv4zero, Port: port}
@@ -274,33 +265,25 @@ func newMulticastConn(port int, groups []net.IP) (*net.UDPConn, error) {
 
 	var ipv4Conn *ipv4.PacketConn
 	var ipv6Conn *ipv6.PacketConn
-	for _, iface := range ifaces {
-
-		if net.FlagMulticast != (net.FlagMulticast & iface.Flags) {
-			continue
-		}
-		if net.FlagRunning != (net.FlagRunning & iface.Flags) {
-			continue
-		}
-
-		for _, group := range groups {
-			var packetConn PacketConn
-			var mIP net.IP
-			if mIP = group.To4(); mIP != nil {
-				if ipv4Conn == nil {
-					ipv4Conn = ipv4.NewPacketConn(conn)
-				}
-				packetConn = ipv4Conn
-			} else if mIP = group.To16(); mIP != nil {
-				if ipv6Conn == nil {
-					ipv6Conn = ipv6.NewPacketConn(conn)
-				}
-				packetConn = ipv6Conn
+	for _, group := range groups {
+		var packetConn PacketConn
+		var mIP net.IP
+		if mIP = group.To4(); mIP != nil {
+			if ipv4Conn == nil {
+				ipv4Conn = ipv4.NewPacketConn(conn)
 			}
-
-			packetConn.JoinGroup(&iface, &net.UDPAddr{IP: mIP})
+			packetConn = ipv4Conn
+		} else if mIP = group.To16(); mIP != nil {
+			if ipv6Conn == nil {
+				ipv6Conn = ipv6.NewPacketConn(conn)
+			}
+			packetConn = ipv6Conn
 		}
 
+		err = packetConn.JoinGroup(nil, &net.UDPAddr{IP: mIP})
+		if err != nil {
+			logger.Warn("BroadcastServer", "JoinGroup Error: "+err.Error()+" IP="+mIP.String())
+		}
 	}
 
 	return conn, nil

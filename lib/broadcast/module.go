@@ -2,7 +2,6 @@ package broadcast
 
 import (
 	"context"
-	"net"
 	"pan/lib/bootstrap"
 	"pan/lib/config"
 	"pan/lib/injection"
@@ -50,7 +49,6 @@ func New() interface{} {
 
 	server.runtime = runtime
 	runtime.server = server
-	setDefualtMTU(runtime)
 
 	agent.runtime = runtime
 	runtime.agent = agent
@@ -122,23 +120,4 @@ var _ = (peer.PeerConfigListener)((*stdBroadcastModule)(nil))
 
 func (module *stdBroadcastModule) OnPeerConfigUpdated(settings *peer.PeerSettings) {
 	module.runtime.setPeerSettings(settings)
-}
-
-func setDefualtMTU(runtime *stdBroadcastRuntime) {
-	ifs, err := net.Interfaces()
-
-	if err != nil {
-		runtime.setMTU(1500)
-		return
-	}
-
-	mtu := runtime.DeliverLimitSize()
-	for _, i := range ifs {
-		if addrs, err := i.Addrs(); err == nil && len(addrs) > 0 {
-			if i.MTU > 0 && i.MTU < mtu {
-				mtu = i.MTU
-			}
-		}
-	}
-	runtime.setMTU(mtu)
 }

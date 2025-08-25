@@ -27,8 +27,9 @@ type PeerAppModule interface {
 }
 
 type stdPeerModule struct {
-	cluster *stdPeerCluster
-	cfg     *stdPeerConfig
+	server *stdPeerServer
+	client *stdPeerClient
+	guard  *stdPeerGuard
 
 	registry runtime.Registry
 	rw       sync.RWMutex
@@ -36,20 +37,29 @@ type stdPeerModule struct {
 }
 
 func New() interface{} {
-	module := &stdPeerModule{}
+	logger := log.Default()
 
-	cluster := &stdPeerCluster{}
-	module.cluster = cluster
-	cluster.logger = log.Default()
-	module.cfg = &stdPeerConfig{}
+	server := &stdPeerServer{}
+	server.logger = logger
+
+	client := &stdPeerClient{}
+	client.logger = logger
+	client.transports = make([]PeerTransport, 0)
+
+	guard := &stdPeerGuard{}
+	guard.logger = logger
+	guard.blackLists = make([]PeerBlackList, 0)
+
+	module := &stdPeerModule{}
+	module.server = server
+	module.client = client
+	module.guard = guard
+
 	return module
 }
 
 var _ = (runtime.InitializeModule)((*stdPeerModule)(nil))
 
-// Init initializes the peer module with the provided registry.
-//
-// It sets the module's registry and does not return an error.
 func (pn *stdPeerModule) Init(ctx context.Context, registry runtime.Registry) error {
 
 	pn.rw.Lock()
@@ -64,31 +74,16 @@ func (pn *stdPeerModule) Init(ctx context.Context, registry runtime.Registry) er
 
 var _ = (bootstrap.DeferModule)((*stdPeerModule)(nil))
 
-// Defer reloads the peer modules.
-//
-// It is called by the runtime to reload the peer modules after the application has finished initializing.
-//
-// The function first checks if the registry is available, and if it is not, an error is returned.
-// If the registry is available, the function calls ReloadModules to reload the peer modules.
-//
-// ReloadModules is a no-op if the registry is not available.
 func (pn *stdPeerModule) Defer(ctx context.Context) error {
 
-	err := pn.cfg.EnsureConfig()
-	if err == nil {
-		pn.already = true
-		err = pn.ReloadModules(ctx)
+	if pn.already {
+		return nil
 	}
-
-	return err
+	pn.already = true
+	return pn.ReloadModules(ctx)
 }
 
 var _ = (runtime.EngineExtensionModule)((*stdPeerModule)(nil))
-
-// EngineTypes returns a slice of reflect.Type representing the various engine types
-// associated with the peer module. These types include:
-//
-//   - PeerAppModule: Represents a module for the p2p application.
 
 func (pn *stdPeerModule) EngineTypes() []reflect.Type {
 	return []reflect.Type{
@@ -98,14 +93,11 @@ func (pn *stdPeerModule) EngineTypes() []reflect.Type {
 
 var _ = (injection.ComponentProvider)((*stdPeerModule)(nil))
 
-// Components returns a slice of injection.Component representing the components
-// provided by the peer module. Currently, the only component provided is the
-// PeerModule itself, which is scoped externally.
 func (pn *stdPeerModule) Components() []injection.Component {
 	return []injection.Component{
-		injection.NewComponent(pn, injection.ComponentNoneScope),
-		injection.NewComponent[PeerCluster](pn.cluster, injection.ComponentExternalScope),
-		injection.NewComponent[PeerConfig](pn.cfg, injection.ComponentExternalScope),
+		injection.NewComponent[PeerServer](pn.server, injection.ComponentExternalScope),
+		injection.NewComponent[PeerClient](pn.client, injection.ComponentExternalScope),
+		injection.NewComponent[PeerGuard](pn.guard, injection.ComponentExternalScope),
 	}
 }
 
@@ -124,7 +116,7 @@ func (pn *stdPeerModule) ReloadModules(ctx context.Context) error {
 	})
 
 	if err == nil {
-		pn.cluster.SetPeerApp(peerApp)
+		pn.server.Setup(peerApp)
 	}
 	return err
 }

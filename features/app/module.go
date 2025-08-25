@@ -63,8 +63,8 @@ type module struct {
 	BroadcastModule broadcast.BroadcastModule
 	BroadcastStore  broadcast.BroadcastStore
 
-	PeerCluster peer.PeerCluster
-	PeerGuard   peer.PeerGuard
+	PeerGuard     peer.PeerGuard
+	PeerBlackList peer.PeerBlackList
 
 	QuicExplorer      quic.QuicExplorer
 	QuicExplorerGuide quic.QuicExplorerGuide
@@ -100,7 +100,7 @@ var _ (bootstrap.DeferModule) = (*module)(nil)
 
 func (m *module) Defer(ctx context.Context) error {
 	m.BroadcastModule.SetStore(m.BroadcastStore)
-	m.PeerCluster.RegisterPeerGuard(m.PeerGuard)
+	m.PeerGuard.RegisterBlackList(m.PeerBlackList)
 	m.QuicExplorer.AddGuide(m.QuicExplorerGuide)
 
 	m.AppConfig.Subscribe(m)
@@ -112,7 +112,7 @@ func (m *module) Defer(ctx context.Context) error {
 var _ = (bootstrap.DestroyModule)((*module)(nil))
 
 func (m *module) Destroy() {
-	m.PeerCluster.UnregisterPeerGuard(m.PeerGuard)
+	m.PeerGuard.UnregisterBlackList(m.PeerBlackList)
 	m.QuicExplorer.RemoveGuide(m.QuicExplorerGuide)
 
 	m.AppConfig.Unsubscribe(m)
@@ -190,7 +190,7 @@ func (m *module) Components() []injection.Component {
 
 	//  others
 	components = feature.AppendInternalComponent[broadcast.BroadcastStore](components, &appbroadcast.BroadcastStore{})
-	components = feature.AppendComponent[peer.PeerGuard](components, &appnode.PeerGuard{})
+	components = feature.AppendComponent[peer.PeerBlackList](components, &appnode.PeerBlackList{})
 	components = feature.AppendComponent[quic.QuicExplorerGuide](components, &appnode.NetworkAddrGuide{})
 	return components
 }

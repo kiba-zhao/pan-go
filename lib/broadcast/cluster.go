@@ -3,6 +3,7 @@ package broadcast
 import (
 	"bytes"
 	"errors"
+	"iter"
 	"net"
 	"pan/lib/log"
 )
@@ -24,10 +25,10 @@ type BroadcastClusterRuntime interface {
 	Addrs() []string
 	// DeliverLimitSize returns the broadcast deliver limit size.
 	DeliverLimitSize() int
-	// MTU returns the broadcast MTU.
-	MTU() int
 
-	DeliverConn() *net.UDPConn
+	IPv6ZoneList() []string
+
+	SeqForDeliverConn() iter.Seq2[int, *net.UDPConn]
 }
 
 type BroadcastCluster interface {
@@ -75,8 +76,8 @@ func (cluster *stdBroadcastCluster) Deliver(payload []byte, addrs ...string) err
 	if clusterRuntime == nil {
 		return ErrBroadcastClusterUnavailable
 	}
-	conn := clusterRuntime.DeliverConn()
-	if conn == nil {
+	connSeq := clusterRuntime.SeqForDeliverConn()
+	if connSeq == nil {
 		return ErrBroadcastClusterUnavailable
 	}
 
@@ -99,7 +100,7 @@ func (cluster *stdBroadcastCluster) Deliver(payload []byte, addrs ...string) err
 
 	deliverUDPAddrs := make([]*net.UDPAddr, 0)
 	for _, addr := range deliverAddrs {
-		udpAddrs, err := resolveAddrs(addr)
+		udpAddrs, err := resolveAddrs(addr, clusterRuntime.IPv6ZoneList())
 		if err != nil {
 			cluster.logger.Error("BroadcastCluster", "Deliver resolveAddrs error: "+addr)
 			continue
@@ -114,23 +115,38 @@ func (cluster *stdBroadcastCluster) Deliver(payload []byte, addrs ...string) err
 		return ErrBroadcastClusterDeliverInvalidAddrs
 	}
 
-	mtu := clusterRuntime.MTU()
 	buffer := packBuffer(payload)
 	size = len(buffer)
-	for offset := 0; offset < size; offset += mtu {
-		var limit int
-		if offset+mtu > size {
-			limit = size - offset
-		} else {
-			limit = offset + mtu
-		}
-		block := buffer[offset:limit]
+	for mtu, conn := range connSeq {
+
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+		localAddrIP := localAddr.IP
 
 		for _, udpAddr := range deliverUDPAddrs {
-			_, err := conn.WriteTo(block, udpAddr)
-			if err != nil {
-				cluster.logger.Error("BroadcastCluster", "Deliver error: "+err.Error())
+			if localAddrIP != nil {
+				if localAddrIP.To4() != nil && udpAddr.IP.To4() == nil {
+					continue
+				}
+				if localAddrIP.To4() == nil && udpAddr.IP.To4() != nil {
+					continue
+				}
 			}
+
+			for offset := 0; offset < size; offset += mtu {
+				var limit int
+				if offset+mtu > size {
+					limit = size - offset
+				} else {
+					limit = offset + mtu
+				}
+				block := buffer[offset:limit]
+
+				_, err := conn.WriteTo(block, udpAddr)
+				if err != nil {
+					cluster.logger.Error("BroadcastCluster", "Deliver error: "+err.Error()+" Addr: "+udpAddr.String())
+				}
+			}
+
 		}
 	}
 
@@ -141,7 +157,7 @@ func (cluster *stdBroadcastCluster) Runtime() BroadcastClusterRuntime {
 	return cluster.runtime
 }
 
-func resolveAddrs(addr string) ([]*net.UDPAddr, error) {
+func resolveAddrs(addr string, zoneArr []string) ([]*net.UDPAddr, error) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return nil, err
@@ -151,39 +167,15 @@ func resolveAddrs(addr string) ([]*net.UDPAddr, error) {
 		return []*net.UDPAddr{udpAddr}, nil
 	}
 
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
+	if len(zoneArr) <= 0 {
+		return nil, errors.New("Unsupported IPv6 Zone")
 	}
 
-	isGlobalAddr := isGlobalMulticastIP(udpAddr.IP)
 	udpAddrs := make([]*net.UDPAddr, 0)
-	for _, iface := range ifaces {
-		if net.FlagMulticast != (net.FlagMulticast & iface.Flags) {
-			continue
-		}
-		if net.FlagRunning != (net.FlagRunning & iface.Flags) {
-			continue
-		}
-		if net.FlagLoopback == (net.FlagLoopback & iface.Flags) {
-			continue
-		}
-		ifaceAddrs, err := iface.Addrs()
-		if err != nil {
-			continue
-		}
-		for _, ifaceAddr := range ifaceAddrs {
-			ipNet, ok := ifaceAddr.(*net.IPNet)
-			if !ok || ipNet.IP.To4() != nil {
-				continue
-			}
-			if isGlobalAddr == (ipNet.IP.IsGlobalUnicast() && !ipNet.IP.IsPrivate()) {
-				udpAddr_ := net.UDPAddrFromAddrPort(udpAddr.AddrPort())
-				udpAddr_.Zone = iface.Name
-				udpAddrs = append(udpAddrs, udpAddr_)
-				break
-			}
-		}
+	for _, zone := range zoneArr {
+		udpAddr_ := net.UDPAddrFromAddrPort(udpAddr.AddrPort())
+		udpAddr_.Zone = zone
+		udpAddrs = append(udpAddrs, udpAddr_)
 	}
 	return udpAddrs, err
 }

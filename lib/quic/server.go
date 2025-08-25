@@ -2,15 +2,14 @@
 package quic
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
 	"net"
 	"pan/lib/log"
-	libNet "pan/lib/net"
-	"strconv"
+	"slices"
 	"sync"
-	"time"
 
 	"github.com/quic-go/quic-go"
 )
@@ -19,76 +18,52 @@ var ErrQuicServerUnavailable = errors.New("quic.QuicServer Error: Unavailable")
 
 type stdQuicServer struct {
 	logger  log.Logger
-	cluster *stdQuicCluster
+	network QuicNetwork
 
-	transport   *quic.Transport
-	transportRW sync.RWMutex
-
-	port   uint16
-	portRW sync.RWMutex
-
-	certificate   tls.Certificate
-	certificateRW sync.RWMutex
+	port        uint16
+	addrs       []string
+	certificate tls.Certificate
 
 	reloadChan chan struct{}
 	reloadLock sync.Mutex
 	reload     bool
+
+	provider *stdQuicTransportProvider
 }
 
-func (qs *stdQuicServer) Transport() *quic.Transport {
-	qs.transportRW.RLock()
-	defer qs.transportRW.RUnlock()
-	return qs.transport
-}
-
-func (qs *stdQuicServer) setTransport(transport *quic.Transport) {
-	qs.transportRW.Lock()
-	defer qs.transportRW.Unlock()
-	qs.transport = transport
-}
-
-func (qs *stdQuicServer) Port() uint16 {
-	qs.portRW.RLock()
-	defer qs.portRW.RUnlock()
-	return qs.port
-}
-
-func (qs *stdQuicServer) SetPort(port uint16) {
-	qs.logger.Debug("QuicServer", "SetPort")
-
-	qs.portRW.Lock()
-	defer qs.portRW.Unlock()
-	if qs.port == port {
-		return
-	}
-	qs.port = port
-	qs.Reload()
-}
-
-func (qs *stdQuicServer) Certificate() tls.Certificate {
-	qs.certificateRW.RLock()
-	defer qs.certificateRW.RUnlock()
-	return qs.certificate
-}
-
-func (qs *stdQuicServer) SetCertificate(certificate tls.Certificate) {
-	qs.certificateRW.Lock()
-	defer qs.certificateRW.Unlock()
-	qs.certificate = certificate
-	qs.Reload()
-}
-
-func (qs *stdQuicServer) Reload() {
+func (qs *stdQuicServer) Reload(config QuicConfig) {
 	qs.logger.Debug("QuicServer", "Reload")
 
 	qs.reloadLock.Lock()
 	defer qs.reloadLock.Unlock()
-	if qs.reload {
+
+	changed := false
+	port := config.Port()
+	addrs := config.Addrs()
+	certificate := config.Certificate()
+
+	if qs.port != port {
+		qs.port = port
+		changed = true
+	}
+
+	if !slices.Equal(qs.addrs, addrs) {
+		qs.addrs = addrs
+		changed = true
+	}
+
+	if !bytes.Equal(qs.certificate.Certificate[0], certificate.Certificate[0]) {
+		qs.certificate = certificate
+		changed = true
+	}
+
+	if !changed || qs.reload {
 		return
 	}
 
 	qs.reload = true
 	qs.reloadChan <- struct{}{}
+
 }
 
 func (qs *stdQuicServer) ListenAndServe(ctx context.Context) error {
@@ -96,110 +71,101 @@ func (qs *stdQuicServer) ListenAndServe(ctx context.Context) error {
 	defer qs.logger.Debug("QuicServer", "ListenAndServe end")
 
 	var err error
-	var closed bool
-
 	var wg sync.WaitGroup
-	var timer <-chan time.Time
+	var port uint16
+	var certBytes []byte
 
 	for {
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
-			closed = true
 		case <-qs.reloadChan:
-			if timer != nil {
-				<-timer
-				timer = nil
-			}
 			qs.reloadLock.Lock()
 			qs.reload = false
 			qs.reloadLock.Unlock()
 		}
 
-		server := qs.Transport()
-		if server != nil {
-			server.Close()
-			qs.setTransport(nil)
-			wg.Wait()
-		}
-
-		if closed {
+		provider := qs.provider
+		if err != nil {
+			provider.RevokeAllTransports()
 			break
 		}
 
-		certificate := qs.Certificate()
-		port := qs.port
-		if port <= 0 || len(certificate.Certificate) <= 0 {
+		certificate := qs.certificate
+		netAddrs := qs.addrs
+		netPort := qs.port
+
+		if len(netAddrs) <= 0 || len(certificate.Certificate) <= 0 || netPort == 0 {
+			provider.RevokeAllTransports()
 			continue
 		}
 
-		addrStat, addrStatErr := libNet.StatAddr()
-		if addrStatErr != nil {
-			qs.logger.Warn("QuicServer", "ListenAndServe StatAddr Error: "+addrStatErr.Error())
-			timer = time.After(time.Second * 5)
-			qs.Reload()
-			continue
-		}
-
-		var addr string
-		if addrStat.IPv6Enabled {
-			addr = "[::]:" + strconv.FormatUint(uint64(port), 10)
+		if port != netPort || !bytes.Equal(certBytes, certificate.Certificate[0]) {
+			provider.RevokeAllTransports()
 		} else {
-			addr = "0.0.0.0:" + strconv.FormatUint(uint64(port), 10)
-		}
-
-		cluster := qs.cluster
-		tlsConf := &tls.Config{ClientAuth: tls.RequireAnyClientCert, Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
-		quicConf := &quic.Config{}
-
-		udpAddr, udpAddrErr := net.ResolveUDPAddr("udp", addr)
-		if udpAddrErr != nil {
-			qs.logger.Error("QuicServer", "net.ResolveUDPAddr Error: "+addr)
-			continue
-		}
-
-		udpConn, udpConnErr := net.ListenUDP("udp", udpAddr)
-		if udpConnErr != nil {
-			qs.logger.Error("QuicServer", "net.ListenUDP Error: "+addr)
-			continue
-		}
-
-		tr := quic.Transport{
-			Conn: udpConn,
-		}
-		qs.setTransport(&tr)
-
-		ln, lnErr := tr.Listen(tlsConf, quicConf)
-		if lnErr != nil {
-			qs.logger.Error("QuicServer", "quic.ListenAddr Error: "+addr)
-			continue
-		} else {
-			qs.logger.Info("QuicServer", "quic.ListenAddr Success: "+addr)
-		}
-
-		wg.Add(1)
-		go func(ln *quic.Listener, udpConn *net.UDPConn) {
-			defer wg.Done()
-			defer udpConn.Close()
-			for {
-				conn, err := ln.Accept(ctx)
-				if err != nil && conn != nil {
-					conn.CloseWithError(quic.ApplicationErrorCode(quic.InternalError), err.Error())
+			transportsSeq := provider.SeqForTransports()
+			for addr, _ := range transportsSeq {
+				if idx := slices.Index(netAddrs, addr); idx >= 0 {
+					//remove reserved ip in ipAddrs
+					netAddrs = slices.Delete(netAddrs, idx, idx+1)
+					continue
 				}
-				if err == nil {
-					_, err = cluster.Serve(conn, nil)
-				}
-				if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) {
-					break
-				}
-				if ctxErr := ctx.Err(); ctxErr != nil {
-					break
-				}
-				qs.logger.Error("QuicServer", "quic.Listener.Accept Error: "+err.Error())
+				// close outdated transports
+				provider.RevokeTransport(addr)
 			}
-		}(ln, udpConn)
+		}
 
+		port = netPort
+		certBytes = certificate.Certificate[0]
+		wg.Wait()
+
+		if len(netAddrs) <= 0 {
+			continue
+		}
+
+		network := qs.network
+		// attach new transports and listen for serve
+		for _, netAddr := range netAddrs {
+
+			transport, err := provider.NewTransport(netAddr, netPort)
+			if err != nil {
+				qs.logger.Error("QuicServer", "provider.NewTransport Error: "+err.Error())
+				continue
+			}
+
+			tlsConf := &tls.Config{ClientAuth: tls.RequireAnyClientCert, Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
+			quicConf := &quic.Config{}
+
+			ln, lnErr := transport.Listen(tlsConf, quicConf)
+			if lnErr != nil {
+				qs.logger.Error("QuicServer", "quic.ListenAddr Error: "+lnErr.Error())
+				continue
+			} else {
+				qs.logger.Info("QuicServer", "quic.ListenAddr Success: "+netAddr)
+			}
+
+			wg.Add(1)
+			go func(ln *quic.Listener, trConn net.PacketConn) {
+				defer wg.Done()
+				defer trConn.Close()
+				for {
+					conn, err := ln.Accept(ctx)
+					if err != nil && conn != nil {
+						conn.CloseWithError(quic.ApplicationErrorCode(quic.InternalError), err.Error())
+					}
+					if err == nil {
+						_, err = network.Serve(conn, nil)
+					}
+					if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) {
+						break
+					}
+					if ctxErr := ctx.Err(); ctxErr != nil {
+						break
+					}
+					qs.logger.Error("QuicServer", "quic.Listener.Accept Error: "+err.Error())
+				}
+			}(ln, transport.Conn)
+		}
 	}
-
 	return err
 }

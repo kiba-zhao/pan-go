@@ -1,6 +1,7 @@
 package broadcast
 
 import (
+	"iter"
 	"net"
 	"pan/lib/log"
 	"pan/lib/peer"
@@ -24,6 +25,9 @@ type stdBroadcastRuntime struct {
 	mtu   int
 	mtuRW sync.RWMutex
 
+	ipv6Enabled   bool
+	ipv6EnabledRW sync.RWMutex
+
 	quicCluster   quic.QuicCluster
 	quicClusterRW sync.RWMutex
 
@@ -32,6 +36,9 @@ type stdBroadcastRuntime struct {
 
 	store   BroadcastStore
 	storeRW sync.RWMutex
+
+	ipv6ZoneList   []string
+	ipv6ZoneListRW sync.RWMutex
 
 	server *stdBroadcastServer
 	agent  *stdBroadcastAgent
@@ -71,6 +78,30 @@ func (runtime *stdBroadcastRuntime) setAddrs(addrs []string) {
 	}
 }
 
+func (runtime *stdBroadcastRuntime) MTU() int {
+	runtime.mtuRW.RLock()
+	defer runtime.mtuRW.RUnlock()
+	return runtime.mtu
+}
+
+func (runtime *stdBroadcastRuntime) setMTU(mtu int) {
+	runtime.mtuRW.Lock()
+	defer runtime.mtuRW.Unlock()
+	runtime.mtu = mtu
+}
+
+func (runtime *stdBroadcastRuntime) IPV6Enabled() bool {
+	runtime.ipv6EnabledRW.RLock()
+	defer runtime.ipv6EnabledRW.RUnlock()
+	return runtime.ipv6Enabled
+}
+
+func (runtime *stdBroadcastRuntime) setIPV6Enabled(enabled bool) {
+	runtime.ipv6EnabledRW.Lock()
+	defer runtime.ipv6EnabledRW.Unlock()
+	runtime.ipv6Enabled = enabled
+}
+
 var _ = (BroadcastClusterRuntime)((*stdBroadcastRuntime)(nil))
 
 func (runtime *stdBroadcastRuntime) ServeModules() []BroadcastServeModule {
@@ -108,24 +139,20 @@ func (runtime *stdBroadcastRuntime) setDeliverLimitSize(size int) {
 	runtime.deliverLimitSize = size
 }
 
-func (runtime *stdBroadcastRuntime) MTU() int {
-	runtime.mtuRW.RLock()
-	defer runtime.mtuRW.RUnlock()
-	return runtime.mtu
+func (runtime *stdBroadcastRuntime) IPv6ZoneList() []string {
+	runtime.ipv6ZoneListRW.RLock()
+	defer runtime.ipv6ZoneListRW.RUnlock()
+	return runtime.ipv6ZoneList
 }
 
-func (runtime *stdBroadcastRuntime) setMTU(mtu int) {
-	runtime.mtuRW.Lock()
-	defer runtime.mtuRW.Unlock()
-	runtime.mtu = mtu
+func (runtime *stdBroadcastRuntime) setIPv6ZoneList(list []string) {
+	runtime.ipv6ZoneListRW.Lock()
+	defer runtime.ipv6ZoneListRW.Unlock()
+	runtime.ipv6ZoneList = list
 }
 
-func (runtime *stdBroadcastRuntime) DeliverConn() *net.UDPConn {
-	quicCluster := runtime.QuicCluster()
-	if quicCluster == nil {
-		return nil
-	}
-	return quicCluster.ServeUDPConn()
+func (runtime *stdBroadcastRuntime) SeqForDeliverConn() iter.Seq2[int, *net.UDPConn] {
+	return nil
 }
 
 var _ = (BroadcastAgentRuntime)((*stdBroadcastRuntime)(nil))

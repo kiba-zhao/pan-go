@@ -18,20 +18,18 @@ type QuicExplorerGuide interface {
 }
 
 type QuicExplorer interface {
-	peer.PeerNetwork
-
 	Guides() []QuicExplorerGuide
 	AddGuide(guide QuicExplorerGuide)
 	RemoveGuide(guide QuicExplorerGuide)
 }
 
 type stdQuicExplorer struct {
-	cluster  *stdQuicCluster
+	network  *stdQuicNetwork
 	guides   []QuicExplorerGuide
 	guidesRW sync.RWMutex
 }
 
-var _ = (QuicExplorer)((*stdQuicExplorer)(nil))
+var _ = (peer.PeerTransport)((*stdQuicExplorer)(nil))
 
 func (e *stdQuicExplorer) RoundTrip(ctx context.Context, peerId peer.PeerID, reader io.Reader) (io.ReadCloser, error) {
 
@@ -41,10 +39,10 @@ func (e *stdQuicExplorer) RoundTrip(ctx context.Context, peerId peer.PeerID, rea
 		return nil, ErrQuicExplorerUnavailable
 	}
 
-	cluster := e.cluster
+	network := e.network
 	hasRoute := false
 	for addr := range quicAddrSeq {
-		err := cluster.Route(peerId, addr)
+		err := network.Route(peerId, addr)
 		if err == nil {
 			hasRoute = true
 			break
@@ -54,7 +52,7 @@ func (e *stdQuicExplorer) RoundTrip(ctx context.Context, peerId peer.PeerID, rea
 	if !hasRoute {
 		return nil, ErrQuicExplorerNotFound
 	}
-	return cluster.RoundTrip(ctx, peerId, reader)
+	return network.RoundTrip(ctx, peerId, reader)
 }
 
 func (e *stdQuicExplorer) CanReach(peerId peer.PeerID) bool {
@@ -69,6 +67,8 @@ func (e *stdQuicExplorer) CanReach(peerId peer.PeerID) bool {
 	}
 	return reachable
 }
+
+var _ = (QuicExplorer)((*stdQuicExplorer)(nil))
 
 func (e *stdQuicExplorer) Guides() []QuicExplorerGuide {
 	e.guidesRW.RLock()

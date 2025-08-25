@@ -21,13 +21,13 @@ type BrokerHelper interface {
 var _ = (BrokerHelper)((*stdFeatureHelper)(nil))
 
 func (helper *stdFeatureHelper) Do(ctx context.Context, peerId peer.PeerID, request peer.PeerRequest) (peer.PeerResponse, error) {
-	cluster := helper.PeerCluster
-	if cluster == nil {
-		return nil, ErrFeatureHelperPeerClusterNotFound
+	client := helper.PeerClient
+	if client == nil {
+		return nil, ErrFeatureHelperPeerClientNotFound
 	}
 
 	app.SetRequestScope(request, helper.PeerScope())
-	return cluster.Do(ctx, peerId, request)
+	return client.Do(ctx, peerId, request)
 }
 
 type Broker interface {

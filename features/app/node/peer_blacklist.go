@@ -7,14 +7,14 @@ import (
 
 var ErrGuardAccessRefused = errors.New("guard.PeerGuard Error: Access Refused")
 
-type PeerGuard struct {
+type PeerBlackList struct {
 	AppNodeService *AppNodeService
 }
 
-func (g *PeerGuard) Enabled() bool {
+func (g *PeerBlackList) Enabled() bool {
 	return true
 }
 
-func (g *PeerGuard) Access(peerId peer.PeerID) error {
-	return g.AppNodeService.AccessWithPeerID(peerId)
+func (g *PeerBlackList) Has(peerId peer.PeerID) bool {
+	return g.AppNodeService.AccessWithPeerID(peerId) == nil
 }
