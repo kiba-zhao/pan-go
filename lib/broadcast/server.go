@@ -26,29 +26,46 @@ type PacketConn interface {
 	LeaveGroup(ifi *net.Interface, group net.Addr) error
 }
 
-type BroadcastServerRuntime interface {
-	Addrs() []string
-	MTU() int
-	IPV6Enabled() bool
-}
-
 type stdBroadcastServer struct {
-	logger log.Logger
+	logger  log.Logger
+	network BroadcastNetwork
 
-	runtime BroadcastServerRuntime
-	cluster BroadcastCluster
+	addrs       []string
+	mtu         int
+	ipv6Enabled bool
 
 	reloadChan chan struct{}
 	reloadLock sync.Mutex
 	reload     bool
 }
 
-func (server *stdBroadcastServer) Reload() {
-	server.logger.Debug("BroadcastServer", "Reload")
+func (server *stdBroadcastServer) Setup(config BroadcastConfig) {
+	server.logger.Debug("BroadcastServer", "Setup")
 
 	server.reloadLock.Lock()
 	defer server.reloadLock.Unlock()
-	if server.reload {
+
+	changed := false
+	addrs := config.Addrs()
+	mtu := config.MTU()
+	ipv6Enabled := config.IPv6Enabled()
+
+	if !slices.Equal(server.addrs, addrs) {
+		server.addrs = addrs
+		changed = true
+	}
+
+	if server.mtu != mtu {
+		server.mtu = mtu
+		changed = true
+	}
+
+	if server.ipv6Enabled != ipv6Enabled {
+		server.ipv6Enabled = ipv6Enabled
+		changed = true
+	}
+
+	if !changed || server.reload {
 		return
 	}
 
@@ -62,22 +79,14 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 	defer server.logger.Debug("BroadcastServer", "ListenAndServe end")
 
 	var err error
-	var closed bool
-
 	var wg sync.WaitGroup
 	var connections []*net.UDPConn
-	var timer <-chan time.Time
 
 	for {
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
-			closed = true
 		case <-server.reloadChan:
-			if timer != nil {
-				<-timer
-				timer = nil
-			}
 			server.reloadLock.Lock()
 			server.reload = false
 			server.reloadLock.Unlock()
@@ -90,24 +99,25 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 			wg.Wait()
 		}
 
-		if closed {
+		if err != nil {
 			break
 		}
 
-		serverRuntime := server.runtime
-		if serverRuntime == nil {
-			timer = time.After(time.Second * 5)
-			server.Reload()
+		addrs := server.addrs
+		mtu := server.mtu
+		ipv6Enabled := server.ipv6Enabled
+		if len(addrs) <= 0 || mtu < 0 {
 			continue
 		}
-		addrs := seqForMulitcastAddrs(server.logger, serverRuntime.Addrs())
+
+		mAddrs := seqForMulitcastAddrs(server.logger, addrs)
 		if addrs == nil {
 			continue
 		}
 
 		connections = make([]*net.UDPConn, 0)
-		for port, groups := range addrs {
-			conn, err := newMulticastConn(port, groups, server.logger, serverRuntime.IPV6Enabled())
+		for port, groups := range mAddrs {
+			conn, err := newMulticastConn(port, groups, server.logger, ipv6Enabled)
 			if err != nil {
 				server.logger.Error("BroadcastServer", "Conn Error: "+err.Error())
 				continue
@@ -116,7 +126,7 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 			wg.Add(1)
 			go func(conn *net.UDPConn) {
 				defer wg.Done()
-				err := server.serve(conn)
+				err := server.serve(conn, mtu)
 				if err != nil {
 					server.logger.Error("BroadcastServer", "Serve Error: "+err.Error())
 				}
@@ -126,14 +136,10 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 	return err
 }
 
-func (server *stdBroadcastServer) serve(conn *net.UDPConn) error {
-	serverRuntime := server.runtime
-	cluster := server.cluster
-	if cluster == nil || serverRuntime == nil {
-		return ErrBroadcastServerUnavailable
-	}
-	mtu := serverRuntime.MTU()
-	if mtu <= 0 {
+func (server *stdBroadcastServer) serve(conn *net.UDPConn, mtu int) error {
+
+	network := server.network
+	if network == nil {
 		return ErrBroadcastServerUnavailable
 	}
 
@@ -211,7 +217,7 @@ func (server *stdBroadcastServer) serve(conn *net.UDPConn) error {
 			bufferItem.cancel()
 			bufferItem.wg.Wait()
 		}
-		go cluster.Serve(buffer, addr.String())
+		go network.Serve(buffer, addr.String())
 	}
 	return err
 }

@@ -10,12 +10,19 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-type stdQuicTransportProvider struct {
+type stdQuicProvider struct {
 	transportMap map[string]*QuicTransport
 	transportsRW sync.RWMutex
 }
 
-func (provider *stdQuicTransportProvider) SeqForTransports() iter.Seq2[string, *QuicTransport] {
+func (provider *stdQuicProvider) Select(addr string) (*QuicTransport, bool) {
+	provider.transportsRW.RLock()
+	defer provider.transportsRW.RUnlock()
+	transport, ok := provider.transportMap[addr]
+	return transport, ok
+}
+
+func (provider *stdQuicProvider) SeqForTransports() iter.Seq2[string, *QuicTransport] {
 	provider.transportsRW.RLock()
 	defer provider.transportsRW.RUnlock()
 
@@ -29,7 +36,7 @@ func (provider *stdQuicTransportProvider) SeqForTransports() iter.Seq2[string, *
 	}
 }
 
-func (provider *stdQuicTransportProvider) NewTransport(addr string, port uint16) (*QuicTransport, error) {
+func (provider *stdQuicProvider) NewTransport(addr string, port uint16) (*QuicTransport, error) {
 	provider.transportsRW.Lock()
 	defer provider.transportsRW.Unlock()
 
@@ -65,7 +72,7 @@ func (provider *stdQuicTransportProvider) NewTransport(addr string, port uint16)
 	return transport, nil
 }
 
-func (provider *stdQuicTransportProvider) RevokeTransport(addr string) error {
+func (provider *stdQuicProvider) RevokeTransport(addr string) error {
 	provider.transportsRW.Lock()
 	defer provider.transportsRW.Unlock()
 	transport, ok := provider.transportMap[addr]
@@ -76,7 +83,7 @@ func (provider *stdQuicTransportProvider) RevokeTransport(addr string) error {
 	return transport.Close()
 }
 
-func (provider *stdQuicTransportProvider) RevokeAllTransports() error {
+func (provider *stdQuicProvider) RevokeAllTransports() error {
 	provider.transportsRW.Lock()
 	defer provider.transportsRW.Unlock()
 
@@ -97,7 +104,7 @@ func (provider *stdQuicTransportProvider) RevokeAllTransports() error {
 	return errors.Join(errs...)
 }
 
-func (provider *stdQuicTransportProvider) SeqForTransportsWithAddrIP(addrIP net.IP) iter.Seq2[string, *QuicTransport] {
+func (provider *stdQuicProvider) SeqForTransportsWithAddrIP(addrIP net.IP) iter.Seq2[string, *QuicTransport] {
 	provider.transportsRW.RLock()
 	defer provider.transportsRW.RUnlock()
 

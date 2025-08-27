@@ -40,25 +40,32 @@ type WebAppModule interface {
 }
 
 func New() interface{} {
-	wm := &stdWebModule{}
 
 	server := &stdWebServer{}
-	wm.server = server
-	server.logger = log.Default()
 	server.reloadChan = make(chan struct{}, 1)
+
+	logger := log.Default()
+	server.logger = logger
+
+	configurer := config.NewConfigurer[WebConfig](logger)
+
+	wm := &stdWebModule{}
+	wm.server = server
+	wm.configurer = configurer
 
 	return wm
 }
 
 type stdWebModule struct {
-	AppConfig config.AppConfig
-	server    *stdWebServer
-	registry  runtime.Registry
-	rw        sync.RWMutex
-	already   bool
+	server     *stdWebServer
+	configurer WebConfigurer
+
+	registry runtime.Registry
+	rw       sync.RWMutex
+	already  bool
 }
 
-var _ = (config.AppConfigListener)((*stdWebModule)(nil))
+var _ = (WebConfigListener)((*stdWebModule)(nil))
 
 // OnConfigUpdated updates the web module configuration.
 //
@@ -66,8 +73,8 @@ var _ = (config.AppConfigListener)((*stdWebModule)(nil))
 //
 // It checks if the web address is changed, and if so, updates the address and
 // triggers a reload by sending a signal to the reload channel.
-func (w *stdWebModule) OnConfigUpdated(settings config.AppSettings) {
-	w.server.SetAddr(settings.WebAddr)
+func (w *stdWebModule) OnConfigUpdated(cfg WebConfig) {
+	w.server.Setup(cfg)
 }
 
 var _ = (runtime.InitializeModule)((*stdWebModule)(nil))
@@ -102,8 +109,8 @@ func (w *stdWebModule) Defer(ctx context.Context) error {
 var _ = (bootstrap.ReadyModule)((*stdWebModule)(nil))
 
 func (w *stdWebModule) Ready(ctx context.Context) error {
-	w.AppConfig.Subscribe(w)
-	defer w.AppConfig.Unsubscribe(w)
+	w.configurer.Subscribe(w)
+	defer w.configurer.Unsubscribe(w)
 
 	return w.server.ListenAndServe(ctx)
 }
@@ -139,7 +146,7 @@ func (w *stdWebModule) ReloadModules(ctx context.Context) error {
 	})
 
 	if err == nil {
-		w.server.SetWebApp(app)
+		w.server.SetupApp(app)
 	}
 
 	return err

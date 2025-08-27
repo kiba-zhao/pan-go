@@ -21,9 +21,9 @@ type BrokerHelper interface {
 var _ = (BrokerHelper)((*stdFeatureHelper)(nil))
 
 func (helper *stdFeatureHelper) Do(ctx context.Context, peerId peer.PeerID, request peer.PeerRequest) (peer.PeerResponse, error) {
-	client := helper.PeerClient
+	client := helper.PeerNetwork
 	if client == nil {
-		return nil, ErrFeatureHelperPeerClientNotFound
+		return nil, ErrFeatureHelperPeerNetworkNotFound
 	}
 
 	app.SetRequestScope(request, helper.PeerScope())

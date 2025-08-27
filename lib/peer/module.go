@@ -27,9 +27,8 @@ type PeerAppModule interface {
 }
 
 type stdPeerModule struct {
-	server *stdPeerServer
-	client *stdPeerClient
-	guard  *stdPeerGuard
+	network *stdPeerNetwork
+	guard   *stdPeerGuard
 
 	registry runtime.Registry
 	rw       sync.RWMutex
@@ -39,20 +38,16 @@ type stdPeerModule struct {
 func New() interface{} {
 	logger := log.Default()
 
-	server := &stdPeerServer{}
-	server.logger = logger
-
-	client := &stdPeerClient{}
-	client.logger = logger
-	client.transports = make([]PeerTransport, 0)
+	network := &stdPeerNetwork{}
+	network.logger = logger
+	network.transports = make([]PeerTransport, 0)
 
 	guard := &stdPeerGuard{}
 	guard.logger = logger
 	guard.blackLists = make([]PeerBlackList, 0)
 
 	module := &stdPeerModule{}
-	module.server = server
-	module.client = client
+	module.network = network
 	module.guard = guard
 
 	return module
@@ -95,8 +90,7 @@ var _ = (injection.ComponentProvider)((*stdPeerModule)(nil))
 
 func (pn *stdPeerModule) Components() []injection.Component {
 	return []injection.Component{
-		injection.NewComponent[PeerServer](pn.server, injection.ComponentExternalScope),
-		injection.NewComponent[PeerClient](pn.client, injection.ComponentExternalScope),
+		injection.NewComponent[PeerNetwork](pn.network, injection.ComponentExternalScope),
 		injection.NewComponent[PeerGuard](pn.guard, injection.ComponentExternalScope),
 	}
 }
@@ -116,7 +110,7 @@ func (pn *stdPeerModule) ReloadModules(ctx context.Context) error {
 	})
 
 	if err == nil {
-		pn.server.Setup(peerApp)
+		pn.network.SetupApp(peerApp)
 	}
 	return err
 }

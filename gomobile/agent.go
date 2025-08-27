@@ -5,8 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
-	"pan/features/app"
-	"pan/features/extfs"
+	"pan/gobase"
 	"pan/lib/runtime"
 	libSerlvet "pan/lib/serlvet"
 	"sync"
@@ -23,11 +22,9 @@ type GoMobileAgent struct {
 
 func (agent *GoMobileAgent) Run() error {
 
-	serlvetModule := libSerlvet.New()
-	engine, err := runtime.New(
-		app.New(serlvetModule, agent.module),
-		extfs.New(),
-		app.Bootstrap(),
+	engine, err := gobase.NewEngine(
+		libSerlvet.New(),
+		agent.module,
 	)
 
 	if err == nil {
@@ -67,7 +64,7 @@ func getAgentSerlvet(agent *GoMobileAgent) libSerlvet.Serlvet {
 	return agent.serlvet
 }
 
-func setAgentSerlvet(agent *GoMobileAgent, serlvet libSerlvet.Serlvet) {
+func setupAgentSerlvet(agent *GoMobileAgent, serlvet libSerlvet.Serlvet) {
 	agent.rw.Lock()
 	defer agent.rw.Unlock()
 	agent.serlvet = serlvet

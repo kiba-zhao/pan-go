@@ -6,7 +6,6 @@ import (
 	"pan/lib/config"
 	"pan/lib/injection"
 	"pan/lib/log"
-	"pan/lib/peer"
 	"pan/lib/quic"
 	"sync"
 )
@@ -16,53 +15,44 @@ type BroadcastModule interface {
 }
 
 type stdBroadcastModule struct {
-	AppConfig   config.AppConfig
-	PeerConfig  peer.PeerConfig
-	QuicCluster quic.QuicCluster
+	QuicNetwork quic.QuicNetwork
 
-	runtime *stdBroadcastRuntime
-	cluster *stdBroadcastCluster
-	agent   *stdBroadcastAgent
-	server  *stdBroadcastServer
+	configurer BroadcastConfigurer
+	network    *stdBroadcastNetwork
+	agent      *stdBroadcastAgent
+	server     *stdBroadcastServer
+	provider   *stdBroadcastProvider
 }
 
 func New() interface{} {
-	module := &stdBroadcastModule{}
 
-	cluster := &stdBroadcastCluster{}
-	module.cluster = cluster
+	network := &stdBroadcastNetwork{}
 
 	agent := &stdBroadcastAgent{}
-	module.agent = agent
-
+	agent.network = network
 	agent.reloadChan = make(chan struct{}, 1)
-	agent.cluster = cluster
 
 	server := &stdBroadcastServer{}
-	module.server = server
+	server.network = network
 	server.reloadChan = make(chan struct{}, 1)
-	server.cluster = cluster
 
-	// init broadcast runtime
-	runtime := &stdBroadcastRuntime{}
-	module.runtime = runtime
-
-	server.runtime = runtime
-	runtime.server = server
-
-	agent.runtime = runtime
-	runtime.agent = agent
-
-	cluster.runtime = runtime
-	runtime.RegisterServeModule(agent)
-	runtime.setDeliverLimitSize(65535)
-	//
+	provider := &stdBroadcastProvider{}
+	network.provider = provider
+	agent.provider = provider
 
 	logger := log.Default()
-	cluster.logger = logger
+	network.logger = logger
 	agent.logger = logger
 	server.logger = logger
-	runtime.logger = logger
+
+	configurer := config.NewConfigurer[BroadcastConfig](logger)
+
+	module := &stdBroadcastModule{}
+	module.network = network
+	module.agent = agent
+	module.server = server
+	module.provider = provider
+	module.configurer = configurer
 
 	return module
 }
@@ -70,7 +60,7 @@ func New() interface{} {
 var _ = (BroadcastModule)((*stdBroadcastModule)(nil))
 
 func (module *stdBroadcastModule) SetStore(store BroadcastStore) {
-	module.runtime.setStore(store)
+	module.agent.SetupStore(store)
 }
 
 var _ = (injection.ComponentProvider)((*stdBroadcastModule)(nil))
@@ -79,20 +69,18 @@ func (module *stdBroadcastModule) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(module, injection.ComponentNoneScope),
 		injection.NewComponent[BroadcastModule](module, injection.ComponentExternalScope),
-		injection.NewComponent[BroadcastCluster](module.cluster, injection.ComponentExternalScope),
+		injection.NewComponent[BroadcastNetwork](module.network, injection.ComponentExternalScope),
+		injection.NewComponent[BroadcastConfigurer](module.configurer, injection.ComponentExternalScope),
 	}
 }
 
 var _ = (bootstrap.ReadyModule)((*stdBroadcastModule)(nil))
 
 func (module *stdBroadcastModule) Ready(ctx context.Context) error {
-	module.runtime.setQuicCluster(module.QuicCluster)
+	module.provider.SetupQuicNetwork(module.QuicNetwork)
 
-	module.AppConfig.Subscribe(module)
-	defer module.AppConfig.Unsubscribe(module)
-
-	module.PeerConfig.Subscribe(module)
-	defer module.PeerConfig.Unsubscribe(module)
+	module.configurer.Subscribe(module)
+	defer module.configurer.Unsubscribe(module)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -110,14 +98,10 @@ func (module *stdBroadcastModule) Ready(ctx context.Context) error {
 	return nil
 }
 
-var _ = (config.AppConfigListener)((*stdBroadcastModule)(nil))
+var _ = (BroadcastConfigListener)((*stdBroadcastModule)(nil))
 
-func (module *stdBroadcastModule) OnConfigUpdated(settings config.AppSettings) {
-	module.runtime.setAddrs(settings.BroadcastAddrs)
-}
-
-var _ = (peer.PeerConfigListener)((*stdBroadcastModule)(nil))
-
-func (module *stdBroadcastModule) OnPeerConfigUpdated(settings *peer.PeerSettings) {
-	module.runtime.setPeerSettings(settings)
+func (module *stdBroadcastModule) OnConfigUpdated(config BroadcastConfig) {
+	module.network.Setup(config)
+	module.server.Setup(config)
+	module.agent.Setup(config)
 }

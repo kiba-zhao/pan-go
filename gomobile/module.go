@@ -24,7 +24,7 @@ func (module *stdModule) Components() []injection.Component {
 var _ = (bootstrap.DeferModule)((*stdModule)(nil))
 
 func (module *stdModule) Defer(ctx context.Context) error {
-	setAgentSerlvet(module.agent, module.Serlvet)
+	setupAgentSerlvet(module.agent, module.Serlvet)
 
 	return nil
 }

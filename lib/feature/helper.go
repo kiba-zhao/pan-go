@@ -3,7 +3,7 @@ package feature
 import "pan/lib/peer"
 
 type stdFeatureHelper struct {
-	PeerClient peer.PeerClient
+	PeerNetwork peer.PeerNetwork
 
 	name    string
 	feature interface{}

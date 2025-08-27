@@ -41,6 +41,7 @@ type QuicNetwork interface {
 	Route(peerId peer.PeerID, addr string) error
 
 	Serve(quic.Connection, peer.PeerID) (QuicConn, error)
+	SelectTransport(addr string) *QuicTransport
 }
 
 type stdQuicNetwork struct {
@@ -53,14 +54,14 @@ type stdQuicNetwork struct {
 	connMgr   *stdQuicConnMgr
 	routeMgr  *stdQuicRouteMgr
 
-	provider    *stdQuicTransportProvider
+	provider    *stdQuicProvider
 	certificate tls.Certificate
 
 	peerGuard   peer.PeerGuard
 	peerGuardRW sync.RWMutex
 
-	peerServer   peer.PeerServer
-	peerServerRW sync.RWMutex
+	peerNetwork   peer.PeerNetwork
+	peerNetworkRW sync.RWMutex
 
 	dialThreshold uint16
 	dialTimeout   time.Duration
@@ -121,7 +122,7 @@ func (network *stdQuicNetwork) RoundTrip(ctx context.Context, peerId peer.PeerID
 	if err != nil {
 		appErr, ok := err.(*quic.ApplicationError)
 		if ok && appErr.ErrorCode == AccessDeniedErrorCode {
-			return nil, peer.ErrPeerClientAccessDenied
+			return nil, peer.ErrPeerNetworkAccessDenied
 		}
 	}
 	return resReader, err
@@ -413,7 +414,7 @@ func (network *stdQuicNetwork) PeerGuard() peer.PeerGuard {
 	return network.peerGuard
 }
 
-func (network *stdQuicNetwork) SetPeerGuard(peerGuard peer.PeerGuard) {
+func (network *stdQuicNetwork) SetupPeerGuard(peerGuard peer.PeerGuard) {
 	network.peerGuardRW.Lock()
 	defer network.peerGuardRW.Unlock()
 	network.peerGuard = peerGuard
@@ -421,8 +422,8 @@ func (network *stdQuicNetwork) SetPeerGuard(peerGuard peer.PeerGuard) {
 
 func (network *stdQuicNetwork) Serve(conn quic.Connection, peerId peer.PeerID) (QuicConn, error) {
 	peerGuard := network.PeerGuard()
-	peerServer := network.PeerServer()
-	if peerGuard == nil || peerServer == nil {
+	peerNetwork := network.PeerNetwork()
+	if peerGuard == nil || peerNetwork == nil {
 		return nil, ErrQuicNetworkUnavailable
 	}
 
@@ -455,21 +456,34 @@ func (network *stdQuicNetwork) Serve(conn quic.Connection, peerId peer.PeerID) (
 		return nil, err
 	}
 
-	go serveQuicConn(serveConn, peerServer)
+	go serveQuicConn(serveConn, peerNetwork)
 
 	return serveConn, nil
 }
 
-func (network *stdQuicNetwork) PeerServer() peer.PeerServer {
-	network.peerServerRW.RLock()
-	defer network.peerServerRW.RUnlock()
-	return network.peerServer
+func (network *stdQuicNetwork) PeerNetwork() peer.PeerNetwork {
+	network.peerNetworkRW.RLock()
+	defer network.peerNetworkRW.RUnlock()
+	return network.peerNetwork
 }
 
-func (network *stdQuicNetwork) SetPeerServer(peerServer peer.PeerServer) {
-	network.peerServerRW.Lock()
-	defer network.peerServerRW.Unlock()
-	network.peerServer = peerServer
+func (network *stdQuicNetwork) SetupPeerNetwork(peerNetwork peer.PeerNetwork) {
+	network.peerNetworkRW.Lock()
+	defer network.peerNetworkRW.Unlock()
+	network.peerNetwork = peerNetwork
+}
+
+func (network *stdQuicNetwork) SelectTransport(addr string) *QuicTransport {
+	provider := network.provider
+	if provider == nil {
+		return nil
+	}
+
+	transport, ok := provider.Select(addr)
+	if !ok {
+		return nil
+	}
+	return transport
 }
 
 func (network *stdQuicNetwork) Setup(config QuicConfig) error {
@@ -511,7 +525,7 @@ func (network *stdQuicNetwork) Setup(config QuicConfig) error {
 	return nil
 }
 
-func serveQuicConn(conn QuicConn, peerServer peer.PeerServer) error {
+func serveQuicConn(conn QuicConn, peerNetwork peer.PeerNetwork) error {
 	defer conn.CloseWithError(quic.ApplicationErrorCode(0), "")
 
 	var err error
@@ -521,13 +535,13 @@ func serveQuicConn(conn QuicConn, peerServer peer.PeerServer) error {
 			break
 		}
 
-		go peerServer.Serve(stream, conn.PeerID())
+		go peerNetwork.Serve(stream, conn.PeerID())
 	}
 
 	return err
 }
 
-func dialAddr(ctx context.Context, provider *stdQuicTransportProvider, addr string, certificate tls.Certificate) (quic.Connection, error) {
+func dialAddr(ctx context.Context, provider *stdQuicProvider, addr string, certificate tls.Certificate) (quic.Connection, error) {
 
 	remoteAddr, remoteAddrErr := net.ResolveUDPAddr("udp", addr)
 	if remoteAddrErr != nil {

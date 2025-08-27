@@ -6,11 +6,12 @@ package broadcast
 import (
 	"bytes"
 	"context"
+	"crypto"
+	"crypto/ecdsa"
 	"encoding/binary"
 	"errors"
 	"pan/lib/log"
 	"pan/lib/peer"
-	"pan/lib/quic"
 	"slices"
 	"sync"
 	"time"
@@ -33,28 +34,56 @@ const (
 	BroadcastMulticastTypeIPV6Local
 )
 
-type BroadcastAgentRuntime interface {
-	QuicCluster() quic.QuicCluster
-	PeerSettings() *peer.PeerSettings
-	Store() BroadcastStore
-}
-
 type stdBroadcastAgent struct {
-	logger log.Logger
+	logger   log.Logger
+	network  *stdBroadcastNetwork
+	provider *stdBroadcastProvider
+
+	peerId     peer.PeerID
+	privateKey crypto.PrivateKey
+	store      BroadcastStore
 
 	reloadChan chan struct{}
-	reloadLock sync.Mutex
+	reloadLock sync.RWMutex
 	reload     bool
-
-	runtime BroadcastAgentRuntime
-	cluster BroadcastCluster
 }
 
-func (agent *stdBroadcastAgent) Reload() {
-	agent.logger.Debug("BroadcastAgent", "Reload")
+func (agent *stdBroadcastAgent) Setup(config BroadcastConfig) {
+	agent.logger.Debug("BroadcastAgent", "Setup")
 
 	agent.reloadLock.Lock()
 	defer agent.reloadLock.Unlock()
+
+	changed := false
+	peerId := config.PeerID()
+	privateKey := config.PrivateKey()
+
+	if !bytes.Equal(agent.peerId, peerId) {
+		agent.peerId = peerId
+		changed = true
+	}
+
+	if !equalPrivateKey(privateKey, agent.privateKey) {
+		agent.privateKey = privateKey
+		changed = true
+	}
+
+	if !changed || agent.reload {
+		return
+	}
+
+	agent.reload = true
+	agent.reloadChan <- struct{}{}
+}
+
+func (agent *stdBroadcastAgent) SetupStore(store BroadcastStore) {
+	agent.logger.Debug("BroadcastAgent", "SetupStore")
+
+	agent.reloadLock.Lock()
+	defer agent.reloadLock.Unlock()
+
+	agent.store = store
+
 	if agent.reload {
 		return
 	}
@@ -85,20 +114,19 @@ func (agent *stdBroadcastAgent) ServeBroadcast(payload []byte, addr string) erro
 //
 // Returns an error if the broadcast agent is unavailable or if there is an issue delivering the online message.
 func (agent *stdBroadcastAgent) DeliverOnline(deliverAddrs ...string) error {
+	agent.reloadLock.RLock()
+	store := agent.store
+	peerId := agent.peerId
+	privateKey := agent.privateKey
+	agent.reloadLock.RUnlock()
 
-	agentRuntime := agent.runtime
-	if agentRuntime == nil {
-		return ErrBroadcastAgentUnavailable
-	}
-	store := agentRuntime.Store()
-	cluster := agent.cluster
-	settings := agentRuntime.PeerSettings()
-	if settings == nil || cluster == nil || store == nil {
+	network := agent.network
+	if network == nil || store == nil || len(peerId) <= 0 || privateKey == nil {
 		return ErrBroadcastAgentUnavailable
 	}
 
 	info := BroadcastInfo{}
-	info.PeerID = settings.PeerID()
+	info.PeerID = peerId
 	info.Heightest = 0
 	info.UpdatedAt = time.Now()
 	info, err := store.SelectOrCreate(info)
@@ -108,20 +136,20 @@ func (agent *stdBroadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 
 	// deliver online
 	var msg PeerOnline
-	msg.PeerId = settings.PeerID()
+	msg.PeerId = peerId
 	msg.Heightest = info.Heightest
 	data, err := proto.Marshal(&msg)
 	if err != nil {
 		return err
 	}
-	sig, err := peer.Sign(data, settings.PrivateKey())
+	sig, err := peer.Sign(data, privateKey)
 	if err != nil {
 		return err
 	}
 	payload := packAgentPayload(data, sig)
 	payload = slices.Insert(payload, 0, BroadcastTypeOnline)
 
-	return cluster.Deliver(payload, deliverAddrs...)
+	return network.Deliver(payload, deliverAddrs...)
 }
 
 // AcceptOnline accepts an online message from a peer.
@@ -130,15 +158,24 @@ func (agent *stdBroadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 //
 // Returns an error if the message is invalid or if there is an issue routing the peer.
 func (agent *stdBroadcastAgent) AcceptOnline(payload []byte, addr string) error {
-	agentRuntime := agent.runtime
-	if agentRuntime == nil {
+	provider := agent.provider
+	network := agent.network
+	if provider == nil || network == nil {
 		return ErrBroadcastAgentUnavailable
 	}
 
-	quicCluster := agentRuntime.QuicCluster()
-	store := agentRuntime.Store()
-	settings := agentRuntime.PeerSettings()
-	if settings == nil || store == nil || quicCluster == nil {
+	quicNetwork := provider.QuicNetwork()
+	if quicNetwork == nil {
+		return ErrBroadcastAgentUnavailable
+	}
+
+	agent.reloadLock.RLock()
+	store := agent.store
+	peerId := agent.peerId
+	privateKey := agent.privateKey
+	agent.reloadLock.RUnlock()
+
+	if store == nil || len(peerId) <= 0 || privateKey == nil {
 		return ErrBroadcastAgentUnavailable
 	}
 
@@ -150,7 +187,7 @@ func (agent *stdBroadcastAgent) AcceptOnline(payload []byte, addr string) error 
 	var msg PeerOnline
 	err = proto.Unmarshal(data, &msg)
 	if err == nil {
-		if bytes.Equal(msg.PeerId, settings.PeerID()) {
+		if bytes.Equal(msg.PeerId, peerId) {
 			return err
 		}
 		err = peer.Verify(data, sig, msg.PeerId)
@@ -162,7 +199,7 @@ func (agent *stdBroadcastAgent) AcceptOnline(payload []byte, addr string) error 
 		return err
 	}
 
-	return quicCluster.Route(msg.PeerId, addr)
+	return quicNetwork.Route(msg.PeerId, addr)
 }
 
 func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
@@ -170,23 +207,21 @@ func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
 	defer agent.logger.Debug("BroadcastAgent", "Deliver end")
 
 	var err error
-	var closed bool
 
 	var wg sync.WaitGroup
 	var cancel context.CancelCauseFunc
-	var timer <-chan time.Time
+
+	var store BroadcastStore
+	var peerId peer.PeerID
 
 	for {
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
-			closed = true
 		case <-agent.reloadChan:
-			if timer != nil {
-				<-timer
-				timer = nil
-			}
 			agent.reloadLock.Lock()
+			store = agent.store
+			peerId = agent.peerId
 			agent.reload = false
 			agent.reloadLock.Unlock()
 		}
@@ -197,24 +232,15 @@ func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
 			wg.Wait()
 		}
 
-		if closed {
+		if err != nil {
 			break
 		}
 
-		agentRuntime := agent.runtime
-		if ctx == nil {
-			timer = time.After(time.Second * 5)
-			agent.Reload()
+		if store == nil || len(peerId) <= 0 {
 			continue
 		}
 
-		peerSettings := agentRuntime.PeerSettings()
-		store := agentRuntime.Store()
-		if peerSettings == nil || store == nil {
-			continue
-		}
-
-		err := store.Init(peerSettings.PeerID())
+		err := store.Init(peerId)
 		if err != nil {
 			agent.logger.Error("BroadcastAgent", " Init Store Error: "+err.Error())
 			continue
@@ -258,4 +284,21 @@ func unpackAgentPayload(buffer []byte) ([]byte, []byte, error) {
 	sig := buffer[2:offset]
 	payload := buffer[offset:]
 	return payload, sig, nil
+}
+
+func equalPrivateKey(target crypto.PrivateKey, source crypto.PrivateKey) bool {
+	if target == nil && source == nil {
+		return true
+	}
+	if target != nil && source != nil {
+
+		if ecdsaPrivKey, ok := target.(*ecdsa.PrivateKey); ok {
+			if ecdsaSource, ok := source.(*ecdsa.PrivateKey); ok {
+				return ecdsaPrivKey.Equal(ecdsaSource)
+			}
+			return false
+		}
+
+	}
+	return false
 }

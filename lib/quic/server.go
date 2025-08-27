@@ -28,11 +28,11 @@ type stdQuicServer struct {
 	reloadLock sync.Mutex
 	reload     bool
 
-	provider *stdQuicTransportProvider
+	provider *stdQuicProvider
 }
 
-func (qs *stdQuicServer) Reload(config QuicConfig) {
-	qs.logger.Debug("QuicServer", "Reload")
+func (qs *stdQuicServer) Setup(config QuicConfig) {
+	qs.logger.Debug("QuicServer", "Setup")
 
 	qs.reloadLock.Lock()
 	defer qs.reloadLock.Unlock()

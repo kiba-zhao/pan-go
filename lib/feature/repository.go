@@ -38,11 +38,11 @@ type RepositoryMetaProvider interface {
 	RepositoryMetaList() []RepositoryMeta
 }
 
-var _ = (repository.RepositoryClusterModule)((*stdFeatureModule)(nil))
+var _ = (repository.RepositoryDBModule)((*stdFeatureModule)(nil))
 
 func (module *stdFeatureModule) DBName() string {
 	featureHelper := module.featureHelper
-	if repositoryClusterModule, ok := featureHelper.feature.(repository.RepositoryClusterModule); ok {
+	if repositoryClusterModule, ok := featureHelper.feature.(repository.RepositoryDBModule); ok {
 		return repositoryClusterModule.DBName()
 	}
 	return featureHelper.FeatureName() + ".db"

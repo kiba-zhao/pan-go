@@ -5,7 +5,7 @@ import (
 	"pan/lib/peer"
 )
 
-var ErrFeatureHelperPeerClientNotFound = errors.New("FeatureHelper Error: PeerClient Not Found")
+var ErrFeatureHelperPeerNetworkNotFound = errors.New("FeatureHelper Error: Peer Network Not Found")
 
 type PeerTopic = peer.PeerAppModule
 

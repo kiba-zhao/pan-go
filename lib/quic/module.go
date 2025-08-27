@@ -10,9 +10,8 @@ import (
 )
 
 type stdQuicModule struct {
-	PeerGuard  peer.PeerGuard
-	PeerServer peer.PeerServer
-	PeerClient peer.PeerClient
+	PeerGuard   peer.PeerGuard
+	PeerNetwork peer.PeerNetwork
 
 	configurer QuicConfigurer
 	network    *stdQuicNetwork
@@ -23,15 +22,11 @@ type stdQuicModule struct {
 
 func New() interface{} {
 
-	logger := log.Default()
-
 	network := &stdQuicNetwork{}
-	network.logger = logger
 	network.connMgr = &stdQuicConnMgr{}
 	network.routeMgr = &stdQuicRouteMgr{}
 
 	agent := &stdQuicAgent{}
-	agent.logger = logger
 	agent.network = network
 	network.agent = agent
 
@@ -39,22 +34,26 @@ func New() interface{} {
 	explorer.network = network
 
 	server := &stdQuicServer{}
-	server.logger = logger
 	server.network = network
 	server.reloadChan = make(chan struct{}, 1)
 
-	provider := &stdQuicTransportProvider{}
+	provider := &stdQuicProvider{}
 	provider.transportMap = make(map[string]*QuicTransport)
 	network.provider = provider
 	server.provider = provider
+
+	logger := log.Default()
+	network.logger = logger
+	agent.logger = logger
+	server.logger = logger
+
+	configurer := config.NewConfigurer[QuicConfig](logger)
 
 	module := &stdQuicModule{}
 	module.agent = agent
 	module.network = network
 	module.explorer = explorer
 	module.server = server
-
-	configurer := config.NewConfigurer[QuicConfig](logger)
 	module.configurer = configurer
 
 	return module
@@ -78,19 +77,19 @@ func (qm *stdQuicModule) OnConfigUpdated(config QuicConfig) {
 		return
 	}
 	qm.network.Setup(config)
-	qm.server.Reload(config)
+	qm.server.Setup(config)
 }
 
 var _ = (bootstrap.ReadyModule)((*stdQuicModule)(nil))
 
 func (qm *stdQuicModule) Ready(ctx context.Context) error {
-	qm.network.SetPeerServer(qm.PeerServer)
-	qm.network.SetPeerGuard(qm.PeerGuard)
+	qm.network.SetupPeerNetwork(qm.PeerNetwork)
+	qm.network.SetupPeerGuard(qm.PeerGuard)
 
-	qm.PeerClient.RegisterPeerTransport(qm.network)
-	defer qm.PeerClient.UnregisterPeerTransport(qm.network)
-	qm.PeerClient.RegisterPeerTransport(qm.explorer)
-	defer qm.PeerClient.UnregisterPeerTransport(qm.explorer)
+	qm.PeerNetwork.RegisterPeerTransport(qm.network)
+	defer qm.PeerNetwork.UnregisterPeerTransport(qm.network)
+	qm.PeerNetwork.RegisterPeerTransport(qm.explorer)
+	defer qm.PeerNetwork.UnregisterPeerTransport(qm.explorer)
 
 	qm.configurer.Subscribe(qm)
 	defer qm.configurer.Unsubscribe(qm)

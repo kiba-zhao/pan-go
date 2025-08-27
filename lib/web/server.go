@@ -20,45 +20,30 @@ type stdWebServer struct {
 	addrRW sync.RWMutex
 }
 
-func (ws *stdWebServer) Addr() string {
-	ws.addrRW.RLock()
-	defer ws.addrRW.RUnlock()
-	return ws.addr
-}
-
-func (ws *stdWebServer) SetAddr(addr string) {
-	ws.logger.Debug("WebServer", "SetAddr")
+func (ws *stdWebServer) Setup(cfg WebConfig) {
+	ws.logger.Debug("WebServer", "Setup")
 
 	ws.addrRW.Lock()
 	defer ws.addrRW.Unlock()
+
+	addr := cfg.Addr()
+
 	if ws.addr == addr {
 		return
 	}
 	ws.addr = addr
-	ws.Reload()
-}
-
-func (ws *stdWebServer) Reload() {
-	ws.logger.Debug("WebServer", "Reload")
 
 	ws.reloadLock.Lock()
 	defer ws.reloadLock.Unlock()
-	if ws.reload {
-		return
+	if !ws.reload {
+		ws.reload = true
+		ws.reloadChan <- struct{}{}
 	}
 
-	ws.reload = true
-	ws.reloadChan <- struct{}{}
 }
 
-func (ws *stdWebServer) WebApp() WebApp {
-	ws.appRW.RLock()
-	defer ws.appRW.RUnlock()
-	return ws.app
-}
-
-func (ws *stdWebServer) SetWebApp(app WebApp) {
-	ws.logger.Info("WebServer", "SetWebApp")
+func (ws *stdWebServer) SetupApp(app WebApp) {
+	ws.logger.Info("WebServer", "SetupApp")
 
 	ws.appRW.Lock()
 	defer ws.appRW.Unlock()
@@ -66,7 +51,13 @@ func (ws *stdWebServer) SetWebApp(app WebApp) {
 		return
 	}
 	ws.app = app
-	ws.Reload()
+
+	ws.reloadLock.Lock()
+	defer ws.reloadLock.Unlock()
+	if !ws.reload {
+		ws.reload = true
+		ws.reloadChan <- struct{}{}
+	}
 }
 
 func (ws *stdWebServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -102,13 +93,18 @@ func (ws *stdWebServer) ListenAndServe(ctx context.Context) error {
 			break
 		}
 
-		addr := ws.Addr()
+		ws.addrRW.RLock()
+		addr := ws.addr
+		ws.addrRW.RUnlock()
 		if len(addr) <= 0 {
 			continue
 		}
 
+		ws.appRW.RLock()
+		app := ws.app
+		ws.appRW.RUnlock()
 		var handler http.Handler
-		if app := ws.WebApp(); app != nil {
+		if app != nil {
 			handler = app
 		} else {
 			handler = ws

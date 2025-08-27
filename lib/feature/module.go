@@ -8,7 +8,7 @@ import (
 )
 
 type stdFeatureModule struct {
-	RepositoryCluster repository.RepositoryCluster
+	RepositoryManager repository.RepositoryManager
 
 	featureHelper *stdFeatureHelper
 }
@@ -103,9 +103,9 @@ func (module *stdFeatureModule) Defer(ctx context.Context) error {
 	}
 
 	if isTempDB(featureHelper.feature) {
-		return module.RepositoryCluster.AttachTempModule(module)
+		return module.RepositoryManager.AttachTempModule(module)
 	}
-	return module.RepositoryCluster.AttachBaseModule(module)
+	return module.RepositoryManager.AttachBaseModule(module)
 	//
 }
 
@@ -120,9 +120,9 @@ func (module *stdFeatureModule) Destroy() {
 	}
 
 	if isTempDB(featureHelper.feature) {
-		module.RepositoryCluster.DetachTempModule(module)
+		module.RepositoryManager.DetachTempModule(module)
 	} else {
-		module.RepositoryCluster.DetachBaseModule(module)
+		module.RepositoryManager.DetachBaseModule(module)
 	}
 	//
 }
