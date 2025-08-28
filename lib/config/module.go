@@ -1,33 +1,24 @@
 package config
 
 import (
-	"context"
 	"pan/lib/injection"
+	"pan/lib/log"
 )
 
 type stdConfigModule[T any] struct {
-	cfg Config[T]
+	configurer Configurer[T]
 }
 
-func New[T any](filename string) interface{} {
+func New[T any]() interface{} {
+	logger := log.Default()
+
 	cfgModule := &stdConfigModule[T]{}
-	cfgModule.cfg = NewConfig[T](filename)
+	cfgModule.configurer = NewConfigurer[T](logger)
 	return cfgModule
-}
-
-func NewWithDefaults[T any](filename string, settings T) interface{} {
-	cfgModule := &stdConfigModule[T]{}
-	cfgModule.cfg = NewConfig[T](filename)
-	cfgModule.cfg.SetDefaults(settings)
-	return cfgModule
-}
-
-func (m *stdConfigModule[T]) Defer(ctx context.Context) error {
-	return m.cfg.EnsureConfig()
 }
 
 func (m *stdConfigModule[T]) Components() []injection.Component {
 	return []injection.Component{
-		injection.NewComponent(m.cfg, injection.ComponentExternalScope),
+		injection.NewComponent(m.configurer, injection.ComponentExternalScope),
 	}
 }

@@ -12,10 +12,12 @@ func init() {
 }
 
 func newMobileModule(module *stdModule) interface{} {
+	settingsSrv := &SettingsServlet{}
 	mobileSettingsSrv := &MobileSettingsServlet{}
 
 	mobileModule := &stdMobileSettingsModule{}
 	mobileModule.module = module
+	mobileModule.settingsSrv = settingsSrv
 	mobileModule.mobileSettingsSrv = mobileSettingsSrv
 
 	module.configListeners = append(module.configListeners, mobileModule)
@@ -30,6 +32,7 @@ const (
 type stdMobileSettingsModule struct {
 	module *stdModule
 
+	settingsSrv       *SettingsServlet
 	mobileSettingsSrv *MobileSettingsServlet
 }
 
@@ -39,25 +42,29 @@ func (m *stdMobileSettingsModule) OnConfigUpdated(cfg SettingsConfig) {
 	// TODO: implement
 }
 
-var _ = (serlvet.SerlvetModule)((*stdModule)(nil))
+var _ = (serlvet.SerlvetModule)((*stdMobileSettingsModule)(nil))
 
 func (m *stdMobileSettingsModule) SetupToSerlvet(app serlvet.SerlvetApp) error {
-	err := m.mobileSettingsSrv.SetupToSerlvet(app.Route([]byte(MobileSettingsModuleName)))
+	err := m.settingsSrv.SetupToSerlvet(app.Route([]byte(SettingsModuleName)))
+	if err == nil {
+		err = m.mobileSettingsSrv.SetupToSerlvet(app.Route([]byte(MobileSettingsModuleName)))
+	}
 	return err
 }
 
-var _ = (injection.ComponentStoreProvider)((*stdModule)(nil))
+var _ = (injection.ComponentStoreProvider)((*stdMobileSettingsModule)(nil))
 
 func (m *stdMobileSettingsModule) ComponentStore() injection.ComponentStore {
 	return m.module.ComponentStore()
 }
 
-var _ = (injection.ComponentProvider)((*stdModule)(nil))
+var _ = (injection.ComponentProvider)((*stdMobileSettingsModule)(nil))
 
 func (m *stdMobileSettingsModule) Components() []injection.Component {
 	return []injection.Component{
 		// controller
-		injection.NewComponent(m.mobileSettingsSrv, injection.ComponentInternalScope),
+		injection.NewComponent(m.settingsSrv, injection.ComponentNoneScope),
+		injection.NewComponent(m.mobileSettingsSrv, injection.ComponentNoneScope),
 		// service
 		injection.NewComponent(&MobileSettingsService{}, injection.ComponentInternalScope),
 	}

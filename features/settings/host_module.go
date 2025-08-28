@@ -12,10 +12,12 @@ func init() {
 }
 
 func newHostModule(module *stdModule) interface{} {
+	settingsCtrl := &SettingsController{}
 	hostCtrl := &HostSettingsController{}
 
 	hostModule := &stdHostSettingsModule{}
 	hostModule.module = module
+	hostModule.settingsCtrl = settingsCtrl
 	hostModule.hostSettingsCtrl = hostCtrl
 
 	module.configListeners = append(module.configListeners, hostModule)
@@ -30,6 +32,7 @@ const (
 type stdHostSettingsModule struct {
 	module *stdModule
 
+	settingsCtrl     *SettingsController
 	hostSettingsCtrl *HostSettingsController
 }
 
@@ -39,25 +42,29 @@ func (m *stdHostSettingsModule) OnConfigUpdated(cfg SettingsConfig) {
 	// TODO: implement
 }
 
-var _ = (web.WebAppModule)((*stdModule)(nil))
+var _ = (web.WebAppModule)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) SetupToWeb(app web.WebApp) error {
-	err := m.hostSettingsCtrl.SetupToWeb(app.Group(HostSettingsModuleName))
+	err := m.settingsCtrl.SetupToWeb(app.Group(SettingsModuleName))
+	if err == nil {
+		err = m.hostSettingsCtrl.SetupToWeb(app.Group(HostSettingsModuleName))
+	}
 	return err
 }
 
-var _ = (injection.ComponentStoreProvider)((*stdModule)(nil))
+var _ = (injection.ComponentStoreProvider)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) ComponentStore() injection.ComponentStore {
 	return m.module.ComponentStore()
 }
 
-var _ = (injection.ComponentProvider)((*stdModule)(nil))
+var _ = (injection.ComponentProvider)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) Components() []injection.Component {
 	return []injection.Component{
 		// controller
-		injection.NewComponent(m.hostSettingsCtrl, injection.ComponentInternalScope),
+		injection.NewComponent(m.settingsCtrl, injection.ComponentNoneScope),
+		injection.NewComponent(m.hostSettingsCtrl, injection.ComponentNoneScope),
 		// service
 		injection.NewComponent(&HostSettingsService{}, injection.ComponentInternalScope),
 	}

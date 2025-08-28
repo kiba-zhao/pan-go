@@ -9,8 +9,6 @@ import (
 	"pan/lib/injection"
 	"pan/lib/log"
 	"pan/lib/runtime"
-	"pan/lib/serlvet"
-	"pan/lib/web"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -25,10 +23,8 @@ const (
 )
 
 type stdModule struct {
-	settingsCtrl *SettingsController
-	settingsSrv  *SettingsServlet
-	settingsSvc  *SettingsService
-	configurer   SettingsConfigurer
+	settingsSvc *SettingsService
+	configurer  SettingsConfigurer
 
 	viper *viper.Viper
 
@@ -44,8 +40,7 @@ type stdModule struct {
 func New() interface{} {
 
 	viper := viper.New()
-	settingsCtrl := &SettingsController{}
-	settingsSrv := &SettingsServlet{}
+
 	settingsSvc := &SettingsService{}
 
 	logger := log.Default()
@@ -54,8 +49,6 @@ func New() interface{} {
 	module := &stdModule{}
 	module.configurer = configurer
 	module.viper = viper
-	module.settingsCtrl = settingsCtrl
-	module.settingsSrv = settingsSrv
 	module.settingsSvc = settingsSvc
 
 	return module
@@ -98,20 +91,6 @@ func (m *stdModule) Destroy() {
 	m.configurer.Unsubscribe(m)
 }
 
-var _ = (web.WebAppModule)((*stdModule)(nil))
-
-func (m *stdModule) SetupToWeb(app web.WebApp) error {
-	err := m.settingsCtrl.SetupToWeb(app.Group(SettingsModuleName))
-	return err
-}
-
-var _ = (serlvet.SerlvetModule)((*stdModule)(nil))
-
-func (m *stdModule) SetupToSerlvet(app serlvet.SerlvetApp) error {
-	err := m.settingsSrv.SetupToSerlvet(app.Route([]byte(SettingsModuleName)))
-	return err
-}
-
 var _ = (injection.ComponentProvider)((*stdModule)(nil))
 
 func (m *stdModule) Components() []injection.Component {
@@ -119,10 +98,6 @@ func (m *stdModule) Components() []injection.Component {
 		injection.NewComponent(m.viper, injection.ComponentInternalScope),
 		// configurer
 		injection.NewComponent(m.configurer, injection.ComponentExternalScope),
-		// controller
-		injection.NewComponent(m.settingsCtrl, injection.ComponentNoneScope),
-		// servlet
-		injection.NewComponent(m.settingsSrv, injection.ComponentNoneScope),
 		// service
 		injection.NewComponent(m.settingsSvc, injection.ComponentInternalScope),
 	}
