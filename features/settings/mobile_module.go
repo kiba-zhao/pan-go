@@ -14,13 +14,16 @@ func init() {
 func newMobileModule(module *stdModule) interface{} {
 	settingsSrv := &SettingsServlet{}
 	mobileSettingsSrv := &MobileSettingsServlet{}
+	mobileSettingsSvc := &MobileSettingsService{}
 
 	mobileModule := &stdMobileSettingsModule{}
 	mobileModule.module = module
 	mobileModule.settingsSrv = settingsSrv
 	mobileModule.mobileSettingsSrv = mobileSettingsSrv
+	mobileModule.mobileSettingsSvc = mobileSettingsSvc
 
 	module.configListeners = append(module.configListeners, mobileModule)
+	module.isMobileMode = true
 
 	return mobileModule
 }
@@ -34,12 +37,15 @@ type stdMobileSettingsModule struct {
 
 	settingsSrv       *SettingsServlet
 	mobileSettingsSrv *MobileSettingsServlet
+	mobileSettingsSvc *MobileSettingsService
 }
 
 var _ = (SettingsConfigListener)((*stdMobileSettingsModule)(nil))
 
 func (m *stdMobileSettingsModule) OnConfigUpdated(cfg SettingsConfig) {
-	// TODO: implement
+	if mobileCfg, ok := cfg.(MobileSettingsConfig); ok {
+		m.configure(mobileCfg)
+	}
 }
 
 var _ = (serlvet.SerlvetModule)((*stdMobileSettingsModule)(nil))
@@ -66,6 +72,33 @@ func (m *stdMobileSettingsModule) Components() []injection.Component {
 		injection.NewComponent(m.settingsSrv, injection.ComponentNoneScope),
 		injection.NewComponent(m.mobileSettingsSrv, injection.ComponentNoneScope),
 		// service
-		injection.NewComponent(&MobileSettingsService{}, injection.ComponentInternalScope),
+		injection.NewComponent(m.mobileSettingsSvc, injection.ComponentInternalScope),
 	}
+}
+
+func (m *stdMobileSettingsModule) configure(cfg MobileSettingsConfig) error {
+	mobileSettings, err := m.mobileSettingsSvc.Load()
+	if err != nil {
+		m.module.logger.Error("MobileSettingsModule", "configure Error: load failed"+err.Error())
+		return err
+	}
+
+	useWifiOnly := false
+	var wifiIfaces []NetInterface
+	if mobileSettings.WifiOnly != nil {
+		useWifiOnly = *mobileSettings.WifiOnly
+	} else {
+		wifiIfaces = cfg.WifiInterfaces()
+		useWifiOnly = len(wifiIfaces) > 0
+	}
+
+	if !useWifiOnly {
+		return m.module.configure(nil, false)
+	}
+
+	if len(wifiIfaces) > 0 {
+		return m.module.configure(wifiIfaces, true)
+	}
+	return m.module.configure(cfg.WifiInterfaces(), true)
+
 }

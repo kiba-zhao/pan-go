@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.com/spf13/viper"
 )
@@ -32,6 +33,8 @@ type SettingsService struct {
 
 	cfg   SettingsConfig
 	cfgRW sync.RWMutex
+
+	version atomic.Uint32
 }
 
 func (service *SettingsService) Setup(cfg SettingsConfig) {
@@ -47,7 +50,8 @@ func (service *SettingsService) Load() (Settings, error) {
 	defer service.cfgRW.RUnlock()
 
 	viper := service.Viper
-	return generateSettings(viper, cfg)
+	version := service.version.Load()
+	return generateSettings(viper, cfg, version)
 }
 
 func (service *SettingsService) Save(fields SettingsFields) (Settings, error) {
@@ -56,49 +60,63 @@ func (service *SettingsService) Save(fields SettingsFields) (Settings, error) {
 	defer service.cfgRW.RUnlock()
 
 	viper := service.Viper
-	settings, err := generateSettings(viper, cfg)
+	version := service.version.Load()
+	settings, err := generateSettings(viper, cfg, version)
 	if err != nil {
 		return settings, err
 	}
 
+	changed := false
+
 	if len(fields.Name) > 0 && fields.Name != settings.Name {
 		viper.Set(SettingsNameField, fields.Name)
 		settings.Name = fields.Name
+		changed = true
 	}
 
 	if fields.PeerPort != nil && *fields.PeerPort != settings.PeerPort {
 		peerPort := *fields.PeerPort
 		viper.Set(SettingsPeerPortField, peerPort)
 		settings.PeerPort = peerPort
+		changed = true
 	}
 
 	if len(fields.BroadcastAddrs) > 0 && slices.Equal(fields.BroadcastAddrs, settings.BroadcastAddrs) {
 		viper.Set(SettingsBroadcastAddrsField, fields.BroadcastAddrs)
 		settings.BroadcastAddrs = fields.BroadcastAddrs
+		changed = true
 	}
 
 	if len(fields.PublicAddrs) > 0 && slices.Equal(fields.PublicAddrs, settings.PublicAddrs) {
 		viper.Set(SettingsPublicAddrsField, fields.PublicAddrs)
 		settings.PublicAddrs = fields.PublicAddrs
+		changed = true
 	}
 
 	if fields.Enabled != nil && *fields.Enabled != settings.Enabled {
 		enabled := *fields.Enabled
 		viper.Set(SettingsEnabledField, enabled)
 		settings.Enabled = enabled
+		changed = true
 	}
 
 	if fields.BroadcastEnabled != nil && *fields.BroadcastEnabled != settings.BroadcastEnabled {
 		broadcastEnabled := *fields.BroadcastEnabled
 		viper.Set(SettingsBroadcastEnabledField, broadcastEnabled)
 		settings.BroadcastEnabled = broadcastEnabled
+		changed = true
 	}
 
+	if !changed {
+		return settings, nil
+	}
+
+	settings.Version = service.version.Add(1)
 	err = viper.WriteConfig()
 	return settings, err
 }
 
-func generateSettings(viper *viper.Viper, cfg SettingsConfig) (Settings, error) {
+func generateSettings(viper *viper.Viper, cfg SettingsConfig, version uint32) (Settings, error) {
 
 	var settings Settings
 	if viper == nil || cfg == nil {
@@ -140,5 +158,6 @@ func generateSettings(viper *viper.Viper, cfg SettingsConfig) (Settings, error) 
 		settings.BroadcastEnabled = true
 	}
 
+	settings.Version = version
 	return settings, nil
 }

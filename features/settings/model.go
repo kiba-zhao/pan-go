@@ -7,6 +7,7 @@ type Settings struct {
 	PublicAddrs      []string `json:"publicAddrs" form:"publicAddrs"  binding:"omitempty"`
 	Enabled          bool     `json:"enabled" form:"enabled"  binding:"omitempty"`
 	BroadcastEnabled bool     `json:"broadcastEnabled" form:"broadcastEnabled"  binding:"omitempty"`
+	Version          uint32   `json:"-" form:"-"`
 }
 
 type SettingsFields struct {

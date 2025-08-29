@@ -3,7 +3,8 @@
 package settings
 
 type MobileSettings struct {
-	WifiOnly *bool `json:"wifiOnly" form:"wifiOnly"  binding:"omitempty"`
+	WifiOnly *bool  `json:"wifiOnly" form:"wifiOnly"  binding:"omitempty"`
+	Version  uint32 `json:"-" form:"-"`
 }
 
 type MobileSettingsFields struct {

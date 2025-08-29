@@ -3,5 +3,5 @@
 package settings
 
 type MobileSettingsConfig interface {
-	WifiInterface() []NetInterface
+	WifiInterfaces() []NetInterface
 }

@@ -11,10 +11,9 @@ type BroadcastConfig interface {
 
 	Addrs() []string
 	MTU() int
-	IPv6Enabled() bool
+	IPv6ZoneList() []string
 
 	DeliverMaxSize() int
-	IPv6ZoneList() []string
 
 	PeerID() peer.PeerID
 	PrivateKey() crypto.PrivateKey

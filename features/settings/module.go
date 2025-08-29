@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"pan/lib/bootstrap"
+	"pan/lib/broadcast"
 	"pan/lib/config"
 	"pan/lib/feature"
 	"pan/lib/injection"
 	"pan/lib/log"
+	"pan/lib/peer"
+	"pan/lib/quic"
+	"pan/lib/repository"
 	"pan/lib/runtime"
 	"sync"
 
@@ -23,18 +27,28 @@ const (
 )
 
 type stdModule struct {
+	QuicConfigurer       quic.QuicConfigurer
+	BroadcastConfigurer  broadcast.BroadcastConfigurer
+	RepositoryConfigurer repository.RepositoryConfigurer
+
+	logger log.Logger
+
 	settingsSvc *SettingsService
 	configurer  SettingsConfigurer
 
-	viper *viper.Viper
+	viper        *viper.Viper
+	peerSecurity peer.PeerSecurity
 
 	componentStore     injection.ComponentStore
 	componentStoreOnce sync.Once
 
-	locker   sync.Mutex
-	homePath string
+	locker      sync.Mutex
+	homePath    string
+	settingsCfg SettingsConfig
 
 	configListeners []SettingsConfigListener
+
+	isMobileMode bool
 }
 
 func New() interface{} {
@@ -47,6 +61,7 @@ func New() interface{} {
 	configurer := config.NewConfigurer[SettingsConfig](logger)
 
 	module := &stdModule{}
+	module.logger = logger
 	module.configurer = configurer
 	module.viper = viper
 	module.settingsSvc = settingsSvc
@@ -59,14 +74,31 @@ var _ = (SettingsConfigListener)((*stdModule)(nil))
 func (m *stdModule) OnConfigUpdated(cfg SettingsConfig) {
 	m.locker.Lock()
 	defer m.locker.Unlock()
-	viper := m.viper
 
+	// init viper and peerSecurity if homePath changed
 	homePath := cfg.HomePath()
 	if homePath != m.homePath {
 		m.homePath = homePath
-		initViper(viper, homePath)
+		err := m.initViper()
+		if err == nil {
+			err = m.initPeerSecurity()
+		}
+		if err != nil {
+			return
+		}
 	}
+	//
 	m.settingsSvc.Setup(cfg)
+
+	// init Configurer if not mobile mode
+	m.settingsCfg = cfg
+	if !m.isMobileMode {
+		err := m.configure(nil, false)
+		if err != nil {
+			return
+		}
+	}
+	//
 
 	configListeners := m.configListeners
 	if len(configListeners) <= 0 {
@@ -95,6 +127,7 @@ var _ = (injection.ComponentProvider)((*stdModule)(nil))
 
 func (m *stdModule) Components() []injection.Component {
 	return []injection.Component{
+		injection.NewComponent(m, injection.ComponentInternalScope),
 		injection.NewComponent(m.viper, injection.ComponentInternalScope),
 		// configurer
 		injection.NewComponent(m.configurer, injection.ComponentExternalScope),
@@ -117,4 +150,54 @@ var _ = (runtime.ProviderModule)((*stdModule)(nil))
 func (m *stdModule) Modules() []interface{} {
 	m.configListeners = make([]SettingsConfigListener, 0)
 	return feature.NewSubModules(m, subModuleNewFuncArray...)
+}
+
+func (m *stdModule) initViper() error {
+	err := initViper(m.viper, m.homePath)
+	if err != nil {
+		m.logger.Error("SettingsModule", "initViper Error: "+err.Error())
+	}
+	return err
+}
+
+func (m *stdModule) initPeerSecurity() error {
+	peerSecurity, err := peer.NewPeerSecurity(m.homePath)
+	if err != nil {
+		m.logger.Error("SettingsModule", "initPeerSecurity Error: "+err.Error())
+	} else {
+		m.peerSecurity = peerSecurity
+	}
+	return err
+}
+
+func (m *stdModule) configure(netIfaces []NetInterface, isSubNet bool) error {
+	settings, err := m.settingsSvc.Load()
+	if err != nil {
+		m.logger.Error("SettingsModule", "configure Error: load failed"+err.Error())
+		return err
+	}
+
+	err = m.configureQuic(&settings, netIfaces)
+	if err == nil {
+		err = m.configureBroadcast(&settings, netIfaces, isSubNet)
+	}
+	if err == nil {
+		err = m.configureRepository()
+	}
+	return err
+}
+
+func (m *stdModule) configureQuic(settings *Settings, netIfaces []NetInterface) error {
+	quicConfig := newQuicConfig(settings, m.peerSecurity, netIfaces)
+	return m.QuicConfigurer.Configure(quicConfig)
+}
+
+func (m *stdModule) configureBroadcast(settings *Settings, netIfaces []NetInterface, isSubNet bool) error {
+	broadcastConfig := newBroadcastConfig(settings, m.peerSecurity, netIfaces, isSubNet)
+	return m.BroadcastConfigurer.Configure(broadcastConfig)
+}
+
+func (m *stdModule) configureRepository() error {
+	repositoryConfig := newRepositoryConfig(m.settingsCfg)
+	return m.RepositoryConfigurer.Configure(repositoryConfig)
 }

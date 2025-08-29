@@ -14,11 +14,13 @@ func init() {
 func newHostModule(module *stdModule) interface{} {
 	settingsCtrl := &SettingsController{}
 	hostCtrl := &HostSettingsController{}
+	hostSettingsSvc := &HostSettingsService{}
 
 	hostModule := &stdHostSettingsModule{}
 	hostModule.module = module
 	hostModule.settingsCtrl = settingsCtrl
 	hostModule.hostSettingsCtrl = hostCtrl
+	hostModule.hostSettingsSvc = hostSettingsSvc
 
 	module.configListeners = append(module.configListeners, hostModule)
 
@@ -30,16 +32,19 @@ const (
 )
 
 type stdHostSettingsModule struct {
+	WebConfigurer web.WebConfigurer
+
 	module *stdModule
 
 	settingsCtrl     *SettingsController
 	hostSettingsCtrl *HostSettingsController
+	hostSettingsSvc  *HostSettingsService
 }
 
 var _ = (SettingsConfigListener)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) OnConfigUpdated(cfg SettingsConfig) {
-	// TODO: implement
+	m.configure()
 }
 
 var _ = (web.WebAppModule)((*stdHostSettingsModule)(nil))
@@ -62,10 +67,26 @@ var _ = (injection.ComponentProvider)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) Components() []injection.Component {
 	return []injection.Component{
+		injection.NewComponent(m, injection.ComponentInternalScope),
 		// controller
 		injection.NewComponent(m.settingsCtrl, injection.ComponentNoneScope),
 		injection.NewComponent(m.hostSettingsCtrl, injection.ComponentNoneScope),
 		// service
-		injection.NewComponent(&HostSettingsService{}, injection.ComponentInternalScope),
+		injection.NewComponent(m.hostSettingsSvc, injection.ComponentInternalScope),
 	}
+}
+
+func (m *stdHostSettingsModule) configure() error {
+	hostSettings, err := m.hostSettingsSvc.Load()
+	if err != nil {
+		m.module.logger.Error("HostSettingsModule", "configure Error: load failed"+err.Error())
+		return err
+	}
+	err = m.configureWeb(&hostSettings)
+	return err
+}
+
+func (m *stdHostSettingsModule) configureWeb(hostSettings *HostSettings) error {
+	webConfig := newWebConfig(hostSettings)
+	return m.WebConfigurer.Configure(webConfig)
 }

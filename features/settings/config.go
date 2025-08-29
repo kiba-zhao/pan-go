@@ -8,6 +8,7 @@ type SettingsConfig interface {
 	CachePath() string
 
 	HostName() string
+	NetInterfaces() []NetInterface
 }
 
 type SettingsConfigListener = config.ConfigurerListener[SettingsConfig]

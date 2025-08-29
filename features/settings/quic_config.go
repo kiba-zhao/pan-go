@@ -16,15 +16,13 @@ type stdQuicConfig struct {
 	dialTimeout   time.Duration
 }
 
-func parseQuicConfig(settings Settings, security peer.PeerSecurity) *stdQuicConfig {
+func newQuicConfig(settings *Settings, security peer.PeerSecurity, netIfaces []NetInterface) quic.QuicConfig {
 	cfg := &stdQuicConfig{}
 	cfg.port = settings.PeerPort
-	cfg.dialThreshold = 1000
-	cfg.dialTimeout = time.Second * 60
 	cfg.security = security
 
 	if settings.Enabled {
-		cfg.addrs = append(cfg.addrs, "")
+		initQuicConfigWithNetInterfaces(cfg, netIfaces)
 	}
 	return cfg
 }
@@ -41,8 +39,18 @@ func (cfg *stdQuicConfig) Certificate() tls.Certificate {
 	return cfg.security.Certificate()
 }
 func (cfg *stdQuicConfig) DialThreshold() uint16 {
-	return cfg.dialThreshold
+	return 1000
 }
 func (cfg *stdQuicConfig) DialTimeout() time.Duration {
-	return cfg.dialTimeout
+	return time.Second * 60
+}
+
+func initQuicConfigWithNetInterfaces(cfg *stdQuicConfig, netIfaces []NetInterface) {
+	if len(netIfaces) <= 0 {
+		cfg.addrs = append(cfg.addrs, "")
+	} else {
+		for _, iface := range netIfaces {
+			cfg.addrs = append(cfg.addrs, iface.Addr)
+		}
+	}
 }

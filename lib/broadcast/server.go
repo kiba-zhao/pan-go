@@ -48,7 +48,7 @@ func (server *stdBroadcastServer) Setup(config BroadcastConfig) {
 	changed := false
 	addrs := config.Addrs()
 	mtu := config.MTU()
-	ipv6Enabled := config.IPv6Enabled()
+	ipv6Enabled := len(config.IPv6ZoneList()) > 0
 
 	if !slices.Equal(server.addrs, addrs) {
 		server.addrs = addrs
