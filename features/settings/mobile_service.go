@@ -4,7 +4,6 @@ package settings
 
 import (
 	"errors"
-	"sync/atomic"
 
 	"github.com/spf13/viper"
 )
@@ -15,22 +14,23 @@ const (
 	MobileSettingsWifiOnlyField = "mobileWifiOnly"
 )
 
-type MobileSettingsService struct {
-	Viper *viper.Viper
+type MobileSettingsChangedTrigger interface {
+	OnMobileSettingsChanged(settings MobileSettings)
+}
 
-	version atomic.Uint32
+type MobileSettingsService struct {
+	Viper   *viper.Viper
+	Trigger MobileSettingsChangedTrigger
 }
 
 func (service *MobileSettingsService) Load() (MobileSettings, error) {
 	viper := service.Viper
-	version := service.version.Load()
-	return generateMobileSettings(viper, version)
+	return generateMobileSettings(viper)
 }
 
 func (service *MobileSettingsService) Save(fields MobileSettingsFields) (MobileSettings, error) {
 	viper := service.Viper
-	version := service.version.Load()
-	settings, err := generateMobileSettings(viper, version)
+	settings, err := generateMobileSettings(viper)
 	if err != nil {
 		return settings, err
 	}
@@ -47,12 +47,15 @@ func (service *MobileSettingsService) Save(fields MobileSettingsFields) (MobileS
 		return settings, nil
 	}
 
-	settings.Version = service.version.Add(1)
 	err = viper.WriteConfig()
+	if service.Trigger != nil {
+		service.Trigger.OnMobileSettingsChanged(settings)
+	}
+
 	return settings, err
 }
 
-func generateMobileSettings(viper *viper.Viper, version uint32) (MobileSettings, error) {
+func generateMobileSettings(viper *viper.Viper) (MobileSettings, error) {
 
 	var settings MobileSettings
 	if viper == nil {
@@ -64,6 +67,5 @@ func generateMobileSettings(viper *viper.Viper, version uint32) (MobileSettings,
 		settings.WifiOnly = &wifiOnly
 	}
 
-	settings.Version = version
 	return settings, nil
 }

@@ -11,12 +11,12 @@ type stdBroadcastConfig struct {
 	mtu          int
 	ipv6ZoneList []string
 
-	security peer.PeerSecurity
+	security SecurityConfig
 	addrs    []string
 	enabled  bool
 }
 
-func newBroadcastConfig(settings *Settings, security peer.PeerSecurity, netIfaces []NetInterface, isSubNet bool) broadcast.BroadcastConfig {
+func newBroadcastConfig(settings *Settings, security SecurityConfig, netIfaces []NetInterface, isSubNet bool) broadcast.BroadcastConfig {
 	cfg := &stdBroadcastConfig{}
 	cfg.security = security
 	cfg.enabled = settings.BroadcastEnabled

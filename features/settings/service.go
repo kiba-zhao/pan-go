@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strconv"
 	"sync"
-	"sync/atomic"
 
 	"github.com/spf13/viper"
 )
@@ -28,13 +27,16 @@ const (
 	SettingsBroadcastEnabledField = "broadcastEnabled"
 )
 
+type SettingsChangedTrigger interface {
+	OnSettingsChanged(settings Settings)
+}
+
 type SettingsService struct {
-	Viper *viper.Viper
+	Viper   *viper.Viper
+	Trigger SettingsChangedTrigger
 
 	cfg   SettingsConfig
 	cfgRW sync.RWMutex
-
-	version atomic.Uint32
 }
 
 func (service *SettingsService) Setup(cfg SettingsConfig) {
@@ -50,8 +52,7 @@ func (service *SettingsService) Load() (Settings, error) {
 	defer service.cfgRW.RUnlock()
 
 	viper := service.Viper
-	version := service.version.Load()
-	return generateSettings(viper, cfg, version)
+	return generateSettings(viper, cfg)
 }
 
 func (service *SettingsService) Save(fields SettingsFields) (Settings, error) {
@@ -60,8 +61,7 @@ func (service *SettingsService) Save(fields SettingsFields) (Settings, error) {
 	defer service.cfgRW.RUnlock()
 
 	viper := service.Viper
-	version := service.version.Load()
-	settings, err := generateSettings(viper, cfg, version)
+	settings, err := generateSettings(viper, cfg)
 	if err != nil {
 		return settings, err
 	}
@@ -111,12 +111,14 @@ func (service *SettingsService) Save(fields SettingsFields) (Settings, error) {
 		return settings, nil
 	}
 
-	settings.Version = service.version.Add(1)
 	err = viper.WriteConfig()
+	if service.Trigger != nil {
+		service.Trigger.OnSettingsChanged(settings)
+	}
 	return settings, err
 }
 
-func generateSettings(viper *viper.Viper, cfg SettingsConfig, version uint32) (Settings, error) {
+func generateSettings(viper *viper.Viper, cfg SettingsConfig) (Settings, error) {
 
 	var settings Settings
 	if viper == nil || cfg == nil {
@@ -158,6 +160,5 @@ func generateSettings(viper *viper.Viper, cfg SettingsConfig, version uint32) (S
 		settings.BroadcastEnabled = true
 	}
 
-	settings.Version = version
 	return settings, nil
 }

@@ -1,10 +1,12 @@
 package settings
 
-import "github.com/spf13/viper"
+import (
+	"path/filepath"
+
+	"github.com/spf13/viper"
+)
 
 func initViper(viper *viper.Viper, configPath string) error {
-	viper.AddConfigPath(configPath)
-	viper.SetConfigName(SettingsModuleName)
-	viper.SetConfigType("toml")
+	viper.SetConfigFile(filepath.Join(configPath, SettingsModuleName+".toml"))
 	return viper.ReadInConfig()
 }

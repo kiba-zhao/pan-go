@@ -2,13 +2,12 @@ package settings
 
 import (
 	"crypto/tls"
-	"pan/lib/peer"
 	"pan/lib/quic"
 	"time"
 )
 
 type stdQuicConfig struct {
-	security      peer.PeerSecurity
+	security      SecurityConfig
 	port          uint16
 	addrs         []string
 	certificate   tls.Certificate
@@ -16,7 +15,7 @@ type stdQuicConfig struct {
 	dialTimeout   time.Duration
 }
 
-func newQuicConfig(settings *Settings, security peer.PeerSecurity, netIfaces []NetInterface) quic.QuicConfig {
+func newQuicConfig(settings *Settings, security SecurityConfig, netIfaces []NetInterface) quic.QuicConfig {
 	cfg := &stdQuicConfig{}
 	cfg.port = settings.PeerPort
 	cfg.security = security

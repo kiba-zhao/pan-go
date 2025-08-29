@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net"
 	"strconv"
-	"sync/atomic"
 
 	"github.com/spf13/viper"
 )
@@ -22,22 +21,23 @@ const (
 	HostSettingsWebEnabledField = "webEnabled"
 )
 
-type HostSettingsService struct {
-	Viper *viper.Viper
+type HostSettingsChangedTrigger interface {
+	OnHostSettingsChanged(settings HostSettings)
+}
 
-	version atomic.Uint32
+type HostSettingsService struct {
+	Viper   *viper.Viper
+	Trigger HostSettingsChangedTrigger
 }
 
 func (service *HostSettingsService) Load() (HostSettings, error) {
 	viper := service.Viper
-	version := service.version.Load()
-	return generateHostSettings(viper, version)
+	return generateHostSettings(viper)
 }
 
 func (service *HostSettingsService) Save(fields HostSettingsFields) (HostSettings, error) {
 	viper := service.Viper
-	version := service.version.Load()
-	settings, err := generateHostSettings(viper, version)
+	settings, err := generateHostSettings(viper)
 	if err != nil {
 		return settings, err
 	}
@@ -60,12 +60,14 @@ func (service *HostSettingsService) Save(fields HostSettingsFields) (HostSetting
 		return settings, nil
 	}
 
-	settings.Version = service.version.Add(1)
 	err = viper.WriteConfig()
+	if service.Trigger != nil {
+		service.Trigger.OnHostSettingsChanged(settings)
+	}
 	return settings, err
 }
 
-func generateHostSettings(viper *viper.Viper, version uint32) (HostSettings, error) {
+func generateHostSettings(viper *viper.Viper) (HostSettings, error) {
 
 	var settings HostSettings
 	if viper == nil {
@@ -83,6 +85,5 @@ func generateHostSettings(viper *viper.Viper, version uint32) (HostSettings, err
 	} else {
 		settings.WebEnabled = true
 	}
-	settings.Version = version
 	return settings, nil
 }
