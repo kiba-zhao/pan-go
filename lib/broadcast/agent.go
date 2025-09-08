@@ -65,7 +65,6 @@ func (agent *stdBroadcastAgent) Setup(config BroadcastConfig) {
 
 	if !equalPrivateKey(privateKey, agent.privateKey) {
 		agent.privateKey = privateKey
-		changed = true
 	}
 
 	if !changed || agent.reload {

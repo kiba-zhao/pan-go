@@ -1,3 +1,5 @@
+//go:build android || ios
+
 package gomobile
 
 import (
@@ -17,16 +19,18 @@ type GoMobileAgent struct {
 	serlvet libSerlvet.Serlvet
 	rw      sync.RWMutex
 
-	module *stdModule
+	modules []interface{}
 }
 
 func (agent *GoMobileAgent) Run() error {
 
-	engine, err := gobase.NewEngine(
+	modules := []interface{}{
 		libSerlvet.New(),
-		agent.module,
-	)
+	}
+	modules = append(modules, agent.modules...)
+	module := gobase.New(modules...)
 
+	engine, err := runtime.New(module)
 	if err == nil {
 		ctx := runtime.NewContext()
 		err = engine.Bootstrap(ctx)

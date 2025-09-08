@@ -1,41 +1,58 @@
+//go:build android || ios
+
 package gomobile
 
-import (
-	"pan/lib/config"
-	"pan/lib/repository"
-)
+import "pan/features/settings"
 
-type Settings struct {
-	HostName   string
-	ConfigPath string
-	DBPath     string
-	TempDBPath string
+type NetInterface struct {
+	settings.NetInterface
 }
 
-func initWithSettings(settings *Settings, logger Logger) {
-	logger.Debug("gomobile", "settings.HostName:"+settings.HostName)
-	logger.Debug("gomobile", "settings.ConfigPath:"+settings.ConfigPath)
-	logger.Debug("gomobile", "settings.DBPath:"+settings.DBPath)
-	logger.Debug("gomobile", "settings.TempDBPath:"+settings.TempDBPath)
+type SettingsConfig interface {
+	HomePath() string
+	TempPath() string
+	CachePath() string
+	HostName() string
+	NetInterfaces() []NetInterface
+	WifiInterfaces() []NetInterface
+}
 
-	var err error
-	err = config.InitHostName(settings.HostName)
-	if err != nil {
-		logger.Error("gomobile", "settings Error:"+err.Error())
-	}
-	err = config.InitRootPath(settings.ConfigPath)
-	if err != nil {
-		logger.Error("gomobile", "settings Error:"+err.Error())
-	}
+type stdSettingsConfig struct {
+	cfg SettingsConfig
+}
 
-	err = repository.InitDBPath(settings.DBPath)
-	if err != nil {
-		logger.Error("gomobile", "settings Error:"+err.Error())
-	}
+var _ = (settings.SettingsConfig)((*stdSettingsConfig)(nil))
 
-	err = repository.InitTempDBPath(settings.TempDBPath)
-	if err != nil {
-		logger.Error("gomobile", "settings Error:"+err.Error())
-	}
+func (s *stdSettingsConfig) HomePath() string {
+	return s.cfg.HomePath()
+}
 
+func (s *stdSettingsConfig) TempPath() string {
+	return s.cfg.TempPath()
+}
+
+func (s *stdSettingsConfig) CachePath() string {
+	return s.cfg.CachePath()
+}
+
+func (s *stdSettingsConfig) HostName() string {
+	return s.cfg.HostName()
+}
+
+func (s *stdSettingsConfig) NetInterfaces() []settings.NetInterface {
+	var netInterfaces []settings.NetInterface
+	for _, netInterface := range s.cfg.NetInterfaces() {
+		netInterfaces = append(netInterfaces, netInterface.NetInterface)
+	}
+	return netInterfaces
+}
+
+var _ = (settings.MobileSettingsConfig)((*stdSettingsConfig)(nil))
+
+func (s *stdSettingsConfig) WifiInterfaces() []settings.NetInterface {
+	var netInterfaces []settings.NetInterface
+	for _, netInterface := range s.cfg.WifiInterfaces() {
+		netInterfaces = append(netInterfaces, netInterface.NetInterface)
+	}
+	return netInterfaces
 }

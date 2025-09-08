@@ -1,15 +1,22 @@
+//go:build android || ios
+
 package gomobile
 
-import "pan/lib/log"
+import (
+	"pan/gobase"
+	"pan/lib/log"
+)
 
-func New(settings *Settings, logger Logger) *GoMobileAgent {
+func New(cfg SettingsConfig, logger Logger) *GoMobileAgent {
 	log.InitDefault(logger)
-	initWithSettings(settings, logger)
-
-	agent := &GoMobileAgent{}
 
 	module := &stdModule{}
-	agent.module = module
+
+	agent := &GoMobileAgent{}
+	agent.modules = []interface{}{
+		module,
+		gobase.NewSettingsModule(&stdSettingsConfig{cfg: cfg}),
+	}
 	module.agent = agent
 
 	return agent

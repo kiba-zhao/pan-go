@@ -1,3 +1,5 @@
+//go:build android || ios
+
 package gomobile
 
 import (
@@ -25,6 +27,5 @@ var _ = (bootstrap.DeferModule)((*stdModule)(nil))
 
 func (module *stdModule) Defer(ctx context.Context) error {
 	setupAgentSerlvet(module.agent, module.Serlvet)
-
 	return nil
 }
