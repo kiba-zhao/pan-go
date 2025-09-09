@@ -206,6 +206,14 @@ func setupToModules(dbPath string, dbMap map[string]RepositoryDB, modules ...Rep
 	for _, module := range modules {
 
 		name := module.DBName()
+		if len(name) <= 0 {
+			err = module.SetupToRepository(nil)
+		}
+
+		if err != nil {
+			break
+		}
+
 		db, ok := dbMap[name]
 		if !ok {
 			db, err = newSqliteDB(filepath.Join(dbPath, name))

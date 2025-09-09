@@ -7,15 +7,16 @@ import (
 	"pan/lib/injection"
 	"pan/lib/log"
 	"pan/lib/quic"
+	"pan/lib/repository"
 	"sync"
+	"time"
+
+	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
-type BroadcastModule interface {
-	SetStore(store BroadcastStore)
-}
-
 type stdBroadcastModule struct {
-	QuicNetwork quic.QuicNetwork
+	QuicNetwork       quic.QuicNetwork
+	RepositoryManager repository.RepositoryManager
 
 	configurer BroadcastConfigurer
 	network    *stdBroadcastNetwork
@@ -31,6 +32,7 @@ func New() interface{} {
 	agent := &stdBroadcastAgent{}
 	agent.network = network
 	agent.reloadChan = make(chan struct{}, 1)
+	agent.cache = expirable.NewLRU[string, uint64](2000, nil, time.Second*30)
 
 	server := &stdBroadcastServer{}
 	server.network = network
@@ -57,18 +59,11 @@ func New() interface{} {
 	return module
 }
 
-var _ = (BroadcastModule)((*stdBroadcastModule)(nil))
-
-func (module *stdBroadcastModule) SetStore(store BroadcastStore) {
-	module.agent.SetupStore(store)
-}
-
 var _ = (injection.ComponentProvider)((*stdBroadcastModule)(nil))
 
 func (module *stdBroadcastModule) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(module, injection.ComponentNoneScope),
-		injection.NewComponent[BroadcastModule](module, injection.ComponentExternalScope),
 		injection.NewComponent[BroadcastNetwork](module.network, injection.ComponentExternalScope),
 		injection.NewComponent[BroadcastConfigurer](module.configurer, injection.ComponentExternalScope),
 	}
@@ -104,4 +99,5 @@ func (module *stdBroadcastModule) OnConfigUpdated(config BroadcastConfig) {
 	module.network.Setup(config)
 	module.server.Setup(config)
 	module.agent.Setup(config)
+
 }

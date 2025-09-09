@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -38,10 +39,10 @@ type stdBroadcastAgent struct {
 	logger   log.Logger
 	network  *stdBroadcastNetwork
 	provider *stdBroadcastProvider
+	cache    *expirable.LRU[string, uint64]
 
 	peerId     peer.PeerID
 	privateKey crypto.PrivateKey
-	store      BroadcastStore
 
 	reloadChan chan struct{}
 	reloadLock sync.RWMutex
@@ -75,22 +76,6 @@ func (agent *stdBroadcastAgent) Setup(config BroadcastConfig) {
 	agent.reloadChan <- struct{}{}
 }
 
-func (agent *stdBroadcastAgent) SetupStore(store BroadcastStore) {
-	agent.logger.Debug("BroadcastAgent", "SetupStore")
-
-	agent.reloadLock.Lock()
-	defer agent.reloadLock.Unlock()
-
-	agent.store = store
-
-	if agent.reload {
-		return
-	}
-
-	agent.reload = true
-	agent.reloadChan <- struct{}{}
-}
-
 // ServeBroadcast serves the broadcast message to the peer.
 // Returns an error if the broadcast agent is unavailable or if there is an issue serving the broadcast.
 func (agent *stdBroadcastAgent) ServeBroadcast(payload []byte, addr string) error {
@@ -114,29 +99,19 @@ func (agent *stdBroadcastAgent) ServeBroadcast(payload []byte, addr string) erro
 // Returns an error if the broadcast agent is unavailable or if there is an issue delivering the online message.
 func (agent *stdBroadcastAgent) DeliverOnline(deliverAddrs ...string) error {
 	agent.reloadLock.RLock()
-	store := agent.store
 	peerId := agent.peerId
 	privateKey := agent.privateKey
 	agent.reloadLock.RUnlock()
 
 	network := agent.network
-	if network == nil || store == nil || len(peerId) <= 0 || privateKey == nil {
+	if network == nil || len(peerId) <= 0 || privateKey == nil {
 		return ErrBroadcastAgentUnavailable
-	}
-
-	info := BroadcastInfo{}
-	info.PeerID = peerId
-	info.Heightest = 0
-	info.UpdatedAt = time.Now()
-	info, err := store.SelectOrCreate(info)
-	if err != nil {
-		return err
 	}
 
 	// deliver online
 	var msg PeerOnline
 	msg.PeerId = peerId
-	msg.Heightest = info.Heightest
+	msg.Heightest = uint64(time.Now().Unix())
 	data, err := proto.Marshal(&msg)
 	if err != nil {
 		return err
@@ -169,12 +144,12 @@ func (agent *stdBroadcastAgent) AcceptOnline(payload []byte, addr string) error 
 	}
 
 	agent.reloadLock.RLock()
-	store := agent.store
 	peerId := agent.peerId
 	privateKey := agent.privateKey
 	agent.reloadLock.RUnlock()
 
-	if store == nil || len(peerId) <= 0 || privateKey == nil {
+	cache := agent.cache
+	if cache == nil || len(peerId) <= 0 || privateKey == nil {
 		return ErrBroadcastAgentUnavailable
 	}
 
@@ -191,11 +166,22 @@ func (agent *stdBroadcastAgent) AcceptOnline(payload []byte, addr string) error 
 		}
 		err = peer.Verify(data, sig, msg.PeerId)
 	}
-	if err == nil {
-		err = store.SaveHighest(msg.PeerId, msg.Heightest)
-	}
+
 	if err != nil {
 		return err
+	}
+
+	cacheKey := peer.EncodePeerID(msg.PeerId)
+	cacheValue, ok := cache.Get(cacheKey)
+	if ok && cacheValue >= msg.Heightest {
+		return nil
+	}
+
+	if ok && cacheValue < msg.Heightest {
+		cache.Remove(cacheKey)
+	}
+	if !ok || cacheValue < msg.Heightest {
+		cache.Add(cacheKey, msg.Heightest)
 	}
 
 	return quicNetwork.Route(msg.PeerId, addr)
@@ -210,19 +196,15 @@ func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
 	var wg sync.WaitGroup
 	var cancel context.CancelCauseFunc
 
-	var store BroadcastStore
-	var peerId peer.PeerID
-
 	for {
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
 		case <-agent.reloadChan:
 			agent.reloadLock.Lock()
-			store = agent.store
-			peerId = agent.peerId
 			agent.reload = false
 			agent.reloadLock.Unlock()
+
 		}
 
 		if cancel != nil {
@@ -233,16 +215,6 @@ func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
 
 		if err != nil {
 			break
-		}
-
-		if store == nil || len(peerId) <= 0 {
-			continue
-		}
-
-		err := store.Init(peerId)
-		if err != nil {
-			agent.logger.Error("BroadcastAgent", " Init Store Error: "+err.Error())
-			continue
 		}
 
 		causeCtx, causeCancel := context.WithCancelCause(ctx)
@@ -259,7 +231,7 @@ func (agent *stdBroadcastAgent) Deliver(ctx context.Context) error {
 				select {
 				case <-causeCtx.Done():
 					break loop
-				case <-time.After(30 * time.Second):
+				case <-time.After(15 * time.Second):
 				}
 			}
 		}(causeCtx)
