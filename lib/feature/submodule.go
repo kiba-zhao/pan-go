@@ -1,16 +1,31 @@
 package feature
 
+import "pan/lib/injection"
+
 type SubModuleNewFunc[T any] func(parentModule T) interface{}
 
-func NewSubModules[T any](module T, newFuncArr ...SubModuleNewFunc[T]) []interface{} {
-	return AppendSubModules([]interface{}{}, module, newFuncArr...)
+func NewSubModule[Module any, ParentModule any](module Module, parentModule ParentModule) *SubModule[Module, ParentModule] {
+	subModule := &SubModule[Module, ParentModule]{}
+	subModule.specifyModule = module
+	subModule.parentModule = parentModule
+	return subModule
 }
 
-func AppendSubModules[T any](modules []interface{}, parentModule T, newFuncArr ...SubModuleNewFunc[T]) []interface{} {
-	if len(newFuncArr) > 0 {
-		for _, newFunc := range newFuncArr {
-			modules = append(modules, newFunc(parentModule))
-		}
+type SubModule[Module any, ParentModule any] struct {
+	specifyModule Module
+	parentModule  ParentModule
+}
+
+var _ = (injection.ComponentStoreProvider)((*SubModule[any, any])(nil))
+
+func (s *SubModule[Module, ParentModule]) ComponentStore() injection.ComponentStore {
+	parentModule := s.ParentModule()
+	if provider, ok := any(parentModule).(injection.ComponentStoreProvider); ok {
+		return provider.ComponentStore()
 	}
-	return modules
+	return nil
+}
+
+func (s *SubModule[Module, ParentModule]) ParentModule() ParentModule {
+	return s.parentModule
 }

@@ -9,14 +9,14 @@ import (
 	"io"
 	"pan/gobase"
 	"pan/lib/runtime"
-	libSerlvet "pan/lib/serlvet"
+	libServlet "pan/lib/servlet"
 	"sync"
 )
 
 var errAgentUnavailable = errors.New("GoMobileAgent Error: Unavailable")
 
 type GoMobileAgent struct {
-	serlvet libSerlvet.Serlvet
+	servlet libServlet.Servlet
 	rw      sync.RWMutex
 
 	modules []interface{}
@@ -25,7 +25,7 @@ type GoMobileAgent struct {
 func (agent *GoMobileAgent) Run() error {
 
 	modules := []interface{}{
-		libSerlvet.New(),
+		libServlet.New(),
 	}
 	modules = append(modules, agent.modules...)
 	module := gobase.New(modules...)
@@ -44,13 +44,13 @@ func (agent *GoMobileAgent) Terminate() error {
 }
 
 func (agent *GoMobileAgent) Do(action []byte, in GoMobileReadStream) (GoMobileStream, error) {
-	serlvet := getAgentSerlvet(agent)
-	if serlvet == nil {
+	servlet := getAgentServlet(agent)
+	if servlet == nil {
 		return nil, errAgentUnavailable
 	}
 
 	ctx := context.Background()
-	return serlvet.Do(ctx, action, in)
+	return servlet.Do(ctx, action, in)
 }
 
 func (agent *GoMobileAgent) Exec(action []byte, body []byte) ([]byte, error) {
@@ -62,14 +62,14 @@ func (agent *GoMobileAgent) Exec(action []byte, body []byte) ([]byte, error) {
 	return io.ReadAll(out)
 }
 
-func getAgentSerlvet(agent *GoMobileAgent) libSerlvet.Serlvet {
+func getAgentServlet(agent *GoMobileAgent) libServlet.Servlet {
 	agent.rw.RLock()
 	defer agent.rw.RUnlock()
-	return agent.serlvet
+	return agent.servlet
 }
 
-func setupAgentSerlvet(agent *GoMobileAgent, serlvet libSerlvet.Serlvet) {
+func setupAgentServlet(agent *GoMobileAgent, servlet libServlet.Servlet) {
 	agent.rw.Lock()
 	defer agent.rw.Unlock()
-	agent.serlvet = serlvet
+	agent.servlet = servlet
 }

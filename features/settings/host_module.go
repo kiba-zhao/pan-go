@@ -1,10 +1,11 @@
-//go:build !(android || ios) || host
+//go:build !(android || ios)
 
 package settings
 
 import (
 	"context"
 	"pan/lib/bootstrap"
+	"pan/lib/feature"
 	"pan/lib/injection"
 	"pan/lib/web"
 )
@@ -19,7 +20,7 @@ func newHostModule(module *stdModule) interface{} {
 	hostSettingsSvc := &HostSettingsService{}
 
 	hostModule := &stdHostSettingsModule{}
-	hostModule.module = module
+	hostModule.SubModule = feature.NewSubModule(hostModule, module)
 	hostModule.settingsCtrl = settingsCtrl
 	hostModule.hostSettingsCtrl = hostCtrl
 	hostModule.hostSettingsSvc = hostSettingsSvc
@@ -34,7 +35,7 @@ const (
 type stdHostSettingsModule struct {
 	WebConfigurer web.WebConfigurer
 
-	module *stdModule
+	*feature.SubModule[*stdHostSettingsModule, *stdModule]
 
 	settingsCtrl     *SettingsController
 	hostSettingsCtrl *HostSettingsController
@@ -44,9 +45,9 @@ type stdHostSettingsModule struct {
 var _ = (web.WebAppModule)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) SetupToWeb(app web.WebApp) error {
-	err := m.settingsCtrl.SetupToWeb(app.Group(SettingsModuleName))
+	err := m.settingsCtrl.SetupToWeb(app.Group(feature.WebAPIPrefix + SettingsModuleName))
 	if err == nil {
-		err = m.hostSettingsCtrl.SetupToWeb(app.Group(HostSettingsModuleName))
+		err = m.hostSettingsCtrl.SetupToWeb(app.Group(feature.WebAPIPrefix + HostSettingsModuleName))
 	}
 	return err
 }
@@ -59,12 +60,6 @@ func (m *stdHostSettingsModule) Defer(ctx context.Context) error {
 		err = m.configure(hostSettings)
 	}
 	return err
-}
-
-var _ = (injection.ComponentStoreProvider)((*stdHostSettingsModule)(nil))
-
-func (m *stdHostSettingsModule) ComponentStore() injection.ComponentStore {
-	return m.module.ComponentStore()
 }
 
 var _ = (injection.ComponentProvider)((*stdHostSettingsModule)(nil))
@@ -98,7 +93,7 @@ func (m *stdHostSettingsModule) configureWeb(hostSettings *HostSettings) error {
 func (m *stdHostSettingsModule) loadHostSettings() (HostSettings, error) {
 	hostSettings, err := m.hostSettingsSvc.Load()
 	if err != nil {
-		m.module.logger.Error("HostSettingsModule", "loadHostSettings Error: "+err.Error())
+		m.ParentModule().logger.Error("HostSettingsModule", "loadHostSettings Error: "+err.Error())
 	}
 	return hostSettings, err
 }

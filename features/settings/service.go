@@ -31,6 +31,10 @@ type SettingsChangedTrigger interface {
 	OnSettingsChanged(settings Settings)
 }
 
+type SettingsExternalService interface {
+	Load() (Settings, error)
+}
+
 type SettingsService struct {
 	Viper   *viper.Viper
 	Trigger SettingsChangedTrigger

@@ -11,8 +11,6 @@ import (
 	"pan/lib/log"
 	"pan/lib/quic"
 	"pan/lib/repository"
-	"pan/lib/runtime"
-	"slices"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -31,6 +29,8 @@ type stdModule struct {
 	BroadcastConfigurer  broadcast.BroadcastConfigurer
 	RepositoryConfigurer repository.RepositoryConfigurer
 
+	*feature.FeatureModule
+
 	logger log.Logger
 
 	settingsSvc        *SettingsService
@@ -39,14 +39,8 @@ type stdModule struct {
 
 	viper *viper.Viper
 
-	componentStore     injection.ComponentStore
-	componentStoreOnce sync.Once
+	locker sync.Mutex
 
-	locker      sync.Mutex
-	settingsCfg SettingsConfig
-
-	subModules       []interface{}
-	subModulesRW     sync.RWMutex
 	ignoreConfigured bool
 
 	securityConfigListener SecurityConfigurerListener
@@ -68,6 +62,8 @@ func New() interface{} {
 	module.securityConfigurer = securityConfigurer
 	module.viper = viper
 	module.settingsSvc = settingsSvc
+
+	module.FeatureModule = feature.New(module, subModuleNewFuncArray...)
 
 	securityConfigListener := &stdModuleSecurityConfigProxy{}
 	securityConfigListener.module = module
@@ -124,25 +120,8 @@ func (m *stdModule) Components() []injection.Component {
 		injection.NewComponent(m.securityConfigurer, injection.ComponentExternalScope),
 		// service
 		injection.NewComponent(m.settingsSvc, injection.ComponentInternalScope),
+		injection.NewComponent[SettingsExternalService](m.settingsSvc, injection.ComponentExternalScope),
 	}
-}
-
-var _ = (injection.ComponentStoreProvider)((*stdModule)(nil))
-
-func (m *stdModule) ComponentStore() injection.ComponentStore {
-	m.componentStoreOnce.Do(func() {
-		m.componentStore = injection.NewComponentStore()
-	})
-	return m.componentStore
-}
-
-var _ = (runtime.ProviderModule)((*stdModule)(nil))
-
-func (m *stdModule) Modules() []interface{} {
-	m.subModulesRW.Lock()
-	defer m.subModulesRW.Unlock()
-	m.subModules = feature.NewSubModules(m, subModuleNewFuncArray...)
-	return m.subModules
 }
 
 var _ = (SettingsChangedTrigger)((*stdModule)(nil))
@@ -154,7 +133,7 @@ func (m *stdModule) OnSettingsChanged(settings Settings) {
 		return
 	}
 
-	subModules := m.loadSubModules()
+	subModules := m.Modules()
 	if len(subModules) <= 0 {
 		return
 	}
@@ -217,12 +196,6 @@ func (m *stdModule) loadSettings() (Settings, error) {
 		m.logger.Error("SettingsModule", "loadSettings Error: "+err.Error())
 	}
 	return settings, err
-}
-
-func (m *stdModule) loadSubModules() []interface{} {
-	m.subModulesRW.RLock()
-	defer m.subModulesRW.RUnlock()
-	return slices.Clone(m.subModules)
 }
 
 type stdModuleSecurityConfigProxy struct {

@@ -38,39 +38,6 @@ type RepositoryMetaProvider interface {
 	RepositoryMetaList() []RepositoryMeta
 }
 
-var _ = (repository.RepositoryDBModule)((*stdFeatureModule)(nil))
-
-func (module *stdFeatureModule) DBName() string {
-	featureHelper := module.featureHelper
-	if repositoryClusterModule, ok := featureHelper.feature.(repository.RepositoryDBModule); ok {
-		return repositoryClusterModule.DBName()
-	}
-	return featureHelper.FeatureName() + ".db"
-}
-
-func (module *stdFeatureModule) SetupToRepository(db repository.RepositoryDB) error {
-	featureHelper := module.featureHelper
-	if repository := getRepository(featureHelper.feature); repository != nil {
-		err := repository.SetupToRepository(db)
-		if err != nil {
-			return err
-		}
-	}
-
-	metaList := getRepositoryMetaList(featureHelper.feature)
-	if len(metaList) <= 0 {
-		return nil
-	}
-
-	for _, meta := range metaList {
-		err := meta.target.SetupToRepository(db)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func getRepositoryMetaList(feature interface{}) []RepositoryMeta {
 	if metaProvider, ok := feature.(RepositoryMetaProvider); ok {
 		return metaProvider.RepositoryMetaList()

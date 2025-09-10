@@ -5,8 +5,9 @@ package settings
 import (
 	"context"
 	"pan/lib/bootstrap"
+	"pan/lib/feature"
 	"pan/lib/injection"
-	"pan/lib/serlvet"
+	"pan/lib/servlet"
 )
 
 func init() {
@@ -19,7 +20,7 @@ func newMobileModule(module *stdModule) interface{} {
 	mobileSettingsSvc := &MobileSettingsService{}
 
 	mobileModule := &stdMobileSettingsModule{}
-	mobileModule.module = module
+	mobileModule.SubModule = feature.NewSubModule(mobileModule, module)
 	mobileModule.settingsSrv = settingsSrv
 	mobileModule.mobileSettingsSrv = mobileSettingsSrv
 	mobileModule.mobileSettingsSvc = mobileSettingsSvc
@@ -37,7 +38,7 @@ type stdMobileSettingsModule struct {
 	SettingsConfigurer SettingsConfigurer
 	SecurityConfigurer SecurityConfigurer
 
-	module *stdModule
+	*feature.SubModule[*stdMobileSettingsModule, *stdModule]
 
 	settingsSrv       *SettingsServlet
 	mobileSettingsSrv *MobileSettingsServlet
@@ -55,7 +56,7 @@ func (m *stdMobileSettingsModule) OnConfigUpdated(cfg SecurityConfig) {
 	var settings Settings
 	mobileSettings, err := m.loadMobileSettings()
 	if err == nil {
-		settings, err = m.module.loadSettings()
+		settings, err = m.ParentModule().loadSettings()
 	}
 
 	if err != nil {
@@ -65,12 +66,12 @@ func (m *stdMobileSettingsModule) OnConfigUpdated(cfg SecurityConfig) {
 	m.configure(cfg, settings, mobileSettings, mobileCfg)
 }
 
-var _ = (serlvet.SerlvetModule)((*stdMobileSettingsModule)(nil))
+var _ = (servlet.ServletModule)((*stdMobileSettingsModule)(nil))
 
-func (m *stdMobileSettingsModule) SetupToSerlvet(app serlvet.SerlvetApp) error {
-	err := m.settingsSrv.SetupToSerlvet(app.Route([]byte(SettingsModuleName)))
+func (m *stdMobileSettingsModule) SetupToServlet(app servlet.ServletApp) error {
+	err := m.settingsSrv.SetupToServlet(app.Route([]byte(SettingsModuleName)))
 	if err == nil {
-		err = m.mobileSettingsSrv.SetupToSerlvet(app.Route([]byte(MobileSettingsModuleName)))
+		err = m.mobileSettingsSrv.SetupToServlet(app.Route([]byte(MobileSettingsModuleName)))
 	}
 	return err
 }
@@ -86,12 +87,6 @@ var _ = (bootstrap.DestroyModule)((*stdMobileSettingsModule)(nil))
 
 func (m *stdMobileSettingsModule) Destroy() {
 	m.SecurityConfigurer.Unsubscribe(m)
-}
-
-var _ = (injection.ComponentStoreProvider)((*stdMobileSettingsModule)(nil))
-
-func (m *stdMobileSettingsModule) ComponentStore() injection.ComponentStore {
-	return m.module.ComponentStore()
 }
 
 var _ = (injection.ComponentProvider)((*stdMobileSettingsModule)(nil))
@@ -129,7 +124,7 @@ func (m *stdMobileSettingsModule) OnSettingsChanged(settings Settings) {
 var _ = (MobileSettingsChangedTrigger)((*stdMobileSettingsModule)(nil))
 
 func (m *stdMobileSettingsModule) OnMobileSettingsChanged(mobileSettings MobileSettings) {
-	settings, err := m.module.loadSettings()
+	settings, err := m.ParentModule().loadSettings()
 	if err != nil {
 		return
 	}
@@ -154,20 +149,20 @@ func (m *stdMobileSettingsModule) configure(securityCfg SecurityConfig, settings
 	}
 
 	if !useWifiOnly {
-		return m.module.configure(securityCfg, settings, nil, false)
+		return m.ParentModule().configure(securityCfg, settings, nil, false)
 	}
 
 	if len(wifiIfaces) > 0 {
-		return m.module.configure(securityCfg, settings, wifiIfaces, true)
+		return m.ParentModule().configure(securityCfg, settings, wifiIfaces, true)
 	}
-	return m.module.configure(securityCfg, settings, cfg.WifiInterfaces(), true)
+	return m.ParentModule().configure(securityCfg, settings, cfg.WifiInterfaces(), true)
 
 }
 
 func (m *stdMobileSettingsModule) loadMobileSettings() (MobileSettings, error) {
 	mobileSettings, err := m.mobileSettingsSvc.Load()
 	if err != nil {
-		m.module.logger.Error("MobileSettingsModule", "loadMobileSettings Error: "+err.Error())
+		m.ParentModule().logger.Error("MobileSettingsModule", "loadMobileSettings Error: "+err.Error())
 	}
 	return mobileSettings, err
 }

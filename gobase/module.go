@@ -1,6 +1,7 @@
 package gobase
 
 import (
+	"pan/features/appinfo"
 	"pan/features/settings"
 	"pan/lib/bootstrap"
 	"pan/lib/broadcast"
@@ -40,6 +41,7 @@ func (module *stdModule) Modules() []interface{} {
 	modules = append(
 		modules,
 		settings.New(),
+		appinfo.New(),
 		bootstrap.Bootstrap(),
 	)
 	return modules

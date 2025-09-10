@@ -1,4 +1,4 @@
-//go:build !(android || ios) || host
+//go:build !(android || ios)
 
 package gobase
 
