@@ -97,20 +97,3 @@ func (broker *BaseBroker) RequestWithProto(ctx context.Context, peerId peer.Peer
 	}
 	return proto.Unmarshal(content, resp)
 }
-
-type BrokerMeta = Metadata[Broker]
-
-func NewBrokerMeta[T any](broker Broker) BrokerMeta {
-	return newMetadata[T, Broker](broker)
-}
-
-type BrokerMetaProvider interface {
-	BrokerMetaList() []BrokerMeta
-}
-
-func getBrokerMetaList(feature interface{}) []BrokerMeta {
-	if metaProvider, ok := feature.(BrokerMetaProvider); ok {
-		return metaProvider.BrokerMetaList()
-	}
-	return nil
-}

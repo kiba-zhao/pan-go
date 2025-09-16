@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-func NewWithSubModules(subModules ...interface{}) *FeatureModule {
+func NewWithSubModules(module interface{}, subModules ...interface{}) *FeatureModule {
 	featureModule := &FeatureModule{}
 	featureModule.subModules = subModules
 	return featureModule
