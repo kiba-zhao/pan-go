@@ -4,9 +4,9 @@ package gobase
 
 import (
 	"os"
-	"pan/features/settings"
+	"pan/internal/settings"
 
-	"pan/lib/log"
+	"pan/internal/log"
 )
 
 type stdSettings struct {

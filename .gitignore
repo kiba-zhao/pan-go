@@ -471,3 +471,4 @@ FodyWeavers.xsd
 *.sln.iml
 
 !/packages/*
+!/internal/*

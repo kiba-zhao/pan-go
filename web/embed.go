@@ -3,7 +3,7 @@ package web
 import (
 	"embed"
 	"io/fs"
-	"pan/lib/log"
+	"pan/internal/log"
 )
 
 //go:embed dist

@@ -4,9 +4,9 @@ package gomobile
 
 import (
 	"context"
-	"pan/lib/bootstrap"
-	"pan/lib/injection"
-	libServlet "pan/lib/servlet"
+	"pan/internal/bootstrap"
+	"pan/internal/injection"
+	libServlet "pan/internal/servlet"
 )
 
 type stdModule struct {

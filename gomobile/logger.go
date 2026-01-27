@@ -2,7 +2,7 @@
 
 package gomobile
 
-import "pan/lib/log"
+import "pan/internal/log"
 
 type Logger interface {
 	log.Logger

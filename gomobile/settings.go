@@ -2,7 +2,7 @@
 
 package gomobile
 
-import "pan/features/settings"
+import "pan/internal/settings"
 
 type NetInterface struct {
 	settings.NetInterface

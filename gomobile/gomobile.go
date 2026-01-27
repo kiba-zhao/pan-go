@@ -4,7 +4,7 @@ package gomobile
 
 import (
 	"pan/gobase"
-	"pan/lib/log"
+	"pan/internal/log"
 )
 
 func New(cfg SettingsConfig, logger Logger) *GoMobileAgent {

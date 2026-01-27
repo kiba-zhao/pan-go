@@ -3,8 +3,8 @@
 package gobase
 
 import (
-	"pan/lib/runtime"
-	libWeb "pan/lib/web"
+	"pan/internal/runtime"
+	libWeb "pan/internal/web"
 	"pan/web"
 )
 

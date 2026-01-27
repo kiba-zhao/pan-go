@@ -1,0 +1,10 @@
+syntax = "proto3";
+package broadcast;
+
+option go_package = "internal/broadcast;broadcast";
+
+message PeerOnline{
+    bytes PeerId = 1;
+     uint64 Heightest = 2;
+}
+

@@ -5,8 +5,8 @@ package gobase
 import (
 	"log/slog"
 	"os"
-	"pan/lib/env"
-	"pan/lib/log"
+	"pan/internal/env"
+	"pan/internal/log"
 )
 
 func init() {

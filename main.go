@@ -4,9 +4,9 @@ package main
 
 import (
 	"pan/gobase"
-	"pan/lib/log"
+	"pan/internal/log"
 
-	"pan/lib/runtime"
+	"pan/internal/runtime"
 )
 
 func main() {

@@ -1,0 +1,52 @@
+syntax = "proto3";
+package user;
+
+option go_package = "internal/user;user";
+
+message RemoteUserMeta{
+    string Code = 1; 
+    string GenesisSignature = 2;
+    string Signature = 3;
+    uint64 Height = 4;
+}
+
+message RemoteUser {
+    string Code = 1; 
+    string GenesisSignature = 2;
+    string Signature = 3;
+    uint64 Height = 4;
+    bytes UserKey = 5;
+
+    string Name = 6;
+    string Memo = 7;
+}
+
+message RemoteUserConsensus {
+    string Signature = 1;
+    string PreSignature = 2;
+
+    bytes PeerID = 3;
+    bytes PeerSignature = 4;
+
+    uint64 Timestamp = 5;
+    bytes UserKey = 6;
+    uint64 Height = 7;
+
+    bytes PassphraseSignature = 8;
+    bytes OldPassphrase = 9;
+
+    bytes UserContent = 10;
+    bytes DeviceContent = 11;
+}
+
+message RemoteUserSecret {
+    bytes UserKey = 1;
+    bytes UserSecretKey = 2;
+}
+
+message RemoteUserDevice {
+    string PeerID = 1;
+    bytes Level = 2;
+    bytes PeerSignature = 3;
+    bool Enabled = 4;
+}

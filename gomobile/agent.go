@@ -8,8 +8,8 @@ import (
 	"errors"
 	"io"
 	"pan/gobase"
-	"pan/lib/runtime"
-	libServlet "pan/lib/servlet"
+	"pan/internal/runtime"
+	libServlet "pan/internal/servlet"
 	"sync"
 )
 

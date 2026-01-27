@@ -1,14 +1,14 @@
 package gobase
 
 import (
-	"pan/features/appinfo"
-	"pan/features/settings"
-	"pan/lib/bootstrap"
-	"pan/lib/broadcast"
-	"pan/lib/peer"
-	"pan/lib/quic"
-	"pan/lib/repository"
-	"pan/lib/runtime"
+	"pan/internal/appinfo"
+	"pan/internal/bootstrap"
+	"pan/internal/broadcast"
+	"pan/internal/peer"
+	"pan/internal/quic"
+	"pan/internal/repository"
+	"pan/internal/runtime"
+	"pan/internal/settings"
 )
 
 func New(modules ...interface{}) interface{} {
