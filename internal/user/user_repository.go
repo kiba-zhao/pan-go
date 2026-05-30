@@ -1,7 +1,7 @@
 package user
 
 import (
-	"pan/internal/feature"
+	"pan/internal/repository"
 )
 
 const (
@@ -13,7 +13,7 @@ type UserRepository interface {
 }
 
 type stdUserRepository struct {
-	feature.Repository
+	repository.RepositoryBase
 }
 
 var _ = (UserRepository)((*stdUserRepository)(nil))
@@ -21,7 +21,7 @@ var _ = (UserRepository)((*stdUserRepository)(nil))
 func (repo *stdUserRepository) SelectWithGenesis(genesis string, code string) (User, error) {
 	db := repo.DB()
 	if db == nil {
-		return User{}, feature.ErrFeatureRepositoryDBUnavailable
+		return User{}, repository.ErrRepositoryDBUnavailable
 	}
 
 	var user User

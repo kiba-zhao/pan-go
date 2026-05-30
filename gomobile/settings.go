@@ -4,9 +4,7 @@ package gomobile
 
 import "pan/internal/settings"
 
-type NetInterface struct {
-	settings.NetInterface
-}
+type NetInterface = settings.NetInterface
 
 type SettingsConfig interface {
 	HomePath() string
@@ -42,7 +40,7 @@ func (s *stdSettingsConfig) HostName() string {
 func (s *stdSettingsConfig) NetInterfaces() []settings.NetInterface {
 	var netInterfaces []settings.NetInterface
 	for _, netInterface := range s.cfg.NetInterfaces() {
-		netInterfaces = append(netInterfaces, netInterface.NetInterface)
+		netInterfaces = append(netInterfaces, netInterface)
 	}
 	return netInterfaces
 }
@@ -52,7 +50,7 @@ var _ = (settings.MobileSettingsConfig)((*stdSettingsConfig)(nil))
 func (s *stdSettingsConfig) WifiInterfaces() []settings.NetInterface {
 	var netInterfaces []settings.NetInterface
 	for _, netInterface := range s.cfg.WifiInterfaces() {
-		netInterfaces = append(netInterfaces, netInterface.NetInterface)
+		netInterfaces = append(netInterfaces, netInterface)
 	}
 	return netInterfaces
 }

@@ -3,9 +3,7 @@ package gobase
 import (
 	"pan/internal/appinfo"
 	"pan/internal/bootstrap"
-	"pan/internal/broadcast"
-	"pan/internal/peer"
-	"pan/internal/quic"
+	"pan/internal/net"
 	"pan/internal/repository"
 	"pan/internal/runtime"
 	"pan/internal/settings"
@@ -29,9 +27,7 @@ func (module *stdModule) Modules() []interface{} {
 	modules := []interface{}{
 		bootstrap.New(),
 		repository.New(),
-		peer.New(),
-		broadcast.New(),
-		quic.New(),
+		net.New(),
 	}
 
 	if len(module.modules) > 0 {

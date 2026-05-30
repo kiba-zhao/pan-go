@@ -2,7 +2,7 @@ package user
 
 import (
 	"errors"
-	"pan/internal/feature"
+	"pan/internal/repository"
 )
 
 var ErrUserSecretRepositoryNotFound = errors.New("user.UserSecretRepository Error: Not Found")
@@ -15,7 +15,7 @@ type UserSecretRepository interface {
 }
 
 type stdUserSecretRepository struct {
-	feature.Repository
+	repository.RepositoryBase
 }
 
 var _ = (UserSecretRepository)((*stdUserSecretRepository)(nil))
@@ -23,7 +23,7 @@ var _ = (UserSecretRepository)((*stdUserSecretRepository)(nil))
 func (repo *stdUserSecretRepository) SelectWithUserID(userId uint) (UserSecret, error) {
 	db := repo.DB()
 	if db == nil {
-		return UserSecret{}, feature.ErrFeatureRepositoryDBUnavailable
+		return UserSecret{}, repository.ErrRepositoryDBUnavailable
 	}
 
 	var userSecret UserSecret
@@ -34,7 +34,7 @@ func (repo *stdUserSecretRepository) SelectWithUserID(userId uint) (UserSecret, 
 func (repo *stdUserSecretRepository) SaveWithUserID(secret UserSecret) (UserSecret, error) {
 	db := repo.DB()
 	if db == nil {
-		return UserSecret{}, feature.ErrFeatureRepositoryDBUnavailable
+		return UserSecret{}, repository.ErrRepositoryDBUnavailable
 	}
 
 	isUpdated := secret.ID > 0
@@ -56,7 +56,7 @@ func (repo *stdUserSecretRepository) SaveWithUserID(secret UserSecret) (UserSecr
 func (repo *stdUserSecretRepository) DeleteWithUserID(userId uint) error {
 	db := repo.DB()
 	if db == nil {
-		return feature.ErrFeatureRepositoryDBUnavailable
+		return repository.ErrRepositoryDBUnavailable
 	}
 	results := db.Where("user_id = ?", userId).Delete(&UserSecret{})
 	return results.Error

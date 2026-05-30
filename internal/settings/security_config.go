@@ -13,12 +13,12 @@ import (
 	"math/big"
 	"os"
 	"pan/internal/config"
-	"pan/internal/peer"
+	"pan/internal/net"
 	"path/filepath"
 	"time"
 )
 
-var ErrSettingsInvalidSecurityConfig = errors.New("Error: Invalid SecurityConfig")
+var ErrSettingsInvalidSecurityConfig = errors.New("settings.SecurityConfig Error: Invalid SecurityConfig")
 
 var (
 	PrivateKeyFileName  = "key.pem"
@@ -29,7 +29,7 @@ type SecurityConfig interface {
 	Certificate() tls.Certificate
 	PublicKey() any
 	PrivateKey() crypto.PrivateKey
-	PeerID() peer.PeerID
+	PeerID() net.PeerID
 }
 
 type SecurityConfigurerListener = config.ConfigurerListener[SecurityConfig]
@@ -54,7 +54,7 @@ type stdSecurityConfig struct {
 	certificate tls.Certificate
 	pubKey      any
 	privKey     crypto.PrivateKey
-	peerId      peer.PeerID
+	peerId      net.PeerID
 }
 
 var _ = ((SecurityConfig)((*stdSecurityConfig)(nil)))
@@ -67,7 +67,7 @@ func (s *stdSecurityConfig) PublicKey() any {
 	return s.pubKey
 }
 
-func (s *stdSecurityConfig) PeerID() peer.PeerID {
+func (s *stdSecurityConfig) PeerID() net.PeerID {
 	return s.peerId
 }
 
@@ -110,7 +110,7 @@ func VerifySecurityConfig(security SecurityConfig) error {
 	}
 	//
 
-	return peer.VerifyPairKey(security.PrivateKey(), security.PublicKey())
+	return net.VerifyPairKey(security.PrivateKey(), security.PublicKey())
 }
 
 func loadSecurityConfig(homePath string) (SecurityConfig, error) {
@@ -144,7 +144,7 @@ func loadSecurityConfig(homePath string) (SecurityConfig, error) {
 	security.certificate = certificate
 	security.privKey = certificate.PrivateKey
 	security.pubKey = pubKeyBytes
-	security.peerId = peer.PeerID(pubKeyBytes)
+	security.peerId = net.PeerID(pubKeyBytes)
 
 	err = VerifySecurityConfig(security)
 	if err != nil {
@@ -160,11 +160,11 @@ func saveSecurityConfig(homePath string, security SecurityConfig) error {
 		return err
 	}
 
-	privKeyPemBytes, err := peer.EncodePrivateKeyToPemBytes(security.PrivateKey())
+	privKeyPemBytes, err := net.EncodePrivateKeyToPemBytes(security.PrivateKey())
 	if err != nil {
 		return err
 	}
-	certPemBytes := peer.EncodeCertificateToPemBytes(security.Certificate().Certificate...)
+	certPemBytes := net.EncodeCertificateToPemBytes(security.Certificate().Certificate...)
 
 	err = os.MkdirAll(homePath, 0750)
 	if err != nil {
@@ -240,7 +240,7 @@ func generateSecurityConfig() (SecurityConfig, error) {
 	//
 
 	security := &stdSecurityConfig{}
-	security.peerId = peer.PeerID(pubKeyBytes)
+	security.peerId = net.PeerID(pubKeyBytes)
 	security.pubKey = &caPrivkey.PublicKey
 	security.privKey = caPrivkey
 	security.certificate = cert

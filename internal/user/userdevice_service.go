@@ -3,7 +3,7 @@ package user
 import (
 	"errors"
 	"iter"
-	"pan/internal/peer"
+	"pan/internal/net"
 	"slices"
 )
 
@@ -19,7 +19,7 @@ type UserDeviceService struct {
 	UserDeviceRepository    UserDeviceRepository
 }
 
-func (service *UserDeviceService) ScanWithUserMetaForTopic(peerId peer.PeerID, meta UserMeta) (iter.Seq2[UserDevice, error], error) {
+func (service *UserDeviceService) ScanWithUserMetaForTopic(peerId net.PeerID, meta UserMeta) (iter.Seq2[UserDevice, error], error) {
 
 	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
 	if err != nil {
@@ -52,7 +52,7 @@ func verifyUserPeerSignature(code string, genesisSignature string, peerId []byte
 		return err
 	}
 	signatureData := slices.Concat([]byte(code), genesisSignatureBytes, peerId)
-	return peer.VerifyWithPublicKeyBytes(signatureData, signature, peerId)
+	return net.VerifyWithPublicKeyBytes(signatureData, signature, peerId)
 }
 
 func verifyUserDevice(code string, genesisSignature string, userDevice UserDevice) ([]byte, error) {
@@ -63,7 +63,7 @@ func verifyUserDevice(code string, genesisSignature string, userDevice UserDevic
 		return nil, ErrUserDeviceInvalidSignature
 	}
 
-	peerId, err := peer.DecodePeerID(userDevice.PeerID)
+	peerId, err := net.DecodePeerID(userDevice.PeerID)
 	if err == nil {
 		err = verifyUserPeerSignature(code, genesisSignature, peerId, userDevice.PeerSignature)
 	}

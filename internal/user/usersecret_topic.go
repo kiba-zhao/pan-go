@@ -1,53 +1,45 @@
 package user
 
 import (
-	"bytes"
-	"io"
-	"pan/internal/peer"
-
-	"google.golang.org/protobuf/proto"
+	"pan/internal/net"
+	"pan/internal/proto"
 )
 
 type UserSecretTopic struct {
 	UserSecretService *UserSecretService
 }
 
-func (topic *UserSecretTopic) SetupToPeer(router peer.PeerRouter) error {
+var _ = (net.PeerTopic)((*UserSecretTopic)(nil))
+
+func (topic *UserSecretTopic) SetupToPeer(router net.PeerServletRouter) error {
 	router.Handle(PullUserSecret, topic.Pull)
 	return nil
 }
 
-func (topic *UserSecretTopic) Pull(ctx peer.PeerContext, next peer.PeerNext) error {
-	peerId, ok := ctx.Session(peer.ContextPeerID)
+func (topic *UserSecretTopic) Pull(ctx net.PeerServletContext, next net.PeerServletNext) error {
+	peerId, ok := ctx.Session(net.PeerIDSessionKey)
 	if !ok {
-		ctx.ThrowError(peer.CodeBadRequest, nil)
-		return nil
-	}
-
-	req := ctx.Request()
-	body, err := io.ReadAll(req)
-	if err != nil {
-		ctx.ThrowError(peer.CodeBadRequest, err)
+		ctx.ThrowError(net.CodeBadRequest, nil)
 		return nil
 	}
 
 	var userMeta RemoteUserMeta
-	err = proto.Unmarshal(body, &userMeta)
+	err := proto.UnmarshalWithReader(ctx.Request(), &userMeta)
 	if err != nil {
-		ctx.ThrowError(peer.CodeBadRequest, err)
+		ctx.ThrowError(net.CodeBadRequest, err)
 		return nil
 	}
 
 	meta := parseUserMeta(&userMeta)
-	secret, err := topic.UserSecretService.PullForTopic(peerId.(peer.PeerID), meta)
+	secret, err := topic.UserSecretService.PullForTopic(peerId.(net.PeerID), meta)
 	if err != nil {
 		return err
 	}
 
 	remoteSecret := parseRemoteUserSecret(secret)
-	buffer, err := proto.Marshal(remoteSecret)
+	reader, err := proto.MarshalWithReader(remoteSecret)
 	if err == nil {
-		ctx.Respond(bytes.NewReader(buffer))
+		ctx.Respond(reader)
 	}
 	return err
 }

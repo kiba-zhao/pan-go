@@ -39,6 +39,18 @@ type WebAppModule interface {
 	SetupToWeb(WebApp) error
 }
 
+type WebController interface {
+	SetupToWeb(WebRouter) error
+}
+
+type WebControllerProvider interface {
+	WebControllers() []WebController
+}
+
+type WebRouteModule interface {
+	WebRouteName() string
+}
+
 func New() interface{} {
 
 	server := &stdWebServer{}
@@ -89,7 +101,7 @@ func (w *stdWebModule) Init(ctx context.Context, registry runtime.Registry) erro
 	w.rw.Unlock()
 
 	if w.already {
-		return w.ReloadModules(ctx)
+		return w.ReloadModules(ctx, registry)
 	}
 	return nil
 }
@@ -102,8 +114,16 @@ var _ = (bootstrap.DeferModule)((*stdWebModule)(nil))
 // Returns an error if reloading fails.
 
 func (w *stdWebModule) Defer(ctx context.Context) error {
+	if w.already {
+		return nil
+	}
+
 	w.already = true
-	return w.ReloadModules(ctx)
+	w.rw.RLock()
+	registry := w.registry
+	w.rw.RUnlock()
+
+	return w.ReloadModules(ctx, registry)
 }
 
 var _ = (bootstrap.ReadyModule)((*stdWebModule)(nil))
@@ -125,17 +145,11 @@ var _ = (runtime.EngineExtensionModule)((*stdWebModule)(nil))
 func (w *stdWebModule) EngineTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[WebAppModule](),
+		reflect.TypeFor[WebControllerProvider](),
 	}
 }
 
-func (w *stdWebModule) ReloadModules(ctx context.Context) error {
-	w.rw.RLock()
-	registry := w.registry
-	w.rw.RUnlock()
-	if registry == nil {
-		return ErrWebModuleUnavailable
-	}
-
+func (w *stdWebModule) ReloadModules(ctx context.Context, registry runtime.Registry) error {
 	app := NewWebApp()
 
 	err := runtime.TraverseRegistry(registry, func(module WebAppModule) error {
@@ -144,6 +158,34 @@ func (w *stdWebModule) ReloadModules(ctx context.Context) error {
 		}
 		return module.SetupToWeb(app)
 	})
+
+	if err == nil {
+		err = runtime.TraverseRegistry(registry, func(module WebControllerProvider) error {
+			if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
+				return ctxErr
+			}
+			controllers := module.WebControllers()
+			if len(controllers) <= 0 {
+				return nil
+			}
+			var router WebRouter
+			router = app
+			if module, ok := module.(WebRouteModule); ok {
+				routeName := module.WebRouteName()
+				if len(routeName) > 0 {
+					router = app.Group(routeName)
+				}
+			}
+
+			for _, controller := range controllers {
+				err := controller.SetupToWeb(router)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
 
 	if err == nil {
 		w.server.SetupApp(app)

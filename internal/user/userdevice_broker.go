@@ -6,29 +6,38 @@ import (
 	"errors"
 	"io"
 	"iter"
-	"pan/internal/feature"
-	"pan/internal/peer"
+	"pan/internal/net"
+	"pan/internal/proto"
 
-	"google.golang.org/protobuf/proto"
+	protobuf "google.golang.org/protobuf/proto"
 )
 
 type UserDeviceBroker struct {
-	PeerBroker *feature.PeerBroker
+	PeerBroker *net.PeerBroker
 }
 
-func (broker *UserDeviceBroker) ScanWithUserMeta(peerId peer.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserDevice, error], error) {
-	ctx := context.Background()
-	reader, err := broker.PeerBroker.Request(ctx, peerId, ScanUserDeviceWithUserMeta, meta)
+func (broker *UserDeviceBroker) ScanWithUserMeta(peerId net.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserDevice, error], error) {
+	reader, err := proto.MarshalWithReader(meta)
 	if err != nil {
 		return nil, err
 	}
+
+	req := broker.PeerBroker.NewRequest(ScanUserDeviceWithUserMeta, reader)
+	_, res, err := broker.PeerBroker.DoAction(context.Background(), peerId, req)
+	if err != nil {
+		if res != nil {
+			defer res.Close()
+		}
+		return nil, err
+	}
+
 	return func(yield func(*RemoteUserDevice, error) bool) {
-		defer reader.Close()
+		defer res.Close()
 
 		sizeBytes := make([]byte, 2)
 		var itemBytes []byte
 		for {
-			n, err := reader.Read(sizeBytes)
+			n, err := res.Read(sizeBytes)
 			if err == nil && n != 2 {
 				err = ErrUserConsensusScanInvalidWithRemoteUser
 			}
@@ -36,7 +45,7 @@ func (broker *UserDeviceBroker) ScanWithUserMeta(peerId peer.PeerID, meta *Remot
 				size := binary.BigEndian.Uint16(sizeBytes)
 				itemBytes = make([]byte, size)
 				if size > 0 {
-					n, err = reader.Read(itemBytes)
+					n, err = res.Read(itemBytes)
 					if err == nil && n != int(size) {
 						err = ErrUserConsensusScanInvalidWithRemoteUser
 					}
@@ -50,7 +59,7 @@ func (broker *UserDeviceBroker) ScanWithUserMeta(peerId peer.PeerID, meta *Remot
 			}
 
 			var remoteDevice RemoteUserDevice
-			err = proto.Unmarshal(itemBytes, &remoteDevice)
+			err = protobuf.Unmarshal(itemBytes, &remoteDevice)
 			if !yield(&remoteDevice, err) {
 				break
 			}

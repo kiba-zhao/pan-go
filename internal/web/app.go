@@ -6,6 +6,8 @@ type WebApp = *gin.Engine
 type WebRouter = gin.IRouter
 type WebContext = *gin.Context
 
+var WEB_API_PATH = "/api"
+
 // NewWebApp creates a new web application.
 //
 // It creates a new Gin Engine which can be used as a WebApp.

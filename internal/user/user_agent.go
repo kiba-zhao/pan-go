@@ -4,21 +4,21 @@ import (
 	"bytes"
 	"context"
 	"pan/internal/log"
-	"pan/internal/peer"
+	"pan/internal/net"
 	"slices"
 	sync "sync"
 )
 
 type stdUserAgent struct {
-	ordered      []peer.PeerID
-	pendings     []peer.PeerID
+	ordered      []net.PeerID
+	pendings     []net.PeerID
 	pendingsChan chan struct{}
 	pendingsLock sync.RWMutex
 
 	logger log.Logger
 }
 
-func (agent *stdUserAgent) ApplyConsistent(peerId peer.PeerID) error {
+func (agent *stdUserAgent) ApplyConsistent(peerId net.PeerID) error {
 	agent.pendingsLock.Lock()
 	defer agent.pendingsLock.Unlock()
 
@@ -40,7 +40,7 @@ func (agent *stdUserAgent) MakeConsistent(ctx context.Context) error {
 	defer agent.logger.Debug("UserAgent", "MakeConsistent end")
 
 	var err error
-	var pendings []peer.PeerID
+	var pendings []net.PeerID
 
 	for {
 		select {
@@ -49,8 +49,8 @@ func (agent *stdUserAgent) MakeConsistent(ctx context.Context) error {
 		case <-agent.pendingsChan:
 			agent.pendingsLock.Lock()
 			pendings = agent.pendings
-			agent.ordered = make([]peer.PeerID, 0)
-			agent.pendings = make([]peer.PeerID, 0)
+			agent.ordered = make([]net.PeerID, 0)
+			agent.pendings = make([]net.PeerID, 0)
 			agent.pendingsLock.Unlock()
 		}
 
@@ -59,6 +59,7 @@ func (agent *stdUserAgent) MakeConsistent(ctx context.Context) error {
 		}
 
 		for _, peerId := range pendings {
+			println(peerId)
 			// TODO: implement
 		}
 	}

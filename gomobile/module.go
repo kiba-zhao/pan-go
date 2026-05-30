@@ -4,13 +4,13 @@ package gomobile
 
 import (
 	"context"
+	"pan/internal/app"
 	"pan/internal/bootstrap"
 	"pan/internal/injection"
-	libServlet "pan/internal/servlet"
 )
 
 type stdModule struct {
-	Servlet libServlet.Servlet
+	Applet app.Applet
 
 	agent *GoMobileAgent
 }
@@ -26,6 +26,6 @@ func (module *stdModule) Components() []injection.Component {
 var _ = (bootstrap.DeferModule)((*stdModule)(nil))
 
 func (module *stdModule) Defer(ctx context.Context) error {
-	setupAgentServlet(module.agent, module.Servlet)
+	module.agent.SetupApplet(module.Applet)
 	return nil
 }

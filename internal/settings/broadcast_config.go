@@ -1,41 +1,33 @@
 package settings
 
 import (
-	"crypto"
-	"pan/internal/broadcast"
-	"pan/internal/peer"
+	"pan/internal/net"
 )
 
 type stdBroadcastConfig struct {
-	ifaces       []broadcast.BroadcastInterface
+	ifaces       []net.BroadcastInterface
 	mtu          int
 	ipv6ZoneList []string
 
 	security SecurityConfig
 	addrs    []string
-	enabled  bool
 }
 
-func newBroadcastConfig(settings *Settings, security SecurityConfig, netIfaces []NetInterface, isSubNet bool) broadcast.BroadcastConfig {
+func newBroadcastConfig(settings *Settings, netIfaces []NetInterface, isSubNet bool) net.BroadcastConfig {
 	cfg := &stdBroadcastConfig{}
-	cfg.security = security
-	cfg.enabled = settings.BroadcastEnabled
 	cfg.addrs = settings.BroadcastAddrs
 
 	initBroadcastConfigWithNetInterfaces(cfg, netIfaces, isSubNet)
 	return cfg
 }
 
-var _ = (broadcast.BroadcastConfig)((*stdBroadcastConfig)(nil))
+var _ = (net.BroadcastConfig)((*stdBroadcastConfig)(nil))
 
-func (cfg *stdBroadcastConfig) Interfaces() []broadcast.BroadcastInterface {
+func (cfg *stdBroadcastConfig) Interfaces() []net.BroadcastInterface {
 	return cfg.ifaces
 }
 
 func (cfg *stdBroadcastConfig) Addrs() []string {
-	if !cfg.enabled {
-		return nil
-	}
 	return cfg.addrs
 }
 
@@ -51,17 +43,6 @@ func (cfg *stdBroadcastConfig) DeliverMaxSize() int {
 	return 65535
 }
 
-func (cfg *stdBroadcastConfig) PeerID() peer.PeerID {
-	if !cfg.enabled {
-		return nil
-	}
-	return cfg.security.PeerID()
-}
-
-func (cfg *stdBroadcastConfig) PrivateKey() crypto.PrivateKey {
-	return cfg.security.PrivateKey()
-}
-
 func initBroadcastConfigWithNetInterfaces(cfg *stdBroadcastConfig, netIfaces []NetInterface, isSubNet bool) {
 
 	if len(netIfaces) <= 0 {
@@ -73,7 +54,7 @@ func initBroadcastConfigWithNetInterfaces(cfg *stdBroadcastConfig, netIfaces []N
 	for _, iface := range netIfaces {
 
 		if isSubNet {
-			var bIface broadcast.BroadcastInterface
+			var bIface net.BroadcastInterface
 			bIface.Addr = iface.Addr
 			bIface.MTU = iface.MTU
 			cfg.ifaces = append(cfg.ifaces, bIface)
@@ -95,7 +76,7 @@ func initBroadcastConfigWithNetInterfaces(cfg *stdBroadcastConfig, netIfaces []N
 
 	cfg.mtu = maxMTU
 	if len(cfg.ifaces) < 0 {
-		cfg.ifaces = []broadcast.BroadcastInterface{
+		cfg.ifaces = []net.BroadcastInterface{
 			{
 				MTU: minMTU,
 			},

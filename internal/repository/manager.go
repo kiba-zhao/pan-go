@@ -7,10 +7,6 @@ import (
 	"sync"
 )
 
-type Repository interface {
-	SetupToRepository(db RepositoryDB) error
-}
-
 type RepositoryDBModule interface {
 	Repository
 	DBName() string

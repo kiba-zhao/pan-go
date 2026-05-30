@@ -6,7 +6,7 @@ import (
 	"image/color"
 	"io"
 	"net/url"
-	"pan/internal/peer"
+	"pan/internal/net"
 	"pan/internal/settings"
 	"sync"
 	"time"
@@ -35,7 +35,7 @@ type QRCodeService struct {
 	SecurityConfigurer settings.SecurityConfigurer
 	SettingsService    settings.SettingsExternalService
 
-	peerId  peer.PeerID
+	peerId  net.PeerID
 	name    string
 	modTime time.Time
 	locker  sync.Mutex
@@ -119,7 +119,7 @@ func (service *QRCodeService) Load(size int) (*QRCodeReader, error) {
 
 func generateQRCodeValue(peerID []byte, name string) string {
 	v := url.Values{}
-	v.Set("peerId", peer.EncodePeerID(peerID))
+	v.Set("peerId", net.EncodePeerID(peerID))
 	v.Set("name", name)
 
 	return "pan://appinfo?" + v.Encode()

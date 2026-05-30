@@ -4,7 +4,6 @@ package settings
 
 import (
 	"net/http"
-	"pan/internal/feature"
 	"pan/internal/web"
 )
 
@@ -12,11 +11,11 @@ type HostSettingsController struct {
 	HostSettingsService *HostSettingsService
 }
 
-var _ = (feature.WebController)((*HostSettingsController)(nil))
+var _ = (web.WebController)((*HostSettingsController)(nil))
 
 func (ctrl *HostSettingsController) SetupToWeb(router web.WebRouter) error {
-	router.GET("/", ctrl.Load)
-	router.PATCH("/", ctrl.Update)
+	router.GET("/host", ctrl.Load)
+	router.PATCH("/host", ctrl.Update)
 	return nil
 }
 

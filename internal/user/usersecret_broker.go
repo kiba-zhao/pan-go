@@ -2,18 +2,31 @@ package user
 
 import (
 	"context"
-	"pan/internal/feature"
-	"pan/internal/peer"
+	"pan/internal/net"
+	"pan/internal/proto"
 )
 
 type UserSecretBroker struct {
-	PeerBroker *feature.PeerBroker
+	PeerBroker *net.PeerBroker
 }
 
-func (broker *UserSecretBroker) Pull(peerId peer.PeerID, meta *RemoteUserMeta) (*RemoteUserSecret, error) {
-	ctx := context.Background()
-	var secret RemoteUserSecret
+func (broker *UserSecretBroker) Pull(peerId net.PeerID, meta *RemoteUserMeta) (*RemoteUserSecret, error) {
+	reader, err := proto.MarshalWithReader(meta)
+	if err != nil {
+		return nil, err
+	}
 
-	err := broker.PeerBroker.RequestWithProto(ctx, peerId, PullUserSecret, &secret, meta)
+	req := broker.PeerBroker.NewRequest(PullUserSecret, reader)
+	_, res, err := broker.PeerBroker.DoAction(context.Background(), peerId, req)
+	if res != nil {
+		defer res.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var secret RemoteUserSecret
+	err = proto.UnmarshalWithReader(res, &secret)
+
 	return &secret, err
 }

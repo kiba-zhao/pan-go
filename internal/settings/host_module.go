@@ -5,8 +5,8 @@ package settings
 import (
 	"context"
 	"pan/internal/bootstrap"
-	"pan/internal/feature"
 	"pan/internal/injection"
+	"pan/internal/module"
 	"pan/internal/web"
 )
 
@@ -14,14 +14,14 @@ func init() {
 	subModuleNewFuncArray = append(subModuleNewFuncArray, newHostModule)
 }
 
-func newHostModule(module *stdModule) interface{} {
-	settingsCtrl := &SettingsController{}
+func newHostModule(m *stdModule) interface{} {
+	baseSettingsCtrl := &BaseSettingsController{}
 	hostCtrl := &HostSettingsController{}
 	hostSettingsSvc := &HostSettingsService{}
 
 	hostModule := &stdHostSettingsModule{}
-	hostModule.SubModule = feature.NewSubModule(hostModule, module)
-	hostModule.settingsCtrl = settingsCtrl
+	hostModule.SubModule = module.NewSubModule(hostModule, m)
+	hostModule.baseSettingsCtrl = baseSettingsCtrl
 	hostModule.hostSettingsCtrl = hostCtrl
 	hostModule.hostSettingsSvc = hostSettingsSvc
 
@@ -35,9 +35,9 @@ const (
 type stdHostSettingsModule struct {
 	WebConfigurer web.WebConfigurer
 
-	*feature.SubModule[*stdHostSettingsModule, *stdModule]
+	*module.SubModule[*stdHostSettingsModule, *stdModule]
 
-	settingsCtrl     *SettingsController
+	baseSettingsCtrl *BaseSettingsController
 	hostSettingsCtrl *HostSettingsController
 	hostSettingsSvc  *HostSettingsService
 }
@@ -45,9 +45,10 @@ type stdHostSettingsModule struct {
 var _ = (web.WebAppModule)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) SetupToWeb(app web.WebApp) error {
-	err := m.settingsCtrl.SetupToWeb(app.Group(feature.WebAPIPrefix + SettingsModuleName))
+	route := app.Group(web.WEB_API_PATH)
+	err := m.baseSettingsCtrl.SetupToWeb(route.Group(SettingsModuleName))
 	if err == nil {
-		err = m.hostSettingsCtrl.SetupToWeb(app.Group(feature.WebAPIPrefix + HostSettingsModuleName))
+		err = m.hostSettingsCtrl.SetupToWeb(route.Group(HostSettingsModuleName))
 	}
 	return err
 }
@@ -68,7 +69,7 @@ func (m *stdHostSettingsModule) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(m, injection.ComponentInternalScope),
 		// controller
-		injection.NewComponent(m.settingsCtrl, injection.ComponentNoneScope),
+		injection.NewComponent(m.baseSettingsCtrl, injection.ComponentNoneScope),
 		injection.NewComponent(m.hostSettingsCtrl, injection.ComponentNoneScope),
 		// service
 		injection.NewComponent(m.hostSettingsSvc, injection.ComponentInternalScope),
@@ -93,7 +94,7 @@ func (m *stdHostSettingsModule) configureWeb(hostSettings *HostSettings) error {
 func (m *stdHostSettingsModule) loadHostSettings() (HostSettings, error) {
 	hostSettings, err := m.hostSettingsSvc.Load()
 	if err != nil {
-		m.ParentModule().logger.Error("HostSettingsModule", "loadHostSettings Error: "+err.Error())
+		m.ParentModule().logger.Error("settings.HostSettingsModule", "loadHostSettings Error: "+err.Error())
 	}
 	return hostSettings, err
 }

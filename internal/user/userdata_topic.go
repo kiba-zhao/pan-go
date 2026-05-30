@@ -1,88 +1,72 @@
 package user
 
 import (
-	"bytes"
-	"io"
-	"pan/internal/peer"
-
-	"google.golang.org/protobuf/proto"
+	"pan/internal/net"
+	"pan/internal/proto"
 )
 
 type UserDataTopic struct {
 	UserDataService *UserDataService
 }
 
-func (topic *UserDataTopic) SetupToPeer(router peer.PeerRouter) error {
+var _ = (net.PeerTopic)((*UserDataTopic)(nil))
+
+func (topic *UserDataTopic) SetupToPeer(router net.PeerServletRouter) error {
 	router.Handle(PullUserData, topic.Pull)
 	router.Handle(PushUserData, topic.Push)
 	return nil
 }
 
-func (topic *UserDataTopic) Pull(ctx peer.PeerContext, next peer.PeerNext) error {
-	peerId, ok := ctx.Session(peer.ContextPeerID)
+func (topic *UserDataTopic) Pull(ctx net.PeerServletContext, next net.PeerServletNext) error {
+	peerId, ok := ctx.Session(net.PeerIDSessionKey)
 	if !ok {
-		ctx.ThrowError(peer.CodeBadRequest, nil)
-		return nil
-	}
-
-	req := ctx.Request()
-	body, err := io.ReadAll(req)
-	if err != nil {
-		ctx.ThrowError(peer.CodeBadRequest, err)
+		ctx.ThrowError(net.CodeBadRequest, nil)
 		return nil
 	}
 
 	var userMeta RemoteUserMeta
-	err = proto.Unmarshal(body, &userMeta)
+	err := proto.UnmarshalWithReader(ctx.Request(), &userMeta)
 	if err != nil {
-		ctx.ThrowError(peer.CodeBadRequest, err)
+		ctx.ThrowError(net.CodeBadRequest, err)
 		return nil
 	}
 
 	meta := parseUserMeta(&userMeta)
-	user, err := topic.UserDataService.PullForTopic(peerId.(peer.PeerID), meta)
+	user, err := topic.UserDataService.PullForTopic(peerId.(net.PeerID), meta)
 	if err != nil {
 		return err
 	}
 
 	remoteUser := parseRemoteUser(user)
-	buffer, err := proto.Marshal(remoteUser)
+	reader, err := proto.MarshalWithReader(remoteUser)
 	if err == nil {
-		ctx.Respond(bytes.NewReader(buffer))
+		ctx.Respond(reader)
 	}
 
 	return err
 }
 
-func (topic *UserDataTopic) Push(ctx peer.PeerContext, next peer.PeerNext) error {
-	peerId, ok := ctx.Session(peer.ContextPeerID)
+func (topic *UserDataTopic) Push(ctx net.PeerServletContext, next net.PeerServletNext) error {
+	peerId, ok := ctx.Session(net.PeerIDSessionKey)
 	if !ok {
-		ctx.ThrowError(peer.CodeBadRequest, nil)
+		ctx.ThrowError(net.CodeBadRequest, nil)
 		return nil
 	}
 
 	signature, ok := ctx.RequestHeader(PeerSignatureHeaderName)
 	if !ok {
-		ctx.ThrowError(peer.CodeBadRequest, nil)
-		return nil
-	}
-
-	req := ctx.Request()
-	body, err := io.ReadAll(req)
-	if err != nil {
-		ctx.ThrowError(peer.CodeBadRequest, err)
+		ctx.ThrowError(net.CodeBadRequest, nil)
 		return nil
 	}
 
 	var userMeta RemoteUserMeta
-	err = proto.Unmarshal(body, &userMeta)
+	err := proto.UnmarshalWithReader(ctx.Request(), &userMeta)
 	if err != nil {
-		ctx.ThrowError(peer.CodeBadRequest, err)
+		ctx.ThrowError(net.CodeBadRequest, err)
 		return nil
 	}
 
 	meta := parseUserMeta(&userMeta)
-
-	err = topic.UserDataService.PushForTopic(peerId.(peer.PeerID), meta, signature)
+	err = topic.UserDataService.PushForTopic(peerId.(net.PeerID), meta, signature)
 	return err
 }

@@ -3,7 +3,9 @@
 package appinfo
 
 import (
-	"pan/internal/feature"
+	"pan/internal/app"
+	"pan/internal/injection"
+	"pan/internal/module"
 	"sync"
 )
 
@@ -11,33 +13,49 @@ func init() {
 	subModuleNewFuncArray = append(subModuleNewFuncArray, newMobileModule)
 }
 
-func newMobileModule(module *stdModule) interface{} {
+func newMobileModule(m *stdModule) interface{} {
 	mobileModule := &stdMobileModule{}
-	mobileModule.SubModule = feature.NewSubModule(mobileModule, module)
+	mobileModule.SubModule = module.NewSubModule(mobileModule, m)
 
 	return mobileModule
 }
 
 type stdMobileModule struct {
-	*feature.SubModule[*stdMobileModule, *stdModule]
+	*module.SubModule[*stdMobileModule, *stdModule]
 
-	serlvets     []feature.ServletHandler
-	serlvetsOnce sync.Once
+	modules     []app.AppletModule
+	modulesOnce sync.Once
 }
 
-var _ = (feature.ServletSubModule)((*stdMobileModule)(nil))
+var _ = (app.AppletModule)((*stdMobileModule)(nil))
 
-func (m *stdMobileModule) ServletRouteName() []byte {
-	return []byte(ModuleName)
+func (m *stdMobileModule) SetupToApplet(router app.AppServletRouter) error {
+	router_ := router.Route([]byte(ModuleName))
+	var err error
+	for _, module := range m.AppModules() {
+		err = module.SetupToApplet(router_)
+		if err != nil {
+			break
+		}
+	}
+	return err
 }
 
-var _ = (feature.ServletHandlerProvider)((*stdMobileModule)(nil))
-
-func (m *stdMobileModule) ServletHandlers() []feature.ServletHandler {
-	m.serlvetsOnce.Do(func() {
-		m.serlvets = []feature.ServletHandler{
-			&QRCodeServlet{},
+func (m *stdMobileModule) AppModules() []app.AppletModule {
+	m.modulesOnce.Do(func() {
+		m.modules = []app.AppletModule{
+			&QRCodeAppletModule{},
 		}
 	})
-	return m.serlvets
+	return m.modules
+}
+
+var _ = (injection.ComponentProvider)((*stdMobileModule)(nil))
+
+func (m *stdMobileModule) Components() []injection.Component {
+	components := make([]injection.Component, 0)
+	for _, module := range m.AppModules() {
+		components = append(components, injection.NewComponent(module, injection.ComponentNoneScope))
+	}
+	return components
 }

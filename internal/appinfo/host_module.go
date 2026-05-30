@@ -3,7 +3,9 @@
 package appinfo
 
 import (
-	"pan/internal/feature"
+	"pan/internal/injection"
+	"pan/internal/module"
+	"pan/internal/web"
 	"sync"
 )
 
@@ -11,32 +13,42 @@ func init() {
 	subModuleNewFuncArray = append(subModuleNewFuncArray, newHostModule)
 }
 
-func newHostModule(module *stdModule) interface{} {
+func newHostModule(m *stdModule) interface{} {
 	hostModule := &stdHostModule{}
-	hostModule.SubModule = feature.NewSubModule(hostModule, module)
+	hostModule.SubModule = module.NewSubModule(hostModule, m)
 	return hostModule
 }
 
 type stdHostModule struct {
-	*feature.SubModule[*stdHostModule, *stdModule]
+	*module.SubModule[*stdHostModule, *stdModule]
 
-	controllers     []feature.WebController
+	controllers     []web.WebController
 	controllersOnce sync.Once
 }
 
-var _ = (feature.WebSubModule)((*stdHostModule)(nil))
+var _ = (web.WebRouteModule)((*stdHostModule)(nil))
 
 func (m *stdHostModule) WebRouteName() string {
 	return ModuleName
 }
 
-var _ = (feature.WebControllerProvider)((*stdHostModule)(nil))
+var _ = (web.WebControllerProvider)((*stdHostModule)(nil))
 
-func (m *stdHostModule) WebControllers() []feature.WebController {
+func (m *stdHostModule) WebControllers() []web.WebController {
 	m.controllersOnce.Do(func() {
-		m.controllers = []feature.WebController{
+		m.controllers = []web.WebController{
 			&QRCodeController{},
 		}
 	})
 	return m.controllers
+}
+
+var _ = (injection.ComponentProvider)((*stdHostModule)(nil))
+
+func (m *stdHostModule) Components() []injection.Component {
+	components := make([]injection.Component, 0)
+	for _, ctrl := range m.WebControllers() {
+		components = append(components, injection.NewComponent(ctrl, injection.ComponentNoneScope))
+	}
+	return components
 }

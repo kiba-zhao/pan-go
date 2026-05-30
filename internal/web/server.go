@@ -21,7 +21,7 @@ type stdWebServer struct {
 }
 
 func (ws *stdWebServer) Setup(cfg WebConfig) {
-	ws.logger.Debug("WebServer", "Setup")
+	ws.logger.Debug("web.WebServer", "Setup")
 
 	ws.addrRW.Lock()
 	defer ws.addrRW.Unlock()
@@ -43,7 +43,7 @@ func (ws *stdWebServer) Setup(cfg WebConfig) {
 }
 
 func (ws *stdWebServer) SetupApp(app WebApp) {
-	ws.logger.Info("WebServer", "SetupApp")
+	ws.logger.Info("web.WebServer", "SetupApp")
 
 	ws.appRW.Lock()
 	defer ws.appRW.Unlock()
@@ -65,8 +65,8 @@ func (ws *stdWebServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (ws *stdWebServer) ListenAndServe(ctx context.Context) error {
-	ws.logger.Debug("WebServer", "ListenAndServe begin")
-	defer ws.logger.Debug("WebServer", "ListenAndServe end")
+	ws.logger.Debug("web.WebServer", "ListenAndServe begin")
+	defer ws.logger.Debug("web.WebServer", "ListenAndServe end")
 
 	var err error
 	var closed bool
@@ -121,9 +121,9 @@ func (ws *stdWebServer) ListenAndServe(ctx context.Context) error {
 			defer wg.Done()
 			err = s.ListenAndServe()
 			if err != nil {
-				ws.logger.Error("WebServer", "http.Server.ListenAndServe Error: "+err.Error())
+				ws.logger.Error("web.WebServer", "http.Server.ListenAndServe Error: "+err.Error())
 			} else {
-				ws.logger.Info("WebServer", "http.Server.ListenAndServe Success: "+s.Addr)
+				ws.logger.Info("web.WebServer", "http.Server.ListenAndServe Success: "+s.Addr)
 			}
 		}(httpServer)
 

@@ -2,30 +2,46 @@ package user
 
 import (
 	"context"
-	"pan/internal/feature"
-	"pan/internal/peer"
+	"pan/internal/net"
+	"pan/internal/proto"
 )
 
 type UserDataBroker struct {
-	PeerBroker *feature.PeerBroker
+	PeerBroker *net.PeerBroker
 }
 
-func (broker *UserDataBroker) Pull(peerId peer.PeerID, meta *RemoteUserMeta) (*RemoteUser, error) {
-	ctx := context.Background()
-	var remoteUser RemoteUser
+func (broker *UserDataBroker) Pull(peerId net.PeerID, meta *RemoteUserMeta) (*RemoteUser, error) {
+	reader, err := proto.MarshalWithReader(meta)
+	if err != nil {
+		return nil, err
+	}
 
-	err := broker.PeerBroker.RequestWithProto(ctx, peerId, PullUserData, &remoteUser, meta)
+	req := broker.PeerBroker.NewRequest(PullUserData, reader)
+	_, res, err := broker.PeerBroker.DoAction(context.Background(), peerId, req)
+	if res != nil {
+		defer res.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var remoteUser RemoteUser
+	err = proto.UnmarshalWithReader(res, &remoteUser)
 
 	return &remoteUser, err
 }
 
-func (broker *UserDataBroker) Push(peerId peer.PeerID, meta *RemoteUserMeta, signature []byte) error {
-	ctx := context.Background()
+func (broker *UserDataBroker) Push(peerId net.PeerID, meta *RemoteUserMeta, signature []byte) error {
+	reader, err := proto.MarshalWithReader(meta)
+	if err != nil {
+		return err
+	}
 
-	signatureHeader := peer.PeerHeaderItem{Key: PeerSignatureHeaderName, Value: signature}
-	res, err := broker.PeerBroker.Request(ctx, peerId, PushUserData, meta, signatureHeader)
-	if err == nil {
-		res.Close()
+	signatureHeader := net.HeaderItem{Key: PeerSignatureHeaderName, Value: signature}
+	req := broker.PeerBroker.NewRequest(PushUserData, reader, signatureHeader)
+	_, res, err := broker.PeerBroker.DoAction(context.Background(), peerId, req)
+	if res != nil {
+		defer res.Close()
 	}
 	return err
 }

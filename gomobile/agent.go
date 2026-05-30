@@ -4,28 +4,43 @@ package gomobile
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io"
 	"pan/gobase"
+	"pan/internal/app"
+	"pan/internal/log"
 	"pan/internal/runtime"
-	libServlet "pan/internal/servlet"
 	"sync"
 )
 
-var errAgentUnavailable = errors.New("GoMobileAgent Error: Unavailable")
+var errAgentUnavailable = errors.New("gomobile.GoMobileAgent Error: Unavailable")
 
 type GoMobileAgent struct {
-	servlet libServlet.Servlet
-	rw      sync.RWMutex
+	applet app.Applet
+	rw     sync.RWMutex
 
 	modules []interface{}
+}
+
+func New(cfg SettingsConfig, logger Logger) *GoMobileAgent {
+	log.InitDefault(logger)
+
+	module := &stdModule{}
+
+	agent := &GoMobileAgent{}
+	agent.modules = []interface{}{
+		module,
+		gobase.NewSettingsModule(&stdSettingsConfig{cfg: cfg}),
+	}
+	module.agent = agent
+
+	return agent
 }
 
 func (agent *GoMobileAgent) Run() error {
 
 	modules := []interface{}{
-		libServlet.New(),
+		app.New(),
 	}
 	modules = append(modules, agent.modules...)
 	module := gobase.New(modules...)
@@ -43,33 +58,32 @@ func (agent *GoMobileAgent) Terminate() error {
 	return runtime.AbortContext()
 }
 
-func (agent *GoMobileAgent) Do(action []byte, in GoMobileReadStream) (GoMobileStream, error) {
-	servlet := getAgentServlet(agent)
-	if servlet == nil {
+func (agent *GoMobileAgent) SetupApplet(applet app.Applet) {
+	agent.rw.Lock()
+	defer agent.rw.Unlock()
+	agent.applet = applet
+}
+
+func (agent *GoMobileAgent) Applet() app.Applet {
+	agent.rw.RLock()
+	defer agent.rw.RUnlock()
+	return agent.applet
+}
+
+func (agent *GoMobileAgent) Exec(name []byte, in GoMobileReadStream) (GoMobileStream, error) {
+	applet := agent.Applet()
+	if applet == nil {
 		return nil, errAgentUnavailable
 	}
 
-	ctx := context.Background()
-	return servlet.Do(ctx, action, in)
+	return applet.Exec(name, in)
 }
 
-func (agent *GoMobileAgent) Exec(action []byte, body []byte) ([]byte, error) {
+func (agent *GoMobileAgent) Invoke(action []byte, body []byte) ([]byte, error) {
 	in := bytes.NewReader(body)
-	out, err := agent.Do(action, in)
+	out, err := agent.Exec(action, in)
 	if err != nil {
 		return nil, err
 	}
 	return io.ReadAll(out)
-}
-
-func getAgentServlet(agent *GoMobileAgent) libServlet.Servlet {
-	agent.rw.RLock()
-	defer agent.rw.RUnlock()
-	return agent.servlet
-}
-
-func setupAgentServlet(agent *GoMobileAgent, servlet libServlet.Servlet) {
-	agent.rw.Lock()
-	defer agent.rw.Unlock()
-	agent.servlet = servlet
 }

@@ -1,18 +1,18 @@
 package appinfo
 
 import (
-	"pan/internal/feature"
 	"pan/internal/injection"
+	"pan/internal/module"
 )
 
-var subModuleNewFuncArray []feature.SubModuleNewFunc[*stdModule]
+var subModuleNewFuncArray []module.SubModuleNewFunc[*stdModule]
 
 func New() interface{} {
 
-	module := &stdModule{}
-	module.FeatureModule = feature.New(module, subModuleNewFuncArray...)
+	m := &stdModule{}
+	m.BaseModule = module.New(m, subModuleNewFuncArray...)
 
-	return module
+	return m
 }
 
 const (
@@ -20,7 +20,7 @@ const (
 )
 
 type stdModule struct {
-	*feature.FeatureModule
+	*module.BaseModule
 }
 
 var _ = (injection.ComponentProvider)((*stdModule)(nil))

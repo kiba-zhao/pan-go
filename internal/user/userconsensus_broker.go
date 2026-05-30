@@ -6,32 +6,40 @@ import (
 	"errors"
 	"io"
 	"iter"
-	"pan/internal/feature"
-	"pan/internal/peer"
+	"pan/internal/net"
+	"pan/internal/proto"
 
-	"google.golang.org/protobuf/proto"
+	protobuf "google.golang.org/protobuf/proto"
 )
 
 var ErrUserConsensusScanInvalidWithRemoteUser = errors.New("user.UserConsensusBroker ScanWithRemoteUserFields Error: Invalid")
 
 type UserConsensusBroker struct {
-	PeerBroker *feature.PeerBroker
+	PeerBroker *net.PeerBroker
 }
 
-func (broker *UserConsensusBroker) ScanWithUserMeta(peerId peer.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserConsensus, error], error) {
-	ctx := context.Background()
-
-	reader, err := broker.PeerBroker.Request(ctx, peerId, ScanUserConsensusWithUserMeta, meta)
+func (broker *UserConsensusBroker) ScanWithUserMeta(peerId net.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserConsensus, error], error) {
+	reader, err := proto.MarshalWithReader(meta)
 	if err != nil {
 		return nil, err
 	}
+
+	req := broker.PeerBroker.NewRequest(ScanUserConsensusWithUserMeta, reader)
+	_, res, err := broker.PeerBroker.DoAction(context.Background(), peerId, req)
+	if err != nil {
+		if res != nil {
+			defer res.Close()
+		}
+		return nil, err
+	}
+
 	return func(yield func(*RemoteUserConsensus, error) bool) {
-		defer reader.Close()
+		defer res.Close()
 
 		sizeBytes := make([]byte, 2)
 		var itemBytes []byte
 		for {
-			n, err := reader.Reader.Read(sizeBytes)
+			n, err := res.Read(sizeBytes)
 			if err == nil && n != 2 {
 				err = ErrUserConsensusScanInvalidWithRemoteUser
 			}
@@ -39,7 +47,7 @@ func (broker *UserConsensusBroker) ScanWithUserMeta(peerId peer.PeerID, meta *Re
 				size := binary.BigEndian.Uint16(sizeBytes)
 				itemBytes = make([]byte, size)
 				if size > 0 {
-					n, err = reader.Reader.Read(itemBytes)
+					n, err = res.Read(itemBytes)
 					if err == nil && n != int(size) {
 						err = ErrUserConsensusScanInvalidWithRemoteUser
 					}
@@ -53,7 +61,7 @@ func (broker *UserConsensusBroker) ScanWithUserMeta(peerId peer.PeerID, meta *Re
 			}
 
 			var remoteConsensus RemoteUserConsensus
-			err = proto.Unmarshal(itemBytes, &remoteConsensus)
+			err = protobuf.Unmarshal(itemBytes, &remoteConsensus)
 			if !yield(&remoteConsensus, err) {
 				break
 			}

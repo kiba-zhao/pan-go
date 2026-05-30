@@ -1,3 +1,3 @@
-//go:build !(android || ios)
+//go:build linux || windows || darwin
 
 package user

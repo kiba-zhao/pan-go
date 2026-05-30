@@ -4,7 +4,6 @@ package appinfo
 
 import (
 	"net/http"
-	"pan/internal/feature"
 	"pan/internal/web"
 )
 
@@ -12,7 +11,7 @@ type QRCodeController struct {
 	QRCodeService *QRCodeService
 }
 
-var _ = (feature.WebController)((*QRCodeController)(nil))
+var _ = (web.WebController)((*QRCodeController)(nil))
 
 func (ctrl *QRCodeController) SetupToWeb(router web.WebRouter) error {
 	router.GET("/qrcode", ctrl.Load)

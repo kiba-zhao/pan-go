@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"iter"
-	"pan/internal/peer"
+	"pan/internal/net"
 	"pan/internal/settings"
 )
 
@@ -31,7 +31,7 @@ type UserDataService struct {
 	UserSecretBroker    *UserSecretBroker
 }
 
-func (service *UserDataService) Pull(peerId peer.PeerID, meta UserMeta) error {
+func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
 
 	remoteMeta := parseRemoteUserMeta(meta)
 	remoteUser, err := service.UserDataBroker.Pull(peerId, remoteMeta)
@@ -141,7 +141,7 @@ func (service *UserDataService) Pull(peerId peer.PeerID, meta UserMeta) error {
 		deviceContentHash.Write(deviceContent)
 		//
 
-		devicePeerId, _ := peer.DecodePeerID(device.PeerID)
+		devicePeerId, _ := net.DecodePeerID(device.PeerID)
 		if hostDevice == nil && bytes.Equal(devicePeerId, hostPeerId) {
 			hostDevice = &device
 		} else if remoteDevice == nil && bytes.Equal(devicePeerId, peerId) {
@@ -173,7 +173,7 @@ func (service *UserDataService) Pull(peerId peer.PeerID, meta UserMeta) error {
 	return service.UserDataRepository.Save(user, secret, userConsensuses, userDevices)
 }
 
-func (service *UserDataService) PullForTopic(peerId peer.PeerID, meta UserMeta) (User, error) {
+func (service *UserDataService) PullForTopic(peerId net.PeerID, meta UserMeta) (User, error) {
 	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
 	if err != nil {
 		return User{}, err
@@ -210,7 +210,7 @@ func (service *UserDataService) PullForTopic(peerId peer.PeerID, meta UserMeta) 
 		return User{}, ErrUserDataServiceConsensusConflict
 	}
 
-	peerIdStr := peer.EncodePeerID(peerId)
+	peerIdStr := net.EncodePeerID(peerId)
 	device, err := service.UserDeviceRepository.Select(user.ID, peerIdStr)
 	if err != nil {
 		return User{}, err
@@ -222,8 +222,8 @@ func (service *UserDataService) PullForTopic(peerId peer.PeerID, meta UserMeta) 
 	return user, nil
 }
 
-func (service *UserDataService) Push(peerId peer.PeerID, meta UserMeta, userId uint) error {
-	peerIdStr := peer.EncodePeerID(peerId)
+func (service *UserDataService) Push(peerId net.PeerID, meta UserMeta, userId uint) error {
+	peerIdStr := net.EncodePeerID(peerId)
 	device, err := service.UserDeviceRepository.Select(userId, peerIdStr)
 	if err != nil {
 		return err
@@ -236,7 +236,7 @@ func (service *UserDataService) Push(peerId peer.PeerID, meta UserMeta, userId u
 	return service.UserDataBroker.Push(peerId, remoteMeta, device.PeerSignature)
 }
 
-func (service *UserDataService) PushForTopic(peerId peer.PeerID, meta UserMeta, signature []byte) error {
+func (service *UserDataService) PushForTopic(peerId net.PeerID, meta UserMeta, signature []byte) error {
 	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
 	if err != nil {
 		return err

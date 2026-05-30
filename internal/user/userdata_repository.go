@@ -2,7 +2,6 @@ package user
 
 import (
 	"errors"
-	"pan/internal/feature"
 	"pan/internal/repository"
 )
 
@@ -14,7 +13,7 @@ type UserDataRepository interface {
 }
 
 type stdUserDataRepository struct {
-	*feature.Repository
+	*repository.RepositoryBase
 }
 
 var _ = (UserDataRepository)((*stdUserDataRepository)(nil))
@@ -22,7 +21,7 @@ var _ = (UserDataRepository)((*stdUserDataRepository)(nil))
 func (repo *stdUserDataRepository) Save(user User, secret UserSecret, userConsensuses []UserConsensus, userDevices []UserDevice) error {
 	db := repo.DB()
 	if db == nil {
-		return feature.ErrFeatureRepositoryDBUnavailable
+		return repository.ErrRepositoryDBUnavailable
 	}
 
 	if len(userDevices) < 1 || len(userConsensuses) < 1 {
@@ -100,7 +99,7 @@ func (repo *stdUserDataRepository) Save(user User, secret UserSecret, userConsen
 func (repo *stdUserDataRepository) Clean(user User) error {
 	db := repo.DB()
 	if db == nil {
-		return feature.ErrFeatureRepositoryDBUnavailable
+		return repository.ErrRepositoryDBUnavailable
 	}
 
 	tx := db.Begin()

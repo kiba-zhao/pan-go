@@ -2,7 +2,6 @@ package user
 
 import (
 	"iter"
-	"pan/internal/feature"
 	"pan/internal/repository"
 	"strconv"
 )
@@ -21,7 +20,7 @@ type UserDeviceRepository interface {
 }
 
 type stdUserDeviceRepository struct {
-	feature.Repository
+	repository.RepositoryBase
 }
 
 var _ = (UserDeviceRepository)((*stdUserDeviceRepository)(nil))
@@ -29,7 +28,7 @@ var _ = (UserDeviceRepository)((*stdUserDeviceRepository)(nil))
 func (repo *stdUserDeviceRepository) Select(userId uint, peerId string) (UserDevice, error) {
 	db := repo.DB()
 	if db == nil {
-		return UserDevice{}, feature.ErrFeatureRepositoryDBUnavailable
+		return UserDevice{}, repository.ErrRepositoryDBUnavailable
 	}
 	userDeviceTableName := generateUserDeviceTableName(userId)
 	if !db.Migrator().HasTable(userDeviceTableName) {
@@ -44,7 +43,7 @@ func (repo *stdUserDeviceRepository) Select(userId uint, peerId string) (UserDev
 func (repo *stdUserDeviceRepository) ScanWithUserID(userId uint) (iter.Seq2[UserDevice, error], error) {
 	db := repo.DB()
 	if db == nil {
-		return nil, feature.ErrFeatureRepositoryDBUnavailable
+		return nil, repository.ErrRepositoryDBUnavailable
 	}
 	userDeviceTableName := generateUserDeviceTableName(userId)
 	if !db.Migrator().HasTable(userDeviceTableName) {

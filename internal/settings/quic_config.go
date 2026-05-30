@@ -1,24 +1,27 @@
 package settings
 
 import (
+	"crypto"
 	"crypto/tls"
-	"pan/internal/quic"
+	"pan/internal/net"
 	"time"
 )
 
 type stdQuicConfig struct {
-	security      SecurityConfig
-	port          uint16
-	addrs         []string
-	certificate   tls.Certificate
-	dialThreshold uint16
-	dialTimeout   time.Duration
+	security         SecurityConfig
+	port             uint16
+	addrs            []string
+	certificate      tls.Certificate
+	dialThreshold    uint16
+	dialTimeout      time.Duration
+	broadcastEnabled bool
 }
 
-func newQuicConfig(settings *Settings, security SecurityConfig, netIfaces []NetInterface) quic.QuicConfig {
+func newQuicConfig(settings *Settings, security SecurityConfig, netIfaces []NetInterface) net.QuicConfig {
 	cfg := &stdQuicConfig{}
 	cfg.port = settings.PeerPort
 	cfg.security = security
+	cfg.broadcastEnabled = settings.BroadcastEnabled
 
 	if settings.Enabled {
 		initQuicConfigWithNetInterfaces(cfg, netIfaces)
@@ -26,7 +29,7 @@ func newQuicConfig(settings *Settings, security SecurityConfig, netIfaces []NetI
 	return cfg
 }
 
-var _ = (quic.QuicConfig)((*stdQuicConfig)(nil))
+var _ = (net.QuicConfig)((*stdQuicConfig)(nil))
 
 func (cfg *stdQuicConfig) Port() uint16 {
 	return cfg.port
@@ -37,11 +40,17 @@ func (cfg *stdQuicConfig) Addrs() []string {
 func (cfg *stdQuicConfig) Certificate() tls.Certificate {
 	return cfg.security.Certificate()
 }
-func (cfg *stdQuicConfig) DialThreshold() uint16 {
-	return 1000
+
+func (cfg *stdQuicConfig) PeerID() net.PeerID {
+	return cfg.security.PeerID()
 }
-func (cfg *stdQuicConfig) DialTimeout() time.Duration {
-	return time.Second * 60
+
+func (cfg *stdQuicConfig) PrivateKey() crypto.PrivateKey {
+	return cfg.security.PrivateKey()
+}
+
+func (cfg *stdQuicConfig) BroadcastEnabled() bool {
+	return cfg.broadcastEnabled
 }
 
 func initQuicConfigWithNetInterfaces(cfg *stdQuicConfig, netIfaces []NetInterface) {

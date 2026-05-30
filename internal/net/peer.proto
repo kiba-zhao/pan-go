@@ -1,0 +1,9 @@
+syntax = "proto3";
+package net;
+
+option go_package = "internal/net;net";
+
+message PeerOnline{
+    bytes PeerId = 1;
+    uint64 Heightest = 2;
+}

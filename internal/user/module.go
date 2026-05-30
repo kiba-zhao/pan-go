@@ -3,14 +3,14 @@ package user
 import (
 	"context"
 	"pan/internal/bootstrap"
-	"pan/internal/feature"
 	"pan/internal/injection"
-	"pan/internal/peer"
+	"pan/internal/module"
+	"pan/internal/net"
 	"pan/internal/repository"
 	sync "sync"
 )
 
-var subModuleNewFuncArray []feature.SubModuleNewFunc[*stdModule]
+var subModuleNewFuncArray []module.SubModuleNewFunc[*stdModule]
 
 const (
 	ModuleName = "user"
@@ -18,21 +18,21 @@ const (
 
 func New() interface{} {
 
-	module := &stdModule{}
-	module.featureRepository = &feature.Repository{}
-	module.FeatureModule = feature.New(module, subModuleNewFuncArray...)
+	m := &stdModule{}
+	m.repositoryBase = &repository.RepositoryBase{}
+	m.BaseModule = module.New(m, subModuleNewFuncArray...)
 
-	return module
+	return m
 }
 
 type stdModule struct {
-	*feature.FeatureModule
+	*module.BaseModule
 
 	RepositoryManager repository.RepositoryManager
 
-	featureRepository *feature.Repository
+	repositoryBase *repository.RepositoryBase
 
-	peerTopics    []feature.PeerTopic
+	peerTopics    []net.PeerTopic
 	peerTopicOnce sync.Once
 }
 
@@ -49,7 +49,7 @@ func (module *stdModule) SetupToRepository(db repository.RepositoryDB) error {
 	)
 
 	if err == nil {
-		err = module.featureRepository.SetupToRepository(db)
+		err = module.repositoryBase.SetupToRepository(db)
 	}
 	return err
 }
@@ -58,15 +58,17 @@ func (module *stdModule) DBName() string {
 	return ModuleName + ".db"
 }
 
-var _ = (feature.PeerAppModule)((*stdModule)(nil))
+var _ = (net.PeerRouteModule)((*stdModule)(nil))
 
-func (module *stdModule) PeerScope() []byte {
+func (module *stdModule) PeerRouteScope() net.PeerServletScope {
 	return []byte(ModuleName)
 }
 
-func (module *stdModule) PeerTopics() []feature.PeerTopic {
+var _ = (net.PeerTopicProvider)((*stdModule)(nil))
+
+func (module *stdModule) PeerTopics() []net.PeerTopic {
 	module.peerTopicOnce.Do(func() {
-		module.peerTopics = []feature.PeerTopic{
+		module.peerTopics = []net.PeerTopic{
 			&UserDataTopic{},
 			&UserConsensusTopic{},
 			&UserDeviceTopic{},
@@ -76,26 +78,12 @@ func (module *stdModule) PeerTopics() []feature.PeerTopic {
 	return module.peerTopics
 }
 
-var _ = (peer.PeerAppModule)((*stdModule)(nil))
-
-func (module *stdModule) SetupToPeer(router peer.PeerRouter) error {
-	router_ := router.Route(module.PeerScope())
-
-	topics := module.PeerTopics()
-	for _, topic := range topics {
-		if err := topic.SetupToPeer(router_); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 var _ = (injection.ComponentProvider)((*stdModule)(nil))
 
 func (module *stdModule) Components() []injection.Component {
 	components := []injection.Component{
 		// repository
-		injection.NewComponent(module.featureRepository, injection.ComponentInternalScope),
+		injection.NewComponent(module.repositoryBase, injection.ComponentInternalScope),
 		injection.NewComponent[UserDataRepository](&stdUserDataRepository{}, injection.ComponentInternalScope),
 		injection.NewComponent[UserRepository](&stdUserRepository{}, injection.ComponentInternalScope),
 		injection.NewComponent[UserConsensusRepository](&stdUserConsensusRepository{}, injection.ComponentInternalScope),
@@ -109,7 +97,7 @@ func (module *stdModule) Components() []injection.Component {
 		injection.NewComponent(&UserSecretService{}, injection.ComponentInternalScope),
 
 		// broker
-		injection.NewComponent(&feature.PeerBroker{PeerAppModule: module}, injection.ComponentInternalScope),
+		injection.NewComponent(&net.PeerBroker{PeerRouteModule: module}, injection.ComponentInternalScope),
 		injection.NewComponent(&UserDataBroker{}, injection.ComponentInternalScope),
 		injection.NewComponent(&UserConsensusBroker{}, injection.ComponentInternalScope),
 		injection.NewComponent(&UserDeviceBroker{}, injection.ComponentInternalScope),

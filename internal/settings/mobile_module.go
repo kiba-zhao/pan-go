@@ -4,28 +4,28 @@ package settings
 
 import (
 	"context"
+	"pan/internal/app"
 	"pan/internal/bootstrap"
-	"pan/internal/feature"
 	"pan/internal/injection"
-	"pan/internal/servlet"
+	"pan/internal/module"
 )
 
 func init() {
 	subModuleNewFuncArray = append(subModuleNewFuncArray, newMobileModule)
 }
 
-func newMobileModule(module *stdModule) interface{} {
-	settingsSrv := &SettingsServlet{}
-	mobileSettingsSrv := &MobileSettingsServlet{}
+func newMobileModule(m *stdModule) interface{} {
+	baseSettingsModule := &BaseSettingsAppletModule{}
+	mobileSettingsModule := &MobileSettingsAppletModule{}
 	mobileSettingsSvc := &MobileSettingsService{}
 
 	mobileModule := &stdMobileSettingsModule{}
-	mobileModule.SubModule = feature.NewSubModule(mobileModule, module)
-	mobileModule.settingsSrv = settingsSrv
-	mobileModule.mobileSettingsSrv = mobileSettingsSrv
+	mobileModule.SubModule = module.NewSubModule(mobileModule, m)
+	mobileModule.baseSettingsModule = baseSettingsModule
+	mobileModule.mobileSettingsModule = mobileSettingsModule
 	mobileModule.mobileSettingsSvc = mobileSettingsSvc
 
-	module.ignoreConfigured = true
+	m.ignoreConfigured = true
 
 	return mobileModule
 }
@@ -38,11 +38,11 @@ type stdMobileSettingsModule struct {
 	SettingsConfigurer SettingsConfigurer
 	SecurityConfigurer SecurityConfigurer
 
-	*feature.SubModule[*stdMobileSettingsModule, *stdModule]
+	*module.SubModule[*stdMobileSettingsModule, *stdModule]
 
-	settingsSrv       *SettingsServlet
-	mobileSettingsSrv *MobileSettingsServlet
-	mobileSettingsSvc *MobileSettingsService
+	baseSettingsModule   *BaseSettingsAppletModule
+	mobileSettingsModule *MobileSettingsAppletModule
+	mobileSettingsSvc    *MobileSettingsService
 }
 
 var _ = (SecurityConfigurerListener)((*stdMobileSettingsModule)(nil))
@@ -66,12 +66,12 @@ func (m *stdMobileSettingsModule) OnConfigUpdated(cfg SecurityConfig) {
 	m.configure(cfg, settings, mobileSettings, mobileCfg)
 }
 
-var _ = (servlet.ServletModule)((*stdMobileSettingsModule)(nil))
+var _ = (app.AppletModule)((*stdMobileSettingsModule)(nil))
 
-func (m *stdMobileSettingsModule) SetupToServlet(app servlet.ServletApp) error {
-	err := m.settingsSrv.SetupToServlet(app.Route([]byte(SettingsModuleName)))
+func (m *stdMobileSettingsModule) SetupToApplet(router app.AppServletRouter) error {
+	err := m.baseSettingsModule.SetupToApplet(router.Route([]byte(SettingsModuleName)))
 	if err == nil {
-		err = m.mobileSettingsSrv.SetupToServlet(app.Route([]byte(MobileSettingsModuleName)))
+		err = m.mobileSettingsModule.SetupToApplet(router.Route([]byte(MobileSettingsModuleName)))
 	}
 	return err
 }
@@ -96,8 +96,8 @@ func (m *stdMobileSettingsModule) Components() []injection.Component {
 		injection.NewComponent(m, injection.ComponentInternalScope),
 		injection.NewComponent[MobileSettingsChangedTrigger](m, injection.ComponentInternalScope),
 		// controller
-		injection.NewComponent(m.settingsSrv, injection.ComponentNoneScope),
-		injection.NewComponent(m.mobileSettingsSrv, injection.ComponentNoneScope),
+		injection.NewComponent(m.baseSettingsModule, injection.ComponentNoneScope),
+		injection.NewComponent(m.mobileSettingsModule, injection.ComponentNoneScope),
 		// service
 		injection.NewComponent(m.mobileSettingsSvc, injection.ComponentInternalScope),
 	}
@@ -162,7 +162,7 @@ func (m *stdMobileSettingsModule) configure(securityCfg SecurityConfig, settings
 func (m *stdMobileSettingsModule) loadMobileSettings() (MobileSettings, error) {
 	mobileSettings, err := m.mobileSettingsSvc.Load()
 	if err != nil {
-		m.ParentModule().logger.Error("MobileSettingsModule", "loadMobileSettings Error: "+err.Error())
+		m.ParentModule().logger.Error("settings.MobileSettingsModule", "loadMobileSettings Error: "+err.Error())
 	}
 	return mobileSettings, err
 }

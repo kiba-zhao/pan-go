@@ -7,7 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"iter"
-	"pan/internal/peer"
+	"pan/internal/net"
 )
 
 var ErrUserConsensusInvalid = errors.New("user.UserConsensusService verifyUserConsensus Error: UserConsensus Invalid")
@@ -20,7 +20,7 @@ type UserConsensusService struct {
 	UserRepository          UserRepository
 }
 
-func (service *UserConsensusService) ScanWithUserMetaForTopic(peerId peer.PeerID, meta UserMeta) (iter.Seq2[UserConsensus, error], error) {
+func (service *UserConsensusService) ScanWithUserMetaForTopic(peerId net.PeerID, meta UserMeta) (iter.Seq2[UserConsensus, error], error) {
 
 	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
 	if err != nil {
@@ -84,7 +84,7 @@ func verifyUserConsensus(code string, genesisSignature string, userConsensus Use
 	// verify oldPassphrase
 	var oldPassphraseBytes []byte
 	if len(userConsensus.OldPassphrase) > 0 {
-		err := peer.VerifyWithPublicKeyBytes(userConsensus.OldPassphrase, preUserConsensus.PassphraseSignature, userConsensus.UserKey)
+		err := net.VerifyWithPublicKeyBytes(userConsensus.OldPassphrase, preUserConsensus.PassphraseSignature, userConsensus.UserKey)
 		if err != nil {
 			return err
 		}
@@ -105,7 +105,7 @@ func verifyUserConsensus(code string, genesisSignature string, userConsensus Use
 		signatureSourceHash.Write(preSignatureBytes)
 	}
 
-	err = peer.VerifyWithPublicKeyBytes(signatureSourceHash.Sum(nil), userConsensus.PeerSignature, userConsensus.PeerID)
+	err = net.VerifyWithPublicKeyBytes(signatureSourceHash.Sum(nil), userConsensus.PeerSignature, userConsensus.PeerID)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func verifyUserConsensus(code string, genesisSignature string, userConsensus Use
 	signatureSourceHash.Write(userConsensus.PeerSignature)
 	singnatureBytes, err := DecodeSignature(userConsensus.Signature)
 	if err == nil {
-		err = peer.VerifyWithPublicKeyBytes(signatureSourceHash.Sum(nil), singnatureBytes, userConsensus.UserKey)
+		err = net.VerifyWithPublicKeyBytes(signatureSourceHash.Sum(nil), singnatureBytes, userConsensus.UserKey)
 	}
 	return err
 }

@@ -4,19 +4,18 @@ import (
 	"context"
 	"errors"
 	"pan/internal/bootstrap"
-	"pan/internal/broadcast"
 	"pan/internal/config"
-	"pan/internal/feature"
 	"pan/internal/injection"
 	"pan/internal/log"
-	"pan/internal/quic"
+	"pan/internal/module"
+	"pan/internal/net"
 	"pan/internal/repository"
 	"sync"
 
 	"github.com/spf13/viper"
 )
 
-var subModuleNewFuncArray []feature.SubModuleNewFunc[*stdModule]
+var subModuleNewFuncArray []module.SubModuleNewFunc[*stdModule]
 
 var ErrSettingsModuleUavailable = errors.New("settings.Module Error: Unavailable")
 
@@ -25,11 +24,11 @@ const (
 )
 
 type stdModule struct {
-	QuicConfigurer       quic.QuicConfigurer
-	BroadcastConfigurer  broadcast.BroadcastConfigurer
+	QuicConfigurer       net.QuicConfigurer
+	BroadcastConfigurer  net.BroadcastConfigurer
 	RepositoryConfigurer repository.RepositoryConfigurer
 
-	*feature.FeatureModule
+	*module.BaseModule
 
 	logger log.Logger
 
@@ -56,20 +55,20 @@ func New() interface{} {
 	configurer := config.NewConfigurer[SettingsConfig](logger)
 	securityConfigurer := config.NewConfigurer[SecurityConfig](logger)
 
-	module := &stdModule{}
-	module.logger = logger
-	module.configurer = configurer
-	module.securityConfigurer = securityConfigurer
-	module.viper = viper
-	module.settingsSvc = settingsSvc
+	m := &stdModule{}
+	m.logger = logger
+	m.configurer = configurer
+	m.securityConfigurer = securityConfigurer
+	m.viper = viper
+	m.settingsSvc = settingsSvc
 
-	module.FeatureModule = feature.New(module, subModuleNewFuncArray...)
+	m.BaseModule = module.New(m, subModuleNewFuncArray...)
 
 	securityConfigListener := &stdModuleSecurityConfigProxy{}
-	securityConfigListener.module = module
-	module.securityConfigListener = securityConfigListener
+	securityConfigListener.module = m
+	m.securityConfigListener = securityConfigListener
 
-	return module
+	return m
 }
 
 var _ = (SettingsConfigListener)((*stdModule)(nil))
@@ -167,7 +166,7 @@ func (m *stdModule) initSecurityConfig(homePath string) error {
 func (m *stdModule) configure(securityCfg SecurityConfig, settings Settings, netIfaces []NetInterface, isSubNet bool) error {
 	err := m.configureQuic(securityCfg, &settings, netIfaces)
 	if err == nil {
-		err = m.configureBroadcast(securityCfg, &settings, netIfaces, isSubNet)
+		err = m.configureBroadcast(&settings, netIfaces, isSubNet)
 	}
 	if err == nil {
 		err = m.configureRepository()
@@ -180,8 +179,8 @@ func (m *stdModule) configureQuic(securityCfg SecurityConfig, settings *Settings
 	return m.QuicConfigurer.Configure(quicConfig)
 }
 
-func (m *stdModule) configureBroadcast(securityCfg SecurityConfig, settings *Settings, netIfaces []NetInterface, isSubNet bool) error {
-	broadcastConfig := newBroadcastConfig(settings, securityCfg, netIfaces, isSubNet)
+func (m *stdModule) configureBroadcast(settings *Settings, netIfaces []NetInterface, isSubNet bool) error {
+	broadcastConfig := newBroadcastConfig(settings, netIfaces, isSubNet)
 	return m.BroadcastConfigurer.Configure(broadcastConfig)
 }
 
@@ -193,7 +192,7 @@ func (m *stdModule) configureRepository() error {
 func (m *stdModule) loadSettings() (Settings, error) {
 	settings, err := m.settingsSvc.Load()
 	if err != nil {
-		m.logger.Error("SettingsModule", "loadSettings Error: "+err.Error())
+		m.logger.Error("settings.SettingsModule", "loadSettings Error: "+err.Error())
 	}
 	return settings, err
 }
