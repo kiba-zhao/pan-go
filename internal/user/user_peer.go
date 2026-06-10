@@ -4,6 +4,7 @@ var PullUserData = []byte("pull_user_data")
 var PushUserData = []byte("push_user_data")
 var ScanUserConsensusWithUserMeta = []byte("scan_user_consensus_with_user_meta")
 var ScanUserDeviceWithUserMeta = []byte("scan_user_device_with_user_meta")
+var ScanUserExtraWithUserMeta = []byte("scan_user_extra_with_user_meta")
 var PullUserSecret = []byte("pull_user_secret")
 
 var PeerSignatureHeaderName = []byte("peer_signature")
@@ -71,8 +72,10 @@ func parseUserConsensus(consensus *RemoteUserConsensus) UserConsensus {
 
 	userConsensus.PassphraseSignature = consensus.PassphraseSignature
 	userConsensus.OldPassphrase = consensus.OldPassphrase
-	userConsensus.UserContent = consensus.UserContent
-	userConsensus.DeviceContent = consensus.DeviceContent
+	userConsensus.InfoSignature = consensus.InfoSignature
+	userConsensus.DeviceSignature = consensus.DeviceSignature
+	userConsensus.ExtraSignature = consensus.ExtraSignature
+
 	return userConsensus
 }
 
@@ -91,8 +94,10 @@ func parseRemoteUserConsensus(userConsensus UserConsensus) *RemoteUserConsensus 
 
 	consensus.PassphraseSignature = userConsensus.PassphraseSignature
 	consensus.OldPassphrase = userConsensus.OldPassphrase
-	consensus.UserContent = userConsensus.UserContent
-	consensus.DeviceContent = userConsensus.DeviceContent
+	consensus.InfoSignature = userConsensus.InfoSignature
+	consensus.DeviceSignature = userConsensus.DeviceSignature
+	consensus.ExtraSignature = userConsensus.ExtraSignature
+
 	return &consensus
 }
 
@@ -104,6 +109,10 @@ func parseUserDevice(device *RemoteUserDevice) UserDevice {
 	userDevice.PeerID = device.PeerID
 	userDevice.Level = device.Level[0]
 	userDevice.PeerSignature = device.PeerSignature
+	userDevice.Enabled = device.Enabled
+
+	userDevice.Height = device.Height
+	userDevice.HeightSignature = device.HeightSignature
 	return userDevice
 }
 
@@ -112,7 +121,28 @@ func parseRemoteUserDevice(userDevice UserDevice) *RemoteUserDevice {
 	device.PeerID = userDevice.PeerID
 	device.Level = []byte{userDevice.Level}
 	device.PeerSignature = userDevice.PeerSignature
+	device.Enabled = userDevice.Enabled
+
+	device.Height = userDevice.Height
+	device.HeightSignature = userDevice.HeightSignature
 	return &device
+}
+
+func parseUserExtra(extra *RemoteUserExtra) UserExtra {
+	var userExtra UserExtra
+	if extra == nil {
+		return userExtra
+	}
+	userExtra.SerialNumber = extra.SerialNumber
+	userExtra.Signature = extra.Signature
+	return userExtra
+}
+
+func parseRemoteUserExtra(extra UserExtra) *RemoteUserExtra {
+	var remoteExtra RemoteUserExtra
+	remoteExtra.SerialNumber = extra.SerialNumber
+	remoteExtra.Signature = extra.Signature
+	return &remoteExtra
 }
 
 func parseUserSecret(remoteSecret *RemoteUserSecret) UserSecret {

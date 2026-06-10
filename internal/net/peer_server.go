@@ -52,7 +52,11 @@ func servePeerStream(peerServlet PeerServlet, conn PeerConn, stream PeerStream, 
 	}
 
 	if err != nil {
-		ctx.ThrowError(CodeInternalError, err)
+		errCode := CodeInternalError
+		if codeErr, ok := err.(CodeError); ok {
+			errCode = codeErr.Code()
+		}
+		ctx.ThrowError(errCode, err)
 	}
 
 	if ctx.Code() < 0 {

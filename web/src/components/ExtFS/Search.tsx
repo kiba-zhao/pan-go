@@ -75,11 +75,11 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
 
   const setQueryDelay = useCallback(
     _.debounce(setQuery, 500, { maxWait: 1000 }),
-    []
+    [],
   );
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     if (e === void 0 || e.target === void 0) return;
     const value = e.target.value;
@@ -93,7 +93,9 @@ export const SearchItems = ({ onEsc, enabled }: SearchItemsProps) => {
   const [extfs, setExtFS] = useExtFS();
 
   const { mutate: saveMutate, isPending: isSavePending } = useMutation({
-    mutationFn: saveExtFSSearchItem,
+    mutationFn: async (data: ExtFSSearchItemFields) => {
+      return await saveExtFSSearchItem(data);
+    },
 
     onSuccess: (data) => {
       onEsc();
@@ -212,7 +214,7 @@ const SearchItemsResults = memo(
         </div>
       </Fragment>
     );
-  }
+  },
 );
 
 type SearchItemProps = {

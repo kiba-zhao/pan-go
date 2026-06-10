@@ -11,8 +11,9 @@ import (
 
 var ErrUserDataServiceConsensusNotFound = errors.New("user.UserDataService Error: Consensus Not Found")
 var ErrUserDataServiceConsensusConflict = errors.New("user.UserDataService Error: Consensus Conflict")
-var ErrUserDataServiceUserContentConflict = errors.New("user.UserDataService Error: User Content Conflict")
-var ErrUserDataServiceDeviceContentConflict = errors.New("user.UserDataService Error: Device Content Conflict")
+var ErrUserDataServiceUserSignatureConflict = errors.New("user.UserDataService Error: User Signature Conflict")
+var ErrUserDataServiceDeviceSignatureConflict = errors.New("user.UserDataService Error: Device Signature Conflict")
+var ErrUserDataServiceExtraSignatureConflict = errors.New("user.UserDataService Error: Extra Signature Conflict")
 var ErrUserDataServiceDeviceConflict = errors.New("user.UserDataService Error: Device Conflict")
 var ErrUserDataServiceUserConflict = errors.New("user.UserDataService Error: User Conflict")
 var ErrUserDataServiceUserNotFound = errors.New("user.UserDataService Error: User Not Found")
@@ -24,11 +25,13 @@ type UserDataService struct {
 	UserRepository          UserRepository
 	UserConsensusRepository UserConsensusRepository
 	UserDeviceRepository    UserDeviceRepository
+	UserExtraRepository     UserExtraRepository
 
 	UserDataBroker      *UserDataBroker
 	UserConsensusBroker *UserConsensusBroker
 	UserDeviceBroker    *UserDeviceBroker
 	UserSecretBroker    *UserSecretBroker
+	UserExtraBroker     *UserExtraBroker
 }
 
 func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
@@ -109,36 +112,39 @@ func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
 	}
 	//
 
-	// Verify user content
-	userContent := generateUserContent(user)
-	if !bytes.Equal(userContent, prevConsensus.UserContent) {
-		return ErrUserDataServiceUserContentConflict
+	// Verify user signature
+	infoSignature := generateUserInfoSignatureData(user)
+	if !bytes.Equal(infoSignature, prevConsensus.InfoSignature) {
+		return ErrUserDataServiceUserSignatureConflict
 	}
 	//
 
-	// Verify device content
+	// Verify device signature
 	remoteDeviceSeq, err := service.UserDeviceBroker.ScanWithUserMeta(peerId, &remoteUserMeta)
 	if err != nil {
 		return err
 	}
-	deviceSeq := parseUserDeviceSeq(remoteDeviceSeq)
 
 	var remoteDevice *UserDevice
 	var hostDevice *UserDevice
 	hostPeerId := service.SecurityConfig.PeerID()
 	var userDevices []UserDevice
-	deviceContentHash := sha256.New()
-	for device, err := range deviceSeq {
+	deviceSignatureHash := sha256.New()
+	for remoteUserDevice, err := range remoteDeviceSeq {
 		if err != nil {
 			return err
 		}
+		device := parseUserDevice(remoteUserDevice)
 
 		// Add device content hash
-		deviceContent, err := generateUserDeviceContent(user.Code, user.GenesisSignature, device)
+		deviceSignatureData, err := generateUserDeviceSignatureData(user.Code, user.GenesisSignature, device)
+		if err == nil {
+			err = verifyUserDeviceHeight(user.Code, user.GenesisSignature, device)
+		}
 		if err != nil {
 			return err
 		}
-		deviceContentHash.Write(deviceContent)
+		deviceSignatureHash.Write(deviceSignatureData)
 		//
 
 		devicePeerId, _ := net.DecodePeerID(device.PeerID)
@@ -150,14 +156,42 @@ func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
 		userDevices = append(userDevices, device)
 	}
 
-	if !bytes.Equal(deviceContentHash.Sum(nil), prevConsensus.DeviceContent) {
-		return ErrUserDataServiceDeviceContentConflict
+	if !bytes.Equal(deviceSignatureHash.Sum(nil), prevConsensus.DeviceSignature) {
+		return ErrUserDataServiceDeviceSignatureConflict
 	}
 
 	if hostDevice == nil || remoteDevice == nil {
 		return ErrUserDataServiceDeviceConflict
 	}
 	//
+
+	// Verify extra signature
+	remoteExtraSeq, err := service.UserExtraBroker.ScanWithUserMeta(peerId, &remoteUserMeta)
+	if err != nil {
+		return err
+	}
+
+	var userExtras []UserExtra
+	extraSignatureHash := sha256.New()
+	for remoteExtra, err := range remoteExtraSeq {
+		if err != nil {
+			return err
+		}
+		extra := parseUserExtra(remoteExtra)
+
+		// Add extra content hash
+		extraSignatureData := generateUserExtraSignatureData(extra)
+		extraSignatureHash.Write(extraSignatureData)
+		//
+
+		userExtras = append(userExtras, extra)
+	}
+
+	if !bytes.Equal(extraSignatureHash.Sum(nil), prevConsensus.ExtraSignature) {
+		return ErrUserDataServiceExtraSignatureConflict
+	}
+
+	// End of extra signature
 
 	var secret UserSecret
 	if hostDevice.Level == DeviceLevelOwner && remoteDevice.Level == DeviceLevelOwner {
@@ -170,19 +204,33 @@ func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
 		secret.UserSecretKey = remoteSecret.UserSecretKey
 	}
 
-	return service.UserDataRepository.Save(user, secret, userConsensuses, userDevices)
+	return service.UserDataRepository.Save(user, secret, userConsensuses, userDevices, userExtras)
+}
+
+func (service *UserDataService) CheckWithUserMetaForTopic(peerId net.PeerID, meta UserMeta) (User, error) {
+	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
+	if err != nil {
+		return user, err
+	} else if user.ID <= 0 {
+		return user, ErrUserDataServiceUserNotFound
+	} else if user.Height < meta.Height {
+		return user, ErrUserDataServiceUserConflict
+	}
+
+	device, err := service.UserDeviceRepository.Select(user.ID, net.EncodePeerID(peerId))
+	if err != nil {
+		return user, err
+	} else if device.ID <= 0 {
+		return user, ErrUserDataServiceDeviceNotFound
+	}
+
+	return user, nil
 }
 
 func (service *UserDataService) PullForTopic(peerId net.PeerID, meta UserMeta) (User, error) {
-	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
+	user, err := service.CheckWithUserMetaForTopic(peerId, meta)
 	if err != nil {
 		return User{}, err
-	}
-	if user.ID <= 0 {
-		return User{}, ErrUserDataServiceUserNotFound
-	}
-	if user.Height < meta.Height {
-		return User{}, ErrUserDataServiceUserConflict
 	}
 
 	consensus, err := service.UserConsensusRepository.SelectLatestWithUserID(user.ID)
@@ -210,16 +258,7 @@ func (service *UserDataService) PullForTopic(peerId net.PeerID, meta UserMeta) (
 		return User{}, ErrUserDataServiceConsensusConflict
 	}
 
-	peerIdStr := net.EncodePeerID(peerId)
-	device, err := service.UserDeviceRepository.Select(user.ID, peerIdStr)
-	if err != nil {
-		return User{}, err
-	}
-	if device.ID <= 0 {
-		return User{}, ErrUserDataServiceDeviceNotFound
-	}
-
-	return user, nil
+	return user, err
 }
 
 func (service *UserDataService) Push(peerId net.PeerID, meta UserMeta, userId uint) error {

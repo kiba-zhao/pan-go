@@ -12,6 +12,8 @@ import (
 	protobuf "google.golang.org/protobuf/proto"
 )
 
+var ErrUserDeviceScanInvalidWithRemoteUser = errors.New("user.UserDeviceBroker ScanWithUserMeta Error: Invalid")
+
 type UserDeviceBroker struct {
 	PeerBroker *net.PeerBroker
 }
@@ -39,7 +41,7 @@ func (broker *UserDeviceBroker) ScanWithUserMeta(peerId net.PeerID, meta *Remote
 		for {
 			n, err := res.Read(sizeBytes)
 			if err == nil && n != 2 {
-				err = ErrUserConsensusScanInvalidWithRemoteUser
+				err = ErrUserDeviceScanInvalidWithRemoteUser
 			}
 			if err == nil {
 				size := binary.BigEndian.Uint16(sizeBytes)
@@ -47,7 +49,7 @@ func (broker *UserDeviceBroker) ScanWithUserMeta(peerId net.PeerID, meta *Remote
 				if size > 0 {
 					n, err = res.Read(itemBytes)
 					if err == nil && n != int(size) {
-						err = ErrUserConsensusScanInvalidWithRemoteUser
+						err = ErrUserDeviceScanInvalidWithRemoteUser
 					}
 				}
 			}
@@ -65,15 +67,4 @@ func (broker *UserDeviceBroker) ScanWithUserMeta(peerId net.PeerID, meta *Remote
 			}
 		}
 	}, nil
-}
-
-func parseUserDeviceSeq(seq iter.Seq2[*RemoteUserDevice, error]) iter.Seq2[UserDevice, error] {
-	return func(yield func(UserDevice, error) bool) {
-		for remoteDevice, err := range seq {
-			device := parseUserDevice(remoteDevice)
-			if !yield(device, err) {
-				break
-			}
-		}
-	}
 }

@@ -35,8 +35,9 @@ message RemoteUserConsensus {
     bytes PassphraseSignature = 8;
     bytes OldPassphrase = 9;
 
-    bytes UserContent = 10;
-    bytes DeviceContent = 11;
+    bytes InfoSignature = 10;
+    bytes DeviceSignature = 11;
+    bytes ExtraSignature = 12;
 }
 
 message RemoteUserSecret {
@@ -49,4 +50,12 @@ message RemoteUserDevice {
     bytes Level = 2;
     bytes PeerSignature = 3;
     bool Enabled = 4;
+
+    uint64 Height = 5;
+    bytes HeightSignature = 6;
+}
+
+message RemoteUserExtra {
+    uint64 SerialNumber = 1;
+    bytes Signature = 2;
 }

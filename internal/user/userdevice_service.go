@@ -1,6 +1,7 @@
 package user
 
 import (
+	"encoding/binary"
 	"errors"
 	"iter"
 	"pan/internal/net"
@@ -9,38 +10,19 @@ import (
 
 var ErrUserDeviceInvalid = errors.New("user.UserDeviceService verifyUserDevice Error: UserDevice Invalid")
 var ErrUserDeviceInvalidSignature = errors.New("user.UserDeviceService verifyUserDevice Error: UserDevice Invalid Signature")
-var ErrUserDeviceServiceUserNotFound = errors.New("user.UserDeviceService Error: User Not Found")
-var ErrUserDeviceServiceConsensusNotFound = errors.New("user.UserDeviceService Error: Consensus Not Found")
-var ErrUserDeviceServiceConsensusConflict = errors.New("user.UserDeviceService Error: Consensus Conflict")
 
 type UserDeviceService struct {
-	UserRepository          UserRepository
-	UserConsensusRepository UserConsensusRepository
-	UserDeviceRepository    UserDeviceRepository
+	UserRepository       UserRepository
+	UserDeviceRepository UserDeviceRepository
+
+	UserDataService *UserDataService
 }
 
 func (service *UserDeviceService) ScanWithUserMetaForTopic(peerId net.PeerID, meta UserMeta) (iter.Seq2[UserDevice, error], error) {
 
-	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
+	user, err := service.UserDataService.CheckWithUserMetaForTopic(peerId, meta)
 	if err != nil {
 		return nil, err
-	}
-
-	if user.ID <= 0 {
-		return nil, ErrUserDeviceServiceUserNotFound
-	}
-
-	consensus, err := service.UserConsensusRepository.SelectLatestWithUserID(user.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	if consensus.ID <= 0 {
-		return nil, ErrUserDeviceServiceConsensusNotFound
-	}
-
-	if consensus.Signature != meta.Signature || consensus.Height != meta.Height {
-		return nil, ErrUserDeviceServiceConsensusConflict
 	}
 
 	return service.UserDeviceRepository.ScanWithUserID(user.ID)
@@ -78,4 +60,20 @@ func verifyUserDevice(code string, genesisSignature string, userDevice UserDevic
 	signatureData := slices.Concat(userDevice.PeerSignature, []byte{userDevice.Level, enabled})
 
 	return signatureData, err
+}
+
+func verifyUserDeviceHeight(code string, genesisSignature string, userDevice UserDevice) error {
+	peerId, err := net.DecodePeerID(userDevice.PeerID)
+	if err != nil {
+		return err
+	}
+
+	genesisSignatureBytes, err := DecodeSignature(genesisSignature)
+	if err != nil {
+		return err
+	}
+
+	heightSignatureData := slices.Concat([]byte(code), genesisSignatureBytes)
+	heightSignatureData = binary.BigEndian.AppendUint64(heightSignatureData, userDevice.Height)
+	return net.VerifyWithPublicKeyBytes(heightSignatureData, userDevice.HeightSignature, peerId)
 }

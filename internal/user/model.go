@@ -60,8 +60,9 @@ type UserConsensus struct {
 	PassphraseSignature []byte `json:"-" form:"-"`
 	OldPassphrase       []byte `json:"-" form:"-"`
 
-	UserContent   []byte `json:"-" form:"-"`
-	DeviceContent []byte `json:"-" form:"-"`
+	InfoSignature   []byte `json:"-" form:"-"`
+	DeviceSignature []byte `json:"-" form:"-"`
+	ExtraSignature  []byte `json:"-" form:"-"`
 }
 
 const (
@@ -80,7 +81,21 @@ type UserDevice struct {
 	PeerID        string `gorm:"<-:create;Index" json:"peerId" form:"peerId"`
 	Level         uint8  `gorm:"Index" json:"level" form:"level"`
 	PeerSignature []byte `json:"-" form:"-"`
-	Enabled       bool   `json:"enabled" form:"ePassportnabled"`
+	Enabled       bool   `json:"enabled" form:"enabled"`
+
+	Height          uint64 `json:"-" form:"-"`
+	HeightSignature []byte `json:"-" form:"-"`
+}
+
+type UserExtra struct {
+	ID        uint64         `gorm:"primarykey" json:"id" form:"id"`
+	CreatedAt time.Time      `json:"createdAt" form:"createdAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt" form:"deletedAt"`
+
+	UserID uint `gorm:"<-:create" json:"-" form:"-"`
+
+	SerialNumber uint64 `gorm:"<-:create;uniqueIndex" json:"serialNumber" form:"serialNumber"`
+	Signature    []byte `json:"signature" form:"signature"`
 }
 
 const (

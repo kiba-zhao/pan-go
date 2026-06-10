@@ -8,7 +8,7 @@ import (
 var ErrUserDataRepositoryInvalidData = errors.New("user.UserDataRepository Error: Invalid Data")
 
 type UserDataRepository interface {
-	Save(user User, secret UserSecret, userConsensuses []UserConsensus, userDevices []UserDevice) error
+	Save(user User, secret UserSecret, userConsensuses []UserConsensus, userDevices []UserDevice, userExtras []UserExtra) error
 	Clean(user User) error
 }
 
@@ -18,7 +18,7 @@ type stdUserDataRepository struct {
 
 var _ = (UserDataRepository)((*stdUserDataRepository)(nil))
 
-func (repo *stdUserDataRepository) Save(user User, secret UserSecret, userConsensuses []UserConsensus, userDevices []UserDevice) error {
+func (repo *stdUserDataRepository) Save(user User, secret UserSecret, userConsensuses []UserConsensus, userDevices []UserDevice, userExtras []UserExtra) error {
 	db := repo.DB()
 	if db == nil {
 		return repository.ErrRepositoryDBUnavailable
@@ -49,7 +49,7 @@ func (repo *stdUserDataRepository) Save(user User, secret UserSecret, userConsen
 	}
 
 	if err == nil {
-		userConsensusTableName := gennerateUserConsensusTableName(user.ID)
+		userConsensusTableName := generateUserConsensusTableName(user.ID)
 		tx_ := tx.Scopes(repository.TableName(userConsensusTableName))
 		if isNew {
 			err = tx_.Migrator().CreateTable(&UserConsensus{})
@@ -86,6 +86,26 @@ func (repo *stdUserDataRepository) Save(user User, secret UserSecret, userConsen
 			err = results.Error
 		}
 	}
+	if err == nil {
+		userExtraTableName := generateUserExtraTableName(user.ID)
+		tx_ := tx.Scopes(repository.TableName(userExtraTableName))
+		if isNew {
+			err = tx_.Migrator().CreateTable(&UserExtra{})
+		} else {
+			results = tx_.Delete(&UserExtra{})
+			err = results.Error
+			if err == nil {
+				results = tx.Exec("UPDATE sqlite_sequence SET seq = 0 WHERE name =?", userExtraTableName)
+				err = results.Error
+			}
+		}
+
+		if err == nil {
+			results = tx_.Create(userExtras)
+			err = results.Error
+		}
+
+	}
 
 	if err != nil {
 		db.Rollback()
@@ -112,7 +132,7 @@ func (repo *stdUserDataRepository) Clean(user User) error {
 	}
 
 	if err == nil {
-		userConsensusTableName := gennerateUserConsensusTableName(user.ID)
+		userConsensusTableName := generateUserConsensusTableName(user.ID)
 		tx_ := tx.Scopes(repository.TableName(userConsensusTableName))
 		err = tx_.Migrator().DropTable(&UserConsensus{})
 	}

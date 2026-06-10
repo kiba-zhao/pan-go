@@ -470,5 +470,6 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
-!/packages/*
-!/internal/*
+
+tmp/
+.marscode/

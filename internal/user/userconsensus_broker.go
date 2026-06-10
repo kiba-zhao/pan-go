@@ -12,7 +12,7 @@ import (
 	protobuf "google.golang.org/protobuf/proto"
 )
 
-var ErrUserConsensusScanInvalidWithRemoteUser = errors.New("user.UserConsensusBroker ScanWithRemoteUserFields Error: Invalid")
+var ErrUserConsensusScanInvalidWithRemoteUser = errors.New("user.UserConsensusBroker ScanWithUserMeta Error: Invalid")
 
 type UserConsensusBroker struct {
 	PeerBroker *net.PeerBroker

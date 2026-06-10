@@ -18,17 +18,15 @@ var ErrUserConsensusServiceConsensusConflict = errors.New("user.UserConsensusSer
 type UserConsensusService struct {
 	UserConsensusRepository UserConsensusRepository
 	UserRepository          UserRepository
+
+	UserDataService *UserDataService
 }
 
 func (service *UserConsensusService) ScanWithUserMetaForTopic(peerId net.PeerID, meta UserMeta) (iter.Seq2[UserConsensus, error], error) {
 
-	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
+	user, err := service.UserDataService.CheckWithUserMetaForTopic(peerId, meta)
 	if err != nil {
 		return nil, err
-	}
-
-	if user.ID <= 0 {
-		return nil, ErrUserConsensusServiceUserNotFound
 	}
 
 	consensus, err := service.UserConsensusRepository.Select(user.ID, meta.Height)
@@ -94,8 +92,9 @@ func verifyUserConsensus(code string, genesisSignature string, userConsensus Use
 	// end verify oldPassphrase
 
 	signatureSourceHash.Write(userConsensus.PassphraseSignature)
-	signatureSourceHash.Write(userConsensus.UserContent)
-	signatureSourceHash.Write(userConsensus.DeviceContent)
+	signatureSourceHash.Write(userConsensus.InfoSignature)
+	signatureSourceHash.Write(userConsensus.DeviceSignature)
+	signatureSourceHash.Write(userConsensus.ExtraSignature)
 
 	if len(userConsensus.PreSignature) > 0 {
 		preSignatureBytes, err := DecodeSignature(userConsensus.PreSignature)
@@ -119,7 +118,7 @@ func verifyUserConsensus(code string, genesisSignature string, userConsensus Use
 	return err
 }
 
-func generateUserContent(user User) []byte {
+func generateUserInfoSignatureData(user User) []byte {
 	contentHash := sha256.New()
 
 	contentHash.Write([]byte(user.Code))
@@ -129,6 +128,13 @@ func generateUserContent(user User) []byte {
 	return contentHash.Sum(nil)
 }
 
-func generateUserDeviceContent(code string, genesisSignature string, userDevice UserDevice) ([]byte, error) {
+func generateUserDeviceSignatureData(code string, genesisSignature string, userDevice UserDevice) ([]byte, error) {
 	return verifyUserDevice(code, genesisSignature, userDevice)
+}
+
+func generateUserExtraSignatureData(userExtra UserExtra) []byte {
+	extraBytes := make([]byte, 8+len(userExtra.Signature))
+	binary.BigEndian.AppendUint64(extraBytes, userExtra.SerialNumber)
+	copy(extraBytes[8:], userExtra.Signature)
+	return extraBytes
 }

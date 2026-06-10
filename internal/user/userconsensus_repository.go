@@ -10,7 +10,7 @@ const (
 	UserConsensusTableName = "user_consensuses"
 )
 
-func gennerateUserConsensusTableName(userId uint) string {
+func generateUserConsensusTableName(userId uint) string {
 	return UserConsensusTableName + "_" + strconv.FormatUint(uint64(userId), 10)
 }
 
@@ -31,7 +31,7 @@ func (repo *stdUserConsensusRepository) Select(userId uint, height uint64) (User
 	if db == nil {
 		return UserConsensus{}, repository.ErrRepositoryDBUnavailable
 	}
-	userConsensusTableName := gennerateUserConsensusTableName(userId)
+	userConsensusTableName := generateUserConsensusTableName(userId)
 	if !db.Migrator().HasTable(userConsensusTableName) {
 		return UserConsensus{}, nil
 	}
@@ -48,7 +48,7 @@ func (repo *stdUserConsensusRepository) SelectLatestWithUserID(userId uint) (Use
 	if db == nil {
 		return UserConsensus{}, repository.ErrRepositoryDBUnavailable
 	}
-	userConsensusTableName := gennerateUserConsensusTableName(userId)
+	userConsensusTableName := generateUserConsensusTableName(userId)
 	if !db.Migrator().HasTable(userConsensusTableName) {
 		return UserConsensus{}, nil
 	}
@@ -65,7 +65,7 @@ func (repo *stdUserConsensusRepository) ScanWithUserIDLessThanHeight(userId uint
 	if db == nil {
 		return nil, repository.ErrRepositoryDBUnavailable
 	}
-	userConsensusTableName := gennerateUserConsensusTableName(userId)
+	userConsensusTableName := generateUserConsensusTableName(userId)
 	if !db.Migrator().HasTable(userConsensusTableName) {
 		return nil, nil
 	}

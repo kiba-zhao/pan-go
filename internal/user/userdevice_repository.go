@@ -35,6 +35,7 @@ func (repo *stdUserDeviceRepository) Select(userId uint, peerId string) (UserDev
 		return UserDevice{}, nil
 	}
 	db = db.Scopes(repository.TableName(userDeviceTableName))
+
 	var userDevice UserDevice
 	results := db.Where("user_id = ? and peer_id = ?", userId, peerId).First(&userDevice)
 	return userDevice, results.Error
