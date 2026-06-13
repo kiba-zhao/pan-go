@@ -114,7 +114,7 @@ func (network *stdBroadcastNetwork) Deliver(connList []*net.UDPConn, payload []b
 	return nil
 }
 
-func (network *stdBroadcastNetwork) Setup(cfg BroadcastConfig) {
+func (network *stdBroadcastNetwork) setup(cfg BroadcastConfig) {
 	network.logger.Debug("net.BroadcastNetwork", "Setup begin")
 	defer network.logger.Debug("net.BroadcastNetwork", "Setup end")
 

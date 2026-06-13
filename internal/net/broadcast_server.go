@@ -44,13 +44,13 @@ type stdBroadcastServer struct {
 	moduleRW sync.RWMutex
 }
 
-func (server *stdBroadcastServer) SetupModules(modules []BroadcastServeModule) {
+func (server *stdBroadcastServer) setupModules(modules []BroadcastServeModule) {
 	server.moduleRW.Lock()
 	defer server.moduleRW.Unlock()
 	server.modules = modules
 }
 
-func (server *stdBroadcastServer) Setup(config BroadcastConfig) {
+func (server *stdBroadcastServer) setup(config BroadcastConfig) {
 	server.logger.Debug("net.BroadcastServer", "Setup")
 
 	server.reloadLock.Lock()
@@ -84,7 +84,7 @@ func (server *stdBroadcastServer) Setup(config BroadcastConfig) {
 	server.reloadChan <- struct{}{}
 }
 
-func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
+func (server *stdBroadcastServer) listenAndServe(ctx context.Context) error {
 
 	server.logger.Debug("net.BroadcastServer", "ListenAndServe begin")
 	defer server.logger.Debug("net.BroadcastServer", "ListenAndServe end")
@@ -140,7 +140,7 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 			wg.Add(1)
 			go func(conn *net.UDPConn, mtu int) {
 				defer wg.Done()
-				err := server.Serve(conn, mtu)
+				err := server.serve(conn, mtu)
 				if err != nil {
 					server.logger.Error("net.BroadcastServer", "Serve Error: "+err.Error())
 				}
@@ -150,7 +150,7 @@ func (server *stdBroadcastServer) ListenAndServe(ctx context.Context) error {
 	return err
 }
 
-func (server *stdBroadcastServer) Serve(conn *net.UDPConn, mtu int) error {
+func (server *stdBroadcastServer) serve(conn *net.UDPConn, mtu int) error {
 
 	packetBuffers := make([]*stdPacketBuffer, 0)
 	var packetBuffersRW sync.RWMutex
@@ -226,12 +226,12 @@ func (server *stdBroadcastServer) Serve(conn *net.UDPConn, mtu int) error {
 			bufferItem.cancel()
 			bufferItem.wg.Wait()
 		}
-		go server.Handle(buffer, addr.String())
+		go server.handle(buffer, addr.String())
 	}
 	return err
 }
 
-func (server *stdBroadcastServer) Handle(payload []byte, addr string) error {
+func (server *stdBroadcastServer) handle(payload []byte, addr string) error {
 	server.logger.Debug("net.BroadcastServer", "Handle begin: "+addr)
 	defer server.logger.Debug("net.BroadcastServer", "Handle end: "+addr)
 

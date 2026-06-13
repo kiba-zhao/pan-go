@@ -19,6 +19,13 @@ var ErrQuicNetworkUnavailable = errors.New("net.QuicNetwork Error: Unavailable")
 var ErrQuicNetworkPeerNotFound = errors.New("net.QuicNetwork Error: Peer Not Found")
 var ErrQuicNetworkQuicServerUnavailable = errors.New("net.QuicNetwork Error: Quic Server Unavailable")
 var ErrQuicPeerRouteDuplicateAddress = errors.New("net.QuicNetwork Error: Peer Route Duplicate Address")
+var ErrQuicNetworkPeerConnConflict = errors.New("net.QuicNetwork Error: Peer Conn Conflict")
+var ErrQuicNetworkPeerGuardDenied = errors.New("net.QuicNetwork Error: Peer Guard Forbidden")
+
+const QUIC_NETWORK_MAX_ROUTES_SIZE = 16
+const QUIC_NETWORK_MAX_RETRY_TIMES = 3
+const QUIC_NETWORK_RETRY_INTERVAL = 300 * time.Millisecond
+const QUIC_NETWORK_REUSE_CONN_THRESHOLD = 64
 
 type QuicGuide interface {
 	LookupQuicAddr(peerId PeerID) (iter.Seq[string], error)
@@ -39,8 +46,9 @@ type stdQuicRoute struct {
 }
 
 type stdQuicNetwork struct {
-	logger     log.Logger
-	quicServer *stdQuicServer
+	logger log.Logger
+	server *stdQuicServer
+	guard  *stdPeerGuard
 
 	connSets []*stdQuicConnSet
 	connRW   sync.RWMutex
@@ -57,24 +65,12 @@ type stdQuicNetwork struct {
 
 var _ = (PeerNetwork)((*stdQuicNetwork)(nil))
 
-func (network *stdQuicNetwork) SetupGuides(guides []QuicGuide) {
-	network.guidesRW.Lock()
-	defer network.guidesRW.Unlock()
-	network.guides = guides
-}
-
-func (network *stdQuicNetwork) Setup(config QuicConfig) {
-	network.logger.Debug("net.QuicNetwork", "Setup begin")
-	defer network.logger.Debug("net.QuicNetwork", "Setup end")
-	network.rw.Lock()
-	defer network.rw.Unlock()
-
-	network.certificate = config.Certificate()
-}
-
 func (network *stdQuicNetwork) RoundTrip(ctx context.Context, peerId PeerID) (PeerStream, error) {
+	if network.guard.check(peerId) != PeerGuardAllow {
+		return nil, ErrQuicNetworkPeerGuardDenied
+	}
+
 	var stream PeerStream
-	var err error
 	var connSet *stdQuicConnSet
 
 	network.connRW.RLock()
@@ -84,29 +80,55 @@ func (network *stdQuicNetwork) RoundTrip(ctx context.Context, peerId PeerID) (Pe
 	}
 	network.connRW.RUnlock()
 
+	var err error
 	if connOK {
 		connSet.locker.Lock()
 		connArr := connSet.conns
-		if len(connArr) > 0 {
-			offset := 0
-			for idx, conn := range connArr {
-				stream, err = conn.OpenStream(ctx)
-				if err == nil || errors.Is(err, ctx.Err()) {
-					break
-				}
-				offset = idx + 1
+		connArr_ := make([]*stdQuicConn, 0)
+		totalNum := len(connArr)
+
+		if totalNum <= 0 {
+			goto UNLOCK_CONN_SET
+		}
+
+		for idx, conn := range connArr {
+			if conn.isClosed() {
+				continue
 			}
-
-			if offset > len(connArr) {
-				connSet.conns = nil
-
-				network.connRW.Lock()
-				network.connSets = slices.Delete(network.connSets, connIdx, connIdx+1)
-				network.connRW.Unlock()
-			} else if offset > 0 {
-				connSet.conns = slices.Clone(connArr[offset:])
+			if !isIdleQuicConn(conn) {
+				connArr_ = append(connArr_, conn)
+				continue
+			}
+			stream, err = conn.OpenStream(ctx)
+			if err == nil || ctx.Err() != nil {
+				if idx <= 0 {
+					connArr_ = connArr
+				} else if idx < totalNum-1 {
+					connArr_ = append(connArr_, connArr[idx:]...)
+				}
+				break
 			}
 		}
+
+		if len(connArr_) >= totalNum {
+			goto UNLOCK_CONN_SET
+		}
+
+		if len(connArr_) <= 0 {
+			connSet.conns = nil
+
+			network.connRW.Lock()
+			connIdx, connOK = slices.BinarySearchFunc(network.connSets, peerId, comparePeerIDForQuicConnSet)
+			if connOK && network.connSets[connIdx] == connSet {
+				network.connSets = slices.Delete(network.connSets, connIdx, connIdx+1)
+			}
+			network.connRW.Unlock()
+		} else {
+			connSet.conns = connArr_
+		}
+		goto UNLOCK_CONN_SET
+
+	UNLOCK_CONN_SET:
 		connSet.locker.Unlock()
 	}
 
@@ -114,33 +136,35 @@ func (network *stdQuicNetwork) RoundTrip(ctx context.Context, peerId PeerID) (Pe
 		return stream, err
 	}
 
-	conn, err := network.Connect(ctx, peerId)
+	conn, err := network.connect(ctx, peerId)
 	if err == nil {
-		err = network.Reuse(conn)
+		err = network.reuse(conn)
 	}
 
 	return conn.OpenStream(ctx)
 }
 
 func (network *stdQuicNetwork) Connect(ctx context.Context, peerId PeerID) (PeerConn, error) {
-	conn, err := network.connectWithRoute(ctx, peerId)
-	if err == nil || errors.Is(err, ctx.Err()) {
-		return conn, err
+	if network.guard.check(peerId) != PeerGuardAllow {
+		return nil, ErrQuicNetworkPeerGuardDenied
 	}
-	return network.connectWithGuide(ctx, peerId)
+
+	return network.connect(ctx, peerId)
 }
 
 func (network *stdQuicNetwork) Reuse(conn PeerConn) error {
-
+	if network.guard.check(conn.PeerID()) != PeerGuardAllow {
+		return ErrQuicNetworkPeerGuardDenied
+	}
 	quicConn, err := parseQuicConn(conn)
 	if err != nil {
 		return err
 	}
+	return network.reuse(quicConn)
+}
 
-	peerId, err := extractPeerIDFromQuicConn(quicConn)
-	if err != nil {
-		return err
-	}
+func (network *stdQuicNetwork) reuse(quicConn *stdQuicConn) error {
+	peerId := quicConn.PeerID()
 
 	network.connRW.Lock()
 	idx, ok := slices.BinarySearchFunc(network.connSets, peerId, comparePeerIDForQuicConnSet)
@@ -155,19 +179,19 @@ func (network *stdQuicNetwork) Reuse(conn PeerConn) error {
 
 	quicConnSet.locker.Lock()
 	defer quicConnSet.locker.Unlock()
-	quicConnSet.conns = append(quicConnSet.conns, conn.(*stdQuicConn))
-
+	if !slices.Contains(quicConnSet.conns, quicConn) {
+		quicConnSet.conns = append(quicConnSet.conns, quicConn)
+	}
 	return nil
 }
 
-func (network *stdQuicNetwork) Close(conn PeerConn) error {
-	quicConn, err := parseQuicConn(conn)
-	if err != nil {
-		return err
+func (network *stdQuicNetwork) connect(ctx context.Context, peerId PeerID) (*stdQuicConn, error) {
+	conn, err := network.connectWithRoute(ctx, peerId)
+	if err != nil && !errors.Is(err, ctx.Err()) {
+		conn, err = network.connectWithGuide(ctx, peerId)
 	}
-	return quicConn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "")
+	return conn, err
 }
-
 func (network *stdQuicNetwork) connectWithRoute(ctx context.Context, peerId PeerID) (*stdQuicConn, error) {
 	var route *stdQuicRoute
 	network.routeRW.RLock()
@@ -192,7 +216,7 @@ func (network *stdQuicNetwork) connectWithRoute(ctx context.Context, peerId Peer
 	var err error
 	offset := 0
 	for addrIdx, addr := range route.addrs {
-		conn, err = network.ConnectAddr(ctx, addr)
+		conn, err = network.connectAddr(ctx, peerId, addr)
 		if err == nil || errors.Is(err, ctx.Err()) {
 			break
 		}
@@ -203,7 +227,10 @@ func (network *stdQuicNetwork) connectWithRoute(ctx context.Context, peerId Peer
 		route.addrs = nil
 
 		network.routeRW.Lock()
-		network.routes = slices.Delete(network.routes, idx, idx+1)
+		idx, ok = slices.BinarySearchFunc(network.routes, peerId, comparePeerIDForQuicRoute)
+		if ok && network.routes[idx] == route {
+			network.routes = slices.Delete(network.routes, idx, idx+1)
+		}
 		network.routeRW.Unlock()
 
 		return nil, ErrQuicNetworkPeerNotFound
@@ -227,7 +254,7 @@ guides_loop:
 			continue
 		}
 		for addr := range addrSeq {
-			conn, err = network.ConnectAddr(ctx, addr)
+			conn, err = network.connectAddr(ctx, peerId, addr)
 			if err == nil || errors.Is(err, ctx.Err()) {
 				break guides_loop
 			}
@@ -240,14 +267,10 @@ guides_loop:
 	return conn, err
 }
 
-func (network *stdQuicNetwork) ConnectAddr(ctx context.Context, addr string) (*stdQuicConn, error) {
+func (network *stdQuicNetwork) connectAddr(ctx context.Context, peerId PeerID, addr string) (*stdQuicConn, error) {
 	remoteAddr, remoteAddrErr := net.ResolveUDPAddr("udp", addr)
 	if remoteAddrErr != nil {
 		return nil, remoteAddrErr
-	}
-	quicServer := network.quicServer
-	if quicServer == nil {
-		return nil, ErrQuicNetworkQuicServerUnavailable
 	}
 
 	network.rw.RLock()
@@ -257,11 +280,12 @@ func (network *stdQuicNetwork) ConnectAddr(ctx context.Context, addr string) (*s
 		return nil, ErrQuicNetworkUnavailable
 	}
 
-	transports := quicServer.Transports()
+	transports := network.server.getTransports()
 	if len(transports) <= 0 {
 		return nil, ErrQuicNetworkPeerNotFound
 	}
 
+	var remotePeerId PeerID
 	var conn quic.Connection
 	var err error
 	tlsConf := &tls.Config{Certificates: []tls.Certificate{certificate}, InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
@@ -287,7 +311,7 @@ transports_loop:
 		}
 
 		var timer <-chan time.Time
-		for i := 0; i < 3; i++ {
+		for i := 0; i < QUIC_NETWORK_MAX_RETRY_TIMES; i++ {
 			if timer != nil {
 				select {
 				case <-ctx.Done():
@@ -297,54 +321,169 @@ transports_loop:
 				}
 			}
 			conn, err = transport.Dial(ctx, remoteAddr, tlsConf, quicConf)
+			if err == nil {
+				remotePeerId, err = extractPeerIDFromQuicConnection(conn)
+			}
 			if err == nil || errors.Is(err, ctx.Err()) {
 				break transports_loop
 			}
-			timer = time.After(300 * time.Millisecond)
+			timer = time.After(QUIC_NETWORK_RETRY_INTERVAL)
 		}
 	}
 
 	if err != nil {
 		return nil, err
 	}
-	return &stdQuicConn{Connection: conn}, nil
-}
-
-func (network *stdQuicNetwork) Route(quicConn *stdQuicConn) error {
-	peerId, err := extractPeerIDFromQuicConn(quicConn)
-	if err != nil {
-		return err
+	if !bytes.Equal(remotePeerId, peerId) {
+		conn.CloseWithError(quic.ApplicationErrorCode(quic.NoError), "")
+		return nil, ErrQuicNetworkPeerConnConflict
 	}
 
+	quicConn := newQuicConn(conn, peerId)
+	return quicConn, nil
+}
+
+func (network *stdQuicNetwork) route(quicConn *stdQuicConn) error {
+
+	peerId := quicConn.PeerID()
 	addr := quicConn.RemoteAddr().String()
 
 	network.routeRW.Lock()
-	defer network.routeRW.Unlock()
 	idx, ok := slices.BinarySearchFunc(network.routes, peerId, comparePeerIDForQuicRoute)
 	if !ok {
+		defer network.routeRW.Unlock()
 		route := &stdQuicRoute{peerId: peerId}
 		route.addrs = []string{addr}
 		network.routes = slices.Insert(network.routes, idx, route)
+
 		return nil
 	}
 	route := network.routes[idx]
-	if slices.Contains(route.addrs, addr) {
-		return ErrQuicPeerRouteDuplicateAddress
+	network.routeRW.Unlock()
+
+	route.rw.Lock()
+	defer route.rw.Unlock()
+	if !slices.Contains(route.addrs, addr) {
+		if len(route.addrs) >= QUIC_NETWORK_MAX_ROUTES_SIZE {
+			addrs := make([]string, 0, QUIC_NETWORK_MAX_ROUTES_SIZE)
+			copy(addrs, route.addrs[1:])
+			addrs[QUIC_NETWORK_MAX_ROUTES_SIZE-1] = addr
+			route.addrs = addrs
+		} else {
+			route.addrs = append(route.addrs, addr)
+		}
 	}
-	route.addrs = append(route.addrs, addr)
 	return nil
 }
 
-func (network *stdQuicNetwork) HasRoute(peerId PeerID, addr string) bool {
-	network.routeRW.RLock()
-	defer network.routeRW.RUnlock()
-
-	idx, ok := slices.BinarySearchFunc(network.routes, peerId, comparePeerIDForQuicRoute)
-	if !ok {
-		return false
+func (network *stdQuicNetwork) optimize(ctx context.Context) {
+	network.connRW.RLock()
+	connSets := slices.Clone(network.connSets)
+	network.connRW.RUnlock()
+	if len(connSets) <= 0 {
+		return
 	}
-	route := network.routes[idx]
-	return slices.Contains(route.addrs, addr)
+
+LOOP_CONN_SET:
+	for _, connSet := range connSets {
+		connSet.locker.Lock()
+
+		connArr := make([]*stdQuicConn, 0)
+		idleConnArr := make([]*stdQuicConn, 0)
+		closedConnArr := make([]*stdQuicConn, 0)
+		totalNum := len(connSet.conns)
+		remainingNum := totalNum
+
+		if totalNum <= 0 {
+			goto UNLOCK_CONN_SET_FOR_OPTIMIZE
+		}
+
+		for _, conn := range connSet.conns {
+			if ctx.Err() != nil {
+				goto UNLOCK_CONN_SET_FOR_OPTIMIZE
+			}
+			if !conn.detect() {
+				closedConnArr = append(closedConnArr, conn)
+				remainingNum--
+				continue
+			}
+			if isIdleQuicConn(conn) {
+				idleConnArr = append(idleConnArr, conn)
+				continue
+			}
+			connArr = append(connArr, conn)
+		}
+
+		if remainingNum == totalNum {
+			goto UNLOCK_CONN_SET_FOR_OPTIMIZE
+		}
+
+		if remainingNum <= 0 {
+			connSet.conns = nil
+
+			network.connRW.Lock()
+			connIdx, connOK := slices.BinarySearchFunc(network.connSets, connSet.peerId, comparePeerIDForQuicConnSet)
+			if connOK && network.connSets[connIdx] == connSet {
+				network.connSets = slices.Delete(network.connSets, connIdx, connIdx+1)
+			}
+			network.connRW.Unlock()
+			goto UNLOCK_CONN_SET_FOR_OPTIMIZE
+		}
+
+		if len(connArr) <= 0 {
+			if remainingNum >= QUIC_NETWORK_REUSE_CONN_THRESHOLD {
+				connSet.conns = slices.Clone(idleConnArr[-1*remainingNum:])
+			} else {
+				connSet.conns = idleConnArr
+			}
+			goto UNLOCK_CONN_SET_FOR_OPTIMIZE
+		}
+
+		if len(connArr) >= QUIC_NETWORK_REUSE_CONN_THRESHOLD || len(idleConnArr) <= 0 {
+			connSet.conns = connArr
+			goto UNLOCK_CONN_SET_FOR_OPTIMIZE
+		}
+
+		if remainingNum < QUIC_NETWORK_REUSE_CONN_THRESHOLD {
+			connSet.conns = append(idleConnArr, connArr...)
+			goto UNLOCK_CONN_SET_FOR_OPTIMIZE
+		}
+
+		connSet.conns = make([]*stdQuicConn, 0, QUIC_NETWORK_REUSE_CONN_THRESHOLD)
+		copy(connSet.conns, idleConnArr[len(connArr)-QUIC_NETWORK_REUSE_CONN_THRESHOLD:])
+		copy(connSet.conns, connArr)
+		goto UNLOCK_CONN_SET_FOR_OPTIMIZE
+
+	UNLOCK_CONN_SET_FOR_OPTIMIZE:
+		connSet.locker.Unlock()
+
+		if len(closedConnArr) > 0 {
+			for _, conn := range closedConnArr {
+				conn.close()
+			}
+		}
+
+		if ctx.Err() != nil {
+			break LOOP_CONN_SET
+		}
+
+	}
+
+}
+
+func (network *stdQuicNetwork) setupGuides(guides []QuicGuide) {
+	network.guidesRW.Lock()
+	defer network.guidesRW.Unlock()
+	network.guides = guides
+}
+
+func (network *stdQuicNetwork) setup(config QuicConfig) {
+	network.logger.Debug("net.QuicNetwork", "Setup begin")
+	defer network.logger.Debug("net.QuicNetwork", "Setup end")
+	network.rw.Lock()
+	defer network.rw.Unlock()
+
+	network.certificate = config.Certificate()
 }
 
 func newQuicConnSet(peerId PeerID) *stdQuicConnSet {

@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"pan/internal/log"
+	"path"
 	"slices"
 	"sync"
 	"time"
@@ -19,9 +20,12 @@ import (
 var ErrQuicAgentUnavailable = errors.New("net.QuicAgent Error: Unavailable")
 var ErrQuicAgentInvalidBroadcastPayload = errors.New("net.QuicAgent Error: Invalid Broadcast Payload")
 var ErrQuicAgentInvalidBroadcastType = errors.New("net.QuicAgent Error: Invalid Broadcast Type")
-var ErrQuicAgentGreetForbidden = errors.New("net.QuicAgent Error: Greet Forbidden")
+var ErrQuicAgentServeBroadcastDenied = errors.New("net.QuicAgent Error: Serve Broadcast Denied")
 var ErrQuicAgentDeliverExit = errors.New("net.QuicAgent Error: Deliver Exit")
 var ErrQuicAgentNoUDPConn = errors.New("net.QuicAgent Error: No UDPConn")
+
+const QUIC_AGENT_BROADCAST_DELIVER_TIMEOUT = 15 * time.Second
+const QUIC_AGENT_OPTIMIZE_NETWORK_INTERVAL = 6 * time.Second
 
 const (
 	QuicBroadcastType = uint8(iota + 1)
@@ -36,29 +40,20 @@ type stdQuicAgent struct {
 	quicNetwork      *stdQuicNetwork
 	broadcastNetwork *stdBroadcastNetwork
 	server           *stdQuicServer
+	guard            *stdPeerGuard
 
-	cache *expirable.LRU[string, uint64]
+	broadcastCache *expirable.LRU[string, uint64]
 
 	peerId           PeerID
 	privateKey       crypto.PrivateKey
 	broadcastEnabled bool
-
-	guards  []PeerGuard
-	guardRW sync.RWMutex
 
 	reloadChan chan struct{}
 	reloadLock sync.RWMutex
 	reload     bool
 }
 
-var _ = (PeerTopic)((*stdQuicAgent)(nil))
-
-func (agent *stdQuicAgent) SetupToPeer(router PeerServletRouter) error {
-	router.Handle(QuicGreetRequestName, agent.HandleGreet)
-	return nil
-}
-
-func (agent *stdQuicAgent) Setup(config QuicConfig) {
+func (agent *stdQuicAgent) setup(config QuicConfig) {
 	agent.logger.Debug("net.QuicAgent", "Setup begin")
 	defer agent.logger.Debug("net.QuicAgent", "Setup end")
 
@@ -92,6 +87,26 @@ func (agent *stdQuicAgent) Setup(config QuicConfig) {
 	agent.reloadChan <- struct{}{}
 }
 
+func (agent *stdQuicAgent) optimizeNetwork(ctx context.Context) error {
+	agent.logger.Debug("net.QuicAgent", "OptimizeNetwork begin")
+	defer agent.logger.Debug("net.QuicAgent", "OptimizeNetwork end")
+
+	var err error
+optimize_loop:
+	for {
+		agent.quicNetwork.optimize(ctx)
+
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			break optimize_loop
+		case <-time.After(QUIC_AGENT_OPTIMIZE_NETWORK_INTERVAL):
+			continue
+		}
+	}
+	return err
+}
+
 var _ = (BroadcastServeModule)((*stdQuicAgent)(nil))
 
 func (agent *stdQuicAgent) ServeBroadcast(payload []byte, addr string) error {
@@ -109,8 +124,8 @@ func (agent *stdQuicAgent) ServeBroadcast(payload []byte, addr string) error {
 	agent.reloadLock.RUnlock()
 
 	quicNetwork := agent.quicNetwork
-	cache := agent.cache
-	if quicNetwork == nil || cache == nil || len(peerId) <= 0 {
+	broadcastCache := agent.broadcastCache
+	if quicNetwork == nil || broadcastCache == nil || len(peerId) <= 0 {
 		return ErrQuicAgentUnavailable
 	}
 
@@ -132,102 +147,40 @@ func (agent *stdQuicAgent) ServeBroadcast(payload []byte, addr string) error {
 		return err
 	}
 
-	cacheKey := EncodePeerID(online.PeerId)
-	cacheValue, ok := cache.Get(cacheKey)
+	cacheKey := path.Join(addr, EncodePeerID(peerId))
+	cacheValue, ok := broadcastCache.Get(cacheKey)
 	if ok && cacheValue >= online.Heightest {
 		return nil
 	}
 
 	if ok && cacheValue < online.Heightest {
-		cache.Remove(cacheKey)
+		broadcastCache.Remove(cacheKey)
 	}
 	if !ok || cacheValue < online.Heightest {
-		cache.Add(cacheKey, online.Heightest)
+		broadcastCache.Add(cacheKey, online.Heightest)
 	}
 
-	if quicNetwork.HasRoute(online.PeerId, addr) {
-		return nil
+	if agent.guard.check(online.PeerId) != PeerGuardDeny {
+		return ErrQuicAgentServeBroadcastDenied
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	conn, err := quicNetwork.ConnectAddr(ctx, addr)
-	if err == nil {
-		err = agent.Greet(conn)
-	}
-
-	if err == nil {
-		quicNetwork.Route(conn)
-		quicNetwork.Reuse(conn)
-	}
-	return err
-}
-
-func (agent *stdQuicAgent) Greet(conn *stdQuicConn) error {
-	// TODO: Implement greet logic
-	reqReader := NewRequest(QuicGreetRequestName, nil)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-
-	stream, err := conn.OpenStream(ctx)
-	if err != nil {
-		return err
-	}
-	defer stream.Close()
-
-	_, reader, err := DoAction(ctx, stream, reqReader)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-
-	// TODO:
-	return nil
-}
-
-func (agent *stdQuicAgent) HandleGreet(ctx PeerServletContext, next PeerServletNext) error {
-
-	conn, ok := ctx.Session(PeerConnSessionKey)
-	if !ok {
-		return next()
-	}
-	quicConn, ok := conn.(*stdQuicConn)
-	if !ok {
-		return next()
-	}
-
-	peerId, ok := ctx.Session(PeerIDSessionKey)
-	if !ok {
-		return next()
-	}
-	peerId_, ok := peerId.(PeerID)
-	if !ok {
-		return next()
-	}
-
-	agent.guardRW.RLock()
-	guards := agent.guards
-	agent.guardRW.RUnlock()
-
-	isAllow := true
-	if len(guards) > 0 {
-		for _, guard := range guards {
-			isAllow = guard.AllowAccess(peerId_)
-			if !isAllow {
-				break
-			}
+	conn, err := quicNetwork.connectAddr(ctx, online.PeerId, addr)
+	if err == nil {
+		err = quicNetwork.route(conn)
+		if err == nil {
+			err = quicNetwork.reuse(conn)
+		}
+		if err != nil {
+			conn.Close()
 		}
 	}
 
-	if !isAllow {
-		return ErrQuicAgentGreetForbidden
-	}
-
-	// TODO:
-	agent.quicNetwork.Route(quicConn)
-	return nil
+	return err
 }
 
-func (agent *stdQuicAgent) DeliverBroadcast(ctx context.Context) error {
+func (agent *stdQuicAgent) deliverBroadcast(ctx context.Context) error {
 	agent.logger.Debug("net.QuicAgent", "DeliverBroadcast begin")
 	defer agent.logger.Debug("net.QuicAgent", "DeliverBroadcast end")
 
@@ -278,7 +231,7 @@ func (agent *stdQuicAgent) DeliverBroadcast(ctx context.Context) error {
 				select {
 				case <-causeCtx.Done():
 					break loop
-				case <-time.After(15 * time.Second):
+				case <-time.After(QUIC_AGENT_BROADCAST_DELIVER_TIMEOUT):
 				}
 			}
 		}(causeCtx)

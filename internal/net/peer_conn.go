@@ -5,10 +5,6 @@ import (
 	"io"
 )
 
-type PeerConnState interface {
-	Session() ([]byte, error)
-}
-
 type PeerStream interface {
 	io.Reader
 	io.Writer
@@ -16,7 +12,8 @@ type PeerStream interface {
 }
 
 type PeerConn interface {
-	ConnState() PeerConnState
+	PeerID() PeerID
 	OpenStream(context.Context) (PeerStream, error)
 	AcceptStream(context.Context) (PeerStream, error)
+	Close() error
 }

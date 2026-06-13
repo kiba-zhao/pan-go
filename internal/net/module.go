@@ -23,6 +23,8 @@ type stdModule struct {
 	broadcastModule *stdBroadcastModule
 	quicModule      *stdQuicModule
 
+	peerGuard *stdPeerGuard
+
 	registry runtime.Registry
 	rw       sync.RWMutex
 	already  bool
@@ -47,20 +49,27 @@ func New() interface{} {
 
 	quicConfigurer := config.NewConfigurer[QuicConfig](logger)
 
+	peerGuard := &stdPeerGuard{}
+
 	quicServer := &stdQuicServer{}
 	quicServer.logger = logger
 	quicServer.reloadChan = make(chan struct{}, 1)
+	quicServer.guard = peerGuard
 
 	quicNetwork := &stdQuicNetwork{}
 	quicNetwork.logger = logger
-	quicNetwork.quicServer = quicServer
+	quicNetwork.server = quicServer
+	quicNetwork.guard = peerGuard
+
+	quicServer.network = quicNetwork
 
 	quicAgent := &stdQuicAgent{}
 	quicAgent.logger = logger
 	quicAgent.quicNetwork = quicNetwork
 	quicAgent.server = quicServer
 	quicAgent.broadcastNetwork = broadcastNetwork
-	quicAgent.cache = expirable.NewLRU[string, uint64](0, nil, time.Second*30)
+	quicAgent.broadcastCache = expirable.NewLRU[string, uint64](0, nil, time.Second*30)
+	quicAgent.guard = peerGuard
 
 	quicModule := &stdQuicModule{}
 	quicModule.quicServer = quicServer
@@ -71,6 +80,7 @@ func New() interface{} {
 	module := &stdModule{}
 	module.broadcastModule = broadcastModule
 	module.quicModule = quicModule
+	module.peerGuard = peerGuard
 
 	return module
 }
@@ -84,12 +94,15 @@ func (module *stdModule) Init(ctx context.Context, registry runtime.Registry) er
 
 	var err error
 	if module.already {
-		err = module.broadcastModule.ReloadModules(ctx, registry)
+		err = module.reloadGuardGuides(ctx, registry)
 		if err == nil {
-			err = module.quicModule.ReloadModules(ctx, registry)
+			err = module.broadcastModule.reloadModules(ctx, registry)
 		}
 		if err == nil {
-			err = module.quicModule.ReloadGuides(ctx, registry)
+			err = module.quicModule.reloadModules(ctx, registry)
+		}
+		if err == nil {
+			err = module.quicModule.reloadGuides(ctx, registry)
 		}
 	}
 	return err
@@ -108,12 +121,15 @@ func (module *stdModule) Defer(ctx context.Context) error {
 	module.rw.RUnlock()
 
 	var err error
-	err = module.broadcastModule.ReloadModules(ctx, registry)
+	err = module.reloadGuardGuides(ctx, registry)
 	if err == nil {
-		err = module.quicModule.ReloadModules(ctx, registry)
+		err = module.broadcastModule.reloadModules(ctx, registry)
 	}
 	if err == nil {
-		err = module.quicModule.ReloadGuides(ctx, registry)
+		err = module.quicModule.reloadModules(ctx, registry)
+	}
+	if err == nil {
+		err = module.quicModule.reloadGuides(ctx, registry)
 	}
 	return err
 }
@@ -125,6 +141,23 @@ func (module *stdModule) Modules() []interface{} {
 		module.broadcastModule,
 		module.quicModule,
 	}
+}
+
+var _ = (runtime.EngineExtensionModule)((*stdModule)(nil))
+
+func (module *stdModule) EngineTypes() []reflect.Type {
+	return []reflect.Type{
+		reflect.TypeFor[PeerGuardGuide](),
+	}
+}
+
+func (module *stdModule) reloadGuardGuides(ctx context.Context, registry runtime.Registry) error {
+	if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
+		return ctxErr
+	}
+	guides := runtime.ModulesForType[PeerGuardGuide](registry)
+	module.peerGuard.setup(guides)
+	return nil
 }
 
 type stdBroadcastModule struct {
@@ -148,8 +181,8 @@ func (module *stdBroadcastModule) OnConfigUpdated(config BroadcastConfig) {
 		return
 	}
 
-	module.broadcastNetwork.Setup(config)
-	module.broadcastServer.Setup(config)
+	module.broadcastNetwork.setup(config)
+	module.broadcastServer.setup(config)
 }
 
 var _ = (runtime.EngineExtensionModule)((*stdBroadcastModule)(nil))
@@ -160,12 +193,12 @@ func (module *stdBroadcastModule) EngineTypes() []reflect.Type {
 	}
 }
 
-func (module *stdBroadcastModule) ReloadModules(ctx context.Context, registry runtime.Registry) error {
+func (module *stdBroadcastModule) reloadModules(ctx context.Context, registry runtime.Registry) error {
 	if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
 		return ctxErr
 	}
 	broadcastServeModules := runtime.ModulesForType[BroadcastServeModule](registry)
-	module.broadcastServer.SetupModules(broadcastServeModules)
+	module.broadcastServer.setupModules(broadcastServeModules)
 	return nil
 }
 
@@ -175,7 +208,7 @@ func (module *stdBroadcastModule) Ready(ctx context.Context) error {
 	module.broadcastConfigurer.Subscribe(module)
 	defer module.broadcastConfigurer.Unsubscribe(module)
 
-	return module.broadcastServer.ListenAndServe(ctx)
+	return module.broadcastServer.listenAndServe(ctx)
 }
 
 type stdQuicModule struct {
@@ -202,9 +235,9 @@ func (module *stdQuicModule) OnConfigUpdated(config QuicConfig) {
 		return
 	}
 
-	module.quicServer.Setup(config)
-	module.quicNetwork.Setup(config)
-	module.quicAgent.Setup(config)
+	module.quicServer.setup(config)
+	module.quicNetwork.setup(config)
+	module.quicAgent.setup(config)
 }
 
 var _ = (runtime.EngineExtensionModule)((*stdQuicModule)(nil))
@@ -217,7 +250,7 @@ func (module *stdQuicModule) EngineTypes() []reflect.Type {
 	}
 }
 
-func (module *stdQuicModule) ReloadModules(ctx context.Context, registry runtime.Registry) error {
+func (module *stdQuicModule) reloadModules(ctx context.Context, registry runtime.Registry) error {
 
 	peerServlet := servlet.NewServlet[PeerServletContext]()
 
@@ -257,17 +290,17 @@ func (module *stdQuicModule) ReloadModules(ctx context.Context, registry runtime
 	}
 
 	if err == nil {
-		module.quicServer.SetupPeerServlet(peerServlet)
+		module.quicServer.setupPeerServlet(peerServlet)
 	}
 	return err
 }
 
-func (module *stdQuicModule) ReloadGuides(ctx context.Context, registry runtime.Registry) error {
+func (module *stdQuicModule) reloadGuides(ctx context.Context, registry runtime.Registry) error {
 	if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
 		return ctxErr
 	}
 	guides := runtime.ModulesForType[QuicGuide](registry)
-	module.quicAgent.quicNetwork.SetupGuides(guides)
+	module.quicAgent.quicNetwork.setupGuides(guides)
 	return nil
 }
 
@@ -279,16 +312,21 @@ func (module *stdQuicModule) Ready(ctx context.Context) error {
 	defer module.quicConfigurer.Unsubscribe(module)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 
 	go func(server *stdQuicServer) {
 		defer wg.Done()
-		server.ListenAndServe(ctx)
+		server.listenAndServe(ctx)
 	}(module.quicServer)
 
 	go func(agent *stdQuicAgent) {
 		defer wg.Done()
-		agent.DeliverBroadcast(ctx)
+		agent.deliverBroadcast(ctx)
+	}(module.quicAgent)
+
+	go func(agent *stdQuicAgent) {
+		defer wg.Done()
+		agent.optimizeNetwork(ctx)
 	}(module.quicAgent)
 
 	wg.Wait()
@@ -299,14 +337,6 @@ var _ = (runtime.ProviderModule)((*stdQuicModule)(nil))
 
 func (module *stdQuicModule) Modules() []interface{} {
 	return []interface{}{
-		module.quicAgent,
-	}
-}
-
-var _ = (PeerTopicProvider)((*stdQuicModule)(nil))
-
-func (module *stdQuicModule) PeerTopics() []PeerTopic {
-	return []PeerTopic{
 		module.quicAgent,
 	}
 }
