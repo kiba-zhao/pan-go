@@ -2,6 +2,6 @@
 
 package gomobile
 
-import "pan/internal/log"
+import "pan/pkg/log"
 
 type Logger = log.Logger

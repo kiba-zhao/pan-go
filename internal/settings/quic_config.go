@@ -3,7 +3,7 @@ package settings
 import (
 	"crypto"
 	"crypto/tls"
-	"pan/internal/net"
+	"pan/pkg/net"
 	"time"
 )
 

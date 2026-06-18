@@ -3,7 +3,7 @@ package user
 import (
 	"bytes"
 	"errors"
-	"pan/internal/net"
+	"pan/pkg/net"
 )
 
 var ErrUserSecretServiceUserNotFound = errors.New("user.UserSecretService Error: User Not Found")

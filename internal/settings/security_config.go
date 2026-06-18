@@ -12,8 +12,8 @@ import (
 	"errors"
 	"math/big"
 	"os"
-	"pan/internal/config"
-	"pan/internal/net"
+	"pan/pkg/config"
+	"pan/pkg/net"
 	"path/filepath"
 	"time"
 )

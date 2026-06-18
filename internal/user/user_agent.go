@@ -3,8 +3,8 @@ package user
 import (
 	"bytes"
 	"context"
-	"pan/internal/log"
-	"pan/internal/net"
+	"pan/pkg/log"
+	"pan/pkg/net"
 	"slices"
 	sync "sync"
 )

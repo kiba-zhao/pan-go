@@ -1,7 +1,7 @@
 package user
 
 import (
-	"pan/internal/repository"
+	"pan/pkg/repository"
 )
 
 const (

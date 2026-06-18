@@ -1,6 +1,6 @@
 package settings
 
-import "pan/internal/config"
+import "pan/pkg/config"
 
 type SettingsConfig interface {
 	HomePath() string

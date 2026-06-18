@@ -2,9 +2,9 @@ package gobase
 
 import (
 	"context"
-	"pan/internal/bootstrap"
-	"pan/internal/injection"
 	"pan/internal/settings"
+	"pan/pkg/bootstrap"
+	"pan/pkg/injection"
 )
 
 func NewSettingsModule(cfg settings.SettingsConfig) interface{} {

@@ -5,8 +5,8 @@ import (
 	"crypto/sha256"
 	"errors"
 	"iter"
-	"pan/internal/net"
 	"pan/internal/settings"
+	"pan/pkg/net"
 )
 
 var ErrUserDataServiceConsensusNotFound = errors.New("user.UserDataService Error: Consensus Not Found")

@@ -2,7 +2,7 @@
 
 package settings
 
-import "pan/internal/web"
+import "pan/pkg/web"
 
 type stdWebConfig struct {
 	settings *HostSettings

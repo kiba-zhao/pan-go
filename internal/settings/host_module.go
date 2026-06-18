@@ -4,10 +4,10 @@ package settings
 
 import (
 	"context"
-	"pan/internal/bootstrap"
-	"pan/internal/injection"
-	"pan/internal/module"
-	"pan/internal/web"
+	"pan/pkg/bootstrap"
+	"pan/pkg/injection"
+	"pan/pkg/module"
+	"pan/pkg/web"
 )
 
 func init() {

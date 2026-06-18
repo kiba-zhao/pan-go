@@ -6,7 +6,7 @@ import (
 	"os"
 	"pan/internal/settings"
 
-	"pan/internal/log"
+	"pan/pkg/log"
 )
 
 type stdSettings struct {

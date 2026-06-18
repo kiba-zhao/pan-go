@@ -6,8 +6,8 @@ import (
 	"errors"
 	"io"
 	"iter"
-	"pan/internal/net"
-	"pan/internal/proto"
+	"pan/pkg/net"
+	"pan/pkg/proto"
 
 	protobuf "google.golang.org/protobuf/proto"
 )

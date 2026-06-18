@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"iter"
-	"pan/internal/net"
+	"pan/pkg/net"
 	"slices"
 )
 

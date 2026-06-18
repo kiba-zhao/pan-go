@@ -5,7 +5,7 @@ package appinfo
 import (
 	"encoding/json"
 	"io"
-	"pan/internal/app"
+	"pan/pkg/app"
 )
 
 type QRCodeAppletModule struct {

@@ -7,7 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"iter"
-	"pan/internal/net"
+	"pan/pkg/net"
 )
 
 var ErrUserConsensusInvalid = errors.New("user.UserConsensusService verifyUserConsensus Error: UserConsensus Invalid")

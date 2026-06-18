@@ -2,11 +2,11 @@ package user
 
 import (
 	"context"
-	"pan/internal/bootstrap"
-	"pan/internal/injection"
-	"pan/internal/module"
-	"pan/internal/net"
-	"pan/internal/repository"
+	"pan/pkg/bootstrap"
+	"pan/pkg/injection"
+	"pan/pkg/module"
+	"pan/pkg/net"
+	"pan/pkg/repository"
 	sync "sync"
 )
 

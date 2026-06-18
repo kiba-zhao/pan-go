@@ -3,9 +3,9 @@
 package appinfo
 
 import (
-	"pan/internal/app"
-	"pan/internal/injection"
-	"pan/internal/module"
+	"pan/pkg/app"
+	"pan/pkg/injection"
+	"pan/pkg/module"
 	"sync"
 )
 

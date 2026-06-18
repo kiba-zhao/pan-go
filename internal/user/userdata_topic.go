@@ -1,8 +1,8 @@
 package user
 
 import (
-	"pan/internal/net"
-	"pan/internal/proto"
+	"pan/pkg/net"
+	"pan/pkg/proto"
 )
 
 type UserDataTopic struct {

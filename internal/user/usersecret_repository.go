@@ -2,7 +2,7 @@ package user
 
 import (
 	"errors"
-	"pan/internal/repository"
+	"pan/pkg/repository"
 )
 
 var ErrUserSecretRepositoryNotFound = errors.New("user.UserSecretRepository Error: Not Found")

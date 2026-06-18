@@ -2,7 +2,7 @@ package user
 
 import (
 	"iter"
-	"pan/internal/repository"
+	"pan/pkg/repository"
 	"strconv"
 )
 

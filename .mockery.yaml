@@ -6,3 +6,8 @@ packages:
       dir: mocks/{{ replaceAll .PackagePath "internal" "internal_" }}
       recursive: true
       with-expecter: true
+  pan/pkg:
+    config:
+      all: true
+      recursive: true
+      with-expecter: true

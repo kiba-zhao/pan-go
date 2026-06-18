@@ -2,7 +2,7 @@ package user
 
 import (
 	"errors"
-	"pan/internal/repository"
+	"pan/pkg/repository"
 )
 
 var ErrUserDataRepositoryInvalidData = errors.New("user.UserDataRepository Error: Invalid Data")

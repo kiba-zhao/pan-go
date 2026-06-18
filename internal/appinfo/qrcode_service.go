@@ -6,8 +6,8 @@ import (
 	"image/color"
 	"io"
 	"net/url"
-	"pan/internal/net"
 	"pan/internal/settings"
+	"pan/pkg/net"
 	"sync"
 	"time"
 

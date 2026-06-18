@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"pan/internal/app"
+	"pan/pkg/app"
 )
 
 type MobileSettingsAppletModule struct {

@@ -1,6 +1,6 @@
 package settings
 
-import "pan/internal/repository"
+import "pan/pkg/repository"
 
 type stdRepositoryConfig struct {
 	settingsCfg SettingsConfig

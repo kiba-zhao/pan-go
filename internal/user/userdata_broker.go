@@ -2,8 +2,8 @@ package user
 
 import (
 	"context"
-	"pan/internal/net"
-	"pan/internal/proto"
+	"pan/pkg/net"
+	"pan/pkg/proto"
 )
 
 type UserDataBroker struct {

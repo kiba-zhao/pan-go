@@ -4,7 +4,7 @@ package settings
 
 import (
 	"net/http"
-	"pan/internal/web"
+	"pan/pkg/web"
 )
 
 type HostSettingsController struct {

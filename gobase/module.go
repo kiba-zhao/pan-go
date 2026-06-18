@@ -2,11 +2,11 @@ package gobase
 
 import (
 	"pan/internal/appinfo"
-	"pan/internal/bootstrap"
-	"pan/internal/net"
-	"pan/internal/repository"
-	"pan/internal/runtime"
 	"pan/internal/settings"
+	"pan/pkg/bootstrap"
+	"pan/pkg/net"
+	"pan/pkg/repository"
+	"pan/pkg/runtime"
 )
 
 func New(modules ...interface{}) interface{} {

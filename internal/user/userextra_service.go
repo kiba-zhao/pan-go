@@ -2,7 +2,7 @@ package user
 
 import (
 	"iter"
-	"pan/internal/net"
+	"pan/pkg/net"
 )
 
 type UserExtraService struct {

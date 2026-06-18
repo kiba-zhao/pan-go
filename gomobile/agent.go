@@ -7,9 +7,9 @@ import (
 	"errors"
 	"io"
 	"pan/gobase"
-	"pan/internal/app"
-	"pan/internal/log"
-	"pan/internal/runtime"
+	"pan/pkg/app"
+	"pan/pkg/log"
+	"pan/pkg/runtime"
 	"sync"
 )
 

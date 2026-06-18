@@ -4,7 +4,7 @@ package appinfo
 
 import (
 	"net/http"
-	"pan/internal/web"
+	"pan/pkg/web"
 )
 
 type QRCodeController struct {

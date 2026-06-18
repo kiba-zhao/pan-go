@@ -1,8 +1,8 @@
 package appinfo
 
 import (
-	"pan/internal/injection"
-	"pan/internal/module"
+	"pan/pkg/injection"
+	"pan/pkg/module"
 )
 
 var subModuleNewFuncArray []module.SubModuleNewFunc[*stdModule]

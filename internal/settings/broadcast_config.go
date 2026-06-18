@@ -1,7 +1,7 @@
 package settings
 
 import (
-	"pan/internal/net"
+	"pan/pkg/net"
 )
 
 type stdBroadcastConfig struct {
