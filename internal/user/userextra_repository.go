@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"iter"
 	"pan/pkg/repository"
 	"strconv"
@@ -15,8 +16,8 @@ func generateUserExtraTableName(userId uint) string {
 }
 
 type UserExtraRepository interface {
-	Select(userId uint, serialNumber uint) (UserExtra, error)
-	ScanWithUserID(userId uint) (iter.Seq2[UserExtra, error], error)
+	Select(ctx context.Context, userId uint, serialNumber uint) (UserExtra, error)
+	ScanWithUserID(ctx context.Context, userId uint) (iter.Seq2[UserExtra, error], error)
 }
 
 type stdUserExtraRepository struct {
@@ -25,8 +26,8 @@ type stdUserExtraRepository struct {
 
 var _ = (UserExtraRepository)((*stdUserExtraRepository)(nil))
 
-func (repo *stdUserExtraRepository) Select(userId uint, serialNumber uint) (UserExtra, error) {
-	db := repo.DB()
+func (repo *stdUserExtraRepository) Select(ctx context.Context, userId uint, serialNumber uint) (UserExtra, error) {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return UserExtra{}, repository.ErrRepositoryDBUnavailable
 	}
@@ -42,8 +43,8 @@ func (repo *stdUserExtraRepository) Select(userId uint, serialNumber uint) (User
 	return userExtra, results.Error
 }
 
-func (repo *stdUserExtraRepository) ScanWithUserID(userId uint) (iter.Seq2[UserExtra, error], error) {
-	db := repo.DB()
+func (repo *stdUserExtraRepository) ScanWithUserID(ctx context.Context, userId uint) (iter.Seq2[UserExtra, error], error) {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return nil, repository.ErrRepositoryDBUnavailable
 	}
@@ -58,15 +59,6 @@ func (repo *stdUserExtraRepository) ScanWithUserID(userId uint) (iter.Seq2[UserE
 	if err != nil {
 		return nil, err
 	}
+	return repository.NewSeq2WithRows[UserExtra](rows, db), nil
 
-	return func(yield func(UserExtra, error) bool) {
-		defer rows.Close()
-		for rows.Next() {
-			var userExtra UserExtra
-			err := db.ScanRows(rows, &userExtra)
-			if !yield(userExtra, err) {
-				break
-			}
-		}
-	}, nil
 }

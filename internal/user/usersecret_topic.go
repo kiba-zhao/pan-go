@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"pan/pkg/net"
 	"pan/pkg/proto"
 )
@@ -31,7 +32,7 @@ func (topic *UserSecretTopic) Pull(ctx net.PeerServletContext, next net.PeerServ
 	}
 
 	meta := parseUserMeta(&userMeta)
-	secret, err := topic.UserSecretService.PullForTopic(peerId.(net.PeerID), meta)
+	secret, err := topic.UserSecretService.PullForTopic(context.Background(), peerId.(net.PeerID), meta)
 	if err != nil {
 		return err
 	}

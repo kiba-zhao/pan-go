@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"pan/pkg/repository"
 )
@@ -9,9 +10,9 @@ var ErrUserSecretRepositoryNotFound = errors.New("user.UserSecretRepository Erro
 var ErrUserSecretRepositoryConflict = errors.New("user.UserSecretRepository Error: Conflict")
 
 type UserSecretRepository interface {
-	SelectWithUserID(userId uint) (UserSecret, error)
-	SaveWithUserID(secret UserSecret) (UserSecret, error)
-	DeleteWithUserID(userId uint) error
+	SelectWithUserID(ctx context.Context, userId uint) (UserSecret, error)
+	SaveWithUserID(ctx context.Context, secret UserSecret) (UserSecret, error)
+	DeleteWithUserID(ctx context.Context, userId uint) error
 }
 
 type stdUserSecretRepository struct {
@@ -20,8 +21,8 @@ type stdUserSecretRepository struct {
 
 var _ = (UserSecretRepository)((*stdUserSecretRepository)(nil))
 
-func (repo *stdUserSecretRepository) SelectWithUserID(userId uint) (UserSecret, error) {
-	db := repo.DB()
+func (repo *stdUserSecretRepository) SelectWithUserID(ctx context.Context, userId uint) (UserSecret, error) {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return UserSecret{}, repository.ErrRepositoryDBUnavailable
 	}
@@ -31,8 +32,8 @@ func (repo *stdUserSecretRepository) SelectWithUserID(userId uint) (UserSecret, 
 	return userSecret, results.Error
 }
 
-func (repo *stdUserSecretRepository) SaveWithUserID(secret UserSecret) (UserSecret, error) {
-	db := repo.DB()
+func (repo *stdUserSecretRepository) SaveWithUserID(ctx context.Context, secret UserSecret) (UserSecret, error) {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return UserSecret{}, repository.ErrRepositoryDBUnavailable
 	}
@@ -53,8 +54,8 @@ func (repo *stdUserSecretRepository) SaveWithUserID(secret UserSecret) (UserSecr
 	return secret, nil
 }
 
-func (repo *stdUserSecretRepository) DeleteWithUserID(userId uint) error {
-	db := repo.DB()
+func (repo *stdUserSecretRepository) DeleteWithUserID(ctx context.Context, userId uint) error {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return repository.ErrRepositoryDBUnavailable
 	}

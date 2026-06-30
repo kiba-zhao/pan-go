@@ -18,14 +18,14 @@ type UserExtraBroker struct {
 	PeerBroker *net.PeerBroker
 }
 
-func (broker *UserExtraBroker) ScanWithUserMeta(peerId net.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserExtra, error], error) {
+func (broker *UserExtraBroker) ScanWithUserMeta(ctx context.Context, peerId net.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserExtra, error], error) {
 	reader, err := proto.MarshalWithReader(meta)
 	if err != nil {
 		return nil, err
 	}
 
 	req := broker.PeerBroker.NewRequest(ScanUserExtraWithUserMeta, reader)
-	_, res, err := broker.PeerBroker.DoAction(context.Background(), peerId, req)
+	_, res, err := broker.PeerBroker.DoAction(ctx, peerId, req)
 	if err != nil {
 		if res != nil {
 			defer res.Close()

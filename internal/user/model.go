@@ -78,9 +78,11 @@ type UserDevice struct {
 
 	UserID uint `gorm:"<-:create" json:"-" form:"-"`
 
-	PeerID        string `gorm:"<-:create;Index" json:"peerId" form:"peerId"`
-	Level         uint8  `gorm:"Index" json:"level" form:"level"`
 	PeerSignature []byte `json:"-" form:"-"`
+	PeerID        string `gorm:"<-:create;Index" json:"peerId" form:"peerId"`
+	Name          string `json:"name" form:"name"`
+	Memo          string `json:"memo" form:"memo"`
+	Level         uint8  `gorm:"Index" json:"level" form:"level"`
 	Enabled       bool   `json:"enabled" form:"enabled"`
 
 	Height          uint64 `json:"-" form:"-"`

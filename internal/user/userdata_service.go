@@ -2,11 +2,13 @@ package user
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"errors"
 	"iter"
 	"pan/internal/settings"
 	"pan/pkg/net"
+	"pan/pkg/repository"
 )
 
 var ErrUserDataServiceConsensusNotFound = errors.New("user.UserDataService Error: Consensus Not Found")
@@ -34,12 +36,15 @@ type UserDataService struct {
 	UserExtraBroker     *UserExtraBroker
 }
 
-func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
+func (service *UserDataService) Pull(ctx context.Context, peerId net.PeerID, meta UserMeta) error {
 
 	remoteMeta := parseRemoteUserMeta(meta)
-	remoteUser, err := service.UserDataBroker.Pull(peerId, remoteMeta)
+	remoteUser, err := service.UserDataBroker.Pull(ctx, peerId, remoteMeta)
 	if err != nil {
 		return err
+	}
+	if remoteUser.Height == meta.Height && remoteUser.Signature == meta.Signature && remoteUser.GenesisSignature == meta.GenesisSignature && remoteUser.Code == meta.Code {
+		return nil
 	}
 
 	user := parseUser(remoteUser)
@@ -58,7 +63,7 @@ func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
 	remoteUserMeta.Height = user.Height
 
 	// Verify consensus
-	remoteConsensusSeq, err := service.UserConsensusBroker.ScanWithUserMeta(peerId, &remoteUserMeta)
+	remoteConsensusSeq, err := service.UserConsensusBroker.ScanWithUserMeta(ctx, peerId, &remoteUserMeta)
 	if err != nil {
 		return err
 	}
@@ -120,7 +125,7 @@ func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
 	//
 
 	// Verify device signature
-	remoteDeviceSeq, err := service.UserDeviceBroker.ScanWithUserMeta(peerId, &remoteUserMeta)
+	remoteDeviceSeq, err := service.UserDeviceBroker.ScanWithUserMeta(ctx, peerId, &remoteUserMeta)
 	if err != nil {
 		return err
 	}
@@ -166,7 +171,7 @@ func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
 	//
 
 	// Verify extra signature
-	remoteExtraSeq, err := service.UserExtraBroker.ScanWithUserMeta(peerId, &remoteUserMeta)
+	remoteExtraSeq, err := service.UserExtraBroker.ScanWithUserMeta(ctx, peerId, &remoteUserMeta)
 	if err != nil {
 		return err
 	}
@@ -195,7 +200,7 @@ func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
 
 	var secret UserSecret
 	if hostDevice.Level == DeviceLevelOwner && remoteDevice.Level == DeviceLevelOwner {
-		remoteSecret, err := service.UserSecretBroker.Pull(peerId, &remoteUserMeta)
+		remoteSecret, err := service.UserSecretBroker.Pull(ctx, peerId, &remoteUserMeta)
 		if err != nil {
 			return err
 		}
@@ -204,12 +209,15 @@ func (service *UserDataService) Pull(peerId net.PeerID, meta UserMeta) error {
 		secret.UserSecretKey = remoteSecret.UserSecretKey
 	}
 
-	return service.UserDataRepository.Save(user, secret, userConsensuses, userDevices, userExtras)
+	return service.UserDataRepository.Save(ctx, user, secret, userConsensuses, userDevices, userExtras)
 }
 
-func (service *UserDataService) CheckWithUserMetaForTopic(peerId net.PeerID, meta UserMeta) (User, error) {
-	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
+func (service *UserDataService) CheckWithUserMetaForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta) (User, error) {
+	user, err := service.UserRepository.SelectWithGenesis(ctx, meta.GenesisSignature, meta.Code)
 	if err != nil {
+		if errors.Is(err, repository.ErrRepositoryRecordNotFound) {
+			return user, ErrUserDataServiceUserNotFound
+		}
 		return user, err
 	} else if user.ID <= 0 {
 		return user, ErrUserDataServiceUserNotFound
@@ -217,7 +225,7 @@ func (service *UserDataService) CheckWithUserMetaForTopic(peerId net.PeerID, met
 		return user, ErrUserDataServiceUserConflict
 	}
 
-	device, err := service.UserDeviceRepository.Select(user.ID, net.EncodePeerID(peerId))
+	device, err := service.UserDeviceRepository.Select(ctx, user.ID, net.EncodePeerID(peerId))
 	if err != nil {
 		return user, err
 	} else if device.ID <= 0 {
@@ -227,13 +235,13 @@ func (service *UserDataService) CheckWithUserMetaForTopic(peerId net.PeerID, met
 	return user, nil
 }
 
-func (service *UserDataService) PullForTopic(peerId net.PeerID, meta UserMeta) (User, error) {
-	user, err := service.CheckWithUserMetaForTopic(peerId, meta)
+func (service *UserDataService) PullForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta) (User, error) {
+	user, err := service.CheckWithUserMetaForTopic(ctx, peerId, meta)
 	if err != nil {
 		return User{}, err
 	}
 
-	consensus, err := service.UserConsensusRepository.SelectLatestWithUserID(user.ID)
+	consensus, err := service.UserConsensusRepository.SelectLatestWithUserID(ctx, user.ID)
 	if err != nil {
 		return User{}, err
 	}
@@ -245,7 +253,7 @@ func (service *UserDataService) PullForTopic(peerId net.PeerID, meta UserMeta) (
 	}
 
 	if consensus.Height > meta.Height {
-		consensus, err = service.UserConsensusRepository.Select(user.ID, meta.Height)
+		consensus, err = service.UserConsensusRepository.Select(ctx, user.ID, meta.Height)
 		if err != nil {
 			return User{}, err
 		}
@@ -261,9 +269,9 @@ func (service *UserDataService) PullForTopic(peerId net.PeerID, meta UserMeta) (
 	return user, err
 }
 
-func (service *UserDataService) Push(peerId net.PeerID, meta UserMeta, userId uint) error {
+func (service *UserDataService) Push(ctx context.Context, peerId net.PeerID, meta UserMeta, userId uint) error {
 	peerIdStr := net.EncodePeerID(peerId)
-	device, err := service.UserDeviceRepository.Select(userId, peerIdStr)
+	device, err := service.UserDeviceRepository.Select(ctx, userId, peerIdStr)
 	if err != nil {
 		return err
 	}
@@ -272,16 +280,15 @@ func (service *UserDataService) Push(peerId net.PeerID, meta UserMeta, userId ui
 	}
 
 	remoteMeta := parseRemoteUserMeta(meta)
-	return service.UserDataBroker.Push(peerId, remoteMeta, device.PeerSignature)
+	return service.UserDataBroker.Push(ctx, peerId, remoteMeta, device.PeerSignature)
 }
 
-func (service *UserDataService) PushForTopic(peerId net.PeerID, meta UserMeta, signature []byte) error {
-	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
+func (service *UserDataService) PushForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta, signature []byte) error {
+	user, err := service.UserRepository.SelectWithGenesis(ctx, meta.GenesisSignature, meta.Code)
 	if err != nil {
-		return err
-	}
-	if user.ID > 0 {
-		return ErrUserDataServiceUserConflict
+		if !errors.Is(err, repository.ErrRepositoryRecordNotFound) {
+			return err
+		}
 	}
 
 	err = verifyUserPeerSignature(meta.Code, meta.GenesisSignature, peerId, signature)
@@ -290,14 +297,18 @@ func (service *UserDataService) PushForTopic(peerId net.PeerID, meta UserMeta, s
 	}
 
 	var meta_ UserMeta
-	meta_.GenesisSignature = meta.GenesisSignature
-	meta_.Code = meta.Code
-	err = service.Pull(peerId, meta_)
+	if user.ID > 0 {
+		meta_ = parseUserMetaWithUser(user)
+	} else {
+		meta_.GenesisSignature = meta.GenesisSignature
+		meta_.Code = meta.Code
+	}
+	err = service.Pull(ctx, peerId, meta_)
 	return err
 }
 
-func (service *UserDataService) Clean(meta UserMeta) error {
-	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
+func (service *UserDataService) Clean(ctx context.Context, meta UserMeta) error {
+	user, err := service.UserRepository.SelectWithGenesis(ctx, meta.GenesisSignature, meta.Code)
 	if err != nil {
 		return err
 	}
@@ -308,5 +319,5 @@ func (service *UserDataService) Clean(meta UserMeta) error {
 		return ErrUserDataServiceUserConflict
 	}
 
-	return service.UserDataRepository.Clean(user)
+	return service.UserDataRepository.Clean(ctx, user)
 }

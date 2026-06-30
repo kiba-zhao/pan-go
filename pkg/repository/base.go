@@ -1,6 +1,9 @@
 package repository
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 type Repository interface {
 	SetupToRepository(db RepositoryDB) error
@@ -24,4 +27,12 @@ func (repo *RepositoryBase) DB() RepositoryDB {
 	repo.rw.RLock()
 	defer repo.rw.RUnlock()
 	return repo.db
+}
+
+func (repo *RepositoryBase) WithContext(ctx context.Context) RepositoryDB {
+	db := repo.DB()
+	if db != nil {
+		return db.WithContext(ctx)
+	}
+	return db
 }

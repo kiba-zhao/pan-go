@@ -2,6 +2,7 @@ package user
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"pan/pkg/net"
 )
@@ -20,9 +21,9 @@ type UserSecretService struct {
 	UserSecretBroker *UserSecretBroker
 }
 
-func (service *UserSecretService) Pull(peerId net.PeerID, meta UserMeta) error {
+func (service *UserSecretService) Pull(ctx context.Context, peerId net.PeerID, meta UserMeta) error {
 
-	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
+	user, err := service.UserRepository.SelectWithGenesis(ctx, meta.GenesisSignature, meta.Code)
 	if err != nil {
 		return err
 	}
@@ -33,7 +34,7 @@ func (service *UserSecretService) Pull(peerId net.PeerID, meta UserMeta) error {
 		return ErrUserSecretServiceUserConflict
 	}
 
-	secret, err := service.UserSecretRepository.SelectWithUserID(user.ID)
+	secret, err := service.UserSecretRepository.SelectWithUserID(ctx, user.ID)
 	if err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func (service *UserSecretService) Pull(peerId net.PeerID, meta UserMeta) error {
 		return nil
 	}
 
-	device, err := service.UserDeviceRepository.Select(user.ID, net.EncodePeerID(peerId))
+	device, err := service.UserDeviceRepository.Select(ctx, user.ID, net.EncodePeerID(peerId))
 	if err != nil {
 		return err
 	}
@@ -54,7 +55,7 @@ func (service *UserSecretService) Pull(peerId net.PeerID, meta UserMeta) error {
 	}
 
 	remoteMeta := parseRemoteUserMeta(meta)
-	remoteSecret, err := service.UserSecretBroker.Pull(peerId, remoteMeta)
+	remoteSecret, err := service.UserSecretBroker.Pull(ctx, peerId, remoteMeta)
 	if err != nil {
 		return err
 	}
@@ -62,13 +63,13 @@ func (service *UserSecretService) Pull(peerId net.PeerID, meta UserMeta) error {
 	secret.UserID = user.ID
 	secret.UserKey = remoteSecret.UserKey
 	secret.UserSecretKey = remoteSecret.UserSecretKey
-	_, err = service.UserSecretRepository.SaveWithUserID(secret)
+	_, err = service.UserSecretRepository.SaveWithUserID(ctx, secret)
 	return err
 }
 
-func (service *UserSecretService) PullForTopic(peerId net.PeerID, meta UserMeta) (UserSecret, error) {
+func (service *UserSecretService) PullForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta) (UserSecret, error) {
 
-	user, err := service.UserRepository.SelectWithGenesis(meta.GenesisSignature, meta.Code)
+	user, err := service.UserRepository.SelectWithGenesis(ctx, meta.GenesisSignature, meta.Code)
 	if err != nil {
 		return UserSecret{}, err
 	}
@@ -79,7 +80,7 @@ func (service *UserSecretService) PullForTopic(peerId net.PeerID, meta UserMeta)
 		return UserSecret{}, ErrUserSecretServiceUserConflict
 	}
 
-	device, err := service.UserDeviceRepository.Select(user.ID, net.EncodePeerID(peerId))
+	device, err := service.UserDeviceRepository.Select(ctx, user.ID, net.EncodePeerID(peerId))
 	if err != nil {
 		return UserSecret{}, err
 	}
@@ -91,7 +92,7 @@ func (service *UserSecretService) PullForTopic(peerId net.PeerID, meta UserMeta)
 		return UserSecret{}, ErrUserSecretServiceUserDeviceInvalid
 	}
 
-	secret, err := service.UserSecretRepository.SelectWithUserID(user.ID)
+	secret, err := service.UserSecretRepository.SelectWithUserID(ctx, user.ID)
 	if err != nil {
 		return UserSecret{}, err
 	}

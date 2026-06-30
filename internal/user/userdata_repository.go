@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"pan/pkg/repository"
 )
@@ -8,8 +9,8 @@ import (
 var ErrUserDataRepositoryInvalidData = errors.New("user.UserDataRepository Error: Invalid Data")
 
 type UserDataRepository interface {
-	Save(user User, secret UserSecret, userConsensuses []UserConsensus, userDevices []UserDevice, userExtras []UserExtra) error
-	Clean(user User) error
+	Save(ctx context.Context, user User, secret UserSecret, userConsensuses []UserConsensus, userDevices []UserDevice, userExtras []UserExtra) error
+	Clean(ctx context.Context, user User) error
 }
 
 type stdUserDataRepository struct {
@@ -18,8 +19,8 @@ type stdUserDataRepository struct {
 
 var _ = (UserDataRepository)((*stdUserDataRepository)(nil))
 
-func (repo *stdUserDataRepository) Save(user User, secret UserSecret, userConsensuses []UserConsensus, userDevices []UserDevice, userExtras []UserExtra) error {
-	db := repo.DB()
+func (repo *stdUserDataRepository) Save(ctx context.Context, user User, secret UserSecret, userConsensuses []UserConsensus, userDevices []UserDevice, userExtras []UserExtra) error {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return repository.ErrRepositoryDBUnavailable
 	}
@@ -108,7 +109,7 @@ func (repo *stdUserDataRepository) Save(user User, secret UserSecret, userConsen
 	}
 
 	if err != nil {
-		db.Rollback()
+		tx.Rollback()
 		return err
 	}
 
@@ -116,8 +117,8 @@ func (repo *stdUserDataRepository) Save(user User, secret UserSecret, userConsen
 	return results.Error
 }
 
-func (repo *stdUserDataRepository) Clean(user User) error {
-	db := repo.DB()
+func (repo *stdUserDataRepository) Clean(ctx context.Context, user User) error {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return repository.ErrRepositoryDBUnavailable
 	}

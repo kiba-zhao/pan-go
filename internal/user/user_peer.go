@@ -106,9 +106,11 @@ func parseUserDevice(device *RemoteUserDevice) UserDevice {
 	if device == nil {
 		return userDevice
 	}
-	userDevice.PeerID = device.PeerID
-	userDevice.Level = device.Level[0]
 	userDevice.PeerSignature = device.PeerSignature
+	userDevice.PeerID = device.PeerID
+	userDevice.Name = device.Name
+	userDevice.Memo = device.Memo
+	userDevice.Level = device.Level[0]
 	userDevice.Enabled = device.Enabled
 
 	userDevice.Height = device.Height
@@ -118,9 +120,11 @@ func parseUserDevice(device *RemoteUserDevice) UserDevice {
 
 func parseRemoteUserDevice(userDevice UserDevice) *RemoteUserDevice {
 	var device RemoteUserDevice
-	device.PeerID = userDevice.PeerID
-	device.Level = []byte{userDevice.Level}
 	device.PeerSignature = userDevice.PeerSignature
+	device.PeerID = userDevice.PeerID
+	device.Name = userDevice.Name
+	device.Memo = userDevice.Memo
+	device.Level = []byte{userDevice.Level}
 	device.Enabled = userDevice.Enabled
 
 	device.Height = userDevice.Height

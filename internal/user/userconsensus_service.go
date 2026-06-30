@@ -2,6 +2,7 @@ package user
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/binary"
@@ -22,27 +23,35 @@ type UserConsensusService struct {
 	UserDataService *UserDataService
 }
 
-func (service *UserConsensusService) ScanWithUserMetaForTopic(peerId net.PeerID, meta UserMeta) (iter.Seq2[UserConsensus, error], error) {
-
-	user, err := service.UserDataService.CheckWithUserMetaForTopic(peerId, meta)
+func (service *UserConsensusService) SelectWithUser(ctx context.Context, user User) (UserConsensus, error) {
+	consensus, err := service.UserConsensusRepository.Select(ctx, user.ID, user.Height)
 	if err != nil {
-		return nil, err
-	}
-
-	consensus, err := service.UserConsensusRepository.Select(user.ID, meta.Height)
-	if err != nil {
-		return nil, err
+		return consensus, err
 	}
 
 	if consensus.ID <= 0 {
-		return nil, ErrUserConsensusServiceConsensusNotFound
+		return consensus, ErrUserConsensusServiceConsensusNotFound
 	}
 
-	if consensus.Signature != meta.Signature {
-		return nil, ErrUserConsensusServiceConsensusConflict
+	if consensus.Signature != user.Signature {
+		return consensus, ErrUserConsensusServiceConsensusConflict
+	}
+	return consensus, nil
+}
+
+func (service *UserConsensusService) ScanWithUserMetaForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta) (iter.Seq2[UserConsensus, error], error) {
+
+	user, err := service.UserDataService.CheckWithUserMetaForTopic(ctx, peerId, meta)
+	if err != nil {
+		return nil, err
 	}
 
-	return service.UserConsensusRepository.ScanWithUserIDLessThanHeight(user.ID, meta.Height)
+	_, err = service.SelectWithUser(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return service.UserConsensusRepository.ScanWithUserIDLessThanHeight(ctx, user.ID, meta.Height)
 }
 
 func verifyUserConsensus(code string, genesisSignature string, userConsensus UserConsensus, preUserConsensus UserConsensus) error {

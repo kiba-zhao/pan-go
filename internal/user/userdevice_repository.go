@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"iter"
 	"pan/pkg/repository"
 	"strconv"
@@ -15,8 +16,8 @@ func generateUserDeviceTableName(userId uint) string {
 }
 
 type UserDeviceRepository interface {
-	Select(userId uint, peerId string) (UserDevice, error)
-	ScanWithUserID(userId uint) (iter.Seq2[UserDevice, error], error)
+	Select(ctx context.Context, userId uint, peerId string) (UserDevice, error)
+	ScanWithUserID(ctx context.Context, userId uint) (iter.Seq2[UserDevice, error], error)
 }
 
 type stdUserDeviceRepository struct {
@@ -25,8 +26,8 @@ type stdUserDeviceRepository struct {
 
 var _ = (UserDeviceRepository)((*stdUserDeviceRepository)(nil))
 
-func (repo *stdUserDeviceRepository) Select(userId uint, peerId string) (UserDevice, error) {
-	db := repo.DB()
+func (repo *stdUserDeviceRepository) Select(ctx context.Context, userId uint, peerId string) (UserDevice, error) {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return UserDevice{}, repository.ErrRepositoryDBUnavailable
 	}
@@ -41,8 +42,8 @@ func (repo *stdUserDeviceRepository) Select(userId uint, peerId string) (UserDev
 	return userDevice, results.Error
 }
 
-func (repo *stdUserDeviceRepository) ScanWithUserID(userId uint) (iter.Seq2[UserDevice, error], error) {
-	db := repo.DB()
+func (repo *stdUserDeviceRepository) ScanWithUserID(ctx context.Context, userId uint) (iter.Seq2[UserDevice, error], error) {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return nil, repository.ErrRepositoryDBUnavailable
 	}
@@ -57,14 +58,6 @@ func (repo *stdUserDeviceRepository) ScanWithUserID(userId uint) (iter.Seq2[User
 	if err != nil {
 		return nil, err
 	}
-	return func(yield func(UserDevice, error) bool) {
-		defer rows.Close()
-		for rows.Next() {
-			var userDevice UserDevice
-			err := db.ScanRows(rows, &userDevice)
-			if !yield(userDevice, err) {
-				break
-			}
-		}
-	}, nil
+	return repository.NewSeq2WithRows[UserDevice](rows, db), nil
+
 }

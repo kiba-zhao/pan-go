@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"pan/pkg/net"
 	"pan/pkg/proto"
 )
@@ -32,7 +33,7 @@ func (topic *UserDataTopic) Pull(ctx net.PeerServletContext, next net.PeerServle
 	}
 
 	meta := parseUserMeta(&userMeta)
-	user, err := topic.UserDataService.PullForTopic(peerId.(net.PeerID), meta)
+	user, err := topic.UserDataService.PullForTopic(context.Background(), peerId.(net.PeerID), meta)
 	if err != nil {
 		return err
 	}
@@ -67,6 +68,6 @@ func (topic *UserDataTopic) Push(ctx net.PeerServletContext, next net.PeerServle
 	}
 
 	meta := parseUserMeta(&userMeta)
-	err = topic.UserDataService.PushForTopic(peerId.(net.PeerID), meta, signature)
+	err = topic.UserDataService.PushForTopic(context.Background(), peerId.(net.PeerID), meta, signature)
 	return err
 }

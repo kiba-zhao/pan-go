@@ -18,14 +18,14 @@ type UserConsensusBroker struct {
 	PeerBroker *net.PeerBroker
 }
 
-func (broker *UserConsensusBroker) ScanWithUserMeta(peerId net.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserConsensus, error], error) {
+func (broker *UserConsensusBroker) ScanWithUserMeta(ctx context.Context, peerId net.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserConsensus, error], error) {
 	reader, err := proto.MarshalWithReader(meta)
 	if err != nil {
 		return nil, err
 	}
 
 	req := broker.PeerBroker.NewRequest(ScanUserConsensusWithUserMeta, reader)
-	_, res, err := broker.PeerBroker.DoAction(context.Background(), peerId, req)
+	_, res, err := broker.PeerBroker.DoAction(ctx, peerId, req)
 	if err != nil {
 		if res != nil {
 			defer res.Close()

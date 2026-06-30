@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"encoding/binary"
 	"iter"
 	"pan/pkg/net"
@@ -35,7 +36,7 @@ func (topic *UserConsensusTopic) ScanWithUserMeta(ctx net.PeerServletContext, ne
 	}
 
 	meta := parseUserMeta(&userMeta)
-	consensusSeq, err := topic.UserConsensusService.ScanWithUserMetaForTopic(peerId.(net.PeerID), meta)
+	consensusSeq, err := topic.UserConsensusService.ScanWithUserMetaForTopic(context.Background(), peerId.(net.PeerID), meta)
 	if err == nil && consensusSeq != nil {
 		consensusBytesSeq := parseUserConsensusBytesSeq(consensusSeq)
 		stream := NewIterStreamForSeq2(consensusBytesSeq)

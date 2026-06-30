@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"encoding/binary"
 	"iter"
 	"pan/pkg/net"
@@ -35,7 +36,7 @@ func (topic *UserDeviceTopic) ScanWithUserMeta(ctx net.PeerServletContext, next 
 	}
 
 	meta := parseUserMeta(&userMeta)
-	deviceSeq, err := topic.UserDeviceService.ScanWithUserMetaForTopic(peerId.(net.PeerID), meta)
+	deviceSeq, err := topic.UserDeviceService.ScanWithUserMetaForTopic(context.Background(), peerId.(net.PeerID), meta)
 	if err == nil && deviceSeq != nil {
 		deviceBytesSeq := parseUserDeviceBytesSeq(deviceSeq)
 		stream := NewIterStreamForSeq2(deviceBytesSeq)

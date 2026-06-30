@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"encoding/binary"
 	"iter"
 	"pan/pkg/net"
@@ -36,7 +37,7 @@ func (topic *UserExtraTopic) ScanWithUserMeta(ctx net.PeerServletContext, next n
 
 	meta := parseUserMeta(&userMeta)
 
-	extraSeq, err := topic.UserExtraService.ScanWithUserMeta(peerId.(net.PeerID), meta)
+	extraSeq, err := topic.UserExtraService.ScanWithUserMeta(context.Background(), peerId.(net.PeerID), meta)
 	if err == nil && extraSeq != nil {
 		extraBytesSeq := parseUserExtraBytesSeq(extraSeq)
 		stream := NewIterStreamForSeq2(extraBytesSeq)

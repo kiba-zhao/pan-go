@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"iter"
 	"pan/pkg/repository"
 	"strconv"
@@ -15,9 +16,9 @@ func generateUserConsensusTableName(userId uint) string {
 }
 
 type UserConsensusRepository interface {
-	Select(userId uint, height uint64) (UserConsensus, error)
-	SelectLatestWithUserID(userId uint) (UserConsensus, error)
-	ScanWithUserIDLessThanHeight(userId uint, height uint64) (iter.Seq2[UserConsensus, error], error)
+	Select(ctx context.Context, userId uint, height uint64) (UserConsensus, error)
+	SelectLatestWithUserID(ctx context.Context, userId uint) (UserConsensus, error)
+	ScanWithUserIDLessThanHeight(ctx context.Context, userId uint, height uint64) (iter.Seq2[UserConsensus, error], error)
 }
 
 type stdUserConsensusRepository struct {
@@ -26,11 +27,12 @@ type stdUserConsensusRepository struct {
 
 var _ = (UserConsensusRepository)((*stdUserConsensusRepository)(nil))
 
-func (repo *stdUserConsensusRepository) Select(userId uint, height uint64) (UserConsensus, error) {
-	db := repo.DB()
+func (repo *stdUserConsensusRepository) Select(ctx context.Context, userId uint, height uint64) (UserConsensus, error) {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return UserConsensus{}, repository.ErrRepositoryDBUnavailable
 	}
+
 	userConsensusTableName := generateUserConsensusTableName(userId)
 	if !db.Migrator().HasTable(userConsensusTableName) {
 		return UserConsensus{}, nil
@@ -43,11 +45,12 @@ func (repo *stdUserConsensusRepository) Select(userId uint, height uint64) (User
 	return userConsensus, results.Error
 }
 
-func (repo *stdUserConsensusRepository) SelectLatestWithUserID(userId uint) (UserConsensus, error) {
-	db := repo.DB()
+func (repo *stdUserConsensusRepository) SelectLatestWithUserID(ctx context.Context, userId uint) (UserConsensus, error) {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return UserConsensus{}, repository.ErrRepositoryDBUnavailable
 	}
+
 	userConsensusTableName := generateUserConsensusTableName(userId)
 	if !db.Migrator().HasTable(userConsensusTableName) {
 		return UserConsensus{}, nil
@@ -60,11 +63,12 @@ func (repo *stdUserConsensusRepository) SelectLatestWithUserID(userId uint) (Use
 	return userConsensus, results.Error
 }
 
-func (repo *stdUserConsensusRepository) ScanWithUserIDLessThanHeight(userId uint, height uint64) (iter.Seq2[UserConsensus, error], error) {
-	db := repo.DB()
+func (repo *stdUserConsensusRepository) ScanWithUserIDLessThanHeight(ctx context.Context, userId uint, height uint64) (iter.Seq2[UserConsensus, error], error) {
+	db := repo.WithContext(ctx)
 	if db == nil {
 		return nil, repository.ErrRepositoryDBUnavailable
 	}
+
 	userConsensusTableName := generateUserConsensusTableName(userId)
 	if !db.Migrator().HasTable(userConsensusTableName) {
 		return nil, nil
@@ -75,14 +79,5 @@ func (repo *stdUserConsensusRepository) ScanWithUserIDLessThanHeight(userId uint
 	if err != nil {
 		return nil, err
 	}
-	return func(yield func(UserConsensus, error) bool) {
-		defer rows.Close()
-		for rows.Next() {
-			var userConsensus UserConsensus
-			err := db.ScanRows(rows, &userConsensus)
-			if !yield(userConsensus, err) {
-				break
-			}
-		}
-	}, nil
+	return repository.NewSeq2WithRows[UserConsensus](rows, db), nil
 }
