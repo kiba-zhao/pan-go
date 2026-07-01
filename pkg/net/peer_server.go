@@ -7,6 +7,11 @@ import (
 	"pan/pkg/servlet"
 )
 
+type PeerServerListener interface {
+	OnServePeerConn(ctx context.Context, conn PeerConn) error
+	OnClosePeerConn(ctx context.Context, conn PeerConn) error
+}
+
 type PeerServer interface {
 	Serve(ctx context.Context, conn PeerConn) error
 }

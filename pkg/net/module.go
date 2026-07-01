@@ -104,6 +104,9 @@ func (module *stdModule) Init(ctx context.Context, registry runtime.Registry) er
 		if err == nil {
 			err = module.quicModule.reloadGuides(ctx, registry)
 		}
+		if err == nil {
+			err = module.quicModule.reloadListeners(ctx, registry)
+		}
 	}
 	return err
 }
@@ -130,6 +133,9 @@ func (module *stdModule) Defer(ctx context.Context) error {
 	}
 	if err == nil {
 		err = module.quicModule.reloadGuides(ctx, registry)
+	}
+	if err == nil {
+		err = module.quicModule.reloadListeners(ctx, registry)
 	}
 	return err
 }
@@ -247,6 +253,7 @@ func (module *stdQuicModule) EngineTypes() []reflect.Type {
 		reflect.TypeFor[PeerTopicProvider](),
 		reflect.TypeFor[PeerAppModule](),
 		reflect.TypeFor[QuicGuide](),
+		reflect.TypeFor[PeerServerListener](),
 	}
 }
 
@@ -301,6 +308,15 @@ func (module *stdQuicModule) reloadGuides(ctx context.Context, registry runtime.
 	}
 	guides := runtime.ModulesForType[QuicGuide](registry)
 	module.quicAgent.quicNetwork.setupGuides(guides)
+	return nil
+}
+
+func (module *stdQuicModule) reloadListeners(ctx context.Context, registry runtime.Registry) error {
+	if ctxErr := runtime.EnsureContext(ctx); ctxErr != nil {
+		return ctxErr
+	}
+	listeners := runtime.ModulesForType[PeerServerListener](registry)
+	module.quicServer.setupListeners(listeners)
 	return nil
 }
 

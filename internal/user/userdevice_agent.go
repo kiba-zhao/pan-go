@@ -18,8 +18,6 @@ var ErrUserDeviceSyncAgentSyncOngoing = errors.New("user.UserDeviceSyncAgent Err
 var ErrUserDeviceSyncAgentReviseOngoing = errors.New("user.UserDeviceSyncAgent Error: Revise Ongoing")
 var ErrUserDeviceSyncAgentSyncInvalidPeer = errors.New("user.UserDeviceSyncAgent Error: Sync Invalid Peer")
 
-var UserDeviceSyncAliveTimeout = time.Second * 6
-
 type UserDeviceSyncErr struct {
 	userID      uint
 	peerId      net.PeerID
@@ -45,20 +43,48 @@ type UserDeviceSyncAgent struct {
 	syncCh       chan struct{}
 	syncLocker   sync.Mutex
 	syncReload   bool
-	syncEnabled  bool
 	syncInterval time.Duration
 
 	peerId net.PeerID
 	rw     sync.RWMutex
 }
 
+func (agent *UserDeviceSyncAgent) setup(config *UserConfig) {
+	agent.logger.Debug("user.UserDeviceSyncAgent", "setup begin")
+	defer agent.logger.Debug("user.UserDeviceSyncAgent", "setup end")
+
+	agent.syncLocker.Lock()
+	defer agent.syncLocker.Unlock()
+
+	changed := false
+	peerId := config.PeerID()
+	syncInterval := config.SyncInterval()
+
+	if syncInterval != agent.syncInterval {
+		agent.syncInterval = syncInterval
+		changed = true
+	}
+
+	if !bytes.Equal(agent.peerId, peerId) {
+		agent.peerId = peerId
+		changed = true
+	}
+
+	if !changed || agent.syncReload {
+		return
+	}
+
+	agent.syncReload = true
+	agent.syncCh <- struct{}{}
+
+}
+
 func (agent *UserDeviceSyncAgent) doSync(ctx context.Context) error {
-	agent.logger.Debug("user.UserDeviceSyncAgent", "sync begin")
-	defer agent.logger.Debug("user.UserDeviceSyncAgent", "sync end")
+	agent.logger.Debug("user.UserDeviceSyncAgent", "doSync begin")
+	defer agent.logger.Debug("user.UserDeviceSyncAgent", "doSync end")
 
 	var err error
 	var delayIntervalCh <-chan time.Time
-	var syncEnabled bool
 	var syncInterval time.Duration
 
 	for {
@@ -70,7 +96,6 @@ func (agent *UserDeviceSyncAgent) doSync(ctx context.Context) error {
 			case <-agent.syncCh:
 				agent.syncLocker.Lock()
 				agent.syncReload = true
-				syncEnabled = agent.syncEnabled
 				syncInterval = agent.syncInterval
 				agent.syncLocker.Unlock()
 			}
@@ -81,12 +106,10 @@ func (agent *UserDeviceSyncAgent) doSync(ctx context.Context) error {
 			case <-agent.syncCh:
 				agent.syncLocker.Lock()
 				agent.syncReload = true
-				syncEnabled = agent.syncEnabled
 				syncInterval = agent.syncInterval
 				agent.syncLocker.Unlock()
 			case <-delayIntervalCh:
 				agent.syncLocker.Lock()
-				syncEnabled = agent.syncEnabled
 				syncInterval = agent.syncInterval
 				agent.syncLocker.Unlock()
 			}
@@ -94,11 +117,6 @@ func (agent *UserDeviceSyncAgent) doSync(ctx context.Context) error {
 
 		if err != nil {
 			break
-		}
-
-		if !syncEnabled {
-			delayIntervalCh = nil
-			continue
 		}
 
 		err = agent.sync(ctx)
@@ -222,14 +240,41 @@ func (agent *UserDeviceSyncAgent) syncFromUserDevice(ctx context.Context, user U
 	return err
 }
 
-func (agent *UserDeviceSyncAgent) purge(user User, peerId net.PeerID) {
-	agent.syncRW.Lock()
-	defer agent.syncRW.Unlock()
-	syncErrKey := generateUserDeviceSyncErrKey(user.ID, peerId)
-	syncErrIdx, syncErrOK := slices.BinarySearchFunc(agent.syncErrs, syncErrKey, compareUserDeviceSyncErr)
-	if syncErrOK {
-		agent.syncErrs = slices.Delete(agent.syncErrs, syncErrIdx, syncErrIdx+1)
+func (agent *UserDeviceSyncAgent) purge(ctx context.Context, peerId net.PeerID) error {
+
+	userSeq, err := agent.UserService.Scan(ctx)
+	if err != nil {
+		return err
 	}
+
+	for user, err := range userSeq {
+		if err != nil || ctx.Err() != nil {
+			break
+		}
+
+		_, err = agent.UserConsensusService.SelectWithUser(ctx, user)
+		if err != nil {
+			// TODO: handle error
+			continue
+		}
+
+		_, err = agent.UserDeviceService.SelectWithUser(ctx, user, peerId)
+		if err != nil {
+			// TODO: handle error
+			continue
+		}
+
+		agent.syncRW.Lock()
+		syncErrKey := generateUserDeviceSyncErrKey(user.ID, peerId)
+		syncErrIdx, syncErrOK := slices.BinarySearchFunc(agent.syncErrs, syncErrKey, compareUserDeviceSyncErr)
+		if syncErrOK {
+			agent.syncErrs = slices.Delete(agent.syncErrs, syncErrIdx, syncErrIdx+1)
+		}
+		agent.syncRW.Unlock()
+	}
+
+	return nil
+
 }
 
 func (agent *UserDeviceSyncAgent) update(ctx context.Context, peerId net.PeerID) error {

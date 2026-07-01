@@ -18,8 +18,8 @@ import (
 var ErrQuicServerInvalidQuicConn = errors.New("net.QuicServer Error: Invalid QuicConn")
 var ErrQuicServerPeerGuardDenied = errors.New("net.QuicServer Error: PeerGuard Denied")
 
-const QUIC_SERVER_LIMIT_MAX_SIZE = 256
-const QUIC_SERVER_LIMIT_TIMEOUT = 6 * time.Second
+const QuicServerLimitMaxSize = 256
+const QuicServerLimitTimeout = 6 * time.Second
 
 type stdQuicServer struct {
 	logger  log.Logger
@@ -43,9 +43,18 @@ type stdQuicServer struct {
 
 	limitIds    [][]byte
 	limitLocker sync.Mutex
+
+	listeners   []PeerServerListener
+	listenersRW sync.RWMutex
 }
 
 var _ = (PeerServer)((*stdQuicServer)(nil))
+
+func (server *stdQuicServer) setupListeners(listeners []PeerServerListener) {
+	server.listenersRW.Lock()
+	defer server.listenersRW.Unlock()
+	server.listeners = listeners
+}
 
 func (server *stdQuicServer) setupPeerServlet(peerServlet PeerServlet) {
 	server.servletRW.Lock()
@@ -256,11 +265,17 @@ func (server *stdQuicServer) serveQuicConn(ctx context.Context, conn *stdQuicCon
 	var passport uint8
 	if len(limitId) > 0 {
 		passport = PeerGuardDefault
-		ctx_, cancel = context.WithTimeout(ctx, QUIC_SERVER_LIMIT_TIMEOUT)
+		ctx_, cancel = context.WithTimeout(ctx, QuicServerLimitTimeout)
 		defer cancel()
 	} else {
 		passport = PeerGuardAllow
 		ctx_ = ctx
+
+		err = server.servePeerConn(ctx_, conn)
+		if err != nil {
+			return err
+		}
+		defer server.closePeerConn(ctx_, conn)
 	}
 
 	for {
@@ -291,6 +306,11 @@ func (server *stdQuicServer) serveQuicConn(ctx context.Context, conn *stdQuicCon
 			server.release(limitId)
 
 			ctx_ = ctx
+			err = server.servePeerConn(ctx_, conn)
+			if err != nil {
+				break
+			}
+			defer server.closePeerConn(ctx_, conn)
 		}
 	}
 
@@ -387,7 +407,7 @@ func (server *stdQuicServer) restrict(quicConn *stdQuicConn) []byte {
 
 	server.limitLocker.Lock()
 	defer server.limitLocker.Unlock()
-	if len(server.limitIds) >= QUIC_SERVER_LIMIT_MAX_SIZE {
+	if len(server.limitIds) >= QuicServerLimitMaxSize {
 		return nil
 	}
 
@@ -406,6 +426,36 @@ func (server *stdQuicServer) release(limitId []byte) {
 	if ok {
 		server.limitIds = slices.Delete(server.limitIds, idx, idx+1)
 	}
+}
+
+func (server *stdQuicServer) servePeerConn(ctx context.Context, conn PeerConn) error {
+	server.listenersRW.RLock()
+	listeners := server.listeners
+	server.listenersRW.RUnlock()
+
+	var err error
+	for _, listener := range listeners {
+		err = listener.OnServePeerConn(ctx, conn)
+		if err != nil {
+			break
+		}
+	}
+	return err
+}
+
+func (server *stdQuicServer) closePeerConn(ctx context.Context, conn PeerConn) error {
+	server.listenersRW.RLock()
+	listeners := server.listeners
+	server.listenersRW.RUnlock()
+
+	var err error
+	for _, listener := range listeners {
+		err = listener.OnClosePeerConn(ctx, conn)
+		if err != nil {
+			break
+		}
+	}
+	return err
 }
 
 func newQuicTransport(addr string, port uint16) (*net.IPNet, *quic.Transport, error) {

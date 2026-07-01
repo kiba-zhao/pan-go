@@ -3,6 +3,7 @@ package gobase
 import (
 	"pan/internal/appinfo"
 	"pan/internal/settings"
+	"pan/internal/user"
 	"pan/pkg/bootstrap"
 	"pan/pkg/net"
 	"pan/pkg/repository"
@@ -38,6 +39,7 @@ func (module *stdModule) Modules() []interface{} {
 		modules,
 		settings.New(),
 		appinfo.New(),
+		user.New(),
 		bootstrap.Bootstrap(),
 	)
 	return modules

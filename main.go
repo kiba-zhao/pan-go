@@ -12,8 +12,8 @@ import (
 func main() {
 
 	logger := log.Default()
-	logger.Debug("main", "begin")
-	defer logger.Debug("main", "end")
+	logger.Debug("main", "main begin")
+	defer logger.Debug("main", "main end")
 
 	cfg := gobase.NewSettingsConfig(log.Default())
 	module := gobase.New(
@@ -28,6 +28,6 @@ func main() {
 	}
 
 	if err != nil && !runtime.IsAbort(err) {
-		logger.Error("main", "Run Error:"+err.Error())
+		logger.Error("main", "runtime Error:"+err.Error())
 	}
 }
