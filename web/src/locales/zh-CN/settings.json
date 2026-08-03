@@ -1,0 +1,19 @@
+{
+    "main":{
+        "title":"我的设置",
+        "subtitle":"设置"
+    },
+    "broadcast-addrs":{
+        "main":{
+            "title":"广播地址"
+        }
+    },
+    "public-addrs":{
+        "main":{
+            "title":"公共地址"
+        }
+    },
+    "header-extra":{
+        "back":"返回"
+    }
+}

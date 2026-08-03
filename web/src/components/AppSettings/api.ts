@@ -3,7 +3,7 @@
  */
 import { withJSONBody, withMethod, withPath } from "fetch-utils";
 
-import { fetchOne } from "../../utils/api";
+import { fetchOne } from "../../lib/api";
 
 export type AppSettings = {
   name: string;
@@ -37,12 +37,12 @@ export async function selectAllAppSettings(): Promise<AppSettings> {
  * @returns A promise that resolves to the updated app settings.
  */
 export async function saveAppSettings(
-  fields: AppSettingsFields
+  fields: AppSettingsFields,
 ): Promise<AppSettings> {
   const settings_ = await fetchOne(
     withPath("app/settings", "merge"),
     withMethod("PATCH"),
-    withJSONBody(fields)
+    withJSONBody(fields),
   );
   return settings_;
 }

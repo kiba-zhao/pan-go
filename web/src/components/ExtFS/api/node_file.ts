@@ -2,7 +2,7 @@
  * ExtFSNodeFile API Definition File
  */
 import { withPath, withQuery } from "fetch-utils";
-import { fetchMany, fetchOne } from "../../../utils/api";
+import { fetchMany, fetchOne } from "../../../lib/api";
 import type { ExtFSNodeItem } from "./node_item";
 
 export type ExtFSNodeFileSearchCondition = Partial<
@@ -21,11 +21,11 @@ export type ExtFSNodeFile = {
  */
 export async function searchExtFSNodeFiles(
   itemId: ExtFSNodeFile["itemId"],
-  { parentPath, ...opts }: ExtFSNodeFileSearchCondition
+  { parentPath, ...opts }: ExtFSNodeFileSearchCondition,
 ): Promise<ExtFSNodeFile[]> {
   const [_, nodeItems] = await fetchMany(
     withPath(`extfs/node-items/${itemId}/_files`, "merge"),
-    withQuery({ parentPath: parentPath || "", ...opts }, "merge")
+    withQuery({ parentPath: parentPath || "", ...opts }, "merge"),
   );
   return nodeItems;
 }
@@ -37,9 +37,9 @@ export async function searchExtFSNodeFiles(
  */
 export async function selectExtFSNodeFile(
   itemId: ExtFSNodeFile["itemId"],
-  filePath: ExtFSNodeFile["filePath"]
+  filePath: ExtFSNodeFile["filePath"],
 ): Promise<ExtFSNodeFile> {
   return await fetchOne(
-    withPath(`extfs/node-items/${itemId}/_files/${filePath}`, "merge")
+    withPath(`extfs/node-items/${itemId}/_files/${filePath}`, "merge"),
   );
 }

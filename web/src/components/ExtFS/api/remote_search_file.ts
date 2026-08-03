@@ -8,7 +8,7 @@ import {
   withRequestInit,
 } from "fetch-utils";
 import type { FetchContextHandle } from "fetch-utils";
-import { ETagHeaderRespond, fetchMany } from "../../../utils/api";
+import { ETagHeaderRespond, fetchMany } from "../../../lib/api";
 import type { AppNode } from "../../AppNode/api";
 import type {
   ExtFSSearchFileSearchCondition,
@@ -32,7 +32,7 @@ export type ExtFSRemoteSearchFileSearchOpts = {
 export async function searchExtFSRemoteSearchFileResults(
   peerId: AppNode["peerId"],
   condition: ExtFSRemoteSearchFileSearchCondition,
-  opts?: ExtFSRemoteSearchFileSearchOpts
+  opts?: ExtFSRemoteSearchFileSearchOpts,
 ): Promise<ExtFSSearchFileSearchResults> {
   const { _start, _end, ...params } = condition;
   const condition_: Record<string, string> = {
@@ -50,7 +50,7 @@ export async function searchExtFSRemoteSearchFileResults(
     ...handles,
     withPath(`extfs/remotes/${peerId}/search-files`, "merge"),
     withQuery(condition_, "merge"),
-    withResponds([ETagHeaderRespond], "merge")
+    withResponds([ETagHeaderRespond], "merge"),
   );
   return [etag, total, searchFiles];
 }

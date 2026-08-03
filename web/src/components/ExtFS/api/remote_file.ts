@@ -2,7 +2,7 @@
  * ExtFSRemoteFile API Definition File
  */
 import { withPath, withQuery } from "fetch-utils";
-import { fetchMany, fetchOne } from "../../../utils/api";
+import { fetchMany, fetchOne } from "../../../lib/api";
 import type { ExtFSRemoteItem } from "./remote_item";
 
 export type ExtFSRemoteFileSearchCondition = Partial<
@@ -23,11 +23,11 @@ export type ExtFSRemoteFile = {
 export async function searchExtFSRemoteFiles(
   peerId: ExtFSRemoteFile["peerId"],
   itemId: ExtFSRemoteFile["itemId"],
-  { parentPath, ...opts }: ExtFSRemoteFileSearchCondition
+  { parentPath, ...opts }: ExtFSRemoteFileSearchCondition,
 ): Promise<ExtFSRemoteFile[]> {
   const [_, remotefiles] = await fetchMany(
     withPath(`extfs/remotes/${peerId}/remote-items/${itemId}/_files`, "merge"),
-    withQuery({ parentPath: parentPath || "", ...opts }, "merge")
+    withQuery({ parentPath: parentPath || "", ...opts }, "merge"),
   );
 
   return remotefiles;
@@ -43,12 +43,12 @@ export async function searchExtFSRemoteFiles(
 export async function selectExtFSRemoteFile(
   peerId: ExtFSRemoteFile["peerId"],
   itemId: ExtFSRemoteFile["itemId"],
-  filePath: ExtFSRemoteFile["filePath"]
+  filePath: ExtFSRemoteFile["filePath"],
 ): Promise<ExtFSRemoteFile> {
   return await fetchOne(
     withPath(
       `extfs/remotes/${peerId}/remote-items/${itemId}/_files/${filePath}`,
-      "merge"
-    )
+      "merge",
+    ),
   );
 }

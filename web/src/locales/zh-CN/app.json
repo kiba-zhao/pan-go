@@ -68,5 +68,23 @@
     "FetchError": {
       "500": "系统出现异常"
     }
+  },
+  "navigations": {
+    "dashboard": "仪表盘",
+    "chat": "智能对话",
+    "clusters": "我的集群",
+    "apps": "我的应用",
+    "notifications": "应用通知",
+    "settings": "我的设置"
+  },
+  "pages": {
+    "loading": {
+      "title": "加载中...",
+      "description": "系统正在全力加载，请稍后..."
+    },
+    "notFound": {
+      "title": "404 未知内容",
+      "description": "无法找到您要访问的内容！"
+    }
   }
 }

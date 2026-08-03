@@ -1,19 +1,5 @@
 html,body {
-  margin: 0;
+  margin: 0; 
   padding: 0;
-  overflow: hidden;
-}
-
-#root {
-  height: 100vh;
-}
-
-.master-main {
-  height: calc(100vh - 64px);
-}
-
-@media (max-width: 768px) {
-  .master-main {
-    height: calc(100vh - 56px);
-  }
+  height: 100%;
 }

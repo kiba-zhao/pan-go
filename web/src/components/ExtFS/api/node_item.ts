@@ -2,7 +2,7 @@
  * ExtFSNodeItem API Definition File
  */
 import { withJSONBody, withMethod, withPath } from "fetch-utils";
-import { fetchMany, fetchOne } from "../../../utils/api";
+import { fetchMany, fetchOne } from "../../../lib/api";
 
 export type ExtFSNodeItem = {
   id: number;
@@ -49,12 +49,12 @@ export async function selectAllExtFSNodeItems(): Promise<ExtFSNodeItem[]> {
  */
 export async function saveExtFSNodeItem(
   fields: ExtFSNodeItemFields,
-  id?: ExtFSNodeItem["id"]
+  id?: ExtFSNodeItem["id"],
 ): Promise<ExtFSNodeItem> {
   return await fetchOne(
     withPath(`extfs/node-items${id ? `/${id}` : ""}`, "merge"),
     withMethod(id ? "PATCH" : "POST"),
-    withJSONBody(fields)
+    withJSONBody(fields),
   );
 }
 
@@ -65,7 +65,7 @@ export async function saveExtFSNodeItem(
  * @returns node item.
  */
 export async function selectExtFSNodeItem(
-  id: ExtFSNodeItem["id"]
+  id: ExtFSNodeItem["id"],
 ): Promise<ExtFSNodeItem> {
   return await fetchOne(withPath(`extfs/node-items/${id}`, "merge"));
 }
@@ -78,6 +78,6 @@ export async function selectExtFSNodeItem(
 export async function deleteExtFSNodeItem(id: ExtFSNodeItem["id"]) {
   return await fetchOne(
     withPath(`extfs/node-items/${id}`, "merge"),
-    withMethod("DELETE")
+    withMethod("DELETE"),
   );
 }

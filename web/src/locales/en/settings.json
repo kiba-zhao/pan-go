@@ -1,0 +1,19 @@
+{
+    "main":{
+        "title":"My Settings",
+        "subtitle":"Settings"
+    },
+    "broadcast-addrs":{
+        "main":{
+            "title":"Broadcast Address"
+        }
+    },
+    "public-addrs":{
+        "main":{
+            "title":"Public Address"
+        }
+    },
+    "header-extra":{
+        "back":"Back"
+    }
+}

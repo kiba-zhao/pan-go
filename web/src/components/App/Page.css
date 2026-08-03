@@ -1,0 +1,33 @@
+@reference "./Theme.css";
+
+@layer base {
+   body {
+        @apply overflow-y-auto;
+    }
+
+    #root {
+        @apply size-full flex flex-col;
+    }
+
+    /*  ul {
+       @apply list-none;
+    }
+
+    a {
+        @apply no-underline;
+    } */
+
+}
+
+@layer components {
+
+    /* .app-base {
+        font-family: var(--font-sans);
+        
+        @apply bg-background text-foreground;
+    }
+
+    .app-sidebar {
+        @apply bg-sidebar text-sidebar-foreground border-sidebar-border;
+    } */
+}

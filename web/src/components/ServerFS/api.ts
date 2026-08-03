@@ -2,7 +2,7 @@
  * DiskFile API Definition File
  */
 import { withPath, withQuery } from "fetch-utils";
-import { fetchMany } from "../../utils/api";
+import { fetchMany } from "../../lib/api";
 
 export type DiskFile = {
   id: string;
@@ -29,10 +29,10 @@ export type DiskFileSearchCondition = {
  */
 
 export async function searchDiskFiles(
-  condition: DiskFileSearchCondition
+  condition: DiskFileSearchCondition,
 ): Promise<[number, DiskFile[]]> {
   return await fetchMany(
     withPath("app/disk-files", "merge"),
-    withQuery(condition)
+    withQuery(condition),
   );
 }

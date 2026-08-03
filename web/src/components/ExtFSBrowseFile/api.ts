@@ -1,2 +1,2 @@
 export * from "../ExtFS/api";
-export { ROOT_PATH } from "../../utils/api";
+export { ROOT_PATH } from "../../lib/api";

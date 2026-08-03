@@ -2,7 +2,7 @@
  * ExtFSSearchItem API Definition File
  */
 import { withJSONBody, withMethod, withPath, withQuery } from "fetch-utils";
-import { fetchMany, fetchOne } from "../../../utils/api";
+import { fetchMany, fetchOne } from "../../../lib/api";
 
 export type ExtFSSearchItemSearchCondition = {
   q?: string;
@@ -28,13 +28,13 @@ export type ExtFSSearchItemFields = Omit<
  * @returns array of ExtFSSearchItem
  */
 export async function searchExtFSSearchItems(
-  condition: ExtFSSearchItemSearchCondition
+  condition: ExtFSSearchItemSearchCondition,
 ): Promise<ExtFSSearchItem[]> {
   const { limit, ...queries } = condition;
   const _limit = limit != void 0 ? limit.toString() : void 0;
   const [_, searchItems] = await fetchMany(
     withPath("extfs/search-items", "merge"),
-    withQuery(_limit ? { ...queries, _end: _limit } : queries, "merge")
+    withQuery(_limit ? { ...queries, _end: _limit } : queries, "merge"),
   );
   return searchItems;
 }
@@ -47,7 +47,7 @@ export async function searchExtFSSearchItems(
 export async function deleteExtFSSearchItem(id: ExtFSSearchItem["id"]) {
   return await fetchOne(
     withPath(`extfs/search-items/${id}`, "merge"),
-    withMethod("DELETE")
+    withMethod("DELETE"),
   );
 }
 
@@ -60,11 +60,11 @@ export async function deleteExtFSSearchItem(id: ExtFSSearchItem["id"]) {
  */
 export async function saveExtFSSearchItem(
   fields: ExtFSSearchItemFields,
-  id?: ExtFSSearchItem["id"]
+  id?: ExtFSSearchItem["id"],
 ): Promise<ExtFSSearchItem> {
   return await fetchOne(
     withPath(`extfs/search-items/${id || ""}`, "merge"),
     withMethod(id ? "PATCH" : "POST"),
-    withJSONBody(fields)
+    withJSONBody(fields),
   );
 }

@@ -1,5 +1,5 @@
 import { withJSONBody, withMethod, withPath, withQuery } from "fetch-utils";
-import { fetchOne, fetchMany } from "../../utils/api";
+import { fetchOne, fetchMany } from "../../lib/api";
 
 export type AppNode = {
   id: number;
@@ -24,7 +24,7 @@ export type AppNodeSearchCondition = {
 };
 
 export async function selectAllAppNodes(
-  condition?: AppNodeSearchCondition
+  condition?: AppNodeSearchCondition,
 ): Promise<AppNode[]> {
   const query = new URLSearchParams({
     q: condition?.q || "",
@@ -38,7 +38,7 @@ export async function selectAllAppNodes(
 
   const [_, nodes] = await fetchMany(
     withPath("app/nodes", "merge"),
-    withQuery(query, "merge")
+    withQuery(query, "merge"),
   );
 
   return nodes;
@@ -50,18 +50,18 @@ export async function selectAppNode(id: AppNode["id"]): Promise<AppNode> {
 
 export async function saveAppNode(
   fields: AppNodeFields,
-  id?: AppNode["id"]
+  id?: AppNode["id"],
 ): Promise<AppNode> {
   return await fetchOne(
     withPath(`app/nodes${id ? `/${id}` : ""}`, "merge"),
     withMethod(id ? "PATCH" : "POST"),
-    withJSONBody(fields)
+    withJSONBody(fields),
   );
 }
 
 export async function deleteAppNode(id: AppNode["id"]) {
   return await fetchOne(
     withPath(`app/nodes/${id}`, "merge"),
-    withMethod("DELETE")
+    withMethod("DELETE"),
   );
 }

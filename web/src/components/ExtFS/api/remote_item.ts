@@ -2,7 +2,7 @@
  * ExtFSRemoteItem API Definition File
  */
 import { withPath } from "fetch-utils";
-import { fetchMany, fetchOne } from "../../../utils/api";
+import { fetchMany, fetchOne } from "../../../lib/api";
 import type { ExtFSNodeItem } from "./node_item";
 import type { AppNode } from "../../AppNode/api";
 
@@ -18,10 +18,10 @@ export type ExtFSRemoteItem = {
  * @returns A list of remote items.
  */
 export async function searchExtFSRemoteItems(
-  peerId: ExtFSRemoteItem["peerId"]
+  peerId: ExtFSRemoteItem["peerId"],
 ): Promise<ExtFSRemoteItem[]> {
   const [_, remoteItems] = await fetchMany(
-    withPath(`extfs/remotes/${peerId}/remote-items`, "merge")
+    withPath(`extfs/remotes/${peerId}/remote-items`, "merge"),
   );
   return remoteItems;
 }
@@ -34,9 +34,9 @@ export async function searchExtFSRemoteItems(
  */
 export async function selectExtFSRemoteItem(
   peerId: ExtFSRemoteItem["peerId"],
-  itemId: ExtFSRemoteItem["itemId"]
+  itemId: ExtFSRemoteItem["itemId"],
 ): Promise<ExtFSRemoteItem> {
   return await fetchOne(
-    withPath(`extfs/remotes/${peerId}/remote-items/${itemId}`, "merge")
+    withPath(`extfs/remotes/${peerId}/remote-items/${itemId}`, "merge"),
   );
 }

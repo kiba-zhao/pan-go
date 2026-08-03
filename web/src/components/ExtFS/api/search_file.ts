@@ -8,8 +8,8 @@ import {
   withRequestInit,
 } from "fetch-utils";
 import type { FetchContextHandle } from "fetch-utils";
-import type { ETagSearchResults } from "../../../utils/api";
-import { ETagHeaderRespond, fetchMany } from "../../../utils/api";
+import type { ETagSearchResults } from "../../../lib/api";
+import { ETagHeaderRespond, fetchMany } from "../../../lib/api";
 import type { ExtFSNodeFile } from "./node_file";
 
 export type ExtFSSearchFile = {
@@ -40,7 +40,7 @@ export type ExtFSSearchFileSearchOpts = {
  */
 export async function searchExtFSSearchFileResults(
   condition: ExtFSSearchFileSearchCondition,
-  opts?: ExtFSSearchFileSearchOpts
+  opts?: ExtFSSearchFileSearchOpts,
 ): Promise<ExtFSSearchFileSearchResults> {
   const { _start, _end, ...params } = condition;
   const condition_: Record<string, string> = {
@@ -58,7 +58,7 @@ export async function searchExtFSSearchFileResults(
     ...handles,
     withPath("extfs/search-files", "merge"),
     withQuery(condition_, "merge"),
-    withResponds([ETagHeaderRespond], "merge")
+    withResponds([ETagHeaderRespond], "merge"),
   );
   return [etag, total, searchFiles];
 }
