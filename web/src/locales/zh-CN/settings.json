@@ -1,19 +1,55 @@
 {
     "main":{
         "title":"我的设置",
-        "subtitle":"设置"
-    },
-    "broadcast-addrs":{
-        "main":{
-            "title":"广播地址"
+        "subtitle":"设置",
+        "search":{
+            "placeholder":"搜索设置"
+        },
+        "device-info":{
+            "title":"我的设备",
+            "name":"备注名",
+            "memo":"我的备忘"
+        },
+        "network":{
+            "title":"网络互联",
+            "enabled":"启用网络",
+            "port":"网络端口",
+            "broadcast":"启用广播",
+            "broadcast-addrs":"广播地址",
+            "public-addrs":"发布地址"
+        },
+        "web":{
+            "title":"Web服务",
+            "enabled":"启用Web服务",
+            "allowed":"仅本机访问",
+            "port":"Web端口"
+        },
+        "appearance":{
+            "title":"外观",
+            "theme":"主题模式",
+            "system":"跟随系统"
+        },
+        "languages":{
+            "title":"语言",
+            "lang":"应用语言",
+            "system":"跟随系统"
         }
     },
-    "public-addrs":{
-        "main":{
-            "title":"公共地址"
+    "extra":{
+        "nameEdit":{
+            "title":"备注名",
+            "description":"$t(extra.nameEdit.title)用作标识当前设备,请输入易于辨别的名称。支持最多32个字符。",
+            "placeholder":"示例: desktop",
+            "saving":"正在保存$t(extra.nameEdit.title)...",
+            "success":"$t(extra.nameEdit.title)已更新"
         }
     },
-    "header-extra":{
-        "back":"返回"
+    "badge":{
+        "edit":"设置"
+    },
+    "action":{
+        "reset":"重置",
+        "cancel":"取消",
+        "save":"保存"
     }
 }

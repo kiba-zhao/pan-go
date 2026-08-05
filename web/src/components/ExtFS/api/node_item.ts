@@ -2,7 +2,7 @@
  * ExtFSNodeItem API Definition File
  */
 import { withJSONBody, withMethod, withPath } from "fetch-utils";
-import { fetchMany, fetchOne } from "../../../lib/api";
+import { fetchMany, fetchOne } from "../../../lib/fetch";
 
 export type ExtFSNodeItem = {
   id: number;

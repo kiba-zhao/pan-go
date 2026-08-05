@@ -181,7 +181,7 @@ export const ListItemContent = ({
       className={cn(
         "listitem-content flex grow py-2.5 items-center gap-0.5 overflow-hidden",
         "group-even/listitem:border-border group-odd/listitem:border-transparent border-t border-b group-last/listitem:border-b-transparent!",
-        "group-even/listitem:hover:border-transparent group-[.active]/listitem:border-transparent",
+        "group-[.hover-*]/listitem:event:hover:border-transparent group-[.active]/listitem:border-transparent",
         ListItemContentVariant[ListItemVariant.Primary],
         ListItemContentVariant[ListItemVariant.Secondary],
         ListItemContentVariant[ListItemVariant.Accent],

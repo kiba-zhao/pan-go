@@ -29,6 +29,7 @@ import { DashboardRoutePath } from "@/components/Dashboard/meta";
 import DashboardOutlets from "@/components/Dashboard/Outlets";
 import { SettingsRoutePath } from "@/components/Settings/meta";
 import { default as SettingsOutlets } from "@/components/Settings/Outlets";
+import { Toaster } from "./Toast";
 
 const AppPage = () => {
   return (
@@ -54,6 +55,7 @@ const AppLayout = () => {
       <AppFooter />
       <AppAside />
       <Outlet name="extra" />
+      <Toaster />
     </>
   );
 };

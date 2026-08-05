@@ -8,7 +8,7 @@ import {
   withRequestInit,
 } from "fetch-utils";
 import type { FetchContextHandle } from "fetch-utils";
-import { ETagHeaderRespond, fetchMany } from "../../../lib/api";
+import { ETagHeaderRespond, fetchMany } from "../../../lib/fetch";
 import type { AppNode } from "../../AppNode/api";
 import type {
   ExtFSSearchFileSearchCondition,

@@ -2,7 +2,7 @@
  * DiskFile API Definition File
  */
 import { withPath, withQuery } from "fetch-utils";
-import { fetchMany } from "../../lib/api";
+import { fetchMany } from "../../lib/fetch";
 
 export type DiskFile = {
   id: string;

@@ -168,6 +168,11 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  --color-success: var(--color-green-600);
+  --color-error:  var(--color-red-600);
+  --color-warning: var(--color-orange-600);
+  --color-info: var(--color-cyan-600);
 }
 
 @layer base {

@@ -6,16 +6,22 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { Overlay } from "./Layout";
+import { Alert } from "@/components/ui/alert";
+export {
+  AlertTitle,
+  AlertDescription,
+  AlertAction,
+} from "@/components/ui/alert";
 
 export enum DialogVariant {
   Default = "default",
 }
 const DialogVariants = {
   [DialogVariant.Default]:
-    "flex flex-col gap-4 p-4 sm:rounded-xl max-sm:w-full max-sm:inset-x-0 max-sm:bottom-0 max-sm:absolute",
+    "flex flex-col gap-4 p-4 md:rounded-xl max-md:w-full max-md:inset-x-0 max-md:bottom-0 max-md:absolute",
 };
 const DialogOverlayVariants = {
-  [DialogVariant.Default]: "sm:flex sm:items-center sm:justify-center",
+  [DialogVariant.Default]: "md:flex md:items-center md:justify-center",
 };
 export const Dialog = ({
   children,
@@ -53,7 +59,7 @@ export const Dialog = ({
         ref={ref}
         {...props}
         className={cn(
-          "group/dialog relative bg-sidebar text-sidebar-foreground border-border sm:border-1 max-sm:border-t-1",
+          "group/dialog relative bg-sidebar text-sidebar-foreground border-border md:border-1 max-md:border-t-1",
           DialogVariants[variant] || DialogVariants[DialogVariant.Default],
           className,
         )}
@@ -76,7 +82,7 @@ export const DialogAction = ({
     <div
       {...props}
       className={cn(
-        "-mx-4 -mb-4 p-4 border-t flex flex-col-reverse gap-2 sm:rounded-b-xl sm:flex-row sm:justify-end",
+        "-mx-4 -mb-4 p-4 border-t flex flex-col gap-2 md:rounded-b-xl md:flex-row md:justify-end",
         className,
       )}
     >
@@ -130,3 +136,16 @@ export const DialogExtra = ({
     </div>
   );
 };
+
+export const DialogAlert = ({
+  className,
+  children,
+  ...props
+}: ComponentProps<typeof Alert>) => (
+  <Alert
+    {...props}
+    className={cn("border-none py-0 px-0 gap-0 bg-transparent", className)}
+  >
+    {children}
+  </Alert>
+);

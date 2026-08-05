@@ -3,7 +3,7 @@
  */
 import { withJSONBody, withMethod, withPath } from "fetch-utils";
 
-import { fetchOne } from "../../lib/api";
+// import { fetchOne } from "../../lib/fetch";
 
 export type AppSettings = {
   name: string;

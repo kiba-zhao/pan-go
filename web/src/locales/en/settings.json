@@ -1,19 +1,55 @@
 {
     "main":{
         "title":"My Settings",
-        "subtitle":"Settings"
-    },
-    "broadcast-addrs":{
-        "main":{
-            "title":"Broadcast Address"
+        "subtitle":"Settings",
+        "search":{
+            "placeholder":"Search settings"
+        },
+        "device-info":{
+            "title":"My Device",
+            "name":"Name",
+            "memo":"Memo"
+        },
+        "network":{
+            "title":"Network",
+            "enabled":"Enable Network",
+            "port":"Port",
+            "broadcast":"Enable Broadcast",
+            "broadcast-addrs":"Broadcast Address",
+            "public-addrs":"Public Address"
+        },
+        "web":{
+            "title":"Web Service",
+            "enabled":"Enable Web Service",
+            "allowed":"Local Host Only",
+            "port":"Web Port"
+        },
+        "appearance":{
+            "title":"Appearance",
+            "theme":"Theme",
+            "system":"System"
+        },
+        "languages":{
+            "title":"Languages",
+            "lang":"Language",
+            "system":"System"
         }
     },
-    "public-addrs":{
-        "main":{
-            "title":"Public Address"
+    "extra":{
+        "nameEdit":{
+            "title":"Device Name",
+            "description":"Please enter a name that is easy to distinguish.Supports up to 32 characters.",
+            "placeholder":"e.g. desktop",
+            "saving":"Saving $t(extra.nameEdit.title) ...",
+            "success":"$t(extra.nameEdit.title) has been updated"
         }
     },
-    "header-extra":{
-        "back":"Back"
+    "badge":{
+        "edit":"settings"
+    },
+    "action":{
+        "reset":"Reset",
+        "cancel":"Cancel",
+        "save":"Save"
     }
 }

@@ -5,7 +5,7 @@ import type { QRCode as JSQRCode } from "jsqr";
 import jsQR from "jsqr";
 import type { QRCodeRenderersOptions } from "qrcode";
 import { toCanvas } from "qrcode";
-import { useBrowser } from "../Browser";
+import { useBrowser } from "../App/Browser";
 import { useTranslation } from "../I18Next/Context";
 
 import Button from "@mui/material/Button";
@@ -249,7 +249,7 @@ type QRCodePoint = QRCodeLocation["topLeftCorner"];
 function drawDetectionBox(
   canvas: CanvasRenderingContext2D,
   location: QRCodeLocation,
-  color?: CanvasFillStrokeStyles["strokeStyle"]
+  color?: CanvasFillStrokeStyles["strokeStyle"],
 ) {
   const color_ = color || "red";
   drawLine(canvas, location.topLeftCorner, location.topRightCorner, color_);
@@ -258,7 +258,7 @@ function drawDetectionBox(
     canvas,
     location.bottomRightCorner,
     location.bottomLeftCorner,
-    color_
+    color_,
   );
   drawLine(canvas, location.bottomLeftCorner, location.topLeftCorner, color_);
 }
@@ -267,7 +267,7 @@ function drawLine(
   canvas: CanvasRenderingContext2D,
   begin: QRCodePoint,
   end: QRCodePoint,
-  color: CanvasFillStrokeStyles["strokeStyle"]
+  color: CanvasFillStrokeStyles["strokeStyle"],
 ) {
   canvas.beginPath();
   canvas.moveTo(begin.x, begin.y);

@@ -27,7 +27,7 @@ import { ExtFSNodeFileQueryKey } from "../ExtFS/NodeFile";
 import { ExtFSNodeQueryKey } from "../ExtFS/NodeItem";
 import { ExtFSRemoteFileQueryKey } from "../ExtFS/RemoteFile";
 import { ExtFSRemoteQueryKey } from "../ExtFS/RemoteItem";
-import { useBrowser } from "../Browser";
+import { useBrowser } from "../App/Browser";
 import { useTranslation } from "../I18Next/Context";
 import { PageI18Next } from "../I18Next/Page";
 import { PageHeader } from "../Master/Header";
@@ -63,7 +63,7 @@ const ExtFSBrowseFile = () => {
   const [query, _] = useSearchParams();
   const { peerId, itemId, filePath } = useMemo(
     () => parseQueryParams(query),
-    [query]
+    [query],
   );
 
   if (itemId < 1) {

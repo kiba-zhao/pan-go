@@ -2,7 +2,7 @@
  * ExtFSRemoteFile API Definition File
  */
 import { withPath, withQuery } from "fetch-utils";
-import { fetchMany, fetchOne } from "../../../lib/api";
+import { fetchMany, fetchOne } from "../../../lib/fetch";
 import type { ExtFSRemoteItem } from "./remote_item";
 
 export type ExtFSRemoteFileSearchCondition = Partial<

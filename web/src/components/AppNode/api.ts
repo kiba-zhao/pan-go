@@ -1,5 +1,5 @@
 import { withJSONBody, withMethod, withPath, withQuery } from "fetch-utils";
-import { fetchOne, fetchMany } from "../../lib/api";
+import { fetchOne, fetchMany } from "../../lib/fetch";
 
 export type AppNode = {
   id: number;

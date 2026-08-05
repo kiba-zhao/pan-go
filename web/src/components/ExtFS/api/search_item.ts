@@ -2,7 +2,7 @@
  * ExtFSSearchItem API Definition File
  */
 import { withJSONBody, withMethod, withPath, withQuery } from "fetch-utils";
-import { fetchMany, fetchOne } from "../../../lib/api";
+import { fetchMany, fetchOne } from "../../../lib/fetch";
 
 export type ExtFSSearchItemSearchCondition = {
   q?: string;

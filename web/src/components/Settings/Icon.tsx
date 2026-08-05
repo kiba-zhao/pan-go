@@ -11,6 +11,7 @@ export {
   SquarePen,
   CircleX,
   CircleCheckBig,
+  CircleAlert,
 } from "lucide-react";
 
 import { Settings } from "lucide-react";

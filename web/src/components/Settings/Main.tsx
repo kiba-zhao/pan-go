@@ -5,7 +5,11 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { default as SettingsIcon } from "./Icon";
 
-import TableOfContents from "./TableOfContents";
+import {
+  default as TableOfContents,
+  useTOCChapter,
+  TOCChapter,
+} from "./TableOfContents";
 import { SearchFilter } from "./Filters";
 import {
   InfoFields,
@@ -20,12 +24,16 @@ import {
   LanguageFields,
 } from "./Fields";
 
+import { MainI18nPrefix } from "./meta";
+
 const SettingsMain = () => {
   const dispatch = useAppDispatch();
   const { t } = useTranslation(SettingsName);
 
   useEffect(() => {
-    dispatch?.({ header: { title: t(`main.title`) } });
+    dispatch?.({
+      header: { title: t("title", { keyPrefix: MainI18nPrefix }) },
+    });
     return () => dispatch?.(resetToBlank());
   }, [dispatch, t]);
 
@@ -67,6 +75,11 @@ const FilterSection = () => {
 };
 
 const InfoFieldsSection = () => {
+  const tocChapter = useTOCChapter();
+  if (tocChapter !== TOCChapter.DeviceInfo && tocChapter.length > 0) {
+    return null;
+  }
+
   return (
     <section className={ContentClassName}>
       <InfoFieldsTitle />
@@ -76,6 +89,11 @@ const InfoFieldsSection = () => {
 };
 
 const NetworkFieldsSection = () => {
+  const tocChapter = useTOCChapter();
+  if (tocChapter !== TOCChapter.Network && tocChapter.length > 0) {
+    return null;
+  }
+
   return (
     <section className={ContentClassName}>
       <NetworkFieldsTitle />
@@ -85,6 +103,11 @@ const NetworkFieldsSection = () => {
 };
 
 const WebFieldsSection = () => {
+  const tocChapter = useTOCChapter();
+  if (tocChapter !== TOCChapter.Web && tocChapter.length > 0) {
+    return null;
+  }
+
   return (
     <section className={ContentClassName}>
       <WebFieldsTitle />
@@ -94,6 +117,11 @@ const WebFieldsSection = () => {
 };
 
 const AppearanceFieldsSection = () => {
+  const tocChapter = useTOCChapter();
+  if (tocChapter !== TOCChapter.Appearance && tocChapter.length > 0) {
+    return null;
+  }
+
   return (
     <section className={ContentClassName}>
       <AppearanceFieldsTitle />
@@ -103,6 +131,11 @@ const AppearanceFieldsSection = () => {
 };
 
 const LanguageFieldsSection = () => {
+  const tocChapter = useTOCChapter();
+  if (tocChapter !== TOCChapter.Language && tocChapter.length > 0) {
+    return null;
+  }
+
   return (
     <section className={ContentClassName}>
       <LanguageFieldsTitle />
@@ -116,7 +149,7 @@ const TOCHeader = () => {
   return (
     <div className="px-6 flex flex-row gap-3 text-xl items-center align-bottom pb-3">
       <SettingsIcon size={28} className="h-7" />
-      <h2 className="font-medium">{`${t(`main.subtitle`)}`}</h2>
+      <h2 className="font-medium">{`${t("subtitle", { keyPrefix: MainI18nPrefix })}`}</h2>
     </div>
   );
 };

@@ -1,17 +1,17 @@
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
 
-export type BrowserContext = {
+export type BrowserState = {
   window: Window;
 };
 
-const Context = createContext<BrowserContext | null>(null);
+const Context = createContext<BrowserState | null>(null);
 
-export const useBrowser = () => useContext<BrowserContext | null>(Context);
+export const useBrowser = () => useContext<BrowserState | null>(Context);
 
 type BrowserProviderProps = {
   children: ReactNode;
-} & BrowserContext;
+} & BrowserState;
 export const BrowserProvider = ({ children, ...ctx }: BrowserProviderProps) => {
   return <Context.Provider value={ctx}>{children}</Context.Provider>;
 };

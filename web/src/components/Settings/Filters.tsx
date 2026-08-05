@@ -1,30 +1,23 @@
 import { SearchIcon } from "./Icon";
-import { cn } from "@/lib/utils";
 
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { useTranslation } from "@/components/App/I18Next";
+import { SettingsName, MainI18nPrefix } from "./meta";
 
 export const SearchFilter = () => {
+  const { t } = useTranslation(SettingsName);
   return (
-    <form className="font-medium text-xl">
-      <InputGroup>
-        <InputGroupInput placeholder="Search..." />
-        <InputGroupAddon>
-          <SearchIcon />
-        </InputGroupAddon>
-      </InputGroup>
-    </form>
-
-    // <form className="flex flex-row w-3xl min-w-auto p-2 gap-1 rounded-4xl hover:bg-[#fff]/15">
-    //   <SearchIcon />
-    //   <input
-    //     className="w-full outline-none font-medium"
-    //     type="text"
-    //     placeholder="Search Filters"
-    //   />
-    // </form>
+    <InputGroup>
+      <InputGroupInput
+        placeholder={t("search.placeholder", { keyPrefix: MainI18nPrefix })}
+      />
+      <InputGroupAddon>
+        <SearchIcon />
+      </InputGroupAddon>
+    </InputGroup>
   );
 };

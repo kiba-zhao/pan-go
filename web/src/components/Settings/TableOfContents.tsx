@@ -5,7 +5,6 @@ import {
   WebIcon,
   Palette,
   Languages,
-  Keyboard,
 } from "./Icon";
 import { SettingsName } from "./meta";
 import { type ComponentProps } from "react";
@@ -19,42 +18,122 @@ import {
   ListItemAvatar,
 } from "@/components/App/List";
 
+import { MainI18nPrefix } from "./meta";
+import { useBrowser } from "@/components/App/Browser";
+
+export enum TOCChapter {
+  DeviceInfo = "device-info",
+  Network = "network",
+  Web = "web",
+  Appearance = "appearance",
+  Language = "language",
+}
+
+export const useTOCChapter = () => {
+  const { window } = useBrowser() || {};
+  const tocChapter = (window?.location?.hash || "").substring(1);
+  return tocChapter;
+};
+
 const TableOfContents = () => {
   const { t } = useTranslation(SettingsName);
+
+  const tocChapter = useTOCChapter();
+
   return (
     <nav className="w-full flex flex-col gap-1">
       <List>
-        <ListItem active={ListItemVariant.Primary}>
-          <ItemLink href="#1">
+        <ListItem
+          active={
+            tocChapter === TOCChapter.DeviceInfo
+              ? ListItemVariant.Primary
+              : void 0
+          }
+        >
+          <ItemLink
+            href={
+              tocChapter === TOCChapter.DeviceInfo
+                ? "#"
+                : `#${TOCChapter.DeviceInfo}`
+            }
+          >
             <ListItemAvatar as={MonitorSmartphone} />
-            <ListItemText>我的设备</ListItemText>
+            <ListItemText>
+              {t("device-info.title", { keyPrefix: MainI18nPrefix })}
+            </ListItemText>
           </ItemLink>
         </ListItem>
-        <ListItem>
-          <ItemLink href="#2">
+        <ListItem
+          active={
+            tocChapter === TOCChapter.Network ? ListItemVariant.Primary : void 0
+          }
+        >
+          <ItemLink
+            href={
+              tocChapter === TOCChapter.Network ? "#" : `#${TOCChapter.Network}`
+            }
+          >
             <ListItemAvatar as={NetworkManageIcon} />
-            <ListItemText>网络互联</ListItemText>
+            <ListItemText>
+              {t("network.title", { keyPrefix: MainI18nPrefix })}
+            </ListItemText>
           </ItemLink>
         </ListItem>
-        <ListItem>
-          <ItemLink href="#3">
+        <ListItem
+          active={
+            tocChapter === TOCChapter.Web ? ListItemVariant.Primary : void 0
+          }
+        >
+          <ItemLink
+            href={tocChapter === TOCChapter.Web ? "#" : `#${TOCChapter.Web}`}
+          >
             <ListItemAvatar as={WebIcon} />
-            <ListItemText>Web服务</ListItemText>
+            <ListItemText>
+              {t("web.title", { keyPrefix: MainI18nPrefix })}
+            </ListItemText>
           </ItemLink>
         </ListItem>
       </List>
       <Separator />
       <List>
-        <ListItem>
-          <ItemLink href="#4">
+        <ListItem
+          active={
+            tocChapter === TOCChapter.Appearance
+              ? ListItemVariant.Primary
+              : void 0
+          }
+        >
+          <ItemLink
+            href={
+              tocChapter === TOCChapter.Appearance
+                ? "#"
+                : `#${TOCChapter.Appearance}`
+            }
+          >
             <ListItemAvatar as={Palette} />
-            <ListItemText>外观</ListItemText>
+            <ListItemText>
+              {t("appearance.title", { keyPrefix: MainI18nPrefix })}
+            </ListItemText>
           </ItemLink>
         </ListItem>
-        <ListItem>
-          <ItemLink href="#5">
+        <ListItem
+          active={
+            tocChapter === TOCChapter.Language
+              ? ListItemVariant.Primary
+              : void 0
+          }
+        >
+          <ItemLink
+            href={
+              tocChapter === TOCChapter.Language
+                ? "#"
+                : `#${TOCChapter.Language}`
+            }
+          >
             <ListItemAvatar as={Languages} />
-            <ListItemText>语言</ListItemText>
+            <ListItemText>
+              {t("languages.title", { keyPrefix: MainI18nPrefix })}
+            </ListItemText>
           </ItemLink>
         </ListItem>
       </List>

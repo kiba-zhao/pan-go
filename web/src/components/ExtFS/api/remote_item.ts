@@ -2,7 +2,7 @@
  * ExtFSRemoteItem API Definition File
  */
 import { withPath } from "fetch-utils";
-import { fetchMany, fetchOne } from "../../../lib/api";
+import { fetchMany, fetchOne } from "../../../lib/fetch";
 import type { ExtFSNodeItem } from "./node_item";
 import type { AppNode } from "../../AppNode/api";
 

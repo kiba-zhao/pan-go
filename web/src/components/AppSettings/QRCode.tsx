@@ -12,7 +12,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import Stack from "@mui/material/Stack";
-import { useBrowser } from "../Browser";
+import { useBrowser } from "../App/Browser";
 
 export type NodeQRCodeValue = {
   name: string;
