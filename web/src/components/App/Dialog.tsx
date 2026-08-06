@@ -25,7 +25,7 @@ const DialogOverlayVariants = {
 };
 export const Dialog = ({
   children,
-  className,
+  className = "w-full max-w-md",
   variant = DialogVariant.Default,
   onClose,
   onClick,
@@ -60,6 +60,7 @@ export const Dialog = ({
         {...props}
         className={cn(
           "group/dialog relative bg-sidebar text-sidebar-foreground border-border md:border-1 max-md:border-t-1",
+          "shadow-ring shadow-xl/30",
           DialogVariants[variant] || DialogVariants[DialogVariant.Default],
           className,
         )}
@@ -110,11 +111,11 @@ export const DialogDescription = ({
   className,
   children,
   ...props
-}: ComponentProps<"p">) => {
+}: ComponentProps<"div">) => {
   return (
-    <p {...props} className={cn("text-sm text-muted-foreground", className)}>
+    <div {...props} className={cn("text-sm text-muted-foreground", className)}>
       {children}
-    </p>
+    </div>
   );
 };
 

@@ -11,9 +11,9 @@ import {
   ListItemButton,
   ListItemNavLink,
 } from "@/components/App/List";
-import { type ComponentProps, useRef, useEffect } from "react";
+import { type ComponentProps, useRef, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppExtra } from "@/components/App/Context";
-import { switchExtra, ExtraType, ExtraState } from "./Extra";
+import { withExtraAction, ExtraType, ExtraState } from "./Extra";
 import { TOCChapter } from "./TableOfContents";
 import { useTranslation } from "@/components/App/I18Next";
 import { SettingsName, MainI18nPrefix } from "./meta";
@@ -51,20 +51,40 @@ export const InfoFields = ({
     enabled: open !== true,
   });
 
+  const [memoValue, memoMore] = useMemo(() => {
+    const value = infoFields?.memo;
+    if (!value || value.length < 1) {
+      return [void 0, false];
+    }
+    const { index } = /\S/g.exec(value) || { index: -1 };
+    if (index < 0) {
+      return ["", false];
+    }
+    const lastIdx = value.indexOf("\n", index);
+    const displayValue = value.substring(
+      index,
+      lastIdx < 0 || lastIdx === value.length ? void 0 : lastIdx,
+    );
+
+    if (lastIdx < 0 || lastIdx === value.length) {
+      return [displayValue, false];
+    }
+    const { index: moreIdx } = /\S/g.exec(value.substring(lastIdx)) || {
+      index: -1,
+    };
+    return [displayValue, moreIdx >= 0];
+  }, [infoFields?.memo]);
+
   const nameButtonRef = useRef<HTMLButtonElement>(null);
   const memoButtonRef = useRef<HTMLButtonElement>(null);
   const dispatch = useAppDispatch();
 
   const handleNameEdit = () => {
-    dispatch?.({
-      extra: switchExtra(ExtraType.NameEdit),
-    });
+    dispatch?.(withExtraAction(ExtraType.NameEdit));
   };
 
   const handleMemoEdit = () => {
-    dispatch?.({
-      extra: switchExtra(ExtraType.MemoEdit),
-    });
+    dispatch?.(withExtraAction(ExtraType.MemoEdit));
   };
 
   useEffect(() => {
@@ -95,7 +115,10 @@ export const InfoFields = ({
         <ListItemButton onClick={handleMemoEdit} ref={memoButtonRef}>
           <ListItemContent>
             <ListItemText>{t("memo")}</ListItemText>
-            <ListItemSmall>{infoFields?.memo || "-"}</ListItemSmall>
+            <ListItemSmall>
+              {memoValue || "-"}
+              {memoValue && memoMore ? "..." : ""}
+            </ListItemSmall>
           </ListItemContent>
         </ListItemButton>
       </ListItem>
@@ -136,21 +159,15 @@ export const NetworkFields = ({
   const dispatch = useAppDispatch();
 
   const handlePortEdit = () => {
-    dispatch?.({
-      extra: switchExtra(ExtraType.PeerPortEdit),
-    });
+    dispatch?.(withExtraAction(ExtraType.PeerPortEdit));
   };
 
   const handlePublicAddrsEdit = () => {
-    dispatch?.({
-      extra: switchExtra(ExtraType.PublicAddrsEdit),
-    });
+    dispatch?.(withExtraAction(ExtraType.PublicAddrsEdit));
   };
 
   const handleBroadcastAddrsEdit = () => {
-    dispatch?.({
-      extra: switchExtra(ExtraType.BroadcastAddrsEdit),
-    });
+    dispatch?.(withExtraAction(ExtraType.BroadcastAddrsEdit));
   };
 
   useEffect(() => {
@@ -190,6 +207,53 @@ export const NetworkFields = ({
     saveBroadcastEnabled({ broadcastEnabled: checked });
   };
 
+  const [broadcastAddrsText, broadcastAddrsMore] = useMemo(() => {
+    const addrs = networkFields?.broadcastAddrs;
+    if (!addrs || addrs.length < 1) {
+      return [void 0, false];
+    }
+
+    let idx = -1;
+    let more = false;
+    for (let i = 0; i < addrs.length; i++) {
+      const addr = addrs[i];
+      if (/^\s+$/g.test(addr) || addr.trim().length < 1) {
+        continue;
+      }
+      if (idx < 0) {
+        idx = i;
+        continue;
+      }
+      more = true;
+      break;
+    }
+
+    return [addrs[idx], more];
+  }, [networkFields?.broadcastAddrs]);
+
+  const [publicAddrsText, publicAddrsMore] = useMemo(() => {
+    const addrs = networkFields?.publicAddrs;
+    if (!addrs || addrs.length < 1) {
+      return [void 0, false];
+    }
+
+    let idx = -1;
+    let more = false;
+    for (let i = 0; i < addrs.length; i++) {
+      const addr = addrs[i];
+      if (/^\s+$/g.test(addr) || addr.trim().length < 1) {
+        continue;
+      }
+      if (idx < 0) {
+        idx = i;
+        continue;
+      }
+      more = true;
+      break;
+    }
+
+    return [addrs[idx], more];
+  }, [networkFields?.publicAddrs]);
   return (
     <List className={className}>
       <ListItem className={FieldsClassName} disabled={isNetworkEnabledPending}>
@@ -241,7 +305,10 @@ export const NetworkFields = ({
         >
           <ListItemContent>
             <ListItemText>{t("broadcast-addrs")}</ListItemText>
-            <ListItemSmall>多播网络地址</ListItemSmall>
+            <ListItemSmall>
+              {broadcastAddrsText || "-"}
+              {broadcastAddrsText && broadcastAddrsMore ? "..." : ""}
+            </ListItemSmall>
             <ListItemMore />
           </ListItemContent>
         </ListItemButton>
@@ -254,7 +321,10 @@ export const NetworkFields = ({
         >
           <ListItemContent>
             <ListItemText>{t("public-addrs")}</ListItemText>
-            <ListItemSmall>域名/主机名/IP地址 + 端口</ListItemSmall>
+            <ListItemSmall>
+              {publicAddrsText || "-"}
+              {publicAddrsText && publicAddrsMore ? "..." : ""}
+            </ListItemSmall>
             <ListItemMore />
           </ListItemContent>
         </ListItemButton>
@@ -293,9 +363,7 @@ export const WebFields = ({
   const dispatch = useAppDispatch();
 
   const handleWebPortEdit = () => {
-    dispatch?.({
-      extra: switchExtra(ExtraType.WebPortEdit),
-    });
+    dispatch?.(withExtraAction(ExtraType.WebPortEdit));
   };
 
   useEffect(() => {

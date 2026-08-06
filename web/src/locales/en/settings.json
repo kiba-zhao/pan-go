@@ -38,10 +38,49 @@
     "extra":{
         "nameEdit":{
             "title":"Device Name",
-            "description":"Please enter a name that is easy to distinguish.Supports up to 32 characters.",
+            "description":"Please enter a name that is easy to distinguish.",
+            "sizeLimit":"Up to 32 characters",
             "placeholder":"e.g. desktop",
             "saving":"Saving $t(extra.nameEdit.title) ...",
             "success":"$t(extra.nameEdit.title) has been updated"
+        },
+        "memoEdit":{
+            "title":"Memo",
+            "description":"Please enter a memo for the device.",
+            "sizeLimit":"Up to 256 characters",
+            "placeholder":"e.g. this is my desktop",
+            "saving":"Saving $t(extra.memoEdit.title) ...",
+            "success":"$t(extra.memoEdit.title) has been updated"
+        },
+        "peerPortEdit":{
+            "title":"Peer Port",
+            "description":"Used for receiving or sending network data",
+            "placeholder":"e.g. {{example}}",
+            "saving":"Saving $t(extra.peerPortEdit.title) ...",
+            "success":"$t(extra.peerPortEdit.title) has been updated"
+        },
+        "webPortEdit":{
+            "title":"Web Port",
+            "description":"Used for web console services",
+            "placeholder":"e.g. {{example}}",
+            "saving":"Saving $t(extra.webPortEdit.title) ...",
+            "success":"$t(extra.webPortEdit.title) has been updated"
+        },
+        "broadcastAddrsEdit":{
+            "title":"Broadcast Address",
+            "description":"Address used for receiving or sending broadcasts",
+            "dataFormat":"Multicast IP address + port, one address per line",
+            "placeholder":"e.g. {{example}}",
+            "saving":"Saving $t(extra.broadcastAddrsEdit.title) ...",
+            "success":"$t(extra.broadcastAddrsEdit.title) has been updated"
+        },
+        "publicAddrsEdit":{
+            "title":"Public Address",
+            "description":"Address used for public access",
+            "dataFormat":"domain or hostname or IP address + port, one address per line",
+            "placeholder":"e.g. {{example}}",
+            "saving":"Saving $t(extra.publicAddrsEdit.title) ...",
+            "success":"$t(extra.publicAddrsEdit.title) has been updated"
         }
     },
     "badge":{

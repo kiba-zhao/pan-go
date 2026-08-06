@@ -28,19 +28,54 @@ type AppHeaderState = {
   breadcrumbs?: Array<[string, string]>;
 };
 
-type AppExtraState = any;
+type AppExtraState = Exclude<any, undefined>;
 
 export type AppContextState = AppState & {
   header?: AppHeaderState;
   extra?: AppExtraState;
 };
 
-type AppContextAction = AppContextState;
+type AppContextBlockKey = keyof Omit<AppContextState, keyof AppState>;
+type AppContextBlockAction<
+  BlockKey extends AppContextBlockKey = AppContextBlockKey,
+> = {
+  type: "block";
+  blockKey: BlockKey;
+} & Pick<AppContextState, BlockKey>;
+type AppContextAction =
+  | AppContextState
+  | AppContextBlockAction<AppContextBlockKey>;
 const AppContextReducer = (
   state: AppContextState,
   action: AppContextAction,
 ) => {
-  return { ...state, ...action };
+  const blockAction = action as AppContextBlockAction<AppContextBlockKey>;
+  if (!blockAction.type) {
+    return { ...state, ...action };
+  }
+
+  if (blockAction.type === "block") {
+    if (blockAction.blockKey === "header") {
+      return {
+        ...state,
+        header:
+          blockAction.header === void 0
+            ? void 0
+            : { ...state.header, ...blockAction.header },
+      };
+    }
+    if (blockAction.blockKey === "extra") {
+      return {
+        ...state,
+        extra:
+          blockAction.extra === void 0
+            ? void 0
+            : { ...state.extra, ...blockAction.extra },
+      };
+    }
+  }
+
+  return state;
 };
 
 const context = createContext<AppContextState>({});
@@ -56,6 +91,17 @@ export const useAppExtra = <T extends unknown>(defaultValue: T) => {
   }
   return extra as T;
 };
+
+export function withAppHeaderAction(
+  payload?: AppHeaderState,
+): AppContextBlockAction<"header"> {
+  return { type: "block", blockKey: "header", header: payload };
+}
+export function withAppExtraAction(
+  payload?: AppExtraState,
+): AppContextBlockAction<"extra"> {
+  return { type: "block", blockKey: "extra", extra: payload };
+}
 
 export const AppContextProvider = ({ children }: PropsWithChildren) => {
   const [state, dispatch] = useReducer(AppContextReducer, {});

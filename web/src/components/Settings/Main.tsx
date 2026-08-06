@@ -1,4 +1,8 @@
-import { useAppDispatch, resetToBlank } from "@/components/App/Context";
+import {
+  useAppDispatch,
+  resetToBlank,
+  withAppHeaderAction,
+} from "@/components/App/Context";
 import { useTranslation } from "@/components/App/I18Next";
 import { SettingsName } from "./meta";
 import { useEffect } from "react";
@@ -31,9 +35,9 @@ const SettingsMain = () => {
   const { t } = useTranslation(SettingsName);
 
   useEffect(() => {
-    dispatch?.({
-      header: { title: t("title", { keyPrefix: MainI18nPrefix }) },
-    });
+    dispatch?.(
+      withAppHeaderAction({ title: t("title", { keyPrefix: MainI18nPrefix }) }),
+    );
     return () => dispatch?.(resetToBlank());
   }, [dispatch, t]);
 

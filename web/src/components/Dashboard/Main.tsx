@@ -1,13 +1,19 @@
-import { useAppDispatch, resetToBlank } from "../App/Context";
+import {
+  useAppDispatch,
+  resetToBlank,
+  withAppHeaderAction,
+} from "@/components/App/Context";
 import { useEffect } from "react";
 
 const DashboardMain = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch?.({
-      header: { title: import.meta.env.VITE_APP_NAME?.toUpperCase() },
-    });
+    dispatch?.(
+      withAppHeaderAction({
+        title: import.meta.env.VITE_APP_NAME?.toUpperCase(),
+      }),
+    );
     return () => dispatch?.(resetToBlank());
   }, [dispatch]);
 

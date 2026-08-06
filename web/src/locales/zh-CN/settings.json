@@ -19,8 +19,8 @@
             "public-addrs":"发布地址"
         },
         "web":{
-            "title":"Web服务",
-            "enabled":"启用Web服务",
+            "title":"Web控制台",
+            "enabled":"启用Web控制台",
             "allowed":"仅本机访问",
             "port":"Web端口"
         },
@@ -38,10 +38,49 @@
     "extra":{
         "nameEdit":{
             "title":"备注名",
-            "description":"$t(extra.nameEdit.title)用作标识当前设备,请输入易于辨别的名称。支持最多32个字符。",
+            "description":"$t(extra.nameEdit.title)仅用于标识设备,请输入易于辨别的名称。",
+            "sizeLimit":"最多可输入32个字符。",
             "placeholder":"示例: desktop",
             "saving":"正在保存$t(extra.nameEdit.title)...",
             "success":"$t(extra.nameEdit.title)已更新"
+        },
+        "memoEdit":{
+            "title":"我的备忘",
+            "description":"$t(extra.memoEdit.title)用于记录设备的备忘信息。",
+            "sizeLimit":"最多可输入256个字符。",
+            "placeholder":"示例: 我的台式机",
+            "saving":"正在保存$t(extra.memoEdit.title)...",
+            "success":"$t(extra.memoEdit.title)已更新"
+        },
+        "peerPortEdit":{
+            "title":"网络端口",
+            "description":"$t(extra.peerPortEdit.title)用于设备发送或接收网络数据。",
+            "placeholder":"示例: {{example}}",
+            "saving":"正在保存$t(extra.peerPortEdit.title)...",
+            "success":"$t(extra.peerPortEdit.title)已更新"
+        },
+        "webPortEdit":{
+            "title":"Web端口",
+            "description":"$t(extra.webPortEdit.title)用于设备Web控制台。",
+            "placeholder":"示例: {{example}}",
+            "saving":"正在保存$t(extra.webPortEdit.title)...",
+            "success":"$t(extra.webPortEdit.title)已更新"
+        },
+        "broadcastAddrsEdit":{
+            "title":"广播地址",
+            "description":"$t(extra.broadcastAddrsEdit.title)用于接收或发送广播的网络地址。",
+            "dataFormat":"多播IP地址 + 端口，每行一个地址。",
+            "placeholder":"示例: {{example}}",
+            "saving":"正在保存$t(extra.broadcastAddrsEdit.title)...",
+            "success":"$t(extra.broadcastAddrsEdit.title)已更新"
+        },
+        "publicAddrsEdit":{
+            "title":"发布地址",
+            "description":"$t(extra.publicAddrsEdit.title)用于其他设备通过网络访问我的设备。",
+            "dataFormat":"支持域名/主机名/IP地址 + 端口，每行一个地址。",
+            "placeholder":"示例: {{example}}",
+            "saving":"正在保存$t(extra.publicAddrsEdit.title)...",
+            "success":"$t(extra.publicAddrsEdit.title)已更新"
         }
     },
     "badge":{

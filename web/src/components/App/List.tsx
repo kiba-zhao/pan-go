@@ -258,11 +258,7 @@ export const ListItemSmall = ({
   return (
     <small
       {...props}
-      className={cn(
-        "text-ellipsis whitespace-nowrap overflow-hidden",
-        ListItemExtraClassName,
-        className,
-      )}
+      className={cn("truncate", ListItemExtraClassName, className)}
     >
       {children}
     </small>

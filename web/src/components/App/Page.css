@@ -9,6 +9,19 @@
         @apply size-full flex flex-col;
     }
 
+    input[type="number"] {
+        -moz-appearance: textfield; /* Firefox */
+        -webkit-appearance: textfield; /* Safari 和 Chrome */
+        appearance: textfield; /* 应用于所有现代浏览器 */
+    }
+
+    /* 移除箭头（主要是针对Chrome和Safari） */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
     /*  ul {
        @apply list-none;
     }

@@ -121,10 +121,74 @@ export const useNameField = (opts?: UseFieldsOpts<Settings, NameField>) => {
   });
 };
 
+type MemoField = Pick<Settings, "memo">;
+export const useMemoField = (opts?: UseFieldsOpts<Settings, MemoField>) => {
+  return useSettings({
+    ...(opts || {}),
+    select: (settings) => ({
+      memo: settings?.memo,
+    }),
+  });
+};
+
+type PeerPortField = Pick<Settings, "peerPort">;
+export const usePeerPortField = (
+  opts?: UseFieldsOpts<Settings, PeerPortField>,
+) => {
+  return useSettings({
+    ...(opts || {}),
+    select: (settings) => ({
+      peerPort: settings?.peerPort,
+    }),
+  });
+};
+
+type BroadcastAddrsField = Pick<Settings, "broadcastAddrs">;
+export const useBroadcastAddrsField = (
+  opts?: UseFieldsOpts<Settings, BroadcastAddrsField>,
+) => {
+  return useSettings({
+    ...(opts || {}),
+    select: (settings) => ({
+      broadcastAddrs: settings?.broadcastAddrs,
+    }),
+  });
+};
+
+type PublicAddrsField = Pick<Settings, "publicAddrs">;
+
+export const usePublicAddrsField = (
+  opts?: UseFieldsOpts<Settings, PublicAddrsField>,
+) => {
+  return useSettings({
+    ...(opts || {}),
+    select: (settings) => ({
+      publicAddrs: settings?.publicAddrs,
+    }),
+  });
+};
+
+type WebPortField = Pick<HostSettings, "webPort">;
+export const useWebPortField = (
+  opts?: UseFieldsOpts<HostSettings, WebPortField>,
+) => {
+  return useHostSettings({
+    ...(opts || {}),
+    select: (settings) => ({
+      webPort: settings?.webPort,
+    }),
+  });
+};
+
 export {
   useSettingsMutation as useNetworkEnableMutation,
   useSettingsMutation as useBroadcastEnableMutation,
   useHostSettingsMutation as useWebEnableMutation,
   useHostSettingsMutation as useLocalHostOnlyMutation,
   useSettingsMutation as useNameMutation,
+  useSettingsMutation as useMemoMutation,
+  useSettingsMutation as usePeerPortMutation,
+  useSettingsMutation as useBroadcastAddrsMutation,
+  useSettingsMutation as usePublicAddrsMutation,
+  useHostSettingsMutation as useWebPortMutation,
 };
