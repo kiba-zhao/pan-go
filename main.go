@@ -15,7 +15,8 @@ func main() {
 	logger.Debug("main", "main begin")
 	defer logger.Debug("main", "main end")
 
-	cfg := gobase.NewSettingsConfig(log.Default())
+	root := ".pan"
+	cfg := gobase.NewSettingsConfig(log.Default(), root)
 	module := gobase.New(
 		gobase.NewHostModule(),
 		gobase.NewSettingsModule(cfg),

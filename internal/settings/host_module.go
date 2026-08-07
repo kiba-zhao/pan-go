@@ -8,6 +8,7 @@ import (
 	"pan/pkg/injection"
 	"pan/pkg/module"
 	"pan/pkg/web"
+	"path"
 )
 
 func init() {
@@ -24,16 +25,14 @@ func newHostModule(m *stdModule) interface{} {
 	hostModule.baseSettingsCtrl = baseSettingsCtrl
 	hostModule.hostSettingsCtrl = hostCtrl
 	hostModule.hostSettingsSvc = hostSettingsSvc
+	hostSettingsSvc.Trigger = hostModule
 
 	return hostModule
 }
 
-const (
-	HostSettingsModuleName = "host-settings"
-)
-
 type stdHostSettingsModule struct {
 	WebConfigurer web.WebConfigurer
+	Configurer    SettingsConfigurer
 
 	*module.SubModule[*stdHostSettingsModule, *stdModule]
 
@@ -45,10 +44,10 @@ type stdHostSettingsModule struct {
 var _ = (web.WebAppModule)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) SetupToWeb(app web.WebApp) error {
-	route := app.Group(web.WEB_API_PATH)
-	err := m.baseSettingsCtrl.SetupToWeb(route.Group(SettingsModuleName))
+	route := app.Group(path.Join(web.WEB_API_PATH, SettingsModuleName))
+	err := m.baseSettingsCtrl.SetupToWeb(route)
 	if err == nil {
-		err = m.hostSettingsCtrl.SetupToWeb(route.Group(HostSettingsModuleName))
+		err = m.hostSettingsCtrl.SetupToWeb(route)
 	}
 	return err
 }
@@ -87,7 +86,7 @@ func (m *stdHostSettingsModule) configure(hostSettings HostSettings) error {
 }
 
 func (m *stdHostSettingsModule) configureWeb(hostSettings *HostSettings) error {
-	webConfig := newWebConfig(hostSettings)
+	webConfig := newWebConfig(hostSettings, m.Configurer.Config())
 	return m.WebConfigurer.Configure(webConfig)
 }
 

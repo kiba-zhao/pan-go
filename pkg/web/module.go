@@ -199,5 +199,6 @@ var _ = (injection.ComponentProvider)((*stdWebModule)(nil))
 func (w *stdWebModule) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(w, injection.ComponentNoneScope),
+		injection.NewComponent(w.configurer, injection.ComponentExternalScope),
 	}
 }

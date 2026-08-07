@@ -79,7 +79,7 @@ func (network *stdBroadcastNetwork) Deliver(connList []*net.UDPConn, payload []b
 		for _, conn := range connList {
 			localAddr := conn.LocalAddr().(*net.UDPAddr)
 			localAddrIP := localAddr.IP
-			if iface.Addr != localAddrIP.String() {
+			if len(iface.Addr) > 0 && iface.Addr != localAddrIP.String() {
 				continue
 			}
 			mtu := iface.MTU
@@ -147,12 +147,8 @@ func resolveAddrs(addr string, zoneArr []string) ([]*net.UDPAddr, error) {
 		return nil, err
 	}
 
-	if udpAddr.IP.To4() != nil || !udpAddr.IP.IsMulticast() || len(udpAddr.Zone) > 0 {
+	if udpAddr.IP.To4() != nil || !udpAddr.IP.IsMulticast() || len(udpAddr.Zone) > 0 || len(zoneArr) <= 0 {
 		return []*net.UDPAddr{udpAddr}, nil
-	}
-
-	if len(zoneArr) <= 0 {
-		return nil, errors.New("net.BroadcastNetwork resolveAddrs Error: Unsupported IPv6 Zone")
 	}
 
 	udpAddrs := make([]*net.UDPAddr, 0)

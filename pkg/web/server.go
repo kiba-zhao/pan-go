@@ -119,11 +119,10 @@ func (ws *stdWebServer) ListenAndServe(ctx context.Context) error {
 		wg.Add(1)
 		go func(s *http.Server) {
 			defer wg.Done()
+			ws.logger.Info("web.WebServer", "http.Server.ListenAndServe: "+s.Addr)
 			err = s.ListenAndServe()
 			if err != nil {
 				ws.logger.Error("web.WebServer", "http.Server.ListenAndServe Error: "+err.Error())
-			} else {
-				ws.logger.Info("web.WebServer", "http.Server.ListenAndServe Success: "+s.Addr)
 			}
 		}(httpServer)
 

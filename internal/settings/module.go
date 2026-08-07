@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"errors"
+	"os"
 	"pan/pkg/bootstrap"
 	"pan/pkg/config"
 	"pan/pkg/injection"
@@ -18,6 +19,11 @@ import (
 var subModuleNewFuncArray []module.SubModuleNewFunc[*stdModule]
 
 var ErrSettingsModuleUavailable = errors.New("settings.Module Error: Unavailable")
+var ErrSettingsModuleHomePathConflict = errors.New("settings.Module Error: Home Path Conflict")
+
+type ModuleNetProvider interface {
+	NewNetConfig(settings *Settings) (net.QuicConfig, net.BroadcastConfig)
+}
 
 const (
 	SettingsModuleName = "settings"
@@ -40,9 +46,8 @@ type stdModule struct {
 
 	locker sync.Mutex
 
-	ignoreConfigured bool
-
 	securityConfigListener SecurityConfigurerListener
+	netProvider            ModuleNetProvider
 }
 
 func New() interface{} {
@@ -77,17 +82,31 @@ func (m *stdModule) OnConfigUpdated(cfg SettingsConfig) {
 	m.locker.Lock()
 	defer m.locker.Unlock()
 
-	m.settingsSvc.Setup(cfg)
+	homePath := cfg.HomePath()
+	stat, err := os.Stat(homePath)
+	if err != nil && os.IsNotExist(err) {
+		err = os.MkdirAll(homePath, 0755)
+	} else if err == nil && !stat.IsDir() {
+		err = ErrSettingsModuleHomePathConflict
+	}
+
+	if err != nil {
+		m.logger.Error("SettingsModule", "OnConfigUpdated Error: "+err.Error())
+		panic(err)
+	}
+
+	m.settingsSvc.setup(cfg)
 
 	// init viper and securityConfig
-	homePath := cfg.HomePath()
-	err := m.initViper(homePath)
+
+	err = m.initViper(homePath)
 	if err == nil {
 		err = m.initSecurityConfig(homePath)
 	}
-	if err != nil {
-		return
+	if err == nil {
+		err = m.initRepository(cfg)
 	}
+
 	//
 
 }
@@ -126,29 +145,19 @@ func (m *stdModule) Components() []injection.Component {
 var _ = (SettingsChangedTrigger)((*stdModule)(nil))
 
 func (m *stdModule) OnSettingsChanged(settings Settings) {
-	if !m.ignoreConfigured {
-		securityCfg := m.securityConfigurer.Config()
-		m.configure(securityCfg, settings, nil, false)
-		return
-	}
-
-	subModules := m.Modules()
-	if len(subModules) <= 0 {
-		return
-	}
-
-	for _, subModule := range subModules {
-		if settingsTrigger, ok := subModule.(SettingsChangedTrigger); ok {
-			settingsTrigger.OnSettingsChanged(settings)
-		}
-	}
-
+	m.configure(&settings)
 }
 
 func (m *stdModule) initViper(homePath string) error {
 	err := initViper(m.viper, homePath)
+
 	if err != nil {
-		m.logger.Error("SettingsModule", "initViper Error: "+err.Error())
+		if os.IsNotExist(err) {
+			m.logger.Warn("SettingsModule", "initViper Warning: "+err.Error())
+			err = nil
+		} else {
+			m.logger.Error("SettingsModule", "initViper Error: "+err.Error())
+		}
 	}
 	return err
 }
@@ -163,38 +172,54 @@ func (m *stdModule) initSecurityConfig(homePath string) error {
 	return err
 }
 
-func (m *stdModule) configure(securityCfg SecurityConfig, settings Settings, netIfaces []NetInterface, isSubNet bool) error {
-	err := m.configureQuic(securityCfg, &settings, netIfaces)
-	if err == nil {
-		err = m.configureBroadcast(&settings, netIfaces, isSubNet)
-	}
-	if err == nil {
-		err = m.configureRepository()
-	}
-	return err
-}
-
-func (m *stdModule) configureQuic(securityCfg SecurityConfig, settings *Settings, netIfaces []NetInterface) error {
-	quicConfig := newQuicConfig(settings, securityCfg, netIfaces)
-	return m.QuicConfigurer.Configure(quicConfig)
-}
-
-func (m *stdModule) configureBroadcast(settings *Settings, netIfaces []NetInterface, isSubNet bool) error {
-	broadcastConfig := newBroadcastConfig(settings, netIfaces, isSubNet)
-	return m.BroadcastConfigurer.Configure(broadcastConfig)
-}
-
-func (m *stdModule) configureRepository() error {
-	repositoryConfig := newRepositoryConfig(m.configurer.Config())
+func (m *stdModule) initRepository(settingsConfig SettingsConfig) error {
+	repositoryConfig := newRepositoryConfig(settingsConfig)
 	return m.RepositoryConfigurer.Configure(repositoryConfig)
 }
 
-func (m *stdModule) loadSettings() (Settings, error) {
+func (m *stdModule) configure(settings *Settings) error {
+
+	var err error
+	var settings_ *Settings
+	if settings != nil {
+		settings_ = settings
+	} else {
+		settings_, err = m.loadSettings()
+		if err != nil {
+			return err
+		}
+	}
+
+	var quicConfig net.QuicConfig
+	var broadcastConfig net.BroadcastConfig
+	if m.netProvider != nil {
+		quicConfig, broadcastConfig = m.netProvider.NewNetConfig(settings_)
+	}
+
+	if quicConfig == nil {
+		quicConfig = newQuicConfig(settings_, m.securityConfigurer.Config(), []string{""})
+	}
+
+	if broadcastConfig == nil {
+		broadcastConfig = newBroadcastConfig(settings_, m.configurer.Config())
+	}
+
+	err = m.QuicConfigurer.Configure(quicConfig)
+	if err == nil {
+		err = m.BroadcastConfigurer.Configure(broadcastConfig)
+	} else {
+		m.BroadcastConfigurer.Configure(broadcastConfig)
+	}
+
+	return err
+}
+
+func (m *stdModule) loadSettings() (*Settings, error) {
 	settings, err := m.settingsSvc.Load()
 	if err != nil {
 		m.logger.Error("settings.SettingsModule", "loadSettings Error: "+err.Error())
 	}
-	return settings, err
+	return &settings, err
 }
 
 type stdModuleSecurityConfigProxy struct {
@@ -204,15 +229,11 @@ type stdModuleSecurityConfigProxy struct {
 var _ = (SecurityConfigurerListener)((*stdModuleSecurityConfigProxy)(nil))
 
 func (p *stdModuleSecurityConfigProxy) OnConfigUpdated(cfg SecurityConfig) {
-	module := p.module
-	if module.ignoreConfigured {
-		return
+	if p.module != nil {
+		settings, err := p.module.loadSettings()
+		if err != nil {
+			return
+		}
+		p.module.configure(settings)
 	}
-
-	settings, err := module.loadSettings()
-	if err != nil {
-		return
-	}
-
-	module.configure(cfg, settings, nil, false)
 }

@@ -17,15 +17,16 @@ type stdQuicConfig struct {
 	broadcastEnabled bool
 }
 
-func newQuicConfig(settings *Settings, security SecurityConfig, netIfaces []NetInterface) net.QuicConfig {
+func newQuicConfig(settings *Settings, security SecurityConfig, addrs []string) net.QuicConfig {
 	cfg := &stdQuicConfig{}
 	cfg.port = settings.PeerPort
 	cfg.security = security
 	cfg.broadcastEnabled = settings.BroadcastEnabled
 
 	if settings.Enabled {
-		initQuicConfigWithNetInterfaces(cfg, netIfaces)
+		cfg.addrs = addrs
 	}
+
 	return cfg
 }
 
@@ -51,14 +52,4 @@ func (cfg *stdQuicConfig) PrivateKey() crypto.PrivateKey {
 
 func (cfg *stdQuicConfig) BroadcastEnabled() bool {
 	return cfg.broadcastEnabled
-}
-
-func initQuicConfigWithNetInterfaces(cfg *stdQuicConfig, netIfaces []NetInterface) {
-	if len(netIfaces) <= 0 {
-		cfg.addrs = append(cfg.addrs, "")
-	} else {
-		for _, iface := range netIfaces {
-			cfg.addrs = append(cfg.addrs, iface.Addr)
-		}
-	}
 }

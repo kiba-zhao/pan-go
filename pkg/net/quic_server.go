@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"maps"
 	"net"
 	"pan/pkg/log"
@@ -84,7 +85,7 @@ func (server *stdQuicServer) setup(config QuicConfig) {
 		changed = true
 	}
 
-	if !bytes.Equal(server.certificate.Certificate[0], certificate.Certificate[0]) {
+	if len(certificate.Certificate) != len(server.certificate.Certificate) || (len(certificate.Certificate) > 0 && !bytes.Equal(server.certificate.Certificate[0], certificate.Certificate[0])) {
 		server.certificate = certificate
 		changed = true
 	}
@@ -185,7 +186,8 @@ func (server *stdQuicServer) listenAndServe(ctx context.Context) error {
 				server.logger.Error("net.QuicServer", "quic.ListenAddr Error: "+lnErr.Error())
 				continue
 			} else {
-				server.logger.Info("net.QuicServer", "quic.ListenAddr Success: "+netAddr)
+
+				server.logger.Info("net.QuicServer", fmt.Sprintf("quic.ListenAddr Success: %s:%d", netAddr, netPort))
 			}
 
 			transportMap[netAddr] = transport
@@ -211,7 +213,7 @@ func (server *stdQuicServer) listenAndServe(ctx context.Context) error {
 							continue
 						}
 					}
-					if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) {
+					if errors.Is(err, quic.ErrServerClosed) || errors.Is(err, context.Canceled) || err.Error() == "closing" {
 						break
 					}
 					if ctxErr := ctx.Err(); ctxErr != nil {

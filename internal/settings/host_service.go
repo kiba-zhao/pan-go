@@ -4,8 +4,6 @@ package settings
 
 import (
 	"errors"
-	"net"
-	"strconv"
 
 	"github.com/spf13/viper"
 )
@@ -13,12 +11,13 @@ import (
 var ErrHostSettingsServiceUnavailable = errors.New("settings.HostSettingsService Error: Unavailable")
 
 const (
-	HostSettingsDefaultWebIP = "127.0.0.1"
+	HostSettingsDefaultWebPort = uint16(9000)
 )
 
 const (
-	HostSettingsWebAddrField    = "webAddr"
-	HostSettingsWebEnabledField = "webEnabled"
+	HostSettingsWebPortField       = "webPort"
+	HostSettingsLocalHostOnlyField = "localHostOnly"
+	HostSettingsWebEnabledField    = "webEnabled"
 )
 
 type HostSettingsChangedTrigger interface {
@@ -43,9 +42,16 @@ func (service *HostSettingsService) Save(fields HostSettingsFields) (HostSetting
 	}
 
 	changed := false
-	if len(fields.WebAddr) > 0 && fields.WebAddr != settings.WebAddr {
-		viper.Set(HostSettingsWebAddrField, fields.WebAddr)
-		settings.WebAddr = fields.WebAddr
+	if fields.WebPort > 0 && fields.WebPort != settings.WebPort {
+		viper.Set(HostSettingsWebPortField, fields.WebPort)
+		settings.WebPort = fields.WebPort
+		changed = true
+	}
+
+	if fields.LocalHostOnly != nil && *fields.LocalHostOnly != settings.LocalHostOnly {
+		localHostOnly := *fields.LocalHostOnly
+		viper.Set(HostSettingsLocalHostOnlyField, localHostOnly)
+		settings.LocalHostOnly = localHostOnly
 		changed = true
 	}
 
@@ -74,10 +80,16 @@ func generateHostSettings(viper *viper.Viper) (HostSettings, error) {
 		return settings, ErrHostSettingsServiceUnavailable
 	}
 
-	if viper.IsSet(HostSettingsWebAddrField) {
-		settings.WebAddr = viper.GetString(HostSettingsWebAddrField)
+	if viper.IsSet(HostSettingsWebPortField) {
+		settings.WebPort = viper.GetUint16(HostSettingsWebPortField)
 	} else {
-		settings.WebAddr = net.JoinHostPort(HostSettingsDefaultWebIP, strconv.FormatUint(uint64(SettingsDefaultPort), 10))
+		settings.WebPort = HostSettingsDefaultWebPort
+	}
+
+	if viper.IsSet(HostSettingsLocalHostOnlyField) {
+		settings.LocalHostOnly = viper.GetBool(HostSettingsLocalHostOnlyField)
+	} else {
+		settings.LocalHostOnly = true
 	}
 
 	if viper.IsSet(HostSettingsWebEnabledField) {

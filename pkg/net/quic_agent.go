@@ -223,7 +223,7 @@ func (agent *stdQuicAgent) deliverBroadcast(ctx context.Context) error {
 		loop:
 			for {
 				err := agent.deliverOnline()
-				if err != nil {
+				if err != nil && err != ErrQuicAgentNoUDPConn {
 					agent.logger.Error("net.QuicAgent", " deliverOnline Error: "+err.Error())
 					break
 				}

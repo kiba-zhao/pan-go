@@ -2,6 +2,7 @@ package settings
 
 type Settings struct {
 	Name             string   `json:"name" form:"name"  binding:"omitempty"`
+	Memo             string   `json:"memo" form:"memo"  binding:"omitempty"`
 	PeerPort         uint16   `json:"peerPort" form:"peerPort"  binding:"omitempty"`
 	BroadcastAddrs   []string `json:"broadcastAddrs" form:"broadcastAddrs"  binding:"omitempty"`
 	PublicAddrs      []string `json:"publicAddrs" form:"publicAddrs"  binding:"omitempty"`
@@ -11,6 +12,7 @@ type Settings struct {
 
 type SettingsFields struct {
 	Name             string   `form:"name" json:"name"  binding:"omitempty"`
+	Memo             string   `form:"memo" json:"memo"  binding:"omitempty"`
 	PeerPort         *uint16  `form:"peerPort" json:"peerPort"  binding:"omitempty"`
 	BroadcastAddrs   []string `form:"broadcastAddrs" json:"broadcastAddrs"  binding:"omitempty"`
 	PublicAddrs      []string `form:"publicAddrs" json:"publicAddrs"  binding:"omitempty"`

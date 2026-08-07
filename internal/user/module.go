@@ -52,15 +52,18 @@ type stdModule struct {
 var _ = (repository.RepositoryDBModule)((*stdModule)(nil))
 
 func (module *stdModule) SetupToRepository(db repository.RepositoryDB) error {
-	err := db.AutoMigrate(
-		&User{},
-		&UserConsensus{},
-		&UserDevice{},
-		&UserExtra{},
-		&UserSecret{},
-		&Passport{},
-		&PassportUser{},
-	)
+	var err error
+	if db != nil {
+		err = db.AutoMigrate(
+			&User{},
+			&UserConsensus{},
+			&UserDevice{},
+			&UserExtra{},
+			&UserSecret{},
+			&Passport{},
+			&PassportUser{},
+		)
+	}
 
 	if err == nil {
 		err = module.repositoryBase.SetupToRepository(db)
@@ -102,7 +105,6 @@ func (module *stdModule) Components() []injection.Component {
 		injection.NewComponent(module.repositoryBase, injection.ComponentInternalScope),
 		injection.NewComponent[UserRepository](&stdUserRepository{}, injection.ComponentInternalScope),
 		injection.NewComponent[UserDataRepository](&stdUserDataRepository{}, injection.ComponentInternalScope),
-		injection.NewComponent[UserRepository](&stdUserRepository{}, injection.ComponentInternalScope),
 		injection.NewComponent[UserConsensusRepository](&stdUserConsensusRepository{}, injection.ComponentInternalScope),
 		injection.NewComponent[UserDeviceRepository](&stdUserDeviceRepository{}, injection.ComponentInternalScope),
 		injection.NewComponent[UserExtraRepository](&stdUserExtraRepository{}, injection.ComponentInternalScope),
@@ -123,6 +125,9 @@ func (module *stdModule) Components() []injection.Component {
 		injection.NewComponent(&UserDeviceBroker{}, injection.ComponentInternalScope),
 		injection.NewComponent(&UserExtraBroker{}, injection.ComponentInternalScope),
 		injection.NewComponent(&UserSecretBroker{}, injection.ComponentInternalScope),
+
+		// others
+		injection.NewComponent(module.userDeviceSyncAgent, injection.ComponentInternalScope),
 	}
 
 	// topics
@@ -139,7 +144,7 @@ var _ = (bootstrap.ReadyModule)((*stdModule)(nil))
 func (module *stdModule) Ready(ctx context.Context) error {
 	if module.RepositoryManager != nil {
 		module.RepositoryManager.AttachBaseModule(module)
-		defer module.RepositoryManager.DetachBaseModule(module)
+		module.RepositoryManager.DetachBaseModule(module)
 	}
 
 	if module.SecurityConfigurer != nil {

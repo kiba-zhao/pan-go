@@ -20,6 +20,7 @@ const (
 
 const (
 	SettingsNameField             = "name"
+	SettingsMemoField             = "memo"
 	SettingsPeerPortField         = "peerPort"
 	SettingsBroadcastAddrsField   = "broadcastAddrs"
 	SettingsPublicAddrsField      = "publicAddrs"
@@ -43,7 +44,7 @@ type SettingsService struct {
 	cfgRW sync.RWMutex
 }
 
-func (service *SettingsService) Setup(cfg SettingsConfig) {
+func (service *SettingsService) setup(cfg SettingsConfig) {
 	service.cfgRW.Lock()
 	defer service.cfgRW.Unlock()
 	service.cfg = cfg
@@ -78,6 +79,12 @@ func (service *SettingsService) Save(fields SettingsFields) (Settings, error) {
 		changed = true
 	}
 
+	if len(fields.Memo) > 0 && fields.Memo != settings.Memo {
+		viper.Set(SettingsMemoField, fields.Memo)
+		settings.Memo = fields.Memo
+		changed = true
+	}
+
 	if fields.PeerPort != nil && *fields.PeerPort != settings.PeerPort {
 		peerPort := *fields.PeerPort
 		viper.Set(SettingsPeerPortField, peerPort)
@@ -85,13 +92,13 @@ func (service *SettingsService) Save(fields SettingsFields) (Settings, error) {
 		changed = true
 	}
 
-	if len(fields.BroadcastAddrs) > 0 && slices.Equal(fields.BroadcastAddrs, settings.BroadcastAddrs) {
+	if len(fields.BroadcastAddrs) > 0 && !slices.Equal(fields.BroadcastAddrs, settings.BroadcastAddrs) {
 		viper.Set(SettingsBroadcastAddrsField, fields.BroadcastAddrs)
 		settings.BroadcastAddrs = fields.BroadcastAddrs
 		changed = true
 	}
 
-	if len(fields.PublicAddrs) > 0 && slices.Equal(fields.PublicAddrs, settings.PublicAddrs) {
+	if len(fields.PublicAddrs) > 0 && !slices.Equal(fields.PublicAddrs, settings.PublicAddrs) {
 		viper.Set(SettingsPublicAddrsField, fields.PublicAddrs)
 		settings.PublicAddrs = fields.PublicAddrs
 		changed = true
@@ -133,6 +140,12 @@ func generateSettings(viper *viper.Viper, cfg SettingsConfig) (Settings, error) 
 		settings.Name = viper.GetString(SettingsNameField)
 	} else {
 		settings.Name = cfg.HostName()
+	}
+
+	if viper.IsSet(SettingsMemoField) {
+		settings.Memo = viper.GetString(SettingsMemoField)
+	} else {
+		settings.Memo = ""
 	}
 
 	if viper.IsSet(SettingsPeerPortField) {

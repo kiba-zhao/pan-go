@@ -15,6 +15,7 @@ type BroadcastConfig interface {
 	Addrs() []string
 	MTU() int
 	IPv6ZoneList() []string
+	IPv6Enabled() bool
 
 	DeliverMaxSize() int
 }

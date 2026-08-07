@@ -8,7 +8,10 @@ type SettingsConfig interface {
 	CachePath() string
 
 	HostName() string
-	NetInterfaces() []NetInterface
+
+	MTU() int
+	IPv6ZoneList() []string
+	IPv6Enabled() bool
 }
 
 type SettingsConfigListener = config.ConfigurerListener[SettingsConfig]

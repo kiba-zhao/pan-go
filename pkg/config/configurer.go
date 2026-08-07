@@ -2,6 +2,7 @@ package config
 
 import (
 	"pan/pkg/log"
+	"slices"
 	"sync"
 )
 
@@ -41,9 +42,8 @@ func NewConfigurerWithConfig[T any](logger log.Logger, config T) Configurer[T] {
 
 func (configurer *stdConfigurer[T]) Configure(config T) error {
 	configurer.configRW.Lock()
-	defer configurer.configRW.Unlock()
-
 	configurer.config = config
+	configurer.configRW.Unlock()
 
 	listeners := configurer.ConfigListeners()
 	if len(listeners) > 0 {
@@ -66,15 +66,16 @@ func (configurer *stdConfigurer[T]) ConfigListeners() []ConfigurerListener[T] {
 	configurer.listenersRW.RLock()
 	defer configurer.listenersRW.RUnlock()
 
-	return configurer.listeners
+	return slices.Clone(configurer.listeners)
 }
 
 func (configurer *stdConfigurer[T]) Subscribe(listener ConfigurerListener[T]) {
 	configurer.listenersRW.Lock()
-	defer configurer.listenersRW.Unlock()
+	configurer.listeners = append(configurer.listeners, listener)
+	configurer.listenersRW.Unlock()
 
 	listener.OnConfigUpdated(configurer.Config())
-	configurer.listeners = append(configurer.listeners, listener)
+
 }
 
 func (configurer *stdConfigurer[T]) Unsubscribe(listener ConfigurerListener[T]) {

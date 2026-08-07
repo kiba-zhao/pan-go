@@ -3,11 +3,10 @@
 package settings
 
 import (
-	"context"
 	"pan/pkg/app"
-	"pan/pkg/bootstrap"
 	"pan/pkg/injection"
 	"pan/pkg/module"
+	"pan/pkg/net"
 )
 
 func init() {
@@ -25,7 +24,7 @@ func newMobileModule(m *stdModule) interface{} {
 	mobileModule.mobileSettingsModule = mobileSettingsModule
 	mobileModule.mobileSettingsSvc = mobileSettingsSvc
 
-	m.ignoreConfigured = true
+	// m.ignoreConfigured = true
 
 	return mobileModule
 }
@@ -45,27 +44,6 @@ type stdMobileSettingsModule struct {
 	mobileSettingsSvc    *MobileSettingsService
 }
 
-var _ = (SecurityConfigurerListener)((*stdMobileSettingsModule)(nil))
-
-func (m *stdMobileSettingsModule) OnConfigUpdated(cfg SecurityConfig) {
-	mobileCfg, ok := cfg.(MobileSettingsConfig)
-	if !ok {
-		return
-	}
-
-	var settings Settings
-	mobileSettings, err := m.loadMobileSettings()
-	if err == nil {
-		settings, err = m.ParentModule().loadSettings()
-	}
-
-	if err != nil {
-		return
-	}
-
-	m.configure(cfg, settings, mobileSettings, mobileCfg)
-}
-
 var _ = (app.AppletModule)((*stdMobileSettingsModule)(nil))
 
 func (m *stdMobileSettingsModule) SetupToApplet(router app.AppServletRouter) error {
@@ -74,19 +52,6 @@ func (m *stdMobileSettingsModule) SetupToApplet(router app.AppServletRouter) err
 		err = m.mobileSettingsModule.SetupToApplet(router.Route([]byte(MobileSettingsModuleName)))
 	}
 	return err
-}
-
-var _ = (bootstrap.DeferModule)((*stdMobileSettingsModule)(nil))
-
-func (m *stdMobileSettingsModule) Defer(ctx context.Context) error {
-	m.SecurityConfigurer.Subscribe(m)
-	return nil
-}
-
-var _ = (bootstrap.DestroyModule)((*stdMobileSettingsModule)(nil))
-
-func (m *stdMobileSettingsModule) Destroy() {
-	m.SecurityConfigurer.Unsubscribe(m)
 }
 
 var _ = (injection.ComponentProvider)((*stdMobileSettingsModule)(nil))
@@ -103,60 +68,10 @@ func (m *stdMobileSettingsModule) Components() []injection.Component {
 	}
 }
 
-var _ = (SettingsChangedTrigger)((*stdMobileSettingsModule)(nil))
-
-func (m *stdMobileSettingsModule) OnSettingsChanged(settings Settings) {
-
-	mobileSettings, err := m.loadMobileSettings()
-	if err != nil {
-		return
-	}
-
-	mobileCfg := m.loadMobileConfig()
-	if mobileCfg == nil {
-		return
-	}
-
-	securityCfg := m.SecurityConfigurer.Config()
-	m.configure(securityCfg, settings, mobileSettings, mobileCfg)
-}
-
 var _ = (MobileSettingsChangedTrigger)((*stdMobileSettingsModule)(nil))
 
 func (m *stdMobileSettingsModule) OnMobileSettingsChanged(mobileSettings MobileSettings) {
-	settings, err := m.ParentModule().loadSettings()
-	if err != nil {
-		return
-	}
-	mobileCfg := m.loadMobileConfig()
-	if mobileCfg == nil {
-		return
-	}
-
-	securityCfg := m.SecurityConfigurer.Config()
-	m.configure(securityCfg, settings, mobileSettings, mobileCfg)
-}
-
-func (m *stdMobileSettingsModule) configure(securityCfg SecurityConfig, settings Settings, mobileSettings MobileSettings, cfg MobileSettingsConfig) error {
-
-	useWifiOnly := false
-	var wifiIfaces []NetInterface
-	if mobileSettings.WifiOnly != nil {
-		useWifiOnly = *mobileSettings.WifiOnly
-	} else {
-		wifiIfaces = cfg.WifiInterfaces()
-		useWifiOnly = len(wifiIfaces) > 0
-	}
-
-	if !useWifiOnly {
-		return m.ParentModule().configure(securityCfg, settings, nil, false)
-	}
-
-	if len(wifiIfaces) > 0 {
-		return m.ParentModule().configure(securityCfg, settings, wifiIfaces, true)
-	}
-	return m.ParentModule().configure(securityCfg, settings, cfg.WifiInterfaces(), true)
-
+	m.ParentModule().configure(nil)
 }
 
 func (m *stdMobileSettingsModule) loadMobileSettings() (MobileSettings, error) {
@@ -173,4 +88,64 @@ func (m *stdMobileSettingsModule) loadMobileConfig() MobileSettingsConfig {
 		return mobileCfg
 	}
 	return nil
+}
+
+func (m *stdMobileSettingsModule) NetInterfaces(mobileSettings *MobileSettings) ([]NetInterface, []string, bool) {
+	mobileCfg := m.loadMobileConfig()
+	if mobileCfg == nil {
+		return nil, nil, false
+	}
+
+	useWifiOnly := false
+	var wifiIfaces []NetInterface
+	var zoneList []string
+	if mobileSettings.WifiOnly != nil {
+		useWifiOnly = *mobileSettings.WifiOnly
+	} else {
+		wifiIfaces = mobileCfg.WifiInterfaces()
+		zoneList = mobileCfg.WifiZoneList()
+		useWifiOnly = len(wifiIfaces) > 0
+	}
+
+	if !useWifiOnly {
+		settingsCfg := m.SettingsConfigurer.Config()
+		return mobileCfg.NetInterfaces(), settingsCfg.IPv6ZoneList(), true
+	}
+
+	if mobileSettings.WifiOnly == nil {
+		return wifiIfaces, zoneList, false
+	}
+
+	return mobileCfg.WifiInterfaces(), mobileCfg.WifiZoneList(), false
+
+}
+
+var _ = (ModuleNetProvider)((*stdMobileSettingsModule)(nil))
+
+func (m *stdMobileSettingsModule) NewNetConfig(settings *Settings) (net.QuicConfig, net.BroadcastConfig) {
+	mobileSettings, err := m.loadMobileSettings()
+	if err != nil {
+		return nil, nil
+	}
+
+	ifaces, zoneList, flexible := m.NetInterfaces(&mobileSettings)
+	if len(ifaces) <= 0 && flexible {
+		return nil, nil
+	}
+
+	addrs := make([]string, 0)
+	for _, iface := range ifaces {
+		addrs = append(addrs, iface.Addr)
+	}
+	quicCfg := newQuicConfig(settings, m.SecurityConfigurer.Config(), addrs)
+
+	settingsConfig := m.SettingsConfigurer.Config()
+	broadcastCfg := &stdBroadcastConfig{}
+	broadcastCfg.addrs = settings.BroadcastAddrs
+	broadcastCfg.ipv6Enabled = settingsConfig.IPv6Enabled()
+	broadcastCfg.ipv6ZoneList = zoneList
+	broadcastCfg.mtu = settingsConfig.MTU()
+	broadcastCfg.ifaces = ifaces
+
+	return quicCfg, broadcastCfg
 }

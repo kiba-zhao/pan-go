@@ -70,6 +70,7 @@ func New() interface{} {
 	quicAgent.broadcastNetwork = broadcastNetwork
 	quicAgent.broadcastCache = expirable.NewLRU[string, uint64](0, nil, time.Second*30)
 	quicAgent.guard = peerGuard
+	quicAgent.reloadChan = make(chan struct{}, 1)
 
 	quicModule := &stdQuicModule{}
 	quicModule.quicServer = quicServer

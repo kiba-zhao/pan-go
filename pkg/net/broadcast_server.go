@@ -51,7 +51,8 @@ func (server *stdBroadcastServer) setupModules(modules []BroadcastServeModule) {
 }
 
 func (server *stdBroadcastServer) setup(config BroadcastConfig) {
-	server.logger.Debug("net.BroadcastServer", "Setup")
+	server.logger.Debug("net.BroadcastServer", "setup begin")
+	defer server.logger.Debug("net.BroadcastServer", "setup end")
 
 	server.reloadLock.Lock()
 	defer server.reloadLock.Unlock()
@@ -59,7 +60,7 @@ func (server *stdBroadcastServer) setup(config BroadcastConfig) {
 	changed := false
 	addrs := config.Addrs()
 	mtu := config.MTU()
-	ipv6Enabled := len(config.IPv6ZoneList()) > 0
+	ipv6Enabled := config.IPv6Enabled()
 
 	if !slices.Equal(server.addrs, addrs) {
 		server.addrs = addrs
