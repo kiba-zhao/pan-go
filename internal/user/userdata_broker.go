@@ -2,15 +2,15 @@ package user
 
 import (
 	"context"
-	"pan/pkg/net"
 	"pan/pkg/proto"
+	"pan/pkg/ptp"
 )
 
 type UserDataBroker struct {
-	PeerBroker *net.PeerBroker
+	PeerBroker *ptp.PeerBroker
 }
 
-func (broker *UserDataBroker) Pull(ctx context.Context, peerId net.PeerID, meta *RemoteUserMeta) (*RemoteUser, error) {
+func (broker *UserDataBroker) Pull(ctx context.Context, peerId ptp.PeerID, meta *RemoteUserMeta) (*RemoteUser, error) {
 	reader, err := proto.MarshalWithReader(meta)
 	if err != nil {
 		return nil, err
@@ -31,13 +31,13 @@ func (broker *UserDataBroker) Pull(ctx context.Context, peerId net.PeerID, meta 
 	return &remoteUser, err
 }
 
-func (broker *UserDataBroker) Push(ctx context.Context, peerId net.PeerID, meta *RemoteUserMeta, signature []byte) error {
+func (broker *UserDataBroker) Push(ctx context.Context, peerId ptp.PeerID, meta *RemoteUserMeta, signature []byte) error {
 	reader, err := proto.MarshalWithReader(meta)
 	if err != nil {
 		return err
 	}
 
-	signatureHeader := net.HeaderItem{Key: PeerSignatureHeaderName, Value: signature}
+	signatureHeader := ptp.HeaderItem{Key: PeerSignatureHeaderName, Value: signature}
 	req := broker.PeerBroker.NewRequest(PushUserData, reader, signatureHeader)
 	_, res, err := broker.PeerBroker.DoAction(ctx, peerId, req)
 	if res != nil {

@@ -3,7 +3,7 @@ package settings
 import (
 	"crypto"
 	"crypto/tls"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 	"time"
 )
 
@@ -17,7 +17,7 @@ type stdQuicConfig struct {
 	broadcastEnabled bool
 }
 
-func newQuicConfig(settings *Settings, security SecurityConfig, addrs []string) net.QuicConfig {
+func newQuicConfig(settings *Settings, security SecurityConfig, addrs []string) ptp.QuicConfig {
 	cfg := &stdQuicConfig{}
 	cfg.port = settings.PeerPort
 	cfg.security = security
@@ -30,7 +30,7 @@ func newQuicConfig(settings *Settings, security SecurityConfig, addrs []string) 
 	return cfg
 }
 
-var _ = (net.QuicConfig)((*stdQuicConfig)(nil))
+var _ = (ptp.QuicConfig)((*stdQuicConfig)(nil))
 
 func (cfg *stdQuicConfig) Port() uint16 {
 	return cfg.port
@@ -42,7 +42,7 @@ func (cfg *stdQuicConfig) Certificate() tls.Certificate {
 	return cfg.security.Certificate()
 }
 
-func (cfg *stdQuicConfig) PeerID() net.PeerID {
+func (cfg *stdQuicConfig) PeerID() ptp.PeerID {
 	return cfg.security.PeerID()
 }
 

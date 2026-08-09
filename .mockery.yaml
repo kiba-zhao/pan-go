@@ -1,13 +1,16 @@
-with-expecter: true
+template: testify
+template-data:
+  unroll-variadic: true
 packages:
   pan/internal:
     config:
       all: true
-      dir: mocks/{{ replaceAll .PackagePath "internal" "internal_" }}
+      dir: mocks/{{ replaceAll .SrcPackagePath "internal" "internal_" }}/{{ .SrcPackageName }}
+      filename: "mocks.go"
       recursive: true
-      with-expecter: true
   pan/pkg:
     config:
       all: true
+      dir: mocks/{{ .SrcPackagePath }}
+      filename: "mocks.go"
       recursive: true
-      with-expecter: true

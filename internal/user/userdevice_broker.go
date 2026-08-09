@@ -6,8 +6,8 @@ import (
 	"errors"
 	"io"
 	"iter"
-	"pan/pkg/net"
 	"pan/pkg/proto"
+	"pan/pkg/ptp"
 
 	protobuf "google.golang.org/protobuf/proto"
 )
@@ -15,10 +15,10 @@ import (
 var ErrUserDeviceScanInvalidWithRemoteUser = errors.New("user.UserDeviceBroker ScanWithUserMeta Error: Invalid")
 
 type UserDeviceBroker struct {
-	PeerBroker *net.PeerBroker
+	PeerBroker *ptp.PeerBroker
 }
 
-func (broker *UserDeviceBroker) ScanWithUserMeta(ctx context.Context, peerId net.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserDevice, error], error) {
+func (broker *UserDeviceBroker) ScanWithUserMeta(ctx context.Context, peerId ptp.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserDevice, error], error) {
 	reader, err := proto.MarshalWithReader(meta)
 	if err != nil {
 		return nil, err

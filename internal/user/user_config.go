@@ -2,14 +2,14 @@ package user
 
 import (
 	"pan/internal/settings"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 	"time"
 )
 
 var UserConfigSyncInterval = time.Second * 6
 
 type UserConfig struct {
-	peerId       net.PeerID
+	peerId       ptp.PeerID
 	syncInterval time.Duration
 }
 
@@ -20,7 +20,7 @@ func NewUserConfig(security settings.SecurityConfig) *UserConfig {
 	return cfg
 }
 
-func (cfg *UserConfig) PeerID() net.PeerID {
+func (cfg *UserConfig) PeerID() ptp.PeerID {
 	return cfg.peerId
 }
 

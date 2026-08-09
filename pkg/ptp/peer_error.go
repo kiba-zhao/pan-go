@@ -1,4 +1,4 @@
-package net
+package ptp
 
 type CodeError interface {
 	Code() int

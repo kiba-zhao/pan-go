@@ -9,7 +9,7 @@ import (
 	"pan/pkg/injection"
 	"pan/pkg/log"
 	"pan/pkg/module"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 	"pan/pkg/repository"
 	"sync"
 
@@ -22,7 +22,7 @@ var ErrSettingsModuleUavailable = errors.New("settings.Module Error: Unavailable
 var ErrSettingsModuleHomePathConflict = errors.New("settings.Module Error: Home Path Conflict")
 
 type ModuleNetProvider interface {
-	NewNetConfig(settings *Settings) (net.QuicConfig, net.BroadcastConfig)
+	NewNetConfig(settings *Settings) (ptp.QuicConfig, ptp.BroadcastConfig)
 }
 
 const (
@@ -30,8 +30,8 @@ const (
 )
 
 type stdModule struct {
-	QuicConfigurer       net.QuicConfigurer
-	BroadcastConfigurer  net.BroadcastConfigurer
+	QuicConfigurer       ptp.QuicConfigurer
+	BroadcastConfigurer  ptp.BroadcastConfigurer
 	RepositoryConfigurer repository.RepositoryConfigurer
 
 	*module.BaseModule
@@ -190,8 +190,8 @@ func (m *stdModule) configure(settings *Settings) error {
 		}
 	}
 
-	var quicConfig net.QuicConfig
-	var broadcastConfig net.BroadcastConfig
+	var quicConfig ptp.QuicConfig
+	var broadcastConfig ptp.BroadcastConfig
 	if m.netProvider != nil {
 		quicConfig, broadcastConfig = m.netProvider.NewNetConfig(settings_)
 	}

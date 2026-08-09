@@ -1,11 +1,11 @@
 package settings
 
 import (
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 )
 
 type stdBroadcastConfig struct {
-	ifaces       []net.BroadcastInterface
+	ifaces       []ptp.BroadcastInterface
 	mtu          int
 	ipv6ZoneList []string
 	ipv6Enabled  bool
@@ -14,56 +14,23 @@ type stdBroadcastConfig struct {
 	addrs    []string
 }
 
-func newBroadcastConfig(settings *Settings, settingsConfig SettingsConfig) net.BroadcastConfig {
+func newBroadcastConfig(settings *Settings, settingsConfig SettingsConfig) ptp.BroadcastConfig {
 	cfg := &stdBroadcastConfig{}
 	cfg.addrs = settings.BroadcastAddrs
 	cfg.ipv6Enabled = settingsConfig.IPv6Enabled()
 	cfg.ipv6ZoneList = settingsConfig.IPv6ZoneList()
 	cfg.mtu = settingsConfig.MTU()
-	cfg.ifaces = []net.BroadcastInterface{
-		net.BroadcastInterface{
+	cfg.ifaces = []ptp.BroadcastInterface{
+		ptp.BroadcastInterface{
 			MTU: cfg.mtu,
 		},
 	}
 	return cfg
 }
 
-// func newBroadcastConfig(settings *Settings, settingsConfig SettingsConfig, netIfaces []NetInterface) net.BroadcastConfig {
-// 	cfg := &stdBroadcastConfig{}
-// 	cfg.addrs = settings.BroadcastAddrs
+var _ = (ptp.BroadcastConfig)((*stdBroadcastConfig)(nil))
 
-// 	if len(netIfaces) <= 0 {
-// 		cfg.ipv6Enabled = settingsConfig.IPv6Enabled()
-// 		cfg.ipv6ZoneList = settingsConfig.IPv6ZoneList()
-// 		cfg.mtu = settingsConfig.MTU()
-// 		return cfg
-// 	}
-
-// 	cfg.ifaces = make([]net.BroadcastInterface, 0)
-// 	cfg.ipv6ZoneList = make([]string, 0)
-// 	cfg.mtu = 0
-// 	for _, iface := range netIfaces {
-
-// 		var bIface net.BroadcastInterface
-// 		bIface.Addr = iface.Addr
-// 		bIface.MTU = iface.MTU
-// 		cfg.ifaces = append(cfg.ifaces, bIface)
-
-// 		if len(iface.Zone) > 0 {
-// 			cfg.ipv6ZoneList = append(cfg.ipv6ZoneList, iface.Zone)
-// 		}
-
-// 		if iface.MTU < cfg.mtu {
-// 			cfg.mtu = iface.MTU
-// 		}
-// 	}
-
-// 	return cfg
-// }
-
-var _ = (net.BroadcastConfig)((*stdBroadcastConfig)(nil))
-
-func (cfg *stdBroadcastConfig) Interfaces() []net.BroadcastInterface {
+func (cfg *stdBroadcastConfig) Interfaces() []ptp.BroadcastInterface {
 	return cfg.ifaces
 }
 

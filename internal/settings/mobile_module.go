@@ -6,7 +6,7 @@ import (
 	"pan/pkg/app"
 	"pan/pkg/injection"
 	"pan/pkg/module"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 )
 
 func init() {
@@ -122,7 +122,7 @@ func (m *stdMobileSettingsModule) NetInterfaces(mobileSettings *MobileSettings) 
 
 var _ = (ModuleNetProvider)((*stdMobileSettingsModule)(nil))
 
-func (m *stdMobileSettingsModule) NewNetConfig(settings *Settings) (net.QuicConfig, net.BroadcastConfig) {
+func (m *stdMobileSettingsModule) NewNetConfig(settings *Settings) (ptp.QuicConfig, ptp.BroadcastConfig) {
 	mobileSettings, err := m.loadMobileSettings()
 	if err != nil {
 		return nil, nil

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 )
 
 var ErrUserSecretServiceUserNotFound = errors.New("user.UserSecretService Error: User Not Found")
@@ -21,7 +21,7 @@ type UserSecretService struct {
 	UserSecretBroker *UserSecretBroker
 }
 
-func (service *UserSecretService) Pull(ctx context.Context, peerId net.PeerID, meta UserMeta) error {
+func (service *UserSecretService) Pull(ctx context.Context, peerId ptp.PeerID, meta UserMeta) error {
 
 	user, err := service.UserRepository.SelectWithGenesis(ctx, meta.GenesisSignature, meta.Code)
 	if err != nil {
@@ -42,7 +42,7 @@ func (service *UserSecretService) Pull(ctx context.Context, peerId net.PeerID, m
 		return nil
 	}
 
-	device, err := service.UserDeviceRepository.Select(ctx, user.ID, net.EncodePeerID(peerId))
+	device, err := service.UserDeviceRepository.Select(ctx, user.ID, ptp.EncodePeerID(peerId))
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (service *UserSecretService) Pull(ctx context.Context, peerId net.PeerID, m
 	return err
 }
 
-func (service *UserSecretService) PullForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta) (UserSecret, error) {
+func (service *UserSecretService) PullForTopic(ctx context.Context, peerId ptp.PeerID, meta UserMeta) (UserSecret, error) {
 
 	user, err := service.UserRepository.SelectWithGenesis(ctx, meta.GenesisSignature, meta.Code)
 	if err != nil {
@@ -80,7 +80,7 @@ func (service *UserSecretService) PullForTopic(ctx context.Context, peerId net.P
 		return UserSecret{}, ErrUserSecretServiceUserConflict
 	}
 
-	device, err := service.UserDeviceRepository.Select(ctx, user.ID, net.EncodePeerID(peerId))
+	device, err := service.UserDeviceRepository.Select(ctx, user.ID, ptp.EncodePeerID(peerId))
 	if err != nil {
 		return UserSecret{}, err
 	}

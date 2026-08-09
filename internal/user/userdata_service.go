@@ -7,7 +7,7 @@ import (
 	"errors"
 	"iter"
 	"pan/internal/settings"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 	"pan/pkg/repository"
 )
 
@@ -36,7 +36,7 @@ type UserDataService struct {
 	UserExtraBroker     *UserExtraBroker
 }
 
-func (service *UserDataService) Pull(ctx context.Context, peerId net.PeerID, meta UserMeta) error {
+func (service *UserDataService) Pull(ctx context.Context, peerId ptp.PeerID, meta UserMeta) error {
 
 	remoteMeta := parseRemoteUserMeta(meta)
 	remoteUser, err := service.UserDataBroker.Pull(ctx, peerId, remoteMeta)
@@ -152,7 +152,7 @@ func (service *UserDataService) Pull(ctx context.Context, peerId net.PeerID, met
 		deviceSignatureHash.Write(deviceSignatureData)
 		//
 
-		devicePeerId, _ := net.DecodePeerID(device.PeerID)
+		devicePeerId, _ := ptp.DecodePeerID(device.PeerID)
 		if hostDevice == nil && bytes.Equal(devicePeerId, hostPeerId) {
 			hostDevice = &device
 		} else if remoteDevice == nil && bytes.Equal(devicePeerId, peerId) {
@@ -212,7 +212,7 @@ func (service *UserDataService) Pull(ctx context.Context, peerId net.PeerID, met
 	return service.UserDataRepository.Save(ctx, user, secret, userConsensuses, userDevices, userExtras)
 }
 
-func (service *UserDataService) CheckWithUserMetaForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta) (User, error) {
+func (service *UserDataService) CheckWithUserMetaForTopic(ctx context.Context, peerId ptp.PeerID, meta UserMeta) (User, error) {
 	user, err := service.UserRepository.SelectWithGenesis(ctx, meta.GenesisSignature, meta.Code)
 	if err != nil {
 		if errors.Is(err, repository.ErrRepositoryRecordNotFound) {
@@ -225,7 +225,7 @@ func (service *UserDataService) CheckWithUserMetaForTopic(ctx context.Context, p
 		return user, ErrUserDataServiceUserConflict
 	}
 
-	device, err := service.UserDeviceRepository.Select(ctx, user.ID, net.EncodePeerID(peerId))
+	device, err := service.UserDeviceRepository.Select(ctx, user.ID, ptp.EncodePeerID(peerId))
 	if err != nil {
 		return user, err
 	} else if device.ID <= 0 {
@@ -235,7 +235,7 @@ func (service *UserDataService) CheckWithUserMetaForTopic(ctx context.Context, p
 	return user, nil
 }
 
-func (service *UserDataService) PullForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta) (User, error) {
+func (service *UserDataService) PullForTopic(ctx context.Context, peerId ptp.PeerID, meta UserMeta) (User, error) {
 	user, err := service.CheckWithUserMetaForTopic(ctx, peerId, meta)
 	if err != nil {
 		return User{}, err
@@ -269,8 +269,8 @@ func (service *UserDataService) PullForTopic(ctx context.Context, peerId net.Pee
 	return user, err
 }
 
-func (service *UserDataService) Push(ctx context.Context, peerId net.PeerID, meta UserMeta, userId uint) error {
-	peerIdStr := net.EncodePeerID(peerId)
+func (service *UserDataService) Push(ctx context.Context, peerId ptp.PeerID, meta UserMeta, userId uint) error {
+	peerIdStr := ptp.EncodePeerID(peerId)
 	device, err := service.UserDeviceRepository.Select(ctx, userId, peerIdStr)
 	if err != nil {
 		return err
@@ -283,7 +283,7 @@ func (service *UserDataService) Push(ctx context.Context, peerId net.PeerID, met
 	return service.UserDataBroker.Push(ctx, peerId, remoteMeta, device.PeerSignature)
 }
 
-func (service *UserDataService) PushForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta, signature []byte) error {
+func (service *UserDataService) PushForTopic(ctx context.Context, peerId ptp.PeerID, meta UserMeta, signature []byte) error {
 	user, err := service.UserRepository.SelectWithGenesis(ctx, meta.GenesisSignature, meta.Code)
 	if err != nil {
 		if !errors.Is(err, repository.ErrRepositoryRecordNotFound) {

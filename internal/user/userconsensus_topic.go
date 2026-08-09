@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/binary"
 	"iter"
-	"pan/pkg/net"
 	"pan/pkg/proto"
+	"pan/pkg/ptp"
 
 	protobuf "google.golang.org/protobuf/proto"
 )
@@ -14,29 +14,29 @@ type UserConsensusTopic struct {
 	UserConsensusService *UserConsensusService
 }
 
-var _ = (net.PeerTopic)((*UserConsensusTopic)(nil))
+var _ = (ptp.PeerTopic)((*UserConsensusTopic)(nil))
 
-func (topic *UserConsensusTopic) SetupToPeer(router net.PeerServletRouter) error {
+func (topic *UserConsensusTopic) SetupToPeer(router ptp.PeerServletRouter) error {
 	router.Handle(ScanUserConsensusWithUserMeta, topic.ScanWithUserMeta)
 	return nil
 }
 
-func (topic *UserConsensusTopic) ScanWithUserMeta(ctx net.PeerServletContext, next net.PeerServletNext) error {
-	peerId, ok := ctx.Session(net.PeerIDSessionKey)
+func (topic *UserConsensusTopic) ScanWithUserMeta(ctx ptp.PeerServletContext, next ptp.PeerServletNext) error {
+	peerId, ok := ctx.Session(ptp.PeerIDSessionKey)
 	if !ok {
-		ctx.ThrowError(net.CodeBadRequest, nil)
+		ctx.ThrowError(ptp.CodeBadRequest, nil)
 		return nil
 	}
 
 	var userMeta RemoteUserMeta
 	err := proto.UnmarshalWithReader(ctx.Request(), &userMeta)
 	if err != nil {
-		ctx.ThrowError(net.CodeBadRequest, err)
+		ctx.ThrowError(ptp.CodeBadRequest, err)
 		return nil
 	}
 
 	meta := parseUserMeta(&userMeta)
-	consensusSeq, err := topic.UserConsensusService.ScanWithUserMetaForTopic(context.Background(), peerId.(net.PeerID), meta)
+	consensusSeq, err := topic.UserConsensusService.ScanWithUserMetaForTopic(context.Background(), peerId.(ptp.PeerID), meta)
 	if err == nil && consensusSeq != nil {
 		consensusBytesSeq := parseUserConsensusBytesSeq(consensusSeq)
 		stream := NewIterStreamForSeq2(consensusBytesSeq)

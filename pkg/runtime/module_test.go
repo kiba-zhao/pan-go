@@ -1,7 +1,6 @@
 package runtime_test
 
 import (
-	"math"
 	"pan/pkg/runtime"
 	"testing"
 
@@ -22,14 +21,6 @@ func TestSimpleModule(t *testing.T) {
 		simpleModule := runtime.NewModule(module)
 		err := e.Mount(simpleModule)
 		assert.Nil(t, err)
-	})
-
-	t.Run("smaple test", func(t *testing.T) {
-		prev := uint(0)
-		next := uint(math.MaxUint32)
-
-		results := int(prev - next)
-		assert.Equal(t, results, -1)
 	})
 
 }

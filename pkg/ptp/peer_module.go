@@ -1,4 +1,4 @@
-package net
+package ptp
 
 type PeerAppModule interface {
 	SetupToPeer(PeerServlet) error

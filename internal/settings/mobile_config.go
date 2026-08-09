@@ -2,9 +2,9 @@
 
 package settings
 
-import "pan/pkg/net"
+import "pan/pkg/ptp"
 
-type NetInterface = net.BroadcastInterface
+type NetInterface = ptp.BroadcastInterface
 
 type MobileSettingsConfig interface {
 	NetInterfaces() []NetInterface

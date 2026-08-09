@@ -2,15 +2,15 @@ package user
 
 import (
 	"context"
-	"pan/pkg/net"
 	"pan/pkg/proto"
+	"pan/pkg/ptp"
 )
 
 type UserSecretBroker struct {
-	PeerBroker *net.PeerBroker
+	PeerBroker *ptp.PeerBroker
 }
 
-func (broker *UserSecretBroker) Pull(ctx context.Context, peerId net.PeerID, meta *RemoteUserMeta) (*RemoteUserSecret, error) {
+func (broker *UserSecretBroker) Pull(ctx context.Context, peerId ptp.PeerID, meta *RemoteUserMeta) (*RemoteUserSecret, error) {
 	reader, err := proto.MarshalWithReader(meta)
 	if err != nil {
 		return nil, err

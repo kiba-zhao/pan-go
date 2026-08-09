@@ -5,7 +5,6 @@ package gobase
 import (
 	"log/slog"
 	"os"
-	"pan/pkg/env"
 	"pan/pkg/log"
 )
 
@@ -17,10 +16,10 @@ func init() {
 func newLogger() log.Logger {
 	var logLevel slog.Level
 
-	switch env.Mode() {
-	case env.DebugMode:
+	switch Mode() {
+	case DebugMode:
 		logLevel = slog.LevelDebug
-	case env.TestMode:
+	case TestMode:
 		logLevel = slog.LevelDebug
 	default:
 		logLevel = slog.LevelInfo

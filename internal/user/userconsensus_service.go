@@ -8,7 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"iter"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 )
 
 var ErrUserConsensusInvalid = errors.New("user.UserConsensusService verifyUserConsensus Error: UserConsensus Invalid")
@@ -39,7 +39,7 @@ func (service *UserConsensusService) SelectWithUser(ctx context.Context, user Us
 	return consensus, nil
 }
 
-func (service *UserConsensusService) ScanWithUserMetaForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta) (iter.Seq2[UserConsensus, error], error) {
+func (service *UserConsensusService) ScanWithUserMetaForTopic(ctx context.Context, peerId ptp.PeerID, meta UserMeta) (iter.Seq2[UserConsensus, error], error) {
 
 	user, err := service.UserDataService.CheckWithUserMetaForTopic(ctx, peerId, meta)
 	if err != nil {
@@ -91,7 +91,7 @@ func verifyUserConsensus(code string, genesisSignature string, userConsensus Use
 	// verify oldPassphrase
 	var oldPassphraseBytes []byte
 	if len(userConsensus.OldPassphrase) > 0 {
-		err := net.VerifyWithPublicKeyBytes(userConsensus.OldPassphrase, preUserConsensus.PassphraseSignature, userConsensus.UserKey)
+		err := ptp.VerifyWithPublicKeyBytes(userConsensus.OldPassphrase, preUserConsensus.PassphraseSignature, userConsensus.UserKey)
 		if err != nil {
 			return err
 		}
@@ -113,7 +113,7 @@ func verifyUserConsensus(code string, genesisSignature string, userConsensus Use
 		signatureSourceHash.Write(preSignatureBytes)
 	}
 
-	err = net.VerifyWithPublicKeyBytes(signatureSourceHash.Sum(nil), userConsensus.PeerSignature, userConsensus.PeerID)
+	err = ptp.VerifyWithPublicKeyBytes(signatureSourceHash.Sum(nil), userConsensus.PeerSignature, userConsensus.PeerID)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func verifyUserConsensus(code string, genesisSignature string, userConsensus Use
 	signatureSourceHash.Write(userConsensus.PeerSignature)
 	singnatureBytes, err := DecodeSignature(userConsensus.Signature)
 	if err == nil {
-		err = net.VerifyWithPublicKeyBytes(signatureSourceHash.Sum(nil), singnatureBytes, userConsensus.UserKey)
+		err = ptp.VerifyWithPublicKeyBytes(signatureSourceHash.Sum(nil), singnatureBytes, userConsensus.UserKey)
 	}
 	return err
 }

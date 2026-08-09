@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"iter"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 	"slices"
 )
 
@@ -19,7 +19,7 @@ type UserDeviceService struct {
 	UserDataService *UserDataService
 }
 
-func (service *UserDeviceService) ScanWithUserMetaForTopic(ctx context.Context, peerId net.PeerID, meta UserMeta) (iter.Seq2[UserDevice, error], error) {
+func (service *UserDeviceService) ScanWithUserMetaForTopic(ctx context.Context, peerId ptp.PeerID, meta UserMeta) (iter.Seq2[UserDevice, error], error) {
 
 	user, err := service.UserDataService.CheckWithUserMetaForTopic(ctx, peerId, meta)
 	if err != nil {
@@ -33,8 +33,8 @@ func (service *UserDeviceService) ScanWithUser(ctx context.Context, user User) (
 	return service.UserDeviceRepository.ScanWithUserID(ctx, user.ID)
 }
 
-func (service *UserDeviceService) SelectWithUser(ctx context.Context, user User, peerId net.PeerID) (UserDevice, error) {
-	peerIdStr := net.EncodePeerID(peerId)
+func (service *UserDeviceService) SelectWithUser(ctx context.Context, user User, peerId ptp.PeerID) (UserDevice, error) {
+	peerIdStr := ptp.EncodePeerID(peerId)
 	device, err := service.UserDeviceRepository.Select(ctx, user.ID, peerIdStr)
 	return device, err
 }
@@ -45,7 +45,7 @@ func verifyUserPeerSignature(code string, genesisSignature string, peerId []byte
 		return err
 	}
 	signatureData := slices.Concat([]byte(code), genesisSignatureBytes, peerId)
-	return net.VerifyWithPublicKeyBytes(signatureData, signature, peerId)
+	return ptp.VerifyWithPublicKeyBytes(signatureData, signature, peerId)
 }
 
 func verifyUserDevice(code string, genesisSignature string, userDevice UserDevice) ([]byte, error) {
@@ -56,7 +56,7 @@ func verifyUserDevice(code string, genesisSignature string, userDevice UserDevic
 		return nil, ErrUserDeviceInvalidSignature
 	}
 
-	peerId, err := net.DecodePeerID(userDevice.PeerID)
+	peerId, err := ptp.DecodePeerID(userDevice.PeerID)
 	if err == nil {
 		err = verifyUserPeerSignature(code, genesisSignature, peerId, userDevice.PeerSignature)
 	}
@@ -74,7 +74,7 @@ func verifyUserDevice(code string, genesisSignature string, userDevice UserDevic
 }
 
 func verifyUserDeviceHeight(code string, genesisSignature string, userDevice UserDevice) error {
-	peerId, err := net.DecodePeerID(userDevice.PeerID)
+	peerId, err := ptp.DecodePeerID(userDevice.PeerID)
 	if err != nil {
 		return err
 	}
@@ -86,5 +86,5 @@ func verifyUserDeviceHeight(code string, genesisSignature string, userDevice Use
 
 	heightSignatureData := slices.Concat([]byte(code), genesisSignatureBytes)
 	heightSignatureData = binary.BigEndian.AppendUint64(heightSignatureData, userDevice.Height)
-	return net.VerifyWithPublicKeyBytes(heightSignatureData, userDevice.HeightSignature, peerId)
+	return ptp.VerifyWithPublicKeyBytes(heightSignatureData, userDevice.HeightSignature, peerId)
 }

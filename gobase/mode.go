@@ -1,11 +1,11 @@
-package env
+package gobase
 
 import (
 	"os"
 )
 
 const (
-	EnvMode     = "PANGO_MODE"
+	EnvMode     = "GOBASE_MODE"
 	DebugMode   = "debug"
 	ReleaseMode = "release"
 	TestMode    = "test"

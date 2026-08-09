@@ -3,7 +3,7 @@ package gobase
 import (
 	"pan/internal/settings"
 	"pan/pkg/bootstrap"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 	"pan/pkg/repository"
 	"pan/pkg/runtime"
 )
@@ -26,7 +26,7 @@ func (module *stdModule) Modules() []interface{} {
 	modules := []interface{}{
 		bootstrap.New(),
 		repository.New(),
-		net.New(),
+		ptp.New(),
 	}
 
 	if len(module.modules) > 0 {

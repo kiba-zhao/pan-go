@@ -6,8 +6,8 @@ import (
 	"errors"
 	"io"
 	"iter"
-	"pan/pkg/net"
 	"pan/pkg/proto"
+	"pan/pkg/ptp"
 
 	protobuf "google.golang.org/protobuf/proto"
 )
@@ -15,10 +15,10 @@ import (
 var ErrUserConsensusScanInvalidWithRemoteUser = errors.New("user.UserConsensusBroker ScanWithUserMeta Error: Invalid")
 
 type UserConsensusBroker struct {
-	PeerBroker *net.PeerBroker
+	PeerBroker *ptp.PeerBroker
 }
 
-func (broker *UserConsensusBroker) ScanWithUserMeta(ctx context.Context, peerId net.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserConsensus, error], error) {
+func (broker *UserConsensusBroker) ScanWithUserMeta(ctx context.Context, peerId ptp.PeerID, meta *RemoteUserMeta) (iter.Seq2[*RemoteUserConsensus, error], error) {
 	reader, err := proto.MarshalWithReader(meta)
 	if err != nil {
 		return nil, err

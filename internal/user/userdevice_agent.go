@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"pan/pkg/log"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 	"slices"
 	"sync"
 	"time"
@@ -20,7 +20,7 @@ var ErrUserDeviceSyncAgentSyncInvalidPeer = errors.New("user.UserDeviceSyncAgent
 
 type UserDeviceSyncErr struct {
 	userID      uint
-	peerId      net.PeerID
+	peerId      ptp.PeerID
 	err         error
 	isCompleted bool
 	rw          sync.RWMutex
@@ -45,7 +45,7 @@ type UserDeviceSyncAgent struct {
 	syncReload   bool
 	syncInterval time.Duration
 
-	peerId net.PeerID
+	peerId ptp.PeerID
 	rw     sync.RWMutex
 }
 
@@ -170,7 +170,7 @@ func (agent *UserDeviceSyncAgent) sync(ctx context.Context) error {
 				break
 			}
 
-			devicePeerId, err := net.DecodePeerID(device.PeerID)
+			devicePeerId, err := ptp.DecodePeerID(device.PeerID)
 			if err != nil {
 				continue
 			}
@@ -187,7 +187,7 @@ func (agent *UserDeviceSyncAgent) sync(ctx context.Context) error {
 	return err
 }
 
-func (agent *UserDeviceSyncAgent) syncFromUserDevice(ctx context.Context, user User, devicePeerId net.PeerID) error {
+func (agent *UserDeviceSyncAgent) syncFromUserDevice(ctx context.Context, user User, devicePeerId ptp.PeerID) error {
 
 	agent.rw.RLock()
 	peerId := agent.peerId
@@ -219,7 +219,7 @@ func (agent *UserDeviceSyncAgent) syncFromUserDevice(ctx context.Context, user U
 		syncErr.rw.RUnlock()
 
 		if !isCompleted {
-			return errors.New(fmt.Sprintf("user.UserDeviceSyncAgent Error: Sync Ongoing %s", net.EncodePeerID(devicePeerId)))
+			return errors.New(fmt.Sprintf("user.UserDeviceSyncAgent Error: Sync Ongoing %s", ptp.EncodePeerID(devicePeerId)))
 		}
 	}
 
@@ -240,7 +240,7 @@ func (agent *UserDeviceSyncAgent) syncFromUserDevice(ctx context.Context, user U
 	return err
 }
 
-func (agent *UserDeviceSyncAgent) purge(ctx context.Context, peerId net.PeerID) error {
+func (agent *UserDeviceSyncAgent) purge(ctx context.Context, peerId ptp.PeerID) error {
 
 	userSeq, err := agent.UserService.Scan(ctx)
 	if err != nil {
@@ -277,7 +277,7 @@ func (agent *UserDeviceSyncAgent) purge(ctx context.Context, peerId net.PeerID) 
 
 }
 
-func (agent *UserDeviceSyncAgent) update(ctx context.Context, peerId net.PeerID) error {
+func (agent *UserDeviceSyncAgent) update(ctx context.Context, peerId ptp.PeerID) error {
 	userSeq, err := agent.UserService.Scan(ctx)
 	if err != nil {
 		return err
@@ -305,7 +305,7 @@ func (agent *UserDeviceSyncAgent) update(ctx context.Context, peerId net.PeerID)
 	return nil
 }
 
-func generateUserDeviceSyncErrKey(userID uint, peerId net.PeerID) []byte {
+func generateUserDeviceSyncErrKey(userID uint, peerId ptp.PeerID) []byte {
 	key := make([]byte, 4+len(peerId))
 	binary.BigEndian.PutUint32(key, uint32(userID))
 	copy(key[4:], peerId)

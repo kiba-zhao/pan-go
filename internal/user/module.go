@@ -7,7 +7,7 @@ import (
 	"pan/pkg/injection"
 	"pan/pkg/log"
 	"pan/pkg/module"
-	"pan/pkg/net"
+	"pan/pkg/ptp"
 	"pan/pkg/repository"
 	sync "sync"
 )
@@ -43,7 +43,7 @@ type stdModule struct {
 
 	repositoryBase *repository.RepositoryBase
 
-	peerTopics    []net.PeerTopic
+	peerTopics    []ptp.PeerTopic
 	peerTopicOnce sync.Once
 
 	userDeviceSyncAgent *UserDeviceSyncAgent
@@ -75,17 +75,17 @@ func (module *stdModule) DBName() string {
 	return ModuleName + ".db"
 }
 
-var _ = (net.PeerRouteModule)((*stdModule)(nil))
+var _ = (ptp.PeerRouteModule)((*stdModule)(nil))
 
-func (module *stdModule) PeerRouteScope() net.PeerServletScope {
+func (module *stdModule) PeerRouteScope() ptp.PeerServletScope {
 	return []byte(ModuleName)
 }
 
-var _ = (net.PeerTopicProvider)((*stdModule)(nil))
+var _ = (ptp.PeerTopicProvider)((*stdModule)(nil))
 
-func (module *stdModule) PeerTopics() []net.PeerTopic {
+func (module *stdModule) PeerTopics() []ptp.PeerTopic {
 	module.peerTopicOnce.Do(func() {
-		module.peerTopics = []net.PeerTopic{
+		module.peerTopics = []ptp.PeerTopic{
 			&UserDataTopic{},
 			&UserConsensusTopic{},
 			&UserDeviceTopic{},
@@ -119,7 +119,7 @@ func (module *stdModule) Components() []injection.Component {
 		injection.NewComponent(&UserSecretService{}, injection.ComponentInternalScope),
 
 		// broker
-		injection.NewComponent(&net.PeerBroker{PeerRouteModule: module}, injection.ComponentInternalScope),
+		injection.NewComponent(&ptp.PeerBroker{PeerRouteModule: module}, injection.ComponentInternalScope),
 		injection.NewComponent(&UserDataBroker{}, injection.ComponentInternalScope),
 		injection.NewComponent(&UserConsensusBroker{}, injection.ComponentInternalScope),
 		injection.NewComponent(&UserDeviceBroker{}, injection.ComponentInternalScope),
@@ -155,13 +155,13 @@ func (module *stdModule) Ready(ctx context.Context) error {
 	return module.userDeviceSyncAgent.doSync(ctx)
 }
 
-var _ = (net.PeerServerListener)((*stdModule)(nil))
+var _ = (ptp.PeerServerListener)((*stdModule)(nil))
 
-func (module *stdModule) OnServePeerConn(ctx context.Context, conn net.PeerConn) error {
+func (module *stdModule) OnServePeerConn(ctx context.Context, conn ptp.PeerConn) error {
 	return module.userDeviceSyncAgent.update(ctx, conn.PeerID())
 }
 
-func (module *stdModule) OnClosePeerConn(ctx context.Context, conn net.PeerConn) error {
+func (module *stdModule) OnClosePeerConn(ctx context.Context, conn ptp.PeerConn) error {
 	return module.userDeviceSyncAgent.purge(ctx, conn.PeerID())
 }
 

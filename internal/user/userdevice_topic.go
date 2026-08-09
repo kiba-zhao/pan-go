@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/binary"
 	"iter"
-	"pan/pkg/net"
 	"pan/pkg/proto"
+	"pan/pkg/ptp"
 
 	protobuf "google.golang.org/protobuf/proto"
 )
@@ -14,29 +14,29 @@ type UserDeviceTopic struct {
 	UserDeviceService *UserDeviceService
 }
 
-var _ = (net.PeerTopic)((*UserDeviceTopic)(nil))
+var _ = (ptp.PeerTopic)((*UserDeviceTopic)(nil))
 
-func (topic *UserDeviceTopic) SetupToPeer(router net.PeerServletRouter) error {
+func (topic *UserDeviceTopic) SetupToPeer(router ptp.PeerServletRouter) error {
 	router.Handle(ScanUserDeviceWithUserMeta, topic.ScanWithUserMeta)
 	return nil
 }
 
-func (topic *UserDeviceTopic) ScanWithUserMeta(ctx net.PeerServletContext, next net.PeerServletNext) error {
-	peerId, ok := ctx.Session(net.PeerIDSessionKey)
+func (topic *UserDeviceTopic) ScanWithUserMeta(ctx ptp.PeerServletContext, next ptp.PeerServletNext) error {
+	peerId, ok := ctx.Session(ptp.PeerIDSessionKey)
 	if !ok {
-		ctx.ThrowError(net.CodeBadRequest, nil)
+		ctx.ThrowError(ptp.CodeBadRequest, nil)
 		return nil
 	}
 
 	var userMeta RemoteUserMeta
 	err := proto.UnmarshalWithReader(ctx.Request(), &userMeta)
 	if err != nil {
-		ctx.ThrowError(net.CodeBadRequest, err)
+		ctx.ThrowError(ptp.CodeBadRequest, err)
 		return nil
 	}
 
 	meta := parseUserMeta(&userMeta)
-	deviceSeq, err := topic.UserDeviceService.ScanWithUserMetaForTopic(context.Background(), peerId.(net.PeerID), meta)
+	deviceSeq, err := topic.UserDeviceService.ScanWithUserMetaForTopic(context.Background(), peerId.(ptp.PeerID), meta)
 	if err == nil && deviceSeq != nil {
 		deviceBytesSeq := parseUserDeviceBytesSeq(deviceSeq)
 		stream := NewIterStreamForSeq2(deviceBytesSeq)
