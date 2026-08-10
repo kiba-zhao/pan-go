@@ -79,9 +79,9 @@ func (service *SettingsService) Save(fields SettingsFields) (Settings, error) {
 		changed = true
 	}
 
-	if len(fields.Memo) > 0 && fields.Memo != settings.Memo {
+	if fields.Memo != nil && *fields.Memo != settings.Memo {
 		viper.Set(SettingsMemoField, fields.Memo)
-		settings.Memo = fields.Memo
+		settings.Memo = *fields.Memo
 		changed = true
 	}
 
@@ -92,13 +92,13 @@ func (service *SettingsService) Save(fields SettingsFields) (Settings, error) {
 		changed = true
 	}
 
-	if len(fields.BroadcastAddrs) > 0 && !slices.Equal(fields.BroadcastAddrs, settings.BroadcastAddrs) {
+	if fields.BroadcastAddrs != nil && !slices.Equal(fields.BroadcastAddrs, settings.BroadcastAddrs) {
 		viper.Set(SettingsBroadcastAddrsField, fields.BroadcastAddrs)
 		settings.BroadcastAddrs = fields.BroadcastAddrs
 		changed = true
 	}
 
-	if len(fields.PublicAddrs) > 0 && !slices.Equal(fields.PublicAddrs, settings.PublicAddrs) {
+	if fields.PublicAddrs != nil && !slices.Equal(fields.PublicAddrs, settings.PublicAddrs) {
 		viper.Set(SettingsPublicAddrsField, fields.PublicAddrs)
 		settings.PublicAddrs = fields.PublicAddrs
 		changed = true

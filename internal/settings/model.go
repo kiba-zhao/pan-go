@@ -12,7 +12,7 @@ type Settings struct {
 
 type SettingsFields struct {
 	Name             string   `form:"name" json:"name"  binding:"omitempty"`
-	Memo             string   `form:"memo" json:"memo"  binding:"omitempty"`
+	Memo             *string  `form:"memo" json:"memo"  binding:"omitempty"`
 	PeerPort         *uint16  `form:"peerPort" json:"peerPort"  binding:"omitempty"`
 	BroadcastAddrs   []string `form:"broadcastAddrs" json:"broadcastAddrs"  binding:"omitempty"`
 	PublicAddrs      []string `form:"publicAddrs" json:"publicAddrs"  binding:"omitempty"`
