@@ -1,4 +1,4 @@
-import { type ElementType } from "react";
+import type { ElementType } from "react";
 
 export type AsProps<Props> = Props extends {
   as?: any;

@@ -7,7 +7,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { useAppHeader } from "./Context";
-import { Link } from "./Route";
+import { Link } from "./Router";
 import { Fragment, type ComponentProps } from "react";
 
 const AppBreadcrumb = ({ ...props }: ComponentProps<typeof Breadcrumb>) => {

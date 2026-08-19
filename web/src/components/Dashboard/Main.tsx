@@ -1,20 +1,33 @@
+import { DashboardName } from "./meta";
 import {
   useAppDispatch,
-  resetToBlank,
+  withResetAction,
   withAppHeaderAction,
 } from "@/components/App/Context";
+import {
+  useTranslation,
+  useAppI18nDispatch,
+  withAppI18nAction,
+  withAppI18nResetAction,
+  I18nVariant,
+} from "@/components/App/I18Next";
 import { useEffect } from "react";
 
 const DashboardMain = () => {
-  const dispatch = useAppDispatch();
+  const i18nDispatch = useAppI18nDispatch();
+  useEffect(() => {
+    i18nDispatch?.(withAppI18nAction({ namespace: DashboardName }));
+    return () => i18nDispatch?.(withAppI18nResetAction());
+  }, [i18nDispatch]);
 
+  const dispatch = useAppDispatch();
   useEffect(() => {
     dispatch?.(
       withAppHeaderAction({
         title: import.meta.env.VITE_APP_NAME?.toUpperCase(),
       }),
     );
-    return () => dispatch?.(resetToBlank());
+    return () => dispatch?.(withResetAction());
   }, [dispatch]);
 
   return (

@@ -1,7 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Separator as ShadcnSeparator } from "@/components/ui/separator";
 import { useMedia } from "@/lib/hooks";
-import { useAppContext, useAppDispatch, AppAsideMode } from "./Context";
+import {
+  useAppContext,
+  useAppDispatch,
+  AppAsideMode,
+  withAppAction,
+} from "./Context";
 import { PanelLeft } from "./Icon";
 
 export const AsideModeControl = () => {
@@ -24,7 +29,7 @@ export const AsideModeControl = () => {
         newAsideMode = AppAsideMode.Collapsed;
         break;
     }
-    dispatch?.({ asideMode: newAsideMode });
+    dispatch?.(withAppAction({ asideMode: newAsideMode }));
   };
   return (
     <Button size="icon" variant="ghost" onClick={handleClick}>

@@ -6,7 +6,7 @@ import {
   type PropsWithChildren,
   type ReactNode,
 } from "react";
-import { useOutlet, Outlet as RouteOutlet } from "./Route";
+import { useOutlet, Outlet as RouteOutlet } from "./Router";
 import { AppLoading } from "./Loading";
 
 type OutletsProps = PropsWithChildren<{

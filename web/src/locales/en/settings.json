@@ -1,94 +1,111 @@
 {
-    "main":{
-        "title":"My Settings",
-        "subtitle":"Settings",
-        "search":{
-            "placeholder":"Search settings"
-        },
-        "device-info":{
-            "title":"My Device",
-            "name":"Name",
-            "memo":"Memo"
-        },
-        "network":{
-            "title":"Network",
-            "enabled":"Enable Network",
-            "port":"Port",
-            "broadcast":"Enable Broadcast",
-            "broadcast-addrs":"Broadcast Address",
-            "public-addrs":"Public Address"
-        },
-        "web":{
-            "title":"Web Service",
-            "enabled":"Enable Web Service",
-            "allowed":"Local Host Only",
-            "port":"Web Port"
-        },
-        "appearance":{
-            "title":"Appearance",
-            "theme":"Theme",
-            "system":"System"
-        },
-        "languages":{
-            "title":"Languages",
-            "lang":"Language",
-            "system":"System"
-        }
+  "main": {
+    "title": "My Settings",
+    "subtitle": "Settings",
+    "search": {
+      "placeholder": "Search settings"
     },
-    "extra":{
-        "nameEdit":{
-            "title":"Device Name",
-            "description":"Please enter a name that is easy to distinguish.",
-            "sizeLimit":"Up to 32 characters",
-            "placeholder":"e.g. desktop",
-            "saving":"Saving $t(extra.nameEdit.title) ...",
-            "success":"$t(extra.nameEdit.title) has been updated"
-        },
-        "memoEdit":{
-            "title":"Memo",
-            "description":"Please enter a memo for the device.",
-            "sizeLimit":"Up to 256 characters",
-            "placeholder":"e.g. this is my desktop",
-            "saving":"Saving $t(extra.memoEdit.title) ...",
-            "success":"$t(extra.memoEdit.title) has been updated"
-        },
-        "peerPortEdit":{
-            "title":"Peer Port",
-            "description":"Used for receiving or sending network data",
-            "placeholder":"e.g. {{example}}",
-            "saving":"Saving $t(extra.peerPortEdit.title) ...",
-            "success":"$t(extra.peerPortEdit.title) has been updated"
-        },
-        "webPortEdit":{
-            "title":"Web Port",
-            "description":"Used for web console services",
-            "placeholder":"e.g. {{example}}",
-            "saving":"Saving $t(extra.webPortEdit.title) ...",
-            "success":"$t(extra.webPortEdit.title) has been updated"
-        },
-        "broadcastAddrsEdit":{
-            "title":"Broadcast Address",
-            "description":"Address used for receiving or sending broadcasts",
-            "dataFormat":"Multicast IP address + port, one address per line",
-            "placeholder":"e.g. {{example}}",
-            "saving":"Saving $t(extra.broadcastAddrsEdit.title) ...",
-            "success":"$t(extra.broadcastAddrsEdit.title) has been updated"
-        },
-        "publicAddrsEdit":{
-            "title":"Public Address",
-            "description":"Address used for public access",
-            "dataFormat":"domain or hostname or IP address + port, one address per line",
-            "placeholder":"e.g. {{example}}",
-            "saving":"Saving $t(extra.publicAddrsEdit.title) ...",
-            "success":"$t(extra.publicAddrsEdit.title) has been updated"
-        }
+    "deviceInfo": {
+      "title": "My Device",
+      "name": "Name",
+      "memo": "Memo"
     },
-    "badge":{
-        "edit":"settings"
+    "deviceNetwork": {
+      "title": "Network",
+      "enabled": "Enable Network",
+      "port": "Port",
+      "broadcast": "Enable Broadcast",
+      "broadcast-addrs": "Broadcast Address",
+      "public-addrs": "Public Address"
     },
-    "action":{
-        "reset":"Reset",
-        "cancel":"Cancel",
-        "save":"Save"
+    "deviceWeb": {
+      "title": "Web Service",
+      "enabled": "Enable Web Service",
+      "allowed": "Local Host Only",
+      "port": "Web Port"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "system": "System"
+    },
+    "language": {
+      "title": "Languages",
+      "lang": "Language",
+      "system": "System"
+    },
+    "deviceCluster": {
+      "title": "Cluster Devices",
+      "cluster": "Devices",
+      "passport": "Cluster Passports"
     }
+  },
+  "extra": {
+    "deviceNameEdit": {
+      "title": "Device Name",
+      "description": "Please enter a name that is easy to distinguish.",
+      "sizeLimit": "Up to 32 characters",
+      "saving": "Saving $t(extra.deviceNameEdit.title) ...",
+      "success": "$t(extra.deviceNameEdit.title) has been updated"
+    },
+    "deviceMemoEdit": {
+      "title": "Memo",
+      "description": "Please enter a memo for the device.",
+      "sizeLimit": "Up to 256 characters",
+      "saving": "Saving $t(extra.deviceMemoEdit.title) ...",
+      "success": "$t(extra.deviceMemoEdit.title) has been updated"
+    },
+    "peerPortEdit": {
+      "title": "Peer Port",
+      "description": "Used for receiving or sending network data",
+      "saving": "Saving $t(extra.peerPortEdit.title) ...",
+      "success": "$t(extra.peerPortEdit.title) has been updated"
+    },
+    "webPortEdit": {
+      "title": "Web Port",
+      "description": "Used for web console services",
+      "saving": "Saving $t(extra.webPortEdit.title) ...",
+      "success": "$t(extra.webPortEdit.title) has been updated"
+    },
+    "broadcastAddrsEdit": {
+      "title": "Broadcast Address",
+      "description": "Address used for receiving or sending broadcasts",
+      "dataFormat": "Multicast IP address + port, one address per line",
+      "saving": "Saving $t(extra.broadcastAddrsEdit.title) ...",
+      "success": "$t(extra.broadcastAddrsEdit.title) has been updated"
+    },
+    "publicAddrsEdit": {
+      "title": "Public Address",
+      "description": "Address used for public access",
+      "dataFormat": "domain or hostname or IP address + port, one address per line",
+      "saving": "Saving $t(extra.publicAddrsEdit.title) ...",
+      "success": "$t(extra.publicAddrsEdit.title) has been updated"
+    }
+  },
+  "badge": {
+    "edit": "settings"
+  },
+  "action": {
+    "backToSettings": "Back to Settings"
+  },
+  "form": {
+    "deviceNameInput": {
+      "placeholder": "e.g. desktop"
+    },
+    "deviceMemoInput": {
+      "placeholder": "e.g. this is my desktop"
+    },
+    "deviceNetworkPortInput": {
+      "placeholder": "e.g. {{example}}"
+    },
+    "deviceBroadcastAddrsTextInput": {
+      "placeholder": "e.g. {{example}}"
+    },
+    "devicePublicAddrsTextInput": {
+      "placeholder": "e.g. {{example}}"
+    },
+    "webPortInput": {
+      "placeholder": "e.g. {{example}}"
+    }
+  }
 }

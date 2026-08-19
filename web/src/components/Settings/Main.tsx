@@ -1,44 +1,53 @@
+import { SettingsName } from "./meta";
+import { default as SettingsIcon } from "./Icon";
+import { useEffect } from "react";
+
 import {
   useAppDispatch,
-  resetToBlank,
+  withResetAction,
   withAppHeaderAction,
 } from "@/components/App/Context";
-import { useTranslation } from "@/components/App/I18Next";
-import { SettingsName } from "./meta";
-import { useEffect } from "react";
+
+import {
+  useTranslation,
+  useAppI18nDispatch,
+  withAppI18nAction,
+  withAppI18nResetAction,
+  I18nVariant,
+} from "@/components/App/I18Next";
 import { cn } from "@/lib/utils";
-import { default as SettingsIcon } from "./Icon";
 
 import {
-  default as TableOfContents,
-  useTOCChapter,
   TOCChapter,
-} from "./TableOfContents";
-import { SearchFilter } from "./Filters";
-import {
-  InfoFields,
-  NetworkFields,
-  InfoFieldsTitle,
-  NetworkFieldsTitle,
-  WebFieldsTitle,
-  WebFields,
-  AppearanceFieldsTitle,
-  AppearanceFields,
-  LanguageFieldsTitle,
-  LanguageFields,
-} from "./Fields";
-
-import { MainI18nPrefix } from "./meta";
+  TOCItemGroup,
+  FieldsSection,
+  FieldsSearchFilter,
+  FieldsSectionClassName,
+} from "./MainBase";
+import { DeviceInfoTOCItem, DeviceInfoFields } from "./DeviceInfo";
+import { DeviceNetworkTOCItem, DeviceNetworkFields } from "./DeviceNetwork";
+import { DeviceWebTOCItem, DeviceWebFields } from "./DeviceWeb";
+import { AppearanceTOCItem, AppearanceFields } from "./Appearance";
+import { LanguageTOCItem, LanguageFields } from "./Language";
+import { DeviceClusterTOCItem, DeviceClusterFields } from "./DeviceCluster";
+import { Separator } from "@/components/ui/separator";
 
 const SettingsMain = () => {
-  const dispatch = useAppDispatch();
-  const { t } = useTranslation(SettingsName);
+  const i18nDispatch = useAppI18nDispatch();
+  useEffect(() => {
+    i18nDispatch?.(withAppI18nAction({ namespace: SettingsName }));
+    return () => i18nDispatch?.(withAppI18nResetAction());
+  }, [i18nDispatch]);
 
+  const { t } = useTranslation(SettingsName);
+  const dispatch = useAppDispatch();
   useEffect(() => {
     dispatch?.(
-      withAppHeaderAction({ title: t("title", { keyPrefix: MainI18nPrefix }) }),
+      withAppHeaderAction({
+        title: t(`${I18nVariant.Main}.title`),
+      }),
     );
-    return () => dispatch?.(resetToBlank());
+    return () => dispatch?.(withResetAction());
   }, [dispatch, t]);
 
   return (
@@ -46,11 +55,12 @@ const SettingsMain = () => {
       <TOCSection />
       <div className="@3xl:pl-68 flex flex-col items-center gap-1">
         <FilterSection />
-        <InfoFieldsSection />
-        <NetworkFieldsSection />
-        <WebFieldsSection />
-        <AppearanceFieldsSection />
-        <LanguageFieldsSection />
+        <DeviceInfoSection />
+        <DeviceNetworkSection />
+        <DeviceWebSection />
+        <DeviceClusterSection />
+        <AppearanceSection />
+        <LanguageSection />
       </div>
     </div>
   );
@@ -69,91 +79,75 @@ const TOCSection = () => {
   );
 };
 
-const ContentClassName = "max-w-3xl w-full pt-2";
 const FilterSection = () => {
   return (
-    <section className={cn("pb-2", ContentClassName)}>
-      <SearchFilter />
+    <section className={cn("pb-2", FieldsSectionClassName)}>
+      <FieldsSearchFilter />
     </section>
   );
 };
 
-const InfoFieldsSection = () => {
-  const tocChapter = useTOCChapter();
-  if (tocChapter !== TOCChapter.DeviceInfo && tocChapter.length > 0) {
-    return null;
-  }
+const DeviceInfoSection = () => (
+  <FieldsSection chapter={TOCChapter.DeviceInfo}>
+    <DeviceInfoFields className={PanelClassName} />
+  </FieldsSection>
+);
 
-  return (
-    <section className={ContentClassName}>
-      <InfoFieldsTitle />
-      <InfoFields className={PanelClassName} />
-    </section>
-  );
-};
+const DeviceNetworkSection = () => (
+  <FieldsSection chapter={TOCChapter.DeviceNetwork}>
+    <DeviceNetworkFields className={PanelClassName} />
+  </FieldsSection>
+);
 
-const NetworkFieldsSection = () => {
-  const tocChapter = useTOCChapter();
-  if (tocChapter !== TOCChapter.Network && tocChapter.length > 0) {
-    return null;
-  }
+const DeviceWebSection = () => (
+  <FieldsSection chapter={TOCChapter.DeviceWeb}>
+    <DeviceWebFields className={PanelClassName} />
+  </FieldsSection>
+);
 
-  return (
-    <section className={ContentClassName}>
-      <NetworkFieldsTitle />
-      <NetworkFields className={PanelClassName} />
-    </section>
-  );
-};
+const AppearanceSection = () => (
+  <FieldsSection chapter={TOCChapter.Appearance}>
+    <AppearanceFields className={PanelClassName} />
+  </FieldsSection>
+);
 
-const WebFieldsSection = () => {
-  const tocChapter = useTOCChapter();
-  if (tocChapter !== TOCChapter.Web && tocChapter.length > 0) {
-    return null;
-  }
+const LanguageSection = () => (
+  <FieldsSection chapter={TOCChapter.Language}>
+    <LanguageFields className={PanelClassName} />
+  </FieldsSection>
+);
 
-  return (
-    <section className={ContentClassName}>
-      <WebFieldsTitle />
-      <WebFields className={PanelClassName} />
-    </section>
-  );
-};
-
-const AppearanceFieldsSection = () => {
-  const tocChapter = useTOCChapter();
-  if (tocChapter !== TOCChapter.Appearance && tocChapter.length > 0) {
-    return null;
-  }
-
-  return (
-    <section className={ContentClassName}>
-      <AppearanceFieldsTitle />
-      <AppearanceFields className={PanelClassName} />
-    </section>
-  );
-};
-
-const LanguageFieldsSection = () => {
-  const tocChapter = useTOCChapter();
-  if (tocChapter !== TOCChapter.Language && tocChapter.length > 0) {
-    return null;
-  }
-
-  return (
-    <section className={ContentClassName}>
-      <LanguageFieldsTitle />
-      <LanguageFields className={PanelClassName} />
-    </section>
-  );
-};
+const DeviceClusterSection = () => (
+  <FieldsSection chapter={TOCChapter.DeviceCluster}>
+    <DeviceClusterFields className={PanelClassName} />
+  </FieldsSection>
+);
 
 const TOCHeader = () => {
   const { t } = useTranslation(SettingsName);
   return (
     <div className="px-6 flex flex-row gap-3 text-xl items-center align-bottom pb-3">
       <SettingsIcon size={28} className="h-7" />
-      <h2 className="font-medium">{`${t("subtitle", { keyPrefix: MainI18nPrefix })}`}</h2>
+      <h2 className="font-medium">{t(`${I18nVariant.Main}.subtitle`)}</h2>
     </div>
   );
 };
+
+const TableOfContents = () => (
+  <nav className="w-full flex flex-col gap-1">
+    <TOCItemGroup>
+      <DeviceInfoTOCItem />
+      <DeviceNetworkTOCItem />
+      <DeviceWebTOCItem />
+    </TOCItemGroup>
+    <Separator />
+    <TOCItemGroup>
+      <DeviceClusterTOCItem />
+    </TOCItemGroup>
+    <Separator />
+    <TOCItemGroup>
+      <AppearanceTOCItem />
+      <LanguageTOCItem />
+    </TOCItemGroup>
+  </nav>
+);

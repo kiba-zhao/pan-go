@@ -1,14 +1,14 @@
 import { PageInfoSection } from "./Layout";
 import { BlocksShuffle3Icon } from "./Icon";
-import { useTranslation } from "./I18Next";
+import { useTranslation, I18nVariant } from "./I18Next";
 
 export const AppLoading = () => {
   const { t } = useTranslation();
   return (
     <PageInfoSection
       logo={<BlocksShuffle3Icon className="w-26" />}
-      title={t("pages.loading.title")}
-      description={t("pages.loading.description")}
+      title={t(`${I18nVariant.Main}.loading.title`)}
+      description={t(`${I18nVariant.Main}.loading.description`)}
     />
   );
 };

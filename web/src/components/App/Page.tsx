@@ -2,9 +2,8 @@ import "./Theme.css";
 import "./Page.css";
 
 import { useMedia } from "@/lib/hooks";
-import { useTranslation } from "./I18Next";
-import { Router, Route } from "./Route";
-import { Outlet, Outlets } from "./Outlets";
+import { Router } from "./Router";
+import { Outlet } from "./Outlets";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -13,33 +12,23 @@ import {
   useAppDispatch,
   AppSubject,
   AppAsideMode,
+  withAppAction,
 } from "./Context";
 import { AsideModeControl, Separator } from "./Tools";
 import AppBreadcrumb from "./Breadcrumb";
 
-import { AppNavigation, AppSecondaryNavigation } from "./Navigation";
+import { AppNavigation, AppSecondaryNavigation } from "./PageNavigation";
 import ChatNavigation from "@/components/Chat/Navigation";
-import ClustersNavigation from "@/components/Clusters/Navigation";
 import AppsNavigation from "@/components/Apps/Navigation";
 
-import { BlockOutlineIcon } from "./Icon";
-import { PageInfoSection } from "./Layout";
-
-import { DashboardRoutePath } from "@/components/Dashboard/meta";
-import DashboardOutlets from "@/components/Dashboard/Outlets";
-import { SettingsRoutePath } from "@/components/Settings/meta";
-import { default as SettingsOutlets } from "@/components/Settings/Outlets";
 import { Toaster } from "./Toast";
+import { default as PageRoutes } from "./PageRoutes";
 
 const AppPage = () => {
   return (
     <AppContextProvider>
       <Router>
-        <Route element={<AppLayout />}>
-          <Route path={DashboardRoutePath} Component={DashboardOutlets} />
-          <Route path={SettingsRoutePath} Component={SettingsOutlets} />
-          <Route path="*" Component={NotFoundOutlets} />
-        </Route>
+        <PageRoutes layout={<AppLayout />} />
       </Router>
     </AppContextProvider>
   );
@@ -47,12 +36,21 @@ const AppPage = () => {
 
 export default AppPage;
 
-const AppLayout = () => {
+type AppLayoutProps = {
+  headerClassName?: string;
+  mainClassName?: string;
+  footerClassName?: string;
+};
+const AppLayout = ({
+  headerClassName,
+  mainClassName,
+  footerClassName,
+}: AppLayoutProps) => {
   return (
     <>
-      <AppHeader />
-      <AppMain />
-      <AppFooter />
+      <AppHeader className={headerClassName} />
+      <AppMain className={mainClassName} />
+      <AppFooter className={footerClassName} />
       <AppAside />
       <Outlet name="extra" />
       <Toaster />
@@ -60,22 +58,22 @@ const AppLayout = () => {
   );
 };
 
-const useLayoutElementClassName = () => {
+const useLayoutElementClassName = (className?: string) => {
   const { asideMode } = useAppContext();
   if (asideMode === AppAsideMode.Collapsed) {
-    return "md:pl-14";
+    return cn("md:pl-14", className);
   }
 
   if (asideMode === AppAsideMode.Hidden) {
-    return "";
+    return className || "";
   }
 
-  return "md:pl-(--container-3xs)";
+  return cn("md:pl-(--container-3xs)", className);
 };
 
 const AppContainerClassName = "max-w-7xl w-full";
-const AppHeader = () => {
-  const layoutClassName = useLayoutElementClassName();
+const AppHeader = ({ className }: { className?: string }) => {
+  const layoutClassName = useLayoutElementClassName(className);
 
   return (
     <header
@@ -99,8 +97,8 @@ const AppHeader = () => {
   );
 };
 
-const AppFooter = () => {
-  const layoutClassName = useLayoutElementClassName();
+const AppFooter = ({ className }: { className?: string }) => {
+  const layoutClassName = useLayoutElementClassName(className);
 
   return (
     <footer className={cn("flex justify-center", layoutClassName)}>
@@ -113,8 +111,8 @@ const AppFooter = () => {
   );
 };
 
-const AppMain = () => {
-  const layoutClassName = useLayoutElementClassName();
+const AppMain = ({ className }: { className?: string }) => {
+  const layoutClassName = useLayoutElementClassName(className);
 
   return (
     <main className={cn("pt-16 grow flex justify-center", layoutClassName)}>
@@ -140,15 +138,19 @@ const AppAside = () => {
         asideMode === AppAsideMode.Collapsed && "max-md:hidden",
       )}
       onClick={() =>
-        dispatch?.({
-          asideMode: isWide ? asideMode : AppAsideMode.Collapsed,
-          subjectVisible: false,
-        })
+        dispatch?.(
+          withAppAction({
+            asideMode: isWide ? asideMode : AppAsideMode.Collapsed,
+            subjectVisible: false,
+          }),
+        )
       }
     >
       <div
         className="bg-sidebar text-sidebar-foreground border-sidebar-border border-0 border-r h-full flex flex-row overflow-hidden"
-        onMouseLeave={() => dispatch?.({ subjectVisible: false })}
+        onMouseLeave={() =>
+          dispatch?.(withAppAction({ subjectVisible: false }))
+        }
       >
         <AppNavigationSection />
         <AppSubjectNavigationSection />
@@ -186,9 +188,6 @@ const AppSubjectNavigationSection = () => {
     if (subject === AppSubject.Chat) {
       return <ChatNavigation />;
     }
-    if (subject === AppSubject.Clusters) {
-      return <ClustersNavigation />;
-    }
     if (subject === AppSubject.Apps) {
       return <AppsNavigation />;
     }
@@ -219,21 +218,3 @@ const AppInfoSection = () => {
     </section>
   );
 };
-
-export const AppNotFound = () => {
-  const { t } = useTranslation();
-
-  return (
-    <PageInfoSection
-      logo={<BlockOutlineIcon className="w-26" />}
-      title={t("pages.notFound.title")}
-      description={t("pages.notFound.description")}
-    />
-  );
-};
-
-const NotFoundOutlets = () => (
-  <Outlets>
-    <AppNotFound />
-  </Outlets>
-);

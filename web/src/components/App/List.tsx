@@ -2,8 +2,8 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { type ComponentProps } from "react";
 import { ChevronRight } from "./Icon";
-import { type AsProps } from "./Component";
-import { Link } from "./Route";
+import { type AsProps } from "@/lib/types";
+import { Link } from "./Router";
 
 export const List = ({
   children,

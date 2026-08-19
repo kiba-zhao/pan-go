@@ -70,7 +70,9 @@ type UseFieldsOpts<TQueryFnData, TData = TQueryFnData> = Omit<
   "select"
 >;
 type InfoFields = Pick<Settings, "name" | "memo">;
-export const useInfoFields = (opts?: UseFieldsOpts<Settings, InfoFields>) => {
+export const useDeviceInfoFields = (
+  opts?: UseFieldsOpts<Settings, InfoFields>,
+) => {
   return useSettings({
     ...(opts || {}),
     select: (settings) => ({
@@ -84,7 +86,7 @@ type NetworkFields = Pick<
   Settings,
   "enabled" | "peerPort" | "broadcastEnabled" | "broadcastAddrs" | "publicAddrs"
 >;
-export const useNetworkFields = (
+export const useDeviceNetworkFields = (
   opts?: UseFieldsOpts<Settings, NetworkFields>,
 ) => {
   return useSettings({
@@ -100,7 +102,9 @@ export const useNetworkFields = (
 };
 
 type WebFields = Pick<HostSettings, "webEnabled" | "localHostOnly" | "webPort">;
-export const useWebFields = (opts?: UseFieldsOpts<HostSettings, WebFields>) => {
+export const useDeviceWebFields = (
+  opts?: UseFieldsOpts<HostSettings, WebFields>,
+) => {
   return useHostSettings({
     ...(opts || {}),
     select: (settings) => ({
@@ -112,7 +116,9 @@ export const useWebFields = (opts?: UseFieldsOpts<HostSettings, WebFields>) => {
 };
 
 type NameField = Pick<Settings, "name">;
-export const useNameField = (opts?: UseFieldsOpts<Settings, NameField>) => {
+export const useDeviceNameField = (
+  opts?: UseFieldsOpts<Settings, NameField>,
+) => {
   return useSettings({
     ...(opts || {}),
     select: (settings) => ({
@@ -122,7 +128,9 @@ export const useNameField = (opts?: UseFieldsOpts<Settings, NameField>) => {
 };
 
 type MemoField = Pick<Settings, "memo">;
-export const useMemoField = (opts?: UseFieldsOpts<Settings, MemoField>) => {
+export const useDeviceMemoField = (
+  opts?: UseFieldsOpts<Settings, MemoField>,
+) => {
   return useSettings({
     ...(opts || {}),
     select: (settings) => ({
@@ -185,8 +193,8 @@ export {
   useSettingsMutation as useBroadcastEnableMutation,
   useHostSettingsMutation as useWebEnableMutation,
   useHostSettingsMutation as useLocalHostOnlyMutation,
-  useSettingsMutation as useNameMutation,
-  useSettingsMutation as useMemoMutation,
+  useSettingsMutation as useDeviceNameMutation,
+  useSettingsMutation as useDeviceMemoMutation,
   useSettingsMutation as usePeerPortMutation,
   useSettingsMutation as useBroadcastAddrsMutation,
   useSettingsMutation as usePublicAddrsMutation,

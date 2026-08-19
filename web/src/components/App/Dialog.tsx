@@ -3,45 +3,67 @@ import {
   type MouseEvent,
   type KeyboardEvent,
   useRef,
+  type RefObject,
 } from "react";
 import { cn } from "@/lib/utils";
 import { Overlay } from "./Layout";
-import { Alert } from "@/components/ui/alert";
-export {
+import { CircleAlert } from "./Icon";
+import {
+  UnknownI18nKey,
+  useTranslation,
+  I18nVariant,
+  useAppI18n,
+} from "./I18Next";
+import {
+  Alert,
   AlertTitle,
   AlertDescription,
   AlertAction,
 } from "@/components/ui/alert";
+export { AlertTitle, AlertDescription, AlertAction };
+import { Spinner } from "@/components/ui/spinner";
 
 export enum DialogVariant {
   Default = "default",
+  Modal = "modal",
 }
 const DialogVariants = {
   [DialogVariant.Default]:
-    "flex flex-col gap-4 p-4 md:rounded-xl max-md:w-full max-md:inset-x-0 max-md:bottom-0 max-md:absolute",
+    "flex flex-col gap-4 p-4 max-w-md w-full md:rounded-lg  max-md:inset-x-0 max-md:bottom-0 max-md:absolute",
+  [DialogVariant.Modal]: void 0,
 };
 const DialogOverlayVariants = {
   [DialogVariant.Default]: "md:flex md:items-center md:justify-center",
+  [DialogVariant.Modal]: "md:flex md:items-start md:justify-center pt-16",
+};
+type DialogProps = Omit<ComponentProps<"dialog">, "ref"> & {
+  variant?: DialogVariant;
+  ref?: RefObject<HTMLDialogElement>;
 };
 export const Dialog = ({
   children,
-  className = "w-full max-w-md",
+  className,
   variant = DialogVariant.Default,
   onClose,
   onClick,
+  ref,
   open,
   ...props
-}: ComponentProps<"dialog"> & { variant?: DialogVariant }) => {
-  const ref = useRef<HTMLDialogElement>(null);
+}: DialogProps) => {
+  const dialogRef = ref || useRef<HTMLDialogElement>(null);
+
   const handleClick = (event: MouseEvent<HTMLDialogElement>) => {
     event.stopPropagation();
     onClick?.(event);
+  };
+  const handleOverlayClick = () => {
+    dialogRef.current?.close();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     event.stopPropagation();
     if (event.key === "Escape") {
-      ref.current?.close();
+      handleOverlayClick();
     }
   };
 
@@ -53,10 +75,10 @@ export const Dialog = ({
         !open && "hidden!",
       )}
       onKeyDown={handleKeyDown}
-      onClick={() => ref.current?.close()}
+      onClick={handleOverlayClick}
     >
       <dialog
-        ref={ref}
+        ref={dialogRef}
         {...props}
         className={cn(
           "group/dialog relative bg-sidebar text-sidebar-foreground border-border md:border-1 max-md:border-t-1",
@@ -83,7 +105,7 @@ export const DialogAction = ({
     <div
       {...props}
       className={cn(
-        "-mx-4 -mb-4 p-4 border-t flex flex-col gap-2 md:rounded-b-xl md:flex-row md:justify-end",
+        "-mx-4 -mb-4 p-4 border-t flex flex-col gap-2 md:rounded-b-lg md:flex-row md:justify-end",
         className,
       )}
     >
@@ -149,4 +171,40 @@ export const DialogAlert = ({
   >
     {children}
   </Alert>
+);
+
+export const DialogErrorAlert = ({
+  children,
+  error,
+  ...props
+}: ComponentProps<typeof DialogAlert> & {
+  error?: Error;
+}) => {
+  const { namespace } = useAppI18n();
+  const { t } = useTranslation(namespace);
+
+  return (
+    <DialogAlert variant="destructive" {...props}>
+      <CircleAlert />
+      <AlertDescription>
+        {t(`${I18nVariant.Error}.${error?.name || UnknownI18nKey}`, {
+          defaultValue: error?.message || "",
+        })}
+        {children}
+      </AlertDescription>
+    </DialogAlert>
+  );
+};
+
+export const DialogProgressAlert = ({
+  children,
+  ...props
+}: ComponentProps<typeof DialogAlert> & {
+  error?: Error;
+  namespace?: string;
+}) => (
+  <DialogAlert {...props}>
+    <Spinner />
+    <AlertDescription>{children}</AlertDescription>
+  </DialogAlert>
 );

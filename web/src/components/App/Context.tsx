@@ -8,7 +8,6 @@ import {
 
 export enum AppSubject {
   Chat,
-  Clusters,
   Apps,
 }
 
@@ -17,7 +16,7 @@ export enum AppAsideMode {
   Hidden = "hidden",
 }
 
-type AppState = {
+export type AppState = {
   subject?: AppSubject;
   subjectVisible?: boolean;
   asideMode?: AppAsideMode;
@@ -28,92 +27,78 @@ type AppHeaderState = {
   breadcrumbs?: Array<[string, string]>;
 };
 
-type AppExtraState = Exclude<any, undefined>;
+type AppExtraState = Record<string, unknown>;
 
-export type AppContextState = AppState & {
-  header?: AppHeaderState;
-  extra?: AppExtraState;
+type AppContextState = {
+  app: AppState;
+  header: AppHeaderState;
+  extra: AppExtraState;
 };
 
-type AppContextBlockKey = keyof Omit<AppContextState, keyof AppState>;
-type AppContextBlockAction<
-  BlockKey extends AppContextBlockKey = AppContextBlockKey,
-> = {
-  type: "block";
-  blockKey: BlockKey;
-} & Pick<AppContextState, BlockKey>;
+type AppContextStateKey = keyof AppContextState;
 type AppContextAction =
-  | AppContextState
-  | AppContextBlockAction<AppContextBlockKey>;
-const AppContextReducer = (
-  state: AppContextState,
-  action: AppContextAction,
-) => {
-  const blockAction = action as AppContextBlockAction<AppContextBlockKey>;
-  if (!blockAction.type) {
-    return { ...state, ...action };
-  }
-
-  if (blockAction.type === "block") {
-    if (blockAction.blockKey === "header") {
-      return {
-        ...state,
-        header:
-          blockAction.header === void 0
-            ? void 0
-            : { ...state.header, ...blockAction.header },
-      };
+  | {
+      type: AppContextStateKey;
+      payload?: AppContextState[AppContextStateKey];
     }
-    if (blockAction.blockKey === "extra") {
-      return {
-        ...state,
-        extra:
-          blockAction.extra === void 0
-            ? void 0
-            : { ...state.extra, ...blockAction.extra },
-      };
-    }
+  | AppContextState;
+
+function AppContextReducer(state: AppContextState, action: AppContextAction) {
+  const { type, payload } = action as Exclude<
+    AppContextAction,
+    AppContextState
+  >;
+  if (type !== void 0) {
+    return {
+      ...state,
+      [type]: payload === void 0 ? payload : { ...state[type], ...payload },
+    };
   }
+  return { ...state, ...action };
+}
 
-  return state;
-};
-
-const context = createContext<AppContextState>({});
+const appContext = createContext<AppState>({});
+const appHeaderContext = createContext<AppHeaderState>({});
+const appExtraContext = createContext<AppExtraState>({});
 const dispatchContext = createContext<Dispatch<AppContextAction> | null>(null);
 
-export const useAppContext = () => useContext(context);
+export const useAppContext = () => useContext(appContext);
 export const useAppDispatch = () => useContext(dispatchContext);
-export const useAppHeader = () => useContext(context)?.header || {};
-export const useAppExtra = <T extends unknown>(defaultValue: T) => {
-  const extra = useContext(context)?.extra;
-  if (extra === void 0 || typeof extra != typeof defaultValue) {
-    return defaultValue;
-  }
-  return extra as T;
-};
+export const useAppHeader = () => useContext(appHeaderContext);
+export const useAppExtra = <T extends AppExtraState>() =>
+  useContext(appExtraContext) as T;
 
+export function withAppAction(payload?: AppState): AppContextAction {
+  return { type: "app", payload };
+}
 export function withAppHeaderAction(
   payload?: AppHeaderState,
-): AppContextBlockAction<"header"> {
-  return { type: "block", blockKey: "header", header: payload };
+): AppContextAction {
+  return { type: "header", payload };
 }
-export function withAppExtraAction(
-  payload?: AppExtraState,
-): AppContextBlockAction<"extra"> {
-  return { type: "block", blockKey: "extra", extra: payload };
+export function withAppExtraAction(payload?: AppExtraState): AppContextAction {
+  return { type: "extra", payload };
 }
 
 export const AppContextProvider = ({ children }: PropsWithChildren) => {
-  const [state, dispatch] = useReducer(AppContextReducer, {});
+  const [state, dispatch] = useReducer(AppContextReducer, {
+    app: {},
+    header: {},
+    extra: {},
+  });
   return (
-    <context.Provider value={state}>
-      <dispatchContext.Provider value={dispatch}>
-        {children}
-      </dispatchContext.Provider>
-    </context.Provider>
+    <appContext.Provider value={state.app}>
+      <appHeaderContext.Provider value={state.header}>
+        <appExtraContext.Provider value={state.extra}>
+          <dispatchContext.Provider value={dispatch}>
+            {children}
+          </dispatchContext.Provider>
+        </appExtraContext.Provider>
+      </appHeaderContext.Provider>
+    </appContext.Provider>
   );
 };
 
-export function resetToBlank() {
-  return { header: void 0, extra: void 0 };
+export function withResetAction() {
+  return { header: {}, extra: {} } as AppContextState;
 }

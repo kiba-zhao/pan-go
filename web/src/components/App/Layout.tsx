@@ -1,9 +1,4 @@
-import {
-  ReactNode,
-  type PropsWithChildren,
-  type ComponentProps,
-  type ElementType,
-} from "react";
+import { ReactNode, type ComponentProps, type ElementType } from "react";
 import { cn } from "../../lib/utils";
 
 type LayoutComponentType = ElementType<{

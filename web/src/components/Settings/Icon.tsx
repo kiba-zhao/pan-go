@@ -1,4 +1,3 @@
-// export { default as DevicesOutlineIcon } from "@iconify-react/material-symbols/devices-outline";
 export { default as NetworkManageIcon } from "@iconify-react/material-symbols/network-manage";
 export { default as WebIcon } from "@iconify-react/material-symbols/web";
 export {
