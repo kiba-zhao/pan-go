@@ -1,6 +1,5 @@
 import { ArrowLeftRight, SearchIcon, default as DevicesIcon } from "./Icon";
 import { withExtraState, ExtraType } from "./ExtraBase";
-import { type ClusterGoBackState } from "./HeaderExtra";
 import {
   type PropsWithChildren,
   useMemo,
@@ -10,14 +9,13 @@ import {
 } from "react";
 
 import { cn } from "@/lib/utils";
-import { useTranslation, useAppI18n } from "@/components/App/I18Next";
+import { useTranslation } from "@/components/App/I18Next";
 import { useAppDispatch } from "@/components/App/Context";
-import { useParams, generatePath } from "@/components/App/Router";
 import {
   List,
   ListItem,
   ListItemText,
-  ListItemNavLink,
+  ListItemButton,
   ListItemVariant,
 } from "@/components/App/List";
 
@@ -59,7 +57,6 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Label, Pie, PieChart } from "recharts";
-import { ClusterName, ClusterRoutePath } from "./meta";
 
 export const ClusterAction = () => (
   <>
@@ -88,7 +85,6 @@ export const ClusterInfoCard = () => (
       <ClusterInfoField title="健康数量">6</ClusterInfoField>
       <ClusterInfoField title="同步序号">32</ClusterInfoField>
       <ClusterInfoField title="更新时间">3h ago</ClusterInfoField>
-      {/* <ClusterInfoField title="设备状态">最新/过时</ClusterInfoField> */}
     </CardContent>
     <CardFooter className="flex-wrap items-center gap-3">
       <ClusterEditAction />
@@ -205,11 +201,17 @@ const ClusterRemoveAction = () => {
   );
 };
 
-const ClusterNewAction = () => (
-  <Button variant="ghost" size="sm">
-    新增
-  </Button>
-);
+const ClusterNewAction = () => {
+  const dispatch = useAppDispatch();
+  const handleClick = () => {
+    dispatch?.(withExtraState({ type: ExtraType.ClusterAdd }));
+  };
+  return (
+    <Button variant="ghost" size="sm" onClick={handleClick}>
+      新增
+    </Button>
+  );
+};
 
 const ClusterSwitchAction = () => {
   const dispatch = useAppDispatch();
@@ -294,37 +296,38 @@ const clusters = [
     name: "其他",
   },
 ];
-export const ClusterList = ({ locationState }: { locationState?: any }) => {
-  const { namespace } = useAppI18n();
-  const { clusterId } = useParams();
 
+type ClusterListProps = {
+  onSelect?: (clusterId: number) => void;
+  selected?: number;
+};
+export const ClusterList = ({ selected, onSelect }: ClusterListProps) => {
   return (
     <List className="text-sm">
       {clusters.map((cluster) => (
         <ListItem
           hover={ListItemVariant.Primary}
           active={
-            namespace === ClusterName && Number(clusterId) === cluster.id
+            selected && selected === cluster.id
               ? ListItemVariant.Muted
               : undefined
           }
           key={cluster.id}
           className={cn(
             "h-13 odd:border-border odd:border-y-1 last:border-b-1",
-            (namespace !== ClusterName || Number(clusterId) !== cluster.id) &&
+            !(selected && selected === cluster.id) &&
               "odd:hover:border-transparent!",
           )}
         >
-          <ListItemNavLink
+          <ListItemButton
             className="py-0 h-full"
-            to={
-              namespace === ClusterName && Number(clusterId) === cluster.id
-                ? "#"
-                : generatePath(ClusterRoutePath, {
-                    clusterId: cluster.id.toString(),
-                  })
-            }
-            state={locationState}
+            onClick={() => onSelect?.(cluster.id)}
+            // to={
+            //   namespace === ClusterName && Number(clusterId) === cluster.id
+            //     ? "#"
+
+            // }
+            // state={locationState}
           >
             <ListItemText>
               {cluster.name}
@@ -332,7 +335,7 @@ export const ClusterList = ({ locationState }: { locationState?: any }) => {
                 {cluster.memo}
               </p>
             </ListItemText>
-          </ListItemNavLink>
+          </ListItemButton>
         </ListItem>
       ))}
     </List>

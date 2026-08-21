@@ -1,19 +1,11 @@
-import { lazy } from "react";
-import { Outlets, MainSuspense, ExtraSuspense } from "@/components/App/Outlets";
+import Main from "./Main";
+import Extra from "./Extra";
 
-const SettingsMain = lazy(() => import("./Main"));
-const SettingsExtra = lazy(() => import("./Extra"));
+import { Outlets } from "@/components/App/Outlets";
+
 const SettingsOutlets = () => (
-  <Outlets
-    extra={
-      <ExtraSuspense>
-        <SettingsExtra />
-      </ExtraSuspense>
-    }
-  >
-    <MainSuspense>
-      <SettingsMain />
-    </MainSuspense>
+  <Outlets extra={<Extra />}>
+    <Main />
   </Outlets>
 );
 

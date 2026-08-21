@@ -1,4 +1,8 @@
-import { DialogExtraState, withDialogExtraState } from "@/components/App/Extra";
+import {
+  DialogExtraState,
+  withDialogExtraState,
+} from "@/components/App/Dialog";
+import { AppExtraState } from "@/components/App/Extra";
 
 export enum ExtraType {
   ClusterSwitch = "clusterSwitch",
@@ -11,15 +15,13 @@ export enum ExtraType {
   DeviceEdit = "deviceEdit",
 }
 
-type CustomExtraState = DialogExtraState & {
+type ExtraState = {
   clusterId?: number;
   deviceIds?: number[];
   deviceId?: number;
-};
+} & AppExtraState<ExtraType> &
+  DialogExtraState;
 
-export type ExtraState = Parameters<
-  typeof withDialogExtraState<ExtraType, CustomExtraState>
->[0];
 export function withExtraState(extraState: ExtraState) {
   return withDialogExtraState(extraState);
 }

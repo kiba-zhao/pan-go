@@ -15,13 +15,22 @@ import {
   usePublicAddrsMutation,
   type Settings,
 } from "./ReactQuery";
-import { withExtraState, FormDialogExtra, type ExtraProps } from "./ExtraBase";
+import {
+  withExtraState,
+  DialogExtraTitle,
+  DialogExtraFormAction,
+  type ExtraProps,
+} from "./ExtraBase";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type ComponentProps } from "react";
 import { useForm } from "@/components/App/Form";
 import { useAppDispatch } from "@/components/App/Context";
 import { useTranslation, I18nVariant } from "@/components/App/I18Next";
-
+import {
+  CardDialogExtra,
+  DialogExtraClose,
+  DialogExtraSpinnerAlert,
+} from "@/components/App/Dialog";
 import { toast, withToast, ToastType } from "@/components/App/Toast";
 
 export const NetworkPortEditExtra = ({ extraState }: ExtraProps) => {
@@ -88,22 +97,32 @@ export const NetworkPortEditExtra = ({ extraState }: ExtraProps) => {
   }, [open, defaultValues, isLoadingSuccess, setFocus, reset]);
 
   return (
-    <FormDialogExtra
-      extraState={extraState}
-      control={control}
-      badge={t(`${I18nVariant.Badge}.edit`)}
-      desc={<FieldDialogDescription extraState={extraState} />}
-      error={error}
-      id="networkPortEditForm"
-      onSubmit={handleSubmit(handleFormSubmit)}
+    <CardDialogExtra
+      title={<DialogExtraTitle extraState={extraState} />}
+      description={
+        <FieldDialogDescription
+          extraState={extraState}
+          error={error}
+          rotate={isPending}
+        />
+      }
+      action={<DialogExtraClose />}
+      footer={
+        <DialogExtraFormAction control={control} form="networkPortEditForm">
+          {t(`${I18nVariant.Action}.save`)}
+        </DialogExtraFormAction>
+      }
+      footerClassName="flex justify-end"
     >
-      <DeviceNetworkPortInput
-        name="peerPort"
-        control={control}
-        defaultValue={defaultValues.peerPort}
-        onChange={clearErrors}
-      />
-    </FormDialogExtra>
+      <form id="networkPortEditForm" onSubmit={handleSubmit(handleFormSubmit)}>
+        <DeviceNetworkPortInput
+          name="peerPort"
+          control={control}
+          defaultValue={defaultValues.peerPort}
+          onChange={clearErrors}
+        />
+      </form>
+    </CardDialogExtra>
   );
 };
 
@@ -179,24 +198,36 @@ export const BroadcastAddrsEditExtra = ({ extraState }: ExtraProps) => {
     }
   }, [open, defaultValues, isLoadingSuccess, setFocus]);
   return (
-    <FormDialogExtra
-      extraState={extraState}
-      control={control}
-      badge={t(`${I18nVariant.Badge}.edit`)}
-      desc={
-        <FieldDialogDescription extraState={extraState} dataFormat={true} />
+    <CardDialogExtra
+      title={<DialogExtraTitle extraState={extraState} />}
+      description={
+        <FieldDialogDescription
+          extraState={extraState}
+          dataFormat={true}
+          error={error}
+          rotate={isPending}
+        />
       }
-      error={error}
-      id="broadcastAddrsEditForm"
-      onSubmit={handleSubmit(handleFormSubmit)}
+      action={<DialogExtraClose />}
+      footer={
+        <DialogExtraFormAction control={control} form="broadcastAddrsEditForm">
+          {t(`${I18nVariant.Action}.save`)}
+        </DialogExtraFormAction>
+      }
+      footerClassName="flex justify-end"
     >
-      <DeviceBroadcastAddrsTextInput
-        name="broadcastAddrsText"
-        control={control}
-        defaultValue={defaultValues.broadcastAddrsText}
-        onChange={clearErrors}
-      />
-    </FormDialogExtra>
+      <form
+        id="broadcastAddrsEditForm"
+        onSubmit={handleSubmit(handleFormSubmit)}
+      >
+        <DeviceBroadcastAddrsTextInput
+          name="broadcastAddrsText"
+          control={control}
+          defaultValue={defaultValues.broadcastAddrsText}
+          onChange={clearErrors}
+        />
+      </form>
+    </CardDialogExtra>
   );
 };
 
@@ -269,39 +300,58 @@ export const PublicAddrsEditExtra = ({ extraState }: ExtraProps) => {
   }, [open, defaultValues, isLoadingSuccess, setFocus, reset]);
 
   return (
-    <FormDialogExtra
-      extraState={extraState}
-      control={control}
-      badge={t(`${I18nVariant.Badge}.edit`)}
-      desc={
-        <FieldDialogDescription extraState={extraState} dataFormat={true} />
+    <CardDialogExtra
+      title={<DialogExtraTitle extraState={extraState} />}
+      description={
+        <FieldDialogDescription
+          extraState={extraState}
+          dataFormat={true}
+          error={error}
+          rotate={isPending}
+        />
       }
-      error={error}
-      id="publicAddrsEditForm"
-      onSubmit={handleSubmit(handleFormSubmit)}
+      action={<DialogExtraClose />}
+      footer={
+        <DialogExtraFormAction control={control} form="publicAddrsEditForm">
+          {t(`${I18nVariant.Action}.save`)}
+        </DialogExtraFormAction>
+      }
+      footerClassName="flex justify-end"
     >
-      <DevicePublicAddrsTextInput
-        name="publicAddrsText"
-        control={control}
-        defaultValue={defaultValues.publicAddrsText}
-        onChange={clearErrors}
-      />
-    </FormDialogExtra>
+      <form id="publicAddrsEditForm" onSubmit={handleSubmit(handleFormSubmit)}>
+        <DevicePublicAddrsTextInput
+          name="publicAddrsText"
+          control={control}
+          defaultValue={defaultValues.publicAddrsText}
+          onChange={clearErrors}
+        />
+      </form>
+    </CardDialogExtra>
   );
 };
 
 const FieldDialogDescription = ({
   extraState,
   dataFormat,
+  error,
+  rotate,
 }: ExtraProps & {
   dataFormat?: boolean;
-}) => {
+} & Pick<
+    ComponentProps<typeof DialogExtraSpinnerAlert>,
+    "error" | "rotate"
+  >) => {
   const { type } = extraState;
   const { t } = useTranslation(SettingsName);
+
   return (
-    <>
+    <DialogExtraSpinnerAlert
+      error={error}
+      rotate={rotate}
+      rotateContent={t(`${I18nVariant.Extra}.${type}.saving`)}
+    >
       <p>{t(`${I18nVariant.Extra}.${type}.description`)}</p>
       {dataFormat && <p>{t(`${I18nVariant.Extra}.${type}.dataFormat`)}</p>}
-    </>
+    </DialogExtraSpinnerAlert>
   );
 };

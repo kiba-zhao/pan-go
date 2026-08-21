@@ -7,15 +7,24 @@ import {
   useDeviceMemoMutation,
   type Settings,
 } from "./ReactQuery";
-import { withExtraState, FormDialogExtra, type ExtraProps } from "./ExtraBase";
+import {
+  withExtraState,
+  DialogExtraTitle,
+  DialogExtraFormAction,
+  type ExtraProps,
+} from "./ExtraBase";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type ComponentProps } from "react";
 import { useForm } from "@/components/App/Form";
 import { useAppDispatch } from "@/components/App/Context";
 import { useTranslation, I18nVariant } from "@/components/App/I18Next";
 
 import { toast, withToast, ToastType } from "@/components/App/Toast";
-import { Blank } from "@/components/App/Typography";
+import {
+  CardDialogExtra,
+  DialogExtraClose,
+  DialogExtraSpinnerAlert,
+} from "@/components/App/Dialog";
 
 export const DeviceNameEditExtra = ({ extraState }: ExtraProps) => {
   const { type, open } = extraState;
@@ -81,23 +90,32 @@ export const DeviceNameEditExtra = ({ extraState }: ExtraProps) => {
   }, [open, defaultValues, isLoadingSuccess, reset, setFocus]);
 
   return (
-    <FormDialogExtra
-      extraState={extraState}
-      control={control}
-      badge={t(`${I18nVariant.Badge}.edit`)}
-      desc={<TextFieldDialogDescription extraState={extraState} />}
-      error={error}
-      blank={<Blank />}
-      id="deviceNameEditForm"
-      onSubmit={handleSubmit(handleFormSubmit)}
+    <CardDialogExtra
+      title={<DialogExtraTitle extraState={extraState} />}
+      description={
+        <TextFieldDescription
+          extraState={extraState}
+          error={error}
+          rotate={isPending}
+        />
+      }
+      action={<DialogExtraClose />}
+      footer={
+        <DialogExtraFormAction control={control} form="deviceNameEditForm">
+          {t(`${I18nVariant.Action}.save`)}
+        </DialogExtraFormAction>
+      }
+      footerClassName="flex justify-end"
     >
-      <DeviceNameInput
-        name="name"
-        control={control}
-        defaultValue={defaultValues.name}
-        onChange={clearErrors}
-      />
-    </FormDialogExtra>
+      <form id="deviceNameEditForm" onSubmit={handleSubmit(handleFormSubmit)}>
+        <DeviceNameInput
+          name="name"
+          control={control}
+          defaultValue={defaultValues.name}
+          onChange={clearErrors}
+        />
+      </form>
+    </CardDialogExtra>
   );
 };
 
@@ -166,33 +184,69 @@ export const DeviceMemoEditExtra = ({ extraState }: ExtraProps) => {
   }, [open, defaultValues, isLoadingSuccess, reset, setFocus]);
 
   return (
-    <FormDialogExtra
-      extraState={extraState}
-      control={control}
-      badge={t(`${I18nVariant.Badge}.edit`)}
-      desc={<TextFieldDialogDescription extraState={extraState} />}
-      error={error}
-      blank={<Blank />}
-      id="deviceMemoEditForm"
-      onSubmit={handleSubmit(handleFormSubmit)}
+    <CardDialogExtra
+      title={<DialogExtraTitle extraState={extraState} />}
+      description={
+        <TextFieldDescription
+          extraState={extraState}
+          error={error}
+          rotate={isPending}
+        />
+      }
+      action={<DialogExtraClose />}
+      footer={
+        <DialogExtraFormAction control={control} form="deviceMemoEditForm">
+          {t(`${I18nVariant.Action}.save`)}
+        </DialogExtraFormAction>
+      }
+      footerClassName="flex justify-end"
     >
-      <DeviceMemoInput
-        name="memo"
-        control={control}
-        defaultValue={defaultValues.memo}
-        onChange={clearErrors}
-      />
-    </FormDialogExtra>
+      <form id="deviceMemoEditForm" onSubmit={handleSubmit(handleFormSubmit)}>
+        <DeviceMemoInput
+          name="memo"
+          control={control}
+          defaultValue={defaultValues.memo}
+          onChange={clearErrors}
+        />
+      </form>
+    </CardDialogExtra>
+    //   extraState={extraState}
+    //   control={control}
+    //   badge={t(`${I18nVariant.Badge}.edit`)}
+    //   desc={
+    //     <TextFieldDescription
+    //       extraState={extraState}
+    //       error={error}
+    //       rotate={isPending}
+    //     />
+    //   }
+    //   error={error}
+    //   blank={<Blank />}
+    //   id="deviceMemoEditForm"
+    //   onSubmit={handleSubmit(handleFormSubmit)}
+    // >
+
+    // </FormDialogExtra>
   );
 };
 
-const TextFieldDialogDescription = ({ extraState }: ExtraProps) => {
+const TextFieldDescription = ({
+  extraState,
+  error,
+  rotate,
+}: ExtraProps &
+  Pick<ComponentProps<typeof DialogExtraSpinnerAlert>, "error" | "rotate">) => {
   const { type } = extraState;
   const { t } = useTranslation(SettingsName);
+
   return (
-    <>
+    <DialogExtraSpinnerAlert
+      error={error}
+      rotate={rotate}
+      rotateContent={t(`${I18nVariant.Extra}.${type}.saving`)}
+    >
       <p>{t(`${I18nVariant.Extra}.${type}.description`)}</p>
       <p>{t(`${I18nVariant.Extra}.${type}.sizeLimit`)}</p>
-    </>
+    </DialogExtraSpinnerAlert>
   );
 };

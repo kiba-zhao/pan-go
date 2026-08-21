@@ -5,13 +5,23 @@ import {
   useWebPortMutation,
   type HostSettings,
 } from "./ReactQuery";
-import { withExtraState, FormDialogExtra, type ExtraProps } from "./ExtraBase";
+import {
+  withExtraState,
+  DialogExtraTitle,
+  DialogExtraFormAction,
+  type ExtraProps,
+} from "./ExtraBase";
 
 import { useEffect, useState, useMemo } from "react";
 import { useForm } from "@/components/App/Form";
 import { useAppDispatch } from "@/components/App/Context";
 import { useTranslation, I18nVariant } from "@/components/App/I18Next";
 import { toast, withToast, ToastType } from "@/components/App/Toast";
+import {
+  CardDialogExtra,
+  DialogExtraClose,
+  DialogExtraSpinnerAlert,
+} from "@/components/App/Dialog";
 
 export const WebPortEditExtra = ({ extraState }: ExtraProps) => {
   const { type, open } = extraState;
@@ -75,21 +85,33 @@ export const WebPortEditExtra = ({ extraState }: ExtraProps) => {
     }
   }, [open, defaultValues, isLoadingSuccess, setFocus, reset]);
   return (
-    <FormDialogExtra
-      extraState={extraState}
-      control={control}
-      badge={t(`${I18nVariant.Badge}.edit`)}
-      desc={<p>{t(`${I18nVariant.Extra}.${type}.description`)}</p>}
-      error={error}
-      id="webPortEditForm"
-      onSubmit={handleSubmit(handleFormSubmit)}
+    <CardDialogExtra
+      title={<DialogExtraTitle extraState={extraState} />}
+      description={
+        <DialogExtraSpinnerAlert
+          error={error}
+          rotate={isPending}
+          rotateContent={t(`${I18nVariant.Extra}.${type}.saving`)}
+        >
+          {t(`${I18nVariant.Extra}.${type}.description`)}
+        </DialogExtraSpinnerAlert>
+      }
+      action={<DialogExtraClose />}
+      footer={
+        <DialogExtraFormAction control={control} form="webPortEditForm">
+          {t(`${I18nVariant.Action}.save`)}
+        </DialogExtraFormAction>
+      }
+      footerClassName="flex justify-end"
     >
-      <DeviceWebPortInput
-        name="webPort"
-        control={control}
-        defaultValue={defaultValues.webPort}
-        onChange={clearErrors}
-      />
-    </FormDialogExtra>
+      <form id="webPortEditForm" onSubmit={handleSubmit(handleFormSubmit)}>
+        <DeviceWebPortInput
+          name="webPort"
+          control={control}
+          defaultValue={defaultValues.webPort}
+          onChange={clearErrors}
+        />
+      </form>
+    </CardDialogExtra>
   );
 };

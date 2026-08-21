@@ -4,10 +4,11 @@ import {
   ClusterRemoveExtra,
   ClusterEditExtra,
   ClusterPassphraseEditExtra,
+  ClusterAddExtra,
 } from "./ClusterExtra";
 import { DevicesRemoveExtra, DeviceEditExtra } from "./DeviceExtra";
 
-import { Extra as AppExtra } from "@/components/App/Extra";
+import { AppExtra } from "@/components/App/Extra";
 
 export const ClusterExtra = () => {
   return (
@@ -19,6 +20,7 @@ export const ClusterExtra = () => {
         as={ClusterPassphraseEditExtra}
         extraType={ExtraType.ClusterPassphraseEdit}
       />
+      <AppExtra as={ClusterAddExtra} extraType={ExtraType.ClusterAdd} />
       <AppExtra as={DevicesRemoveExtra} extraType={ExtraType.DevicesRemove} />
       <AppExtra as={DeviceEditExtra} extraType={ExtraType.DeviceEdit} />
     </>

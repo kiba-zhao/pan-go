@@ -8,7 +8,7 @@ import {
 import { WebPortEditExtra } from "./DeviceWebExtra";
 import { ClusterSelectExtra } from "./DeviceClusterExtra";
 
-import { Extra as AppExtra } from "@/components/App/Extra";
+import { AppExtra } from "@/components/App/Extra";
 
 const SettingsExtra = () => (
   <>

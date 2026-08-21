@@ -1,12 +1,9 @@
-import { lazy } from "react";
-import { Outlets, MainSuspense } from "@/components/App/Outlets";
+import { Outlets } from "@/components/App/Outlets";
+import Main from "./Main";
 
-const DashboardMain = lazy(() => import("./Main"));
 const DashboardOutlets = () => (
   <Outlets>
-    <MainSuspense>
-      <DashboardMain />
-    </MainSuspense>
+    <Main />
   </Outlets>
 );
 

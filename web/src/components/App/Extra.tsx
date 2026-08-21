@@ -1,31 +1,32 @@
-import { useAppExtra, withAppExtraAction } from "./Context";
-import { useTranslation, I18nVariant, useAppI18n } from "./I18Next";
+import { useAppExtra } from "./Context";
+import { type UseFormStateProps, type FieldValues, useFormState } from "./Form";
+import { DialogExtraAction } from "./Dialog";
 import type { ComponentType, ComponentProps } from "react";
-import { DialogTitle, DialogExtra } from "./Dialog";
-import { Button } from "@/components/ui/button";
-import { CloseIcon } from "./Icon";
-import { cn } from "@/lib/utils";
-import { Spinner } from "@/components/ui/spinner";
+import type { RequiredType } from "@/lib/utility_types";
 
-export type ExtraState<Type, State extends any> = {
+export type AppExtraState<Type> = {
   type?: Type;
-} & State;
+};
 
-type ExtraProps<Type, Props> = {
+export type AppExtraBaseProps<Type, State extends AppExtraState<Type>> = {
+  extraState: State;
+};
+
+type AppExtraProps<Type, Props> = {
   asProps?: Props;
   as: ComponentType<Props>;
   extraType: Type;
 };
-export const Extra = <
+export const AppExtra = <
   Type,
-  State,
-  Props extends { extraState: ExtraState<Type, State> },
+  State extends AppExtraState<Type>,
+  Props extends AppExtraBaseProps<Type, State>,
 >({
   as,
   asProps: props,
   extraType,
-}: ExtraProps<Type, Props>) => {
-  const extraState = useAppExtra<ExtraState<Type, State>>();
+}: AppExtraProps<Type, Props>) => {
+  const extraState = useAppExtra<State>();
   const Component = as;
   if (extraState.type !== extraType) {
     return null;
@@ -33,67 +34,30 @@ export const Extra = <
   return <Component {...(props || ({} as Props))} extraState={extraState} />;
 };
 
-export type DialogExtraState = { open?: boolean };
-export function withDialogExtraState<
-  Type,
-  State extends DialogExtraState = DialogExtraState,
->(state: ExtraState<Type, State>) {
-  const { type, open, ...rest } = state;
-  return withAppExtraAction({ type, open: open !== false, ...rest });
-}
-
-export const DialogExtraTitle = ({
-  text,
-  className = "text-muted-foreground",
+type DialogExtraFormActionProps<T extends FieldValues> = {
+  control: NonNullable<UseFormStateProps<T>["control"]>;
+} & RequiredType<ComponentProps<typeof DialogExtraAction>, "form", "type">;
+export const DialogExtraFormAction = <T extends FieldValues>({
+  control,
   children,
-  ...props
-}: ComponentProps<"small"> & { text?: string }) => {
-  return (
-    <DialogTitle>
-      {text}
-      <small {...props} className={cn("px-1", className)}>
-        {children}
-      </small>
-    </DialogTitle>
-  );
-};
-
-export const DialogExtraAction = ({
-  onClose,
-  progress,
   disabled,
-  children,
+  progress,
   ...props
-}: {
-  onClose?: ComponentProps<"button">["onClick"];
-  progress?: boolean;
-} & ComponentProps<typeof Button>) => {
-  const { namespace } = useAppI18n();
-  const { t } = useTranslation(namespace);
-
+}: DialogExtraFormActionProps<T>) => {
+  const {
+    disabled: formDisabled,
+    isValid,
+    isDirty,
+    isSubmitting,
+  } = useFormState<T>({ control });
   return (
-    <>
-      <Button variant="outline" onClick={onClose}>
-        {t(`${I18nVariant.Action}.cancel`)}
-      </Button>
-      <Button {...props} disabled={disabled || progress}>
-        <Spinner className={progress ? "" : "hidden"} />
-        {children}
-      </Button>
-    </>
-  );
-};
-
-export const DialogExtraClose = ({
-  onClose,
-}: {
-  onClose?: ComponentProps<typeof Button>["onClick"];
-}) => {
-  return (
-    <DialogExtra>
-      <Button size="icon-sm" variant="ghost" onClick={onClose}>
-        <CloseIcon />
-      </Button>
-    </DialogExtra>
+    <DialogExtraAction
+      {...props}
+      type="submit"
+      disabled={disabled || formDisabled || !isValid || !isDirty}
+      progress={progress || isSubmitting}
+    >
+      {children}
+    </DialogExtraAction>
   );
 };

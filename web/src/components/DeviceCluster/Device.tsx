@@ -308,14 +308,6 @@ const DeviceEditAction = (
   );
 };
 
-export const DeviceListMarker = () => {
-  return (
-    <Marker variant="separator">
-      <MarkerContent>设备列表</MarkerContent>
-    </Marker>
-  );
-};
-
 export const DeviceList = () => {
   return (
     <>
@@ -341,63 +333,77 @@ export const DeviceList = () => {
   );
 };
 
-export const DeviceInfoForm = ({
-  ...props
-}: Omit<ComponentProps<"form">, "children">) => {
+export const DeviceFormInput = () => {
   return (
-    <form {...props}>
-      <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="device-name">备注名</FieldLabel>
-          <Input id="device-name" type="text" placeholder="e.g. desktop" />
-          <FieldDescription>好名称可以让你更容易找到设备</FieldDescription>
+    <FieldGroup>
+      <DeviceNameInput />
+      <DeviceMemoInput />
+      <Marker variant="separator">
+        <MarkerContent>设备权限</MarkerContent>
+      </Marker>
+      <DeviceLevelInput />
+    </FieldGroup>
+  );
+};
+
+const DeviceNameInput = () => {
+  return (
+    <Field>
+      <FieldLabel htmlFor="device-name">备注名</FieldLabel>
+      <Input id="device-name" type="text" placeholder="e.g. desktop" />
+      <FieldDescription>好名称可以让你更容易找到设备</FieldDescription>
+    </Field>
+  );
+};
+
+const DeviceMemoInput = () => {
+  return (
+    <Field>
+      <FieldLabel htmlFor="device-memo">备忘</FieldLabel>
+      <Textarea id="device-memo" placeholder="e.g. 家里台式机" rows={5} />
+    </Field>
+  );
+};
+
+const DeviceLevelInput = () => {
+  return (
+    <RadioGroup defaultValue="plus">
+      <FieldLabel htmlFor="plus-plan">
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldTitle>所有</FieldTitle>
+            <FieldDescription>
+              <p>允许对设备组进行修改,设置或移除。</p>
+              <p>允许对设备组内的其他设备进行修改,设置或移除。</p>
+              <p>包含用户权限。</p>
+            </FieldDescription>
+          </FieldContent>
+          <RadioGroupItem value="plus" id="plus-plan" />
         </Field>
-        <Field>
-          <FieldLabel htmlFor="device-memo">备忘</FieldLabel>
-          <Textarea id="device-memo" placeholder="e.g. 家里台式机" rows={5} />
+      </FieldLabel>
+      <FieldLabel htmlFor="pro-plan">
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldTitle>用户</FieldTitle>
+            <FieldDescription>
+              <p>允许使用设备组内其他设备上的资源和功能</p>
+              <p>允许提供资源和功能给设备组内其他设备使用</p>
+            </FieldDescription>
+          </FieldContent>
+          <RadioGroupItem value="pro" id="pro-plan" />
         </Field>
-        <Marker variant="separator">
-          <MarkerContent>设备等级</MarkerContent>
-        </Marker>
-        <RadioGroup defaultValue="plus">
-          <FieldLabel htmlFor="plus-plan">
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>管理员</FieldTitle>
-                <FieldDescription>
-                  <p>允许对设备组进行修改,设置或移除。</p>
-                  <p>允许对设备组内的其他设备进行修改,设置或移除。</p>
-                  <p>包括成员等级的所有功能。</p>
-                </FieldDescription>
-              </FieldContent>
-              <RadioGroupItem value="plus" id="plus-plan" />
-            </Field>
-          </FieldLabel>
-          <FieldLabel htmlFor="pro-plan">
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>成员</FieldTitle>
-                <FieldDescription>
-                  <p>允许使用设备组内其他设备上的资源和功能。</p>
-                  <p>允许提供资源和功能给设备组内其他设备使用</p>
-                </FieldDescription>
-              </FieldContent>
-              <RadioGroupItem value="pro" id="pro-plan" />
-            </Field>
-          </FieldLabel>
-          <FieldLabel htmlFor="enterprise-plan">
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>访客</FieldTitle>
-                <FieldDescription>
-                  访客等级的设备，仅可使用受限的设备组内资源和功能。
-                </FieldDescription>
-              </FieldContent>
-              <RadioGroupItem value="enterprise" id="enterprise-plan" />
-            </Field>
-          </FieldLabel>
-        </RadioGroup>
-      </FieldGroup>
-    </form>
+      </FieldLabel>
+      <FieldLabel htmlFor="enterprise-plan">
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldTitle>访客</FieldTitle>
+            <FieldDescription>
+              <p>通过安全验证后,才允许使用设备组内其他设备上的部分资源和功能</p>
+            </FieldDescription>
+          </FieldContent>
+          <RadioGroupItem value="enterprise" id="enterprise-plan" />
+        </Field>
+      </FieldLabel>
+    </RadioGroup>
   );
 };

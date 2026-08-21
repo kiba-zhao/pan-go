@@ -1,19 +1,24 @@
+import { Overlay } from "./Layout";
+import { CircleAlert, CloseIcon } from "./Icon";
+import {
+  UnknownI18nKey,
+  useTranslation,
+  I18nVariant,
+  useAppI18n,
+  withAppError,
+} from "./I18Next";
+import { withAppExtraAction, useAppDispatch, useAppExtra } from "./Context";
+
 import {
   type ComponentProps,
   type MouseEvent,
   type KeyboardEvent,
   useRef,
   type RefObject,
+  type PropsWithChildren,
+  type ReactNode,
 } from "react";
 import { cn } from "@/lib/utils";
-import { Overlay } from "./Layout";
-import { CircleAlert } from "./Icon";
-import {
-  UnknownI18nKey,
-  useTranslation,
-  I18nVariant,
-  useAppI18n,
-} from "./I18Next";
 import {
   Alert,
   AlertTitle,
@@ -22,6 +27,16 @@ import {
 } from "@/components/ui/alert";
 export { AlertTitle, AlertDescription, AlertAction };
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardAction,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 
 export enum DialogVariant {
   Default = "default",
@@ -29,12 +44,12 @@ export enum DialogVariant {
 }
 const DialogVariants = {
   [DialogVariant.Default]:
-    "flex flex-col gap-4 p-4 max-w-md w-full md:rounded-lg  max-md:inset-x-0 max-md:bottom-0 max-md:absolute",
+    "relative w-full md:max-w-md max-md:inset-x-0 max-md:bottom-0 max-md:absolute",
   [DialogVariant.Modal]: void 0,
 };
 const DialogOverlayVariants = {
-  [DialogVariant.Default]: "md:flex md:items-center md:justify-center",
-  [DialogVariant.Modal]: "md:flex md:items-start md:justify-center pt-16",
+  [DialogVariant.Default]: "md:flex md:justify-center md:items-center",
+  [DialogVariant.Modal]: "md:flex md:justify-center md:items-start pt-16",
 };
 type DialogProps = Omit<ComponentProps<"dialog">, "ref"> & {
   variant?: DialogVariant;
@@ -81,8 +96,9 @@ export const Dialog = ({
         ref={dialogRef}
         {...props}
         className={cn(
-          "group/dialog relative bg-sidebar text-sidebar-foreground border-border md:border-1 max-md:border-t-1",
-          "shadow-ring shadow-xl/30",
+          // "group/dialog relative bg-sidebar text-sidebar-foreground border-border md:border-1 max-md:border-t-1",
+          // "shadow-ring shadow-xl/30",
+          "bg-transparent",
           DialogVariants[variant] || DialogVariants[DialogVariant.Default],
           className,
         )}
@@ -96,115 +112,204 @@ export const Dialog = ({
   );
 };
 
-export const DialogAction = ({
-  children,
-  className,
-  ...props
-}: ComponentProps<"div">) => {
-  return (
-    <div
-      {...props}
-      className={cn(
-        "-mx-4 -mb-4 p-4 border-t flex flex-col gap-2 md:rounded-b-lg md:flex-row md:justify-end",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
+export type DialogExtraState = {
+  open?: boolean;
 };
-
-export const DialogTitle = ({
-  className,
-  children,
-  ...props
-}: ComponentProps<"h3">) => {
-  return (
-    <h3
-      {...props}
-      className={cn("text-base leading-none font-medium", className)}
-    >
-      {children}
-    </h3>
-  );
-};
-
-export const DialogDescription = ({
-  className,
-  children,
-  ...props
-}: ComponentProps<"div">) => {
-  return (
-    <div {...props} className={cn("text-sm text-muted-foreground", className)}>
-      {children}
-    </div>
-  );
-};
-
-export enum DialogExtraVariant {
-  Default = "default",
+export function withDialogExtraState<State extends DialogExtraState>(
+  state: State,
+) {
+  const { open, ...rest } = state;
+  return withAppExtraAction({ open: open !== false, ...rest });
 }
-const DialogExtraVariants = {
-  [DialogVariant.Default]: "absolute top-2 right-2",
-};
+
 export const DialogExtra = ({
-  className,
   children,
-  variant = DialogExtraVariant.Default,
   ...props
-}: ComponentProps<"div"> & { variant?: DialogExtraVariant }) => {
+}: Omit<DialogProps, "open" | "onClose">) => {
+  const extraState = useAppExtra<DialogExtraState>();
+  const dispatch = useAppDispatch();
+  const handleClose = () => {
+    dispatch?.(withDialogExtraState({ ...extraState, open: false }));
+  };
   return (
-    <div {...props} className={cn(DialogExtraVariants[variant], className)}>
+    <Dialog {...props} open={extraState.open} onClose={handleClose}>
       {children}
-    </div>
+    </Dialog>
   );
 };
 
-export const DialogAlert = ({
-  className,
+export const DialogExtraCloseAction = ({
   children,
   ...props
-}: ComponentProps<typeof Alert>) => (
-  <Alert
-    {...props}
-    className={cn("border-none py-0 px-0 gap-0 bg-transparent", className)}
-  >
-    {children}
-  </Alert>
-);
+}: Omit<ComponentProps<typeof Button>, "onClick">) => {
+  const extraState = useAppExtra<DialogExtraState>();
+  const dispatch = useAppDispatch();
+  const handleClose = () => {
+    dispatch?.(withDialogExtraState({ ...extraState, open: false }));
+  };
+  return (
+    <Button {...props} onClick={handleClose}>
+      {children}
+    </Button>
+  );
+};
 
-export const DialogErrorAlert = ({
+type DialogExtraActionProps = {
+  progress?: boolean;
+  cancelText?: string;
+} & ComponentProps<typeof Button>;
+export const DialogExtraAction = ({
+  progress,
+  cancelText,
+  disabled,
   children,
-  error,
   ...props
-}: ComponentProps<typeof DialogAlert> & {
-  error?: Error;
-}) => {
+}: DialogExtraActionProps) => {
   const { namespace } = useAppI18n();
   const { t } = useTranslation(namespace);
 
   return (
-    <DialogAlert variant="destructive" {...props}>
-      <CircleAlert />
-      <AlertDescription>
-        {t(`${I18nVariant.Error}.${error?.name || UnknownI18nKey}`, {
-          defaultValue: error?.message || "",
-        })}
-        {children}
-      </AlertDescription>
-    </DialogAlert>
+    <>
+      <DialogExtraCloseAction variant="outline">
+        {cancelText || t(`${I18nVariant.Action}.cancel`)}
+      </DialogExtraCloseAction>
+      <Button {...props} disabled={disabled || progress}>
+        <Spinner className={progress ? "" : "hidden"} />
+        {children || t(`${I18nVariant.Action}.submit`)}
+      </Button>
+    </>
   );
 };
 
-export const DialogProgressAlert = ({
+export const DialogExtraClose = ({
+  size = "icon-sm",
+  variant = "ghost",
   children,
   ...props
-}: ComponentProps<typeof DialogAlert> & {
-  error?: Error;
-  namespace?: string;
-}) => (
-  <DialogAlert {...props}>
-    <Spinner />
+}: Omit<ComponentProps<typeof Button>, "onClick">) => {
+  return (
+    <DialogExtraCloseAction {...props} size={size} variant={variant}>
+      {children || <CloseIcon />}
+    </DialogExtraCloseAction>
+  );
+};
+
+export const DialogExtraTitle = ({
+  text,
+  smallText,
+  className = "text-muted-foreground",
+  children,
+  ...props
+}: ComponentProps<"small"> & { text?: string; smallText?: string }) => {
+  return (
+    <>
+      {text}
+      <small {...props} className={cn("px-1", className)}>
+        {smallText || children}
+      </small>
+    </>
+  );
+};
+
+export const DialogExtraAlert = ({
+  icon,
+  className,
+  children,
+  ...props
+}: ComponentProps<typeof Alert> & { icon?: ReactNode }) => (
+  <Alert
+    {...props}
+    className={cn("border-none py-0 px-0 gap-0 bg-transparent", className)}
+  >
+    {icon}
     <AlertDescription>{children}</AlertDescription>
-  </DialogAlert>
+  </Alert>
 );
+
+type DialogExtraSpinnerAlertProps = {
+  error?: Error;
+  errorContent?: ReactNode;
+  errorVariant?: ComponentProps<typeof Alert>["variant"];
+  rotate?: boolean;
+  rotateContent?: ReactNode;
+  filledContent?: ReactNode;
+  rotateVariant?: ComponentProps<typeof Alert>["variant"];
+} & Omit<ComponentProps<typeof Alert>, "variant">;
+export const DialogExtraSpinnerAlert = ({
+  error,
+  errorContent,
+  errorVariant = "destructive",
+  rotate,
+  rotateContent,
+  rotateVariant,
+  children,
+  ...props
+}: DialogExtraSpinnerAlertProps) => {
+  const { namespace } = useAppI18n();
+  const { t } = useTranslation(namespace);
+
+  let icon: ReactNode;
+  let children_: ReactNode;
+  let variant: ComponentProps<typeof Alert>["variant"];
+  if (rotate) {
+    icon = <Spinner />;
+    children_ = rotateContent;
+    variant = rotateVariant;
+  } else if (error) {
+    icon = <CircleAlert />;
+    children_ = errorContent || t(...withAppError(error));
+    variant = errorVariant;
+  } else {
+    return children;
+  }
+
+  return (
+    <DialogExtraAlert {...props} variant={variant} icon={icon}>
+      {children_}
+    </DialogExtraAlert>
+  );
+};
+
+type CardDialogExtraProps = PropsWithChildren<{
+  title?: PropsWithChildren["children"];
+  description?: PropsWithChildren["children"];
+  action?: PropsWithChildren["children"];
+  footer?: PropsWithChildren["children"];
+  footerClassName?: ComponentProps<typeof CardFooter>["className"];
+  cardClassName?: ComponentProps<typeof Card>["className"];
+}>;
+export const CardDialogExtra = ({
+  children,
+  title,
+  description,
+  action,
+  footer,
+  footerClassName,
+  cardClassName,
+}: CardDialogExtraProps) => {
+  return (
+    <DialogExtra>
+      <Card className={cardClassName}>
+        <CardHeader
+          className={cn(title || description || action ? void 0 : "hidden")}
+        >
+          <CardAction className={cn(action ? void 0 : "hidden")}>
+            {action}
+          </CardAction>
+          <CardTitle className={cn(title ? void 0 : "hidden")}>
+            {title}
+          </CardTitle>
+          <CardDescription className={cn(description ? void 0 : "hidden")}>
+            {description}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className={cn(children ? void 0 : "hidden")}>
+          {children}
+        </CardContent>
+        <CardFooter className={cn(footer ? void 0 : "hidden", footerClassName)}>
+          {footer}
+        </CardFooter>
+      </Card>
+    </DialogExtra>
+  );
+};

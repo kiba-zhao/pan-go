@@ -1,15 +1,14 @@
 import { DashboardName } from "./meta";
+import { AppName } from "@/components/App/meta";
 import {
   useAppDispatch,
   withResetAction,
   withAppHeaderAction,
 } from "@/components/App/Context";
 import {
-  useTranslation,
   useAppI18nDispatch,
   withAppI18nAction,
   withAppI18nResetAction,
-  I18nVariant,
 } from "@/components/App/I18Next";
 import { useEffect } from "react";
 
@@ -24,7 +23,7 @@ const DashboardMain = () => {
   useEffect(() => {
     dispatch?.(
       withAppHeaderAction({
-        title: import.meta.env.VITE_APP_NAME?.toUpperCase(),
+        title: AppName.toUpperCase(),
       }),
     );
     return () => dispatch?.(withResetAction());

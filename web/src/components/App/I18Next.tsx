@@ -137,3 +137,14 @@ export const useExternalNamespace = (
     return [inlineNamespace, namespace];
   }, [namespace, appNamespace]);
 };
+
+type TFunction = NonNullable<ReturnType<typeof useTranslation>["t"]>;
+type TFunctionOptions = NonNullable<Exclude<Parameters<TFunction>[1], string>>;
+export function withAppError(
+  error?: Error,
+  opts?: TFunctionOptions,
+): [string, TFunctionOptions] {
+  const opts_ = opts || ({} as TFunctionOptions);
+  if (!opts_.defaultValue) opts_.defaultValue = error?.message || "";
+  return [`${I18nVariant.Error}.${error?.name || UnknownI18nKey}`, opts_];
+}

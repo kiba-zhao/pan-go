@@ -24,6 +24,10 @@ import AppsNavigation from "@/components/Apps/Navigation";
 import { Toaster } from "./Toast";
 import { default as PageRoutes } from "./PageRoutes";
 
+import { PageInfoSection } from "./Layout";
+import { BlocksShuffle3Icon } from "./Icon";
+import { useTranslation, I18nVariant } from "./I18Next";
+
 const AppPage = () => {
   return (
     <AppContextProvider>
@@ -99,15 +103,20 @@ const AppHeader = ({ className }: { className?: string }) => {
 
 const AppFooter = ({ className }: { className?: string }) => {
   const layoutClassName = useLayoutElementClassName(className);
-
   return (
     <footer className={cn("flex justify-center", layoutClassName)}>
-      <Outlet name="footer">
-        <div className={AppContainerClassName}>
-          <AppInfoSection />
-        </div>
+      <Outlet name="footer" fallback={<AppFooterContent />}>
+        <AppFooterContent />
       </Outlet>
     </footer>
+  );
+};
+
+const AppFooterContent = () => {
+  return (
+    <div className={AppContainerClassName}>
+      <AppInfoSection />
+    </div>
   );
 };
 
@@ -117,7 +126,7 @@ const AppMain = ({ className }: { className?: string }) => {
   return (
     <main className={cn("pt-16 grow flex justify-center", layoutClassName)}>
       <div className={AppContainerClassName}>
-        <Outlet />
+        <Outlet fallback={<AppMainLoading />} />
       </div>
     </main>
   );
@@ -216,5 +225,16 @@ const AppInfoSection = () => {
       <p>|</p>
       <p>Version: {import.meta.env.VITE_APP_VERSION}</p>
     </section>
+  );
+};
+
+const AppMainLoading = () => {
+  const { t } = useTranslation();
+  return (
+    <PageInfoSection
+      logo={<BlocksShuffle3Icon className="w-26" />}
+      title={t(`${I18nVariant.Main}.loading.title`)}
+      description={t(`${I18nVariant.Main}.loading.description`)}
+    />
   );
 };
