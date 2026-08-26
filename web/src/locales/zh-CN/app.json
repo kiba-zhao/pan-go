@@ -24,5 +24,11 @@
   },
   "header-extra": {
     "back": "返回"
+  },
+  "error": {
+    "QRCodeScanError": "扫描二维码异常",
+    "QRCodeScanErrors": {
+      "NotFoundError": "未找到扫描二维码所需要的设备"
+    }
   }
 }

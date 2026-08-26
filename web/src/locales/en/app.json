@@ -24,5 +24,11 @@
   },
   "header-extra": {
     "back": "Back"
+  },
+  "error": {
+    "QRCodeScanError": "QR Code Scan Error",
+    "QRCodeScanErrors": {
+      "NotFoundError": "No QR Code Scanner Device Found"
+    }
   }
 }

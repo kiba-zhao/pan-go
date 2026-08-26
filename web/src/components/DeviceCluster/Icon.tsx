@@ -10,6 +10,7 @@ export {
   Table as TableIcon,
   Lock as LockIcon,
   X as CloseIcon,
+  FileScan,
 } from "lucide-react";
 
 import DevicesOtherOutlineIcon from "@iconify-react/material-symbols/devices-other-outline";

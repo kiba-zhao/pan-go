@@ -282,11 +282,21 @@ const DeviceRemoveAction = () => {
   );
 };
 
-const DeviceNewAction = () => (
-  <Button variant="ghost" size="sm" disabled>
-    添加新设备
-  </Button>
-);
+const DeviceNewAction = () => {
+  const dispatch = useAppDispatch();
+  const handleClick = () => {
+    dispatch?.(
+      withExtraState({
+        type: ExtraType.DeviceAdd,
+      }),
+    );
+  };
+  return (
+    <Button variant="ghost" size="sm" onClick={handleClick}>
+      添加新设备
+    </Button>
+  );
+};
 
 const DeviceEditAction = (
   props: Omit<ComponentProps<typeof Button>, "children">,

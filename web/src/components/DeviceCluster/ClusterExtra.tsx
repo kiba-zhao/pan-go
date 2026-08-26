@@ -4,8 +4,9 @@ import {
   ClusterSearchFilter,
   ClusterList,
   ClusterInfo,
-  ClusterInfoForm,
-  ClusterPassphraseForm,
+  ClusterInfoInputFields,
+  ClusterPassphraseInputField,
+  PassphraseVariant,
 } from "./Cluster";
 import { PassportQRCode } from "./Passport";
 
@@ -37,8 +38,10 @@ import { useRef } from "react";
 import type { FormEvent, ComponentProps } from "react";
 
 import { Separator } from "@/components/ui/separator";
-import { Card, CardFooter } from "@/components/ui/card";
-import { Marker, MarkerContent } from "../ui/marker";
+import { Card, CardAction } from "@/components/ui/card";
+import { Marker, MarkerContent } from "@/components/ui/marker";
+import { FieldGroup, Field } from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
 
 export const ClusterSwitchExtra = ({ extraState }: ExtraProps) => {
   const { type, open } = extraState;
@@ -167,7 +170,11 @@ export const ClusterEditExtra = ({ extraState }: ExtraProps) => {
       }
       footerClassName="justify-end gap-2"
     >
-      <ClusterInfoForm id="cluster-info-form" onSubmit={handleSubmit} />
+      <form id="cluster-info-form" onSubmit={handleSubmit}>
+        <FieldGroup>
+          <ClusterInfoInputFields />
+        </FieldGroup>
+      </form>
     </CardDialogExtra>
   );
 };
@@ -200,10 +207,13 @@ export const ClusterPassphraseEditExtra = ({ extraState }: ExtraProps) => {
       <Marker variant="separator">
         <MarkerContent>设置新口令</MarkerContent>
       </Marker>
-      <ClusterPassphraseForm
-        id="cluster-passphrase-form"
-        onSubmit={handleSubmit}
-      />
+      <form id="cluster-passphrase-form" onSubmit={handleSubmit}>
+        <FieldGroup>
+          <ClusterPassphraseInputField variant={PassphraseVariant.Old} />
+          <ClusterPassphraseInputField variant={PassphraseVariant.New} />
+          <ClusterPassphraseInputField variant={PassphraseVariant.NewConfirm} />
+        </FieldGroup>
+      </form>
     </CardDialogExtra>
   );
 };
@@ -211,15 +221,61 @@ export const ClusterPassphraseEditExtra = ({ extraState }: ExtraProps) => {
 export const ClusterAddExtra = ({ extraState }: ExtraProps) => {
   const { t } = useTranslation(ClusterName);
 
+  const { type } = extraState;
+  const dispatch = useAppDispatch();
+
+  const handleClose = () => {
+    dispatch?.(withExtraState({ type, open: false }));
+  };
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handleClose();
+  };
   return (
-    <DialogExtra>
-      <Card className="pt-0">
-        <PassportQRCode />
-        <CardFooter>
-          <DialogExtraCloseAction className="w-full" variant="outline">
-            {t(`${I18nVariant.Action}.cancel`)}
-          </DialogExtraCloseAction>
-        </CardFooter>
+    <DialogExtra className="md:max-w-3xl">
+      <Card className="overflow-hidden p-0 gap-0 flex flex-row">
+        <div className="bg-muted relative max-md:hidden">
+          <div className="flex flex-col items-center gap-2 text-center p-6 md:p-8">
+            <h3 className="text-2xl font-bold ">加入设备组</h3>
+            <p className="text-balance text-muted-foreground">
+              使用其他设备扫描二维码，加入现有设备组
+            </p>
+          </div>
+          <div className="flex flex-col items-center gap-14 px-6">
+            <PassportQRCode className="px-10" />
+            <div className="w-full grid gap-2 md:grid-rows-2">
+              <Button className="w-full">更新二维码</Button>
+              <Marker variant="separator">
+                <MarkerContent>或者</MarkerContent>
+              </Marker>
+              <Button variant="outline" className="w-full">
+                保存二维码
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="grow p-6 md:p-8">
+          <FieldGroup>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <h3 className="text-2xl font-bold">创建新设备组</h3>
+              <p className="text-balance text-muted-foreground">
+                创建全新的设备组。
+              </p>
+            </div>
+            <form id="cluster-add-form" onSubmit={handleSubmit}>
+              <ClusterInfoInputFields />
+              <ClusterPassphraseInputField />
+              <ClusterPassphraseInputField
+                variant={PassphraseVariant.Confirm}
+              />
+            </form>
+            <Field>
+              <Button type="submit">创建设备组</Button>
+            </Field>
+          </FieldGroup>
+        </div>
+        <DialogExtraClose variant="ghost" className="absolute top-2 right-2" />
       </Card>
     </DialogExtra>
   );

@@ -1,17 +1,21 @@
 import { type ExtraProps, withExtraState } from "./ExtraBase";
 import { DeviceList, DeviceFormInput } from "./Device";
+import { PassportQRScan, PassportQRFileInputAction } from "./Passport";
 import { ClusterInfo } from "./Cluster";
 import type { FormEvent } from "react";
 
 import { useAppDispatch } from "@/components/App/Context";
 
 import {
+  DialogExtra,
   DialogExtraClose,
+  DialogExtraCloseAction,
   DialogExtraAction,
   DialogExtraTitle,
   CardDialogExtra,
 } from "@/components/App/Dialog";
 import { Marker, MarkerContent } from "@/components/ui/marker";
+import { Card } from "@/components/ui/card";
 
 export const DevicesRemoveExtra = ({ extraState }: ExtraProps) => {
   const { type } = extraState;
@@ -82,6 +86,34 @@ export const DeviceEditExtra = ({ extraState }: ExtraProps) => {
       <form id="device-info-form" onSubmit={handleSubmit}>
         <DeviceFormInput />
       </form>
+    </CardDialogExtra>
+  );
+};
+
+export const DeviceAddExtra = ({ extraState }: ExtraProps) => {
+  const { type } = extraState;
+  const dispatch = useAppDispatch();
+
+  const handleClose = () => {
+    dispatch?.(withExtraState({ type, open: false }));
+  };
+
+  return (
+    <CardDialogExtra
+      title={<DialogExtraTitle text="新设备">添加</DialogExtraTitle>}
+      description={<p>扫码将新设备添加到设备组</p>}
+      action={<DialogExtraClose />}
+      footer={
+        <>
+          <PassportQRFileInputAction />
+          <DialogExtraCloseAction variant="outline">
+            关闭
+          </DialogExtraCloseAction>
+        </>
+      }
+      footerClassName="justify-between gap-2"
+    >
+      <PassportQRScan />
     </CardDialogExtra>
   );
 };

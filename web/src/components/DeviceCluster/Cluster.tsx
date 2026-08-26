@@ -365,27 +365,19 @@ export const ClusterInfo = ({ variant }: { variant?: "disused" }) => {
   );
 };
 
-export const ClusterInfoForm = ({
-  ...props
-}: Omit<ComponentProps<"form">, "children">) => {
+export const ClusterInfoInputFields = () => {
   return (
-    <form {...props}>
-      <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="cluster-name">备注名</FieldLabel>
-          <Input id="cluster-name" type="text" placeholder="e.g. Zhao" />
-          <FieldDescription>好名称可以让你更容易快速识别</FieldDescription>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="cluster-memo">备忘</FieldLabel>
-          <Textarea
-            id="cluster-memo"
-            placeholder="e.g. Zhao的设备组"
-            rows={5}
-          />
-        </Field>
-      </FieldGroup>
-    </form>
+    <>
+      <Field>
+        <FieldLabel htmlFor="cluster-name">备注名</FieldLabel>
+        <Input id="cluster-name" type="text" placeholder="e.g. Zhao" />
+        <FieldDescription>好名称可以让你更容易快速识别</FieldDescription>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="cluster-memo">备忘</FieldLabel>
+        <Textarea id="cluster-memo" placeholder="e.g. Zhao的设备组" rows={5} />
+      </Field>
+    </>
   );
 };
 
@@ -416,5 +408,53 @@ export const ClusterPassphraseForm = ({
         </Field>
       </FieldGroup>
     </form>
+  );
+};
+
+export enum PassphraseVariant {
+  Default = "default",
+  Confirm = "confirm",
+  Old = "old",
+  New = "new",
+  NewConfirm = "new-confirm",
+}
+const PassphraseVariants = {
+  [PassphraseVariant.Default]: {
+    label: "安全口令",
+    description: "请输入安全口令",
+  },
+  [PassphraseVariant.Confirm]: {
+    label: "确认口令",
+    description: "请重复输入安全口令，确保两次输入一致",
+  },
+  [PassphraseVariant.Old]: {
+    label: "旧口令",
+    description: "请输入旧口令",
+  },
+  [PassphraseVariant.New]: {
+    label: "新口令",
+    description: "新口令至少8位,包含字母、数字和特殊字符中的至少两种.",
+  },
+  [PassphraseVariant.NewConfirm]: {
+    label: "确认新口令",
+    description: "请重复输入新口令，确保两次输入一致",
+  },
+};
+type ClusterPassphraseInputFieldProps = {
+  variant?: PassphraseVariant;
+} & Omit<ComponentProps<typeof Input>, "type">;
+export const ClusterPassphraseInputField = ({
+  variant = PassphraseVariant.Default,
+}: ClusterPassphraseInputFieldProps) => {
+  return (
+    <Field>
+      <FieldLabel htmlFor="password">
+        {PassphraseVariants[variant].label}
+      </FieldLabel>
+      <Input id="password" type="password" placeholder="••••••••" />
+      <FieldDescription>
+        {PassphraseVariants[variant].description}
+      </FieldDescription>
+    </Field>
   );
 };
