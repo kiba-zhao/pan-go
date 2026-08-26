@@ -9,13 +9,13 @@ import (
 )
 
 type stdWebConfig struct {
-	settings       *HostSettings
+	webHost        *WebHost
 	settingsConfig SettingsConfig
 }
 
-func newWebConfig(settings *HostSettings, settingsConfig SettingsConfig) web.WebConfig {
+func newWebConfig(webHost *WebHost, settingsConfig SettingsConfig) web.WebConfig {
 	cfg := &stdWebConfig{}
-	cfg.settings = settings
+	cfg.webHost = webHost
 	cfg.settingsConfig = settingsConfig
 	return cfg
 }
@@ -25,15 +25,15 @@ var IPv6LocalHost = net.IPv6loopback
 var _ = (web.WebConfig)((*stdWebConfig)(nil))
 
 func (cfg *stdWebConfig) Addr() string {
-	settings := cfg.settings
-	if !settings.WebEnabled {
+	webHost := cfg.webHost
+	if !webHost.WebEnabled {
 		return ""
 	}
 
 	ipv6Enabled := cfg.settingsConfig.IPv6Enabled()
-	webPort := settings.WebPort
+	webPort := webHost.WebPort
 	var ip net.IP
-	if settings.LocalHostOnly {
+	if webHost.LocalHostOnly {
 		if ipv6Enabled {
 			ip = IPv6LocalHost
 		} else {

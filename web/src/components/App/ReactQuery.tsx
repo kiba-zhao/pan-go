@@ -9,7 +9,7 @@ export {
 import type { UseQueryOptions, MutationOptions } from "@tanstack/react-query";
 export type { UseQueryOptions, MutationOptions };
 
-export type UseQueryOpts<TQueryFnData, TData> = Partial<
+export type UseQueryOpts<TQueryFnData, TData = TQueryFnData> = Partial<
   Omit<UseQueryOptions<TQueryFnData, Error, TData>, "queryFn">
 >;
 

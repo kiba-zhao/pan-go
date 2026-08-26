@@ -2,10 +2,10 @@
 
 package settings
 
-type MobileSettings struct {
+type MobileNetwork struct {
 	WifiOnly *bool `json:"wifiOnly" form:"wifiOnly"  binding:"omitempty"`
 }
 
-type MobileSettingsFields struct {
+type MobileNetworkFields struct {
 	WifiOnly *bool `form:"wifiOnly" json:"wifiOnly"  binding:"omitempty"`
 }

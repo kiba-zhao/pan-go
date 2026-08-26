@@ -14,9 +14,9 @@ type stdBroadcastConfig struct {
 	addrs    []string
 }
 
-func newBroadcastConfig(settings *Settings, settingsConfig SettingsConfig) ptp.BroadcastConfig {
+func newBroadcastConfig(deviceNetwork *DeviceNetwork, settingsConfig SettingsConfig) ptp.BroadcastConfig {
 	cfg := &stdBroadcastConfig{}
-	cfg.addrs = settings.BroadcastAddrs
+	cfg.addrs = deviceNetwork.BroadcastAddrs
 	cfg.ipv6Enabled = settingsConfig.IPv6Enabled()
 	cfg.ipv6ZoneList = settingsConfig.IPv6ZoneList()
 	cfg.mtu = settingsConfig.MTU()

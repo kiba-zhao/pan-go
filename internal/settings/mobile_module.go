@@ -14,24 +14,20 @@ func init() {
 }
 
 func newMobileModule(m *stdModule) interface{} {
-	baseSettingsModule := &BaseSettingsAppletModule{}
-	mobileSettingsModule := &MobileSettingsAppletModule{}
-	mobileSettingsSvc := &MobileSettingsService{}
+	deviceInfoApplet := &DeviceInfoAppletModule{}
+	deviceNetworkApplet := &DeviceNetworkAppletModule{}
+	mobileNetworkApplet := &MobileNetworkAppletModule{}
+	mobileNetworkSvc := &MobileNetworkService{}
 
 	mobileModule := &stdMobileSettingsModule{}
 	mobileModule.SubModule = module.NewSubModule(mobileModule, m)
-	mobileModule.baseSettingsModule = baseSettingsModule
-	mobileModule.mobileSettingsModule = mobileSettingsModule
-	mobileModule.mobileSettingsSvc = mobileSettingsSvc
-
-	// m.ignoreConfigured = true
+	mobileModule.deviceInfoApplet = deviceInfoApplet
+	mobileModule.deviceNetworkApplet = deviceNetworkApplet
+	mobileModule.mobileNetworkApplet = mobileNetworkApplet
+	mobileModule.mobileNetworkSvc = mobileNetworkSvc
 
 	return mobileModule
 }
-
-const (
-	MobileSettingsModuleName = "mobile-settings"
-)
 
 type stdMobileSettingsModule struct {
 	SettingsConfigurer SettingsConfigurer
@@ -39,17 +35,22 @@ type stdMobileSettingsModule struct {
 
 	*module.SubModule[*stdMobileSettingsModule, *stdModule]
 
-	baseSettingsModule   *BaseSettingsAppletModule
-	mobileSettingsModule *MobileSettingsAppletModule
-	mobileSettingsSvc    *MobileSettingsService
+	deviceInfoApplet    *DeviceInfoAppletModule
+	deviceNetworkApplet *DeviceNetworkAppletModule
+	mobileNetworkApplet *MobileNetworkAppletModule
+	mobileNetworkSvc    *MobileNetworkService
 }
 
 var _ = (app.AppletModule)((*stdMobileSettingsModule)(nil))
 
 func (m *stdMobileSettingsModule) SetupToApplet(router app.AppServletRouter) error {
-	err := m.baseSettingsModule.SetupToApplet(router.Route([]byte(SettingsModuleName)))
+	router_ := router.Route([]byte(SettingsModuleName))
+	err := m.deviceInfoApplet.SetupToApplet(router_)
 	if err == nil {
-		err = m.mobileSettingsModule.SetupToApplet(router.Route([]byte(MobileSettingsModuleName)))
+		err = m.deviceNetworkApplet.SetupToApplet(router_)
+	}
+	if err == nil {
+		err = m.mobileNetworkApplet.SetupToApplet(router_)
 	}
 	return err
 }
@@ -59,27 +60,28 @@ var _ = (injection.ComponentProvider)((*stdMobileSettingsModule)(nil))
 func (m *stdMobileSettingsModule) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(m, injection.ComponentInternalScope),
-		injection.NewComponent[MobileSettingsChangedTrigger](m, injection.ComponentInternalScope),
-		// controller
-		injection.NewComponent(m.baseSettingsModule, injection.ComponentNoneScope),
-		injection.NewComponent(m.mobileSettingsModule, injection.ComponentNoneScope),
+		injection.NewComponent[MobileNetworkChangedTrigger](m, injection.ComponentInternalScope),
+		// applet
+		injection.NewComponent(m.deviceInfoApplet, injection.ComponentNoneScope),
+		injection.NewComponent(m.deviceNetworkApplet, injection.ComponentNoneScope),
+		injection.NewComponent(m.mobileNetworkApplet, injection.ComponentNoneScope),
 		// service
-		injection.NewComponent(m.mobileSettingsSvc, injection.ComponentInternalScope),
+		injection.NewComponent(m.mobileNetworkSvc, injection.ComponentInternalScope),
 	}
 }
 
-var _ = (MobileSettingsChangedTrigger)((*stdMobileSettingsModule)(nil))
+var _ = (MobileNetworkChangedTrigger)((*stdMobileSettingsModule)(nil))
 
-func (m *stdMobileSettingsModule) OnMobileSettingsChanged(mobileSettings MobileSettings) {
+func (m *stdMobileSettingsModule) OnMobileNetworkChanged(mobileNetwork MobileNetwork) {
 	m.ParentModule().configure(nil)
 }
 
-func (m *stdMobileSettingsModule) loadMobileSettings() (MobileSettings, error) {
-	mobileSettings, err := m.mobileSettingsSvc.Load()
+func (m *stdMobileSettingsModule) loadMobileNetwork() (MobileNetwork, error) {
+	mobileNetwork, err := m.mobileNetworkSvc.Load()
 	if err != nil {
-		m.ParentModule().logger.Error("settings.MobileSettingsModule", "loadMobileSettings Error: "+err.Error())
+		m.ParentModule().logger.Error("settings.MobileSettingsModule", "loadMobileNetwork Error: "+err.Error())
 	}
-	return mobileSettings, err
+	return mobileNetwork, err
 }
 
 func (m *stdMobileSettingsModule) loadMobileConfig() MobileSettingsConfig {
@@ -90,7 +92,7 @@ func (m *stdMobileSettingsModule) loadMobileConfig() MobileSettingsConfig {
 	return nil
 }
 
-func (m *stdMobileSettingsModule) NetInterfaces(mobileSettings *MobileSettings) ([]NetInterface, []string, bool) {
+func (m *stdMobileSettingsModule) NetInterfaces(mobileNetwork *MobileNetwork) ([]NetInterface, []string, bool) {
 	mobileCfg := m.loadMobileConfig()
 	if mobileCfg == nil {
 		return nil, nil, false
@@ -99,8 +101,8 @@ func (m *stdMobileSettingsModule) NetInterfaces(mobileSettings *MobileSettings) 
 	useWifiOnly := false
 	var wifiIfaces []NetInterface
 	var zoneList []string
-	if mobileSettings.WifiOnly != nil {
-		useWifiOnly = *mobileSettings.WifiOnly
+	if mobileNetwork.WifiOnly != nil {
+		useWifiOnly = *mobileNetwork.WifiOnly
 	} else {
 		wifiIfaces = mobileCfg.WifiInterfaces()
 		zoneList = mobileCfg.WifiZoneList()
@@ -112,7 +114,7 @@ func (m *stdMobileSettingsModule) NetInterfaces(mobileSettings *MobileSettings) 
 		return mobileCfg.NetInterfaces(), settingsCfg.IPv6ZoneList(), true
 	}
 
-	if mobileSettings.WifiOnly == nil {
+	if mobileNetwork.WifiOnly == nil {
 		return wifiIfaces, zoneList, false
 	}
 
@@ -122,13 +124,13 @@ func (m *stdMobileSettingsModule) NetInterfaces(mobileSettings *MobileSettings) 
 
 var _ = (ModuleNetProvider)((*stdMobileSettingsModule)(nil))
 
-func (m *stdMobileSettingsModule) NewNetConfig(settings *Settings) (ptp.QuicConfig, ptp.BroadcastConfig) {
-	mobileSettings, err := m.loadMobileSettings()
+func (m *stdMobileSettingsModule) NewNetConfig(deviceNetwork *DeviceNetwork) (ptp.QuicConfig, ptp.BroadcastConfig) {
+	mobileNetwork, err := m.loadMobileNetwork()
 	if err != nil {
 		return nil, nil
 	}
 
-	ifaces, zoneList, flexible := m.NetInterfaces(&mobileSettings)
+	ifaces, zoneList, flexible := m.NetInterfaces(&mobileNetwork)
 	if len(ifaces) <= 0 && flexible {
 		return nil, nil
 	}
@@ -137,11 +139,11 @@ func (m *stdMobileSettingsModule) NewNetConfig(settings *Settings) (ptp.QuicConf
 	for _, iface := range ifaces {
 		addrs = append(addrs, iface.Addr)
 	}
-	quicCfg := newQuicConfig(settings, m.SecurityConfigurer.Config(), addrs)
+	quicCfg := newQuicConfig(deviceNetwork, m.SecurityConfigurer.Config(), addrs)
 
 	settingsConfig := m.SettingsConfigurer.Config()
 	broadcastCfg := &stdBroadcastConfig{}
-	broadcastCfg.addrs = settings.BroadcastAddrs
+	broadcastCfg.addrs = deviceNetwork.BroadcastAddrs
 	broadcastCfg.ipv6Enabled = settingsConfig.IPv6Enabled()
 	broadcastCfg.ipv6ZoneList = zoneList
 	broadcastCfg.mtu = settingsConfig.MTU()

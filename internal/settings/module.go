@@ -22,7 +22,7 @@ var ErrSettingsModuleUavailable = errors.New("settings.Module Error: Unavailable
 var ErrSettingsModuleHomePathConflict = errors.New("settings.Module Error: Home Path Conflict")
 
 type ModuleNetProvider interface {
-	NewNetConfig(settings *Settings) (ptp.QuicConfig, ptp.BroadcastConfig)
+	NewNetConfig(deviceNetwork *DeviceNetwork) (ptp.QuicConfig, ptp.BroadcastConfig)
 }
 
 const (
@@ -38,7 +38,8 @@ type stdModule struct {
 
 	logger log.Logger
 
-	settingsSvc        *SettingsService
+	deviceInfoSvc      *DeviceInfoService
+	deviceNetworkSvc   *DeviceNetworkService
 	configurer         SettingsConfigurer
 	securityConfigurer SecurityConfigurer
 
@@ -54,7 +55,8 @@ func New() interface{} {
 
 	viper := viper.New()
 
-	settingsSvc := &SettingsService{}
+	deviceInfoSvc := &DeviceInfoService{}
+	deviceNetworkSvc := &DeviceNetworkService{}
 
 	logger := log.Default()
 	configurer := config.NewConfigurer[SettingsConfig](logger)
@@ -65,7 +67,8 @@ func New() interface{} {
 	m.configurer = configurer
 	m.securityConfigurer = securityConfigurer
 	m.viper = viper
-	m.settingsSvc = settingsSvc
+	m.deviceInfoSvc = deviceInfoSvc
+	m.deviceNetworkSvc = deviceNetworkSvc
 
 	m.BaseModule = module.New(m, subModuleNewFuncArray...)
 
@@ -95,7 +98,7 @@ func (m *stdModule) OnConfigUpdated(cfg SettingsConfig) {
 		panic(err)
 	}
 
-	m.settingsSvc.setup(cfg)
+	m.deviceInfoSvc.setup(cfg)
 
 	// init viper and securityConfig
 
@@ -131,21 +134,22 @@ var _ = (injection.ComponentProvider)((*stdModule)(nil))
 func (m *stdModule) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(m, injection.ComponentInternalScope),
-		injection.NewComponent[SettingsChangedTrigger](m, injection.ComponentInternalScope),
+		injection.NewComponent[DeviceNetworkChangedTrigger](m, injection.ComponentInternalScope),
 		injection.NewComponent(m.viper, injection.ComponentInternalScope),
 		// configurer
 		injection.NewComponent(m.configurer, injection.ComponentExternalScope),
 		injection.NewComponent(m.securityConfigurer, injection.ComponentExternalScope),
 		// service
-		injection.NewComponent(m.settingsSvc, injection.ComponentInternalScope),
-		injection.NewComponent[SettingsExternalService](m.settingsSvc, injection.ComponentExternalScope),
+		injection.NewComponent(m.deviceInfoSvc, injection.ComponentInternalScope),
+		injection.NewComponent(m.deviceNetworkSvc, injection.ComponentInternalScope),
+		// injection.NewComponent[SettingsExternalService](m.settingsSvc, injection.ComponentExternalScope),
 	}
 }
 
-var _ = (SettingsChangedTrigger)((*stdModule)(nil))
+var _ = (DeviceNetworkChangedTrigger)((*stdModule)(nil))
 
-func (m *stdModule) OnSettingsChanged(settings Settings) {
-	m.configure(&settings)
+func (m *stdModule) OnDeviceNetworkChanged(deviceNetwork DeviceNetwork) {
+	m.configure(&deviceNetwork)
 }
 
 func (m *stdModule) initViper(homePath string) error {
@@ -177,14 +181,14 @@ func (m *stdModule) initRepository(settingsConfig SettingsConfig) error {
 	return m.RepositoryConfigurer.Configure(repositoryConfig)
 }
 
-func (m *stdModule) configure(settings *Settings) error {
+func (m *stdModule) configure(deviceNetwork *DeviceNetwork) error {
 
 	var err error
-	var settings_ *Settings
-	if settings != nil {
-		settings_ = settings
+	var deviceNetwork_ *DeviceNetwork
+	if deviceNetwork != nil {
+		deviceNetwork_ = deviceNetwork
 	} else {
-		settings_, err = m.loadSettings()
+		deviceNetwork_, err = m.loadDeviceNetwork()
 		if err != nil {
 			return err
 		}
@@ -193,15 +197,15 @@ func (m *stdModule) configure(settings *Settings) error {
 	var quicConfig ptp.QuicConfig
 	var broadcastConfig ptp.BroadcastConfig
 	if m.netProvider != nil {
-		quicConfig, broadcastConfig = m.netProvider.NewNetConfig(settings_)
+		quicConfig, broadcastConfig = m.netProvider.NewNetConfig(deviceNetwork_)
 	}
 
 	if quicConfig == nil {
-		quicConfig = newQuicConfig(settings_, m.securityConfigurer.Config(), []string{""})
+		quicConfig = newQuicConfig(deviceNetwork_, m.securityConfigurer.Config(), []string{""})
 	}
 
 	if broadcastConfig == nil {
-		broadcastConfig = newBroadcastConfig(settings_, m.configurer.Config())
+		broadcastConfig = newBroadcastConfig(deviceNetwork_, m.configurer.Config())
 	}
 
 	err = m.QuicConfigurer.Configure(quicConfig)
@@ -214,12 +218,12 @@ func (m *stdModule) configure(settings *Settings) error {
 	return err
 }
 
-func (m *stdModule) loadSettings() (*Settings, error) {
-	settings, err := m.settingsSvc.Load()
+func (m *stdModule) loadDeviceNetwork() (*DeviceNetwork, error) {
+	deviceNetwork, err := m.deviceNetworkSvc.Load()
 	if err != nil {
-		m.logger.Error("settings.SettingsModule", "loadSettings Error: "+err.Error())
+		m.logger.Error("settings.SettingsModule", "loadDeviceNetwork Error: "+err.Error())
 	}
-	return &settings, err
+	return &deviceNetwork, err
 }
 
 type stdModuleSecurityConfigProxy struct {
@@ -230,10 +234,10 @@ var _ = (SecurityConfigurerListener)((*stdModuleSecurityConfigProxy)(nil))
 
 func (p *stdModuleSecurityConfigProxy) OnConfigUpdated(cfg SecurityConfig) {
 	if p.module != nil {
-		settings, err := p.module.loadSettings()
+		deviceNetwork, err := p.module.loadDeviceNetwork()
 		if err != nil {
 			return
 		}
-		p.module.configure(settings)
+		p.module.configure(deviceNetwork)
 	}
 }

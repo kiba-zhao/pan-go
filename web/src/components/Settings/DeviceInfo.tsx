@@ -1,7 +1,7 @@
 import { SettingsName } from "./meta";
 import { MonitorSmartphone } from "./Icon";
 import { TOCItem, TOCChapter, FieldsClassName } from "./MainBase";
-import { useDeviceInfoFields } from "./ReactQuery";
+import { useDeviceInfo } from "./ReactQuery";
 import { withExtraState, ExtraType, type ExtraState } from "./ExtraBase";
 import { FormInputProps } from "./form";
 
@@ -54,7 +54,7 @@ export const DeviceInfoFields = ({
   const { t } = useTranslation(SettingsName);
   const { type, open } = useAppExtra<ExtraState>();
 
-  const { data: infoFields } = useDeviceInfoFields({
+  const { data: infoFields } = useDeviceInfo({
     enabled: open !== true,
   });
 

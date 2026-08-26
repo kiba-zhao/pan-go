@@ -3,7 +3,7 @@ import { NetworkManageIcon, CircleCheckBig, CircleX } from "./Icon";
 import { FormInputProps } from "./form";
 import { TOCItem, TOCChapter, FieldsClassName } from "./MainBase";
 import {
-  useDeviceNetworkFields,
+  useDeviceNetwork,
   useNetworkEnableMutation,
   useBroadcastEnableMutation,
 } from "./ReactQuery";
@@ -63,7 +63,7 @@ export const DeviceNetworkFields = ({
   const { t } = useTranslation(SettingsName);
   const { type, open } = useAppExtra<ExtraState>();
 
-  const { data: networkFields } = useDeviceNetworkFields({
+  const { data: networkFields } = useDeviceNetwork({
     enabled: open !== true,
   });
 
@@ -198,7 +198,7 @@ export const DeviceNetworkFields = ({
             <ListItemText>
               {t(`${I18nVariant.Main}.${TOCChapter.DeviceNetwork}.port`)}
             </ListItemText>
-            <ListItemSmall>{networkFields?.peerPort || "-"}</ListItemSmall>
+            <ListItemSmall>{networkFields?.port || "-"}</ListItemSmall>
           </ListItemContent>
         </ListItemButton>
       </ListItem>

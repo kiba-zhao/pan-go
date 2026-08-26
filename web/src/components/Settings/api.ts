@@ -1,75 +1,117 @@
 import type {
-  Settings,
-  HostSettings,
-  SettingsFields,
-  HostSettingsFields,
+  DeviceInfo,
+  DeviceInfoFields,
+  DeviceNetwork,
+  DeviceNetworkFields,
+  WebHost,
+  WebHostFields,
 } from "@pango/data";
 import { BASE_PATH, toJson, withJSONBody } from "@/lib/fetch";
 import { SettingsName } from "./meta";
 
-export type { Settings, HostSettings, SettingsFields, HostSettingsFields };
+export type {
+  DeviceInfo,
+  DeviceInfoFields,
+  DeviceNetwork,
+  DeviceNetworkFields,
+  WebHost,
+  WebHostFields,
+};
 
-let fakeSettings: Promise<{ settings: Settings; hostSettings: HostSettings }>;
+let fakeSettings: Promise<{
+  deviceInfo: DeviceInfo;
+  deviceNetwork: DeviceNetwork;
+  webHost: WebHost;
+}>;
 if (import.meta.env.VITE_FAKE_DATA) {
   fakeSettings = import("@pango/fakedata").then((_) => ({
-    settings: _.newSettings(),
-    hostSettings: _.newHostSettings(),
+    deviceInfo: _.newDeviceInfo(),
+    deviceNetwork: _.newDeviceNetwork(),
+    webHost: _.newWebHost(),
   }));
 }
 
-const SettingsAPIPath = `${SettingsName}/base`;
-const HostSettingsAPIPath = `${SettingsName}/host`;
+const DeviceInfoAPIPath = `${SettingsName}/device-info`;
+const DeviceNetworkAPIPath = `${SettingsName}/device-network`;
+const WebHostAPIPath = `${SettingsName}/web-host`;
 
-export async function fetchSettings() {
+export async function fetchDeviceInfo() {
   if (import.meta.env.VITE_FAKE_DATA) {
-    const { settings } = await fakeSettings;
-    return settings;
+    const { deviceInfo } = await fakeSettings;
+    return deviceInfo;
   }
-  const res = await fetch(`${BASE_PATH}/${SettingsAPIPath}`);
-  return toJson<Settings>(res);
+  const res = await fetch(`${BASE_PATH}/${DeviceInfoAPIPath}`);
+  return toJson<DeviceInfo>(res);
 }
 
-export async function saveSettings(fields: SettingsFields) {
+export async function saveDeviceInfo(fields: DeviceInfoFields) {
   if (import.meta.env.VITE_FAKE_DATA) {
-    const { settings, ...others } = await fakeSettings;
-    const newSettings = { ...settings, ...fields };
+    const { deviceInfo, ...others } = await fakeSettings;
+    const newDeviceInfo = { ...deviceInfo, ...fields };
     fakeSettings = Promise.resolve({
       ...others,
-      settings: newSettings,
+      deviceInfo: newDeviceInfo,
     });
-    return newSettings;
+    return newDeviceInfo;
   }
 
   const res = await fetch(
-    `${BASE_PATH}/${SettingsAPIPath}`,
+    `${BASE_PATH}/${DeviceInfoAPIPath}`,
     withJSONBody(fields, { method: "PATCH" }),
   );
-  return toJson<Settings>(res);
+  return toJson<DeviceInfo>(res);
 }
 
-export async function fetchHostSettings() {
+export async function fetchDeviceNetwork() {
   if (import.meta.env.VITE_FAKE_DATA) {
-    const { hostSettings } = await fakeSettings;
-    return hostSettings;
+    const { deviceNetwork } = await fakeSettings;
+    return deviceNetwork;
   }
-  const res = await fetch(`${BASE_PATH}/${HostSettingsAPIPath}`);
-  return toJson<HostSettings>(res);
+  const res = await fetch(`${BASE_PATH}/${DeviceNetworkAPIPath}`);
+  return toJson<DeviceNetwork>(res);
 }
 
-export async function saveHostSettings(fields: HostSettingsFields) {
+export async function saveDeviceNetwork(fields: DeviceNetworkFields) {
   if (import.meta.env.VITE_FAKE_DATA) {
-    const { hostSettings, ...others } = await fakeSettings;
-    const newHostSettings = { ...hostSettings, ...fields };
+    const { deviceNetwork, ...others } = await fakeSettings;
+    const newDeviceNetwork = { ...deviceNetwork, ...fields };
     fakeSettings = Promise.resolve({
       ...others,
-      hostSettings: newHostSettings,
+      deviceNetwork: newDeviceNetwork,
     });
-    return newHostSettings;
+    return newDeviceNetwork;
   }
 
   const res = await fetch(
-    `${BASE_PATH}/${HostSettingsAPIPath}`,
+    `${BASE_PATH}/${DeviceNetworkAPIPath}`,
     withJSONBody(fields, { method: "PATCH" }),
   );
-  return toJson<HostSettings>(res);
+  return toJson<DeviceNetwork>(res);
+}
+
+export async function fetchWebHost() {
+  if (import.meta.env.VITE_FAKE_DATA) {
+    const { webHost } = await fakeSettings;
+    return webHost;
+  }
+  const res = await fetch(`${BASE_PATH}/${WebHostAPIPath}`);
+  return toJson<WebHost>(res);
+}
+
+export async function saveWebHost(fields: WebHostFields) {
+  if (import.meta.env.VITE_FAKE_DATA) {
+    const { webHost, ...others } = await fakeSettings;
+    const newWebHost = { ...webHost, ...fields };
+    fakeSettings = Promise.resolve({
+      ...others,
+      webHost: newWebHost,
+    });
+    return newWebHost;
+  }
+
+  const res = await fetch(
+    `${BASE_PATH}/${WebHostAPIPath}`,
+    withJSONBody(fields, { method: "PATCH" }),
+  );
+  return toJson<WebHost>(res);
 }

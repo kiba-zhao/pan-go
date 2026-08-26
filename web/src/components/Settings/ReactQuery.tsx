@@ -6,60 +6,86 @@ import {
   type UseMutationOpts,
 } from "@/components/App/ReactQuery";
 import {
-  fetchSettings,
-  fetchHostSettings,
-  saveSettings,
-  saveHostSettings,
+  fetchDeviceInfo,
+  saveDeviceInfo,
+  fetchDeviceNetwork,
+  saveDeviceNetwork,
+  fetchWebHost,
+  saveWebHost,
 } from "./api";
 import { SettingsName } from "./meta";
 
-import type { Settings, HostSettings } from "@pango/data";
-export type { Settings, HostSettings };
+import type { DeviceInfo, DeviceNetwork, WebHost } from "@pango/data";
+export type { DeviceInfo, DeviceNetwork, WebHost };
 
-const SettingsQueryKey = `${SettingsName}`;
-const HostSettingsQueryKey = `${SettingsName}/host-settings`;
+const DeviceInfoQueryKey = `${SettingsName}/device-info`;
+const DeviceNetworkQueryKey = `${SettingsName}/device-network`;
+const WebHostQueryKey = `${SettingsName}/web-host`;
 
-const useSettings = <TData extends any>(
-  opts?: UseQueryOpts<Settings, TData>,
+export const useDeviceInfo = <TData extends any = DeviceInfo>(
+  opts?: UseQueryOpts<DeviceInfo, TData>,
 ) => {
   return useQuery({
-    queryKey: [SettingsQueryKey],
-    queryFn: fetchSettings,
+    queryKey: [DeviceInfoQueryKey],
+    queryFn: fetchDeviceInfo,
     ...(opts || {}),
   });
 };
 
-const useHostSettings = <TData extends any>(
-  opts?: UseQueryOpts<HostSettings, TData>,
+export const useDeviceNetwork = <TData extends any = DeviceNetwork>(
+  opts?: UseQueryOpts<DeviceNetwork, TData>,
 ) => {
   return useQuery({
-    queryKey: [HostSettingsQueryKey],
-    queryFn: fetchHostSettings,
+    queryKey: [DeviceNetworkQueryKey],
+    queryFn: fetchDeviceNetwork,
     ...(opts || {}),
   });
 };
 
-const useSettingsMutation = (opts?: UseMutationOpts<Settings>) => {
+export const useWebHost = <TData extends any = WebHost>(
+  opts?: UseQueryOpts<WebHost, TData>,
+) => {
+  return useQuery({
+    queryKey: [WebHostQueryKey],
+    queryFn: fetchWebHost,
+    ...(opts || {}),
+  });
+};
+
+const useDeviceInfoMutation = (opts?: UseMutationOpts<DeviceInfo>) => {
   const queryClient = useQueryClient();
   const { onSuccess, ...options } = opts || {};
   return useMutation({
-    mutationFn: saveSettings,
-    onSuccess: (settings, ...args) => {
-      queryClient.setQueryData([SettingsQueryKey], settings);
-      onSuccess?.(settings, ...args);
+    mutationFn: saveDeviceInfo,
+    onSuccess: (deviceInfo, ...args) => {
+      queryClient.setQueryData([DeviceInfoQueryKey], deviceInfo);
+      onSuccess?.(deviceInfo, ...args);
     },
     ...options,
   });
 };
 
-const useHostSettingsMutation = (opts?: UseMutationOpts<HostSettings>) => {
+const useDeviceNetworkMutation = (opts?: UseMutationOpts<DeviceNetwork>) => {
   const queryClient = useQueryClient();
   const { onSuccess, ...options } = opts || {};
   return useMutation({
-    mutationFn: saveHostSettings,
-    onSuccess: (settings, ...args) => {
-      queryClient.setQueryData([HostSettingsQueryKey], settings);
-      onSuccess?.(settings, ...args);
+    mutationFn: saveDeviceNetwork,
+    onSuccess: (deviceNetwork, ...args) => {
+      queryClient.setQueryData([DeviceNetworkQueryKey], deviceNetwork);
+      onSuccess?.(deviceNetwork, ...args);
+    },
+    ...options,
+  });
+};
+
+const useWebHostMutation = (opts?: UseMutationOpts<WebHost>) => {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...options } = opts || {};
+  return useMutation({
+    mutationFn: saveWebHost,
+    onSuccess: (webHost, ...args) => {
+      queryClient.setQueryData([WebHostQueryKey], webHost);
+      onSuccess?.(webHost, ...args);
     },
     ...options,
   });
@@ -69,134 +95,87 @@ type UseFieldsOpts<TQueryFnData, TData = TQueryFnData> = Omit<
   UseQueryOpts<TQueryFnData, TData>,
   "select"
 >;
-type InfoFields = Pick<Settings, "name" | "memo">;
-export const useDeviceInfoFields = (
-  opts?: UseFieldsOpts<Settings, InfoFields>,
-) => {
-  return useSettings({
-    ...(opts || {}),
-    select: (settings) => ({
-      name: settings?.name,
-      memo: settings?.memo,
-    }),
-  });
-};
-
-type NetworkFields = Pick<
-  Settings,
-  "enabled" | "peerPort" | "broadcastEnabled" | "broadcastAddrs" | "publicAddrs"
->;
-export const useDeviceNetworkFields = (
-  opts?: UseFieldsOpts<Settings, NetworkFields>,
-) => {
-  return useSettings({
-    ...(opts || {}),
-    select: (settings) => ({
-      enabled: settings?.enabled,
-      peerPort: settings?.peerPort,
-      broadcastEnabled: settings?.broadcastEnabled,
-      broadcastAddrs: settings?.broadcastAddrs,
-      publicAddrs: settings?.publicAddrs,
-    }),
-  });
-};
-
-type WebFields = Pick<HostSettings, "webEnabled" | "localHostOnly" | "webPort">;
-export const useDeviceWebFields = (
-  opts?: UseFieldsOpts<HostSettings, WebFields>,
-) => {
-  return useHostSettings({
-    ...(opts || {}),
-    select: (settings) => ({
-      webEnabled: settings?.webEnabled,
-      localHostOnly: settings?.localHostOnly,
-      webPort: settings?.webPort,
-    }),
-  });
-};
-
-type NameField = Pick<Settings, "name">;
+type NameField = Pick<DeviceInfo, "name">;
 export const useDeviceNameField = (
-  opts?: UseFieldsOpts<Settings, NameField>,
+  opts?: UseFieldsOpts<DeviceInfo, NameField>,
 ) => {
-  return useSettings({
+  return useDeviceInfo({
     ...(opts || {}),
-    select: (settings) => ({
-      name: settings?.name,
+    select: (deviceInfo) => ({
+      name: deviceInfo?.name,
     }),
   });
 };
 
-type MemoField = Pick<Settings, "memo">;
+type MemoField = Pick<DeviceInfo, "memo">;
 export const useDeviceMemoField = (
-  opts?: UseFieldsOpts<Settings, MemoField>,
+  opts?: UseFieldsOpts<DeviceInfo, MemoField>,
 ) => {
-  return useSettings({
+  return useDeviceInfo({
     ...(opts || {}),
-    select: (settings) => ({
-      memo: settings?.memo,
+    select: (deviceInfo) => ({
+      memo: deviceInfo?.memo,
     }),
   });
 };
 
-type PeerPortField = Pick<Settings, "peerPort">;
-export const usePeerPortField = (
-  opts?: UseFieldsOpts<Settings, PeerPortField>,
+type NetworkPortField = Pick<DeviceNetwork, "port">;
+export const useNetworkPortField = (
+  opts?: UseFieldsOpts<DeviceNetwork, NetworkPortField>,
 ) => {
-  return useSettings({
+  return useDeviceNetwork({
     ...(opts || {}),
-    select: (settings) => ({
-      peerPort: settings?.peerPort,
+    select: (deviceNetwork) => ({
+      port: deviceNetwork?.port,
     }),
   });
 };
 
-type BroadcastAddrsField = Pick<Settings, "broadcastAddrs">;
-export const useBroadcastAddrsField = (
-  opts?: UseFieldsOpts<Settings, BroadcastAddrsField>,
-) => {
-  return useSettings({
-    ...(opts || {}),
-    select: (settings) => ({
-      broadcastAddrs: settings?.broadcastAddrs,
-    }),
-  });
-};
-
-type PublicAddrsField = Pick<Settings, "publicAddrs">;
-
+type PublicAddrsField = Pick<DeviceNetwork, "publicAddrs">;
 export const usePublicAddrsField = (
-  opts?: UseFieldsOpts<Settings, PublicAddrsField>,
+  opts?: UseFieldsOpts<DeviceNetwork, PublicAddrsField>,
 ) => {
-  return useSettings({
+  return useDeviceNetwork({
     ...(opts || {}),
-    select: (settings) => ({
-      publicAddrs: settings?.publicAddrs,
+    select: (deviceNetwork) => ({
+      publicAddrs: deviceNetwork?.publicAddrs,
     }),
   });
 };
 
-type WebPortField = Pick<HostSettings, "webPort">;
-export const useWebPortField = (
-  opts?: UseFieldsOpts<HostSettings, WebPortField>,
+type BroadcastAddrsField = Pick<DeviceNetwork, "broadcastAddrs">;
+export const useBroadcastAddrsField = (
+  opts?: UseFieldsOpts<DeviceNetwork, BroadcastAddrsField>,
 ) => {
-  return useHostSettings({
+  return useDeviceNetwork({
     ...(opts || {}),
-    select: (settings) => ({
-      webPort: settings?.webPort,
+    select: (deviceNetwork) => ({
+      broadcastAddrs: deviceNetwork?.broadcastAddrs,
+    }),
+  });
+};
+
+type WebPortField = Pick<WebHost, "webPort">;
+export const useWebPortField = (
+  opts?: UseFieldsOpts<WebHost, WebPortField>,
+) => {
+  return useWebHost({
+    ...(opts || {}),
+    select: (webHost) => ({
+      webPort: webHost?.webPort,
     }),
   });
 };
 
 export {
-  useSettingsMutation as useNetworkEnableMutation,
-  useSettingsMutation as useBroadcastEnableMutation,
-  useHostSettingsMutation as useWebEnableMutation,
-  useHostSettingsMutation as useLocalHostOnlyMutation,
-  useSettingsMutation as useDeviceNameMutation,
-  useSettingsMutation as useDeviceMemoMutation,
-  useSettingsMutation as usePeerPortMutation,
-  useSettingsMutation as useBroadcastAddrsMutation,
-  useSettingsMutation as usePublicAddrsMutation,
-  useHostSettingsMutation as useWebPortMutation,
+  useDeviceNetworkMutation as useNetworkEnableMutation,
+  useDeviceNetworkMutation as useBroadcastEnableMutation,
+  useWebHostMutation as useWebEnableMutation,
+  useWebHostMutation as useLocalHostOnlyMutation,
+  useDeviceInfoMutation as useDeviceNameMutation,
+  useDeviceInfoMutation as useDeviceMemoMutation,
+  useDeviceNetworkMutation as useNetworkPortMutation,
+  useDeviceNetworkMutation as usePublicAddrsMutation,
+  useDeviceNetworkMutation as useBroadcastAddrsMutation,
+  useWebHostMutation as useWebPortMutation,
 };

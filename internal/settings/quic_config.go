@@ -17,13 +17,13 @@ type stdQuicConfig struct {
 	broadcastEnabled bool
 }
 
-func newQuicConfig(settings *Settings, security SecurityConfig, addrs []string) ptp.QuicConfig {
+func newQuicConfig(deviceNetwork *DeviceNetwork, security SecurityConfig, addrs []string) ptp.QuicConfig {
 	cfg := &stdQuicConfig{}
-	cfg.port = settings.PeerPort
+	cfg.port = deviceNetwork.Port
 	cfg.security = security
-	cfg.broadcastEnabled = settings.BroadcastEnabled
+	cfg.broadcastEnabled = deviceNetwork.BroadcastEnabled
 
-	if settings.Enabled {
+	if deviceNetwork.Enabled {
 		cfg.addrs = addrs
 	}
 

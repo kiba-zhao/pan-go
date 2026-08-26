@@ -3,7 +3,7 @@ import { WebIcon } from "./Icon";
 import { FormInputProps } from "./form";
 import { TOCItem, TOCChapter, FieldsClassName } from "./MainBase";
 import {
-  useDeviceWebFields,
+  useWebHost,
   useWebEnableMutation,
   useLocalHostOnlyMutation,
 } from "./ReactQuery";
@@ -54,7 +54,7 @@ export const DeviceWebFields = ({
   const { t } = useTranslation(SettingsName);
   const { type, open } = useAppExtra<ExtraState>();
 
-  const { data: webFields } = useDeviceWebFields({
+  const { data: webFields } = useWebHost({
     enabled: open !== true,
   });
   const { mutate: saveWebEnabled, isPending: isWebEnabledPending } =

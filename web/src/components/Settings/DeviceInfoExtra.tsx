@@ -5,7 +5,7 @@ import {
   useDeviceNameMutation,
   useDeviceMemoField,
   useDeviceMemoMutation,
-  type Settings,
+  type DeviceInfo,
 } from "./ReactQuery";
 import {
   withExtraState,
@@ -56,14 +56,14 @@ export const DeviceNameEditExtra = ({ extraState }: ExtraProps) => {
 
   const { mutateAsync, isPending } = useDeviceNameMutation();
   const { reset, control, handleSubmit, setFocus } = useForm<
-    Pick<Settings, "name">
+    Pick<DeviceInfo, "name">
   >({
     progressive: true,
     disabled: !open || isLoading || isPending || !isLoadingSuccess,
     defaultValues,
   });
 
-  const onSuccess = (settings: Settings) => {
+  const onSuccess = (deviceInfo: DeviceInfo) => {
     toast.add(
       withToast(ToastType.Success, {
         description: t(`${I18nVariant.Extra}.${type}.success`),
@@ -77,7 +77,7 @@ export const DeviceNameEditExtra = ({ extraState }: ExtraProps) => {
     setError(err);
   };
 
-  const handleFormSubmit = (values: Pick<Settings, "name">) => {
+  const handleFormSubmit = (values: Pick<DeviceInfo, "name">) => {
     error && clearErrors();
     mutateAsync(values).then(onSuccess, onError);
   };
@@ -150,14 +150,14 @@ export const DeviceMemoEditExtra = ({ extraState }: ExtraProps) => {
 
   const { mutateAsync, isPending } = useDeviceMemoMutation();
   const { reset, control, handleSubmit, setFocus } = useForm<
-    Pick<Settings, "memo">
+    Pick<DeviceInfo, "memo">
   >({
     progressive: true,
     disabled: !open || isLoading || isPending || !isLoadingSuccess,
     defaultValues,
   });
 
-  const onSuccess = (settings: Settings) => {
+  const onSuccess = (deviceInfo: DeviceInfo) => {
     toast.add(
       withToast(ToastType.Success, {
         description: t(`${I18nVariant.Extra}.${type}.success`),
@@ -171,7 +171,7 @@ export const DeviceMemoEditExtra = ({ extraState }: ExtraProps) => {
     setError(err);
   };
 
-  const handleFormSubmit = (values: Pick<Settings, "memo">) => {
+  const handleFormSubmit = (values: Pick<DeviceInfo, "memo">) => {
     error && clearErrors();
     mutateAsync(values).then(onSuccess, onError);
   };
@@ -210,23 +210,6 @@ export const DeviceMemoEditExtra = ({ extraState }: ExtraProps) => {
         />
       </form>
     </CardDialogExtra>
-    //   extraState={extraState}
-    //   control={control}
-    //   badge={t(`${I18nVariant.Badge}.edit`)}
-    //   desc={
-    //     <TextFieldDescription
-    //       extraState={extraState}
-    //       error={error}
-    //       rotate={isPending}
-    //     />
-    //   }
-    //   error={error}
-    //   blank={<Blank />}
-    //   id="deviceMemoEditForm"
-    //   onSubmit={handleSubmit(handleFormSubmit)}
-    // >
-
-    // </FormDialogExtra>
   );
 };
 

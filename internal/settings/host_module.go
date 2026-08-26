@@ -16,16 +16,18 @@ func init() {
 }
 
 func newHostModule(m *stdModule) interface{} {
-	baseSettingsCtrl := &BaseSettingsController{}
-	hostCtrl := &HostSettingsController{}
-	hostSettingsSvc := &HostSettingsService{}
+	deviceInfoCtrl := &DeviceInfoController{}
+	deviceNetworkCtrl := &DeviceNetworkController{}
+	webHostCtrl := &WebHostController{}
+	webHostSvc := &WebHostService{}
 
 	hostModule := &stdHostSettingsModule{}
 	hostModule.SubModule = module.NewSubModule(hostModule, m)
-	hostModule.baseSettingsCtrl = baseSettingsCtrl
-	hostModule.hostSettingsCtrl = hostCtrl
-	hostModule.hostSettingsSvc = hostSettingsSvc
-	hostSettingsSvc.Trigger = hostModule
+	hostModule.deviceInfoCtrl = deviceInfoCtrl
+	hostModule.deviceNetworkCtrl = deviceNetworkCtrl
+	hostModule.webHostCtrl = webHostCtrl
+	hostModule.webHostSvc = webHostSvc
+	webHostSvc.Trigger = hostModule
 
 	return hostModule
 }
@@ -36,18 +38,22 @@ type stdHostSettingsModule struct {
 
 	*module.SubModule[*stdHostSettingsModule, *stdModule]
 
-	baseSettingsCtrl *BaseSettingsController
-	hostSettingsCtrl *HostSettingsController
-	hostSettingsSvc  *HostSettingsService
+	deviceInfoCtrl    *DeviceInfoController
+	deviceNetworkCtrl *DeviceNetworkController
+	webHostCtrl       *WebHostController
+	webHostSvc        *WebHostService
 }
 
 var _ = (web.WebAppModule)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) SetupToWeb(app web.WebApp) error {
 	route := app.Group(path.Join(web.WEB_API_PATH, SettingsModuleName))
-	err := m.baseSettingsCtrl.SetupToWeb(route)
+	err := m.deviceInfoCtrl.SetupToWeb(route)
 	if err == nil {
-		err = m.hostSettingsCtrl.SetupToWeb(route)
+		err = m.deviceNetworkCtrl.SetupToWeb(route)
+	}
+	if err == nil {
+		err = m.webHostCtrl.SetupToWeb(route)
 	}
 	return err
 }
@@ -55,9 +61,9 @@ func (m *stdHostSettingsModule) SetupToWeb(app web.WebApp) error {
 var _ = (bootstrap.DeferModule)((*stdHostSettingsModule)(nil))
 
 func (m *stdHostSettingsModule) Defer(ctx context.Context) error {
-	hostSettings, err := m.loadHostSettings()
+	webHost, err := m.loadWebHost()
 	if err == nil {
-		err = m.configure(hostSettings)
+		err = m.configure(webHost)
 	}
 	return err
 }
@@ -68,32 +74,33 @@ func (m *stdHostSettingsModule) Components() []injection.Component {
 	return []injection.Component{
 		injection.NewComponent(m, injection.ComponentInternalScope),
 		// controller
-		injection.NewComponent(m.baseSettingsCtrl, injection.ComponentNoneScope),
-		injection.NewComponent(m.hostSettingsCtrl, injection.ComponentNoneScope),
+		injection.NewComponent(m.deviceInfoCtrl, injection.ComponentNoneScope),
+		injection.NewComponent(m.deviceNetworkCtrl, injection.ComponentNoneScope),
+		injection.NewComponent(m.webHostCtrl, injection.ComponentNoneScope),
 		// service
-		injection.NewComponent(m.hostSettingsSvc, injection.ComponentInternalScope),
+		injection.NewComponent(m.webHostSvc, injection.ComponentInternalScope),
 	}
 }
 
-var _ = (HostSettingsChangedTrigger)((*stdHostSettingsModule)(nil))
+var _ = (WebHostChangedTrigger)((*stdHostSettingsModule)(nil))
 
-func (m *stdHostSettingsModule) OnHostSettingsChanged(hostSettings HostSettings) {
-	m.configure(hostSettings)
+func (m *stdHostSettingsModule) OnWebHostChanged(webHost WebHost) {
+	m.configure(webHost)
 }
 
-func (m *stdHostSettingsModule) configure(hostSettings HostSettings) error {
-	return m.configureWeb(&hostSettings)
+func (m *stdHostSettingsModule) configure(webHost WebHost) error {
+	return m.configureWeb(&webHost)
 }
 
-func (m *stdHostSettingsModule) configureWeb(hostSettings *HostSettings) error {
-	webConfig := newWebConfig(hostSettings, m.Configurer.Config())
+func (m *stdHostSettingsModule) configureWeb(webHost *WebHost) error {
+	webConfig := newWebConfig(webHost, m.Configurer.Config())
 	return m.WebConfigurer.Configure(webConfig)
 }
 
-func (m *stdHostSettingsModule) loadHostSettings() (HostSettings, error) {
-	hostSettings, err := m.hostSettingsSvc.Load()
+func (m *stdHostSettingsModule) loadWebHost() (WebHost, error) {
+	webHost, err := m.webHostSvc.Load()
 	if err != nil {
-		m.ParentModule().logger.Error("settings.HostSettingsModule", "loadHostSettings Error: "+err.Error())
+		m.ParentModule().logger.Error("settings.HostSettingsModule", "loadWebHost Error: "+err.Error())
 	}
-	return hostSettings, err
+	return webHost, err
 }

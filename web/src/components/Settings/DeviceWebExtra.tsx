@@ -3,7 +3,7 @@ import { DeviceWebPortInput } from "./DeviceWeb";
 import {
   useWebPortField,
   useWebPortMutation,
-  type HostSettings,
+  type WebHost,
 } from "./ReactQuery";
 import {
   withExtraState,
@@ -52,14 +52,14 @@ export const WebPortEditExtra = ({ extraState }: ExtraProps) => {
 
   const { mutateAsync, isPending } = useWebPortMutation();
   const { reset, control, handleSubmit, setFocus } = useForm<
-    Pick<HostSettings, "webPort">
+    Pick<WebHost, "webPort">
   >({
     progressive: true,
     disabled: !open || isLoading || isPending || !isLoadingSuccess,
     defaultValues,
   });
 
-  const onSuccess = (settings: HostSettings) => {
+  const onSuccess = (webHost: WebHost) => {
     toast.add(
       withToast(ToastType.Success, {
         description: t(`${I18nVariant.Extra}.${type}.success`),
@@ -73,7 +73,7 @@ export const WebPortEditExtra = ({ extraState }: ExtraProps) => {
     setError(err);
   };
 
-  const handleFormSubmit = (values: Pick<HostSettings, "webPort">) => {
+  const handleFormSubmit = (values: Pick<WebHost, "webPort">) => {
     error && clearErrors();
     mutateAsync(values).then(onSuccess, onError);
   };

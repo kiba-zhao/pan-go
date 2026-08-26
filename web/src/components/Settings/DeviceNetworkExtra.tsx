@@ -7,13 +7,13 @@ import {
   DevicePublicAddrsTextInput,
 } from "./DeviceNetwork";
 import {
-  usePeerPortField,
-  usePeerPortMutation,
+  useNetworkPortField,
+  useNetworkPortMutation,
   useBroadcastAddrsField,
   useBroadcastAddrsMutation,
   usePublicAddrsField,
   usePublicAddrsMutation,
-  type Settings,
+  type DeviceNetwork,
 } from "./ReactQuery";
 import {
   withExtraState,
@@ -46,14 +46,14 @@ export const NetworkPortEditExtra = ({ extraState }: ExtraProps) => {
     data,
     isLoading,
     isSuccess: isLoadingSuccess,
-  } = usePeerPortField({
+  } = useNetworkPortField({
     enabled: open,
   });
   const defaultValues = useMemo(
     () => ({
-      peerPort: data?.peerPort || 0,
+      port: data?.port || 0,
     }),
-    [data?.peerPort],
+    [data?.port],
   );
 
   const [error, setError] = useState<Error | undefined>();
@@ -61,16 +61,16 @@ export const NetworkPortEditExtra = ({ extraState }: ExtraProps) => {
     setError(undefined);
   };
 
-  const { mutateAsync, isPending } = usePeerPortMutation();
+  const { mutateAsync, isPending } = useNetworkPortMutation();
   const { reset, control, handleSubmit, setFocus } = useForm<
-    Pick<Settings, "peerPort">
+    Pick<DeviceNetwork, "port">
   >({
     progressive: true,
     disabled: !open || isLoading || isPending || !isLoadingSuccess,
     defaultValues,
   });
 
-  const onSuccess = (settings: Settings) => {
+  const onSuccess = (deviceNetwork: DeviceNetwork) => {
     toast.add(
       withToast(ToastType.Success, {
         description: t(`${I18nVariant.Extra}.${type}.success`),
@@ -80,18 +80,18 @@ export const NetworkPortEditExtra = ({ extraState }: ExtraProps) => {
   };
 
   const onError = (err: Error) => {
-    setFocus("peerPort");
+    setFocus("port");
     setError(err);
   };
 
-  const handleFormSubmit = (values: Pick<Settings, "peerPort">) => {
+  const handleFormSubmit = (values: Pick<DeviceNetwork, "port">) => {
     error && clearErrors();
     mutateAsync(values).then(onSuccess, onError);
   };
 
   useEffect(() => {
     if (open && isLoadingSuccess) {
-      setFocus("peerPort");
+      setFocus("port");
       reset(defaultValues);
     }
   }, [open, defaultValues, isLoadingSuccess, setFocus, reset]);
@@ -116,9 +116,9 @@ export const NetworkPortEditExtra = ({ extraState }: ExtraProps) => {
     >
       <form id="networkPortEditForm" onSubmit={handleSubmit(handleFormSubmit)}>
         <DeviceNetworkPortInput
-          name="peerPort"
+          name="port"
           control={control}
-          defaultValue={defaultValues.peerPort}
+          defaultValue={defaultValues.port}
           onChange={clearErrors}
         />
       </form>
@@ -164,7 +164,7 @@ export const BroadcastAddrsEditExtra = ({ extraState }: ExtraProps) => {
     defaultValues,
   });
 
-  const onSuccess = (settings: Settings) => {
+  const onSuccess = (deviceNetwork: DeviceNetwork) => {
     toast.add(
       withToast(ToastType.Success, {
         description: t(`${I18nVariant.Extra}.${type}.success`),
@@ -268,7 +268,7 @@ export const PublicAddrsEditExtra = ({ extraState }: ExtraProps) => {
     defaultValues,
   });
 
-  const onSuccess = (settings: Settings) => {
+  const onSuccess = (deviceNetwork: DeviceNetwork) => {
     toast.add(
       withToast(ToastType.Success, {
         description: t(`${I18nVariant.Extra}.${type}.success`),
